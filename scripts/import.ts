@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { importCSVToRTDB } from '../src/utils/importCaptures';
+import { importCSVToRTDB } from './importCaptures';
 import { db } from './firebase-node';
 
 async function main() {
