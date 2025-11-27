@@ -10,7 +10,7 @@ import {
   Input,
   Link,
 } from "@heroui/react";
-import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
 import { app } from "../firebase";
 
 interface LoginModalProps {
@@ -99,6 +99,9 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
     setSuccess("");
 
     try {
+      // Set persistence based on "Remember me" checkbox
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      
       await signInWithEmailAndPassword(auth, email, password);
       onOpenChange(); // Close modal on success
       setEmail("");
