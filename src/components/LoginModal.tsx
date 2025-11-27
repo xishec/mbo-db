@@ -10,7 +10,7 @@ import {
   Input,
   Link,
 } from "@heroui/react";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { app } from "../firebase";
 
 interface LoginModalProps {
@@ -24,6 +24,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
@@ -52,6 +53,39 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
     return true;
   };
 
+  const handleForgotPassword = async () => {
+    if (!validateEmail(email)) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess("Password reset email sent! Please check your inbox.");
+      setPassword("");
+    } catch (err: unknown) {
+      const errorObj = err as { code?: string; message?: string };
+      let errorMessage = "Failed to send password reset email";
+
+      if (errorObj.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email";
+      } else if (errorObj.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address";
+      } else if (errorObj.code === "auth/too-many-requests") {
+        errorMessage = "Too many requests. Please try again later";
+      } else if (errorObj.message) {
+        errorMessage = errorObj.message;
+      }
+
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSignIn = async () => {
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
@@ -62,6 +96,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
 
     setIsLoading(true);
     setError("");
+    setSuccess("");
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -98,6 +133,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
     setEmail("");
     setPassword("");
     setError("");
+    setSuccess("");
     setEmailError("");
     setPasswordError("");
     onOpenChange();
@@ -115,9 +151,11 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
               </p>
             </ModalHeader>
             <ModalBody className="gap-4">
-              {error && (
-                <div className="bg-danger-50 border border-danger-200 rounded-lg p-3 flex items-start gap-2">
-                  <span className="text-danger text-sm">{error}</span>
+              {(error || success) && (
+                <div className={`${error ? 'bg-danger-50 border-danger-200' : 'bg-success-50 border-success-200'} border rounded-lg p-3 flex items-start gap-2`}>
+                  <span className={`${error ? 'text-danger' : 'text-success'} text-sm`}>
+                    {error || success}
+                  </span>
                 </div>
               )}
               <Input
@@ -162,7 +200,12 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 >
                   Remember me
                 </Checkbox>
-                <Link color="primary" href="#" size="sm">
+                <Link 
+                  color="primary" 
+                  size="sm"
+                  className="cursor-pointer"
+                  onPress={handleForgotPassword}
+                >
                   Forgot password?
                 </Link>
               </div>
