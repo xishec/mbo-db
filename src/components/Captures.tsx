@@ -1,4 +1,16 @@
-import { Autocomplete, AutocompleteItem, Spinner, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Pagination, getKeyValue } from "@heroui/react";
+import {
+  Select,
+  SelectItem,
+  Spinner,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
+  getKeyValue,
+} from "@heroui/react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
@@ -11,18 +23,30 @@ interface CapturesProps {
   error?: string | null;
 }
 
-export default function Captures({ programs, isLoading, error }: CapturesProps) {
+export default function Captures({
+  programs,
+  isLoading,
+  error,
+}: CapturesProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const programNames = useMemo(() => (programs ? Array.from(programs.keys()) : []), [programs]);
+  const programNames = useMemo(
+    () => (programs ? Array.from(programs.keys()) : []),
+    [programs]
+  );
   const selectedEntries = useMemo(() => {
     if (!programs || !selectedKey) return null;
     return programs.get(selectedKey) || null;
   }, [programs, selectedKey]);
-  const selectedBandIds = useMemo(() => (selectedEntries ? Array.from(selectedEntries.values()) : []), [selectedEntries]);
+  const selectedBandIds = useMemo(
+    () => (selectedEntries ? Array.from(selectedEntries.values()) : []),
+    [selectedEntries]
+  );
 
   if (isLoading) {
     return (
-      <div className="p-4 flex items-center gap-2"><Spinner size="sm" /> Loading programs...</div>
+      <div className="p-4 flex items-center gap-2">
+        <Spinner size="sm" /> Loading programs...
+      </div>
     );
   }
   if (error) {
@@ -33,17 +57,21 @@ export default function Captures({ programs, isLoading, error }: CapturesProps) 
   }
 
   return (
-    <div className="p-4 flex flex-col gap-6 bg-white">
-      <Autocomplete
+    <div className="p-4 flex flex-col gap-6">
+      <Select
         label="Programs"
         className="w-full"
-        defaultItems={programNames.map(name => ({ key: name, label: name }))}
-        selectedKey={selectedKey ?? undefined}
-        onSelectionChange={key => setSelectedKey(key ? String(key) : null)}
-        allowsCustomValue={false}
+        selectedKeys={selectedKey ? [selectedKey] : []}
+        onSelectionChange={(keys) => {
+          const first = Array.from(keys)[0];
+          setSelectedKey(first ? String(first) : null);
+        }}
+        disallowEmptySelection
       >
-        {(item) => <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>}
-      </Autocomplete>
+        {programNames.map((name) => (
+          <SelectItem key={name}>{name}</SelectItem>
+        ))}
+      </Select>
       {selectedKey && (
         <div className="rounded-medium border border-default-200 p-4 bg-default-50 dark:bg-default-100">
           <h3 className="text-lg font-semibold mb-2">Program: {selectedKey}</h3>
@@ -57,7 +85,9 @@ export default function Captures({ programs, isLoading, error }: CapturesProps) 
 
 function BandsTable({ bandIds }: { bandIds: string[] }) {
   const pageSize = 50;
-  const [bandCaptures, setBandCaptures] = useState<Map<string, Capture[]>>(new Map());
+  const [bandCaptures, setBandCaptures] = useState<Map<string, Capture[]>>(
+    new Map()
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -78,19 +108,21 @@ function BandsTable({ bandIds }: { bandIds: string[] }) {
         let idx = 0;
         const fetchOne = async (bandId: string) => {
           const snap = await get(ref(db, `bands/${bandId}`));
-            if (snap.exists()) {
-              const captures = snap.val() as Capture[];
-              next.set(bandId, captures);
-              cacheRef.current.set(bandId, captures);
-            } else {
-              next.set(bandId, []);
-              cacheRef.current.set(bandId, []);
-            }
+          if (snap.exists()) {
+            const captures = snap.val() as Capture[];
+            next.set(bandId, captures);
+            cacheRef.current.set(bandId, captures);
+          } else {
+            next.set(bandId, []);
+            cacheRef.current.set(bandId, []);
+          }
         };
         const tasks: Promise<void>[] = [];
         while (idx < bandIds.length) {
           const chunk = bandIds.slice(idx, idx + concurrency);
-          tasks.push(Promise.all(chunk.map(id => fetchOne(id))).then(() => {}));
+          tasks.push(
+            Promise.all(chunk.map((id) => fetchOne(id))).then(() => {})
+          );
           idx += concurrency;
         }
         await Promise.all(tasks);
@@ -101,10 +133,13 @@ function BandsTable({ bandIds }: { bandIds: string[] }) {
         if (!cancelled) setIsLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [bandIds]);
 
-  const totalPages = bandCaptures.size === 0 ? 0 : Math.ceil(bandCaptures.size / pageSize);
+  const totalPages =
+    bandCaptures.size === 0 ? 0 : Math.ceil(bandCaptures.size / pageSize);
   const allRows = useMemo(() => {
     return Array.from(bandCaptures.entries()).map(([bandId, captures]) => ({
       key: bandId,
@@ -122,7 +157,11 @@ function BandsTable({ bandIds }: { bandIds: string[] }) {
     { key: "bandId", label: "Band" },
     { key: "count", label: "# Captures" },
   ];
-  interface RowItem { key: string; bandId: string; count: number }
+  interface RowItem {
+    key: string;
+    bandId: string;
+    count: number;
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -147,16 +186,26 @@ function BandsTable({ bandIds }: { bandIds: string[] }) {
         }
       >
         <TableHeader columns={columns}>
-          {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
+          {(column) => (
+            <TableColumn key={column.key}>{column.label}</TableColumn>
+          )}
         </TableHeader>
         <TableBody
           items={paginatedRows}
-          emptyContent={isLoading ? <Spinner size="sm" /> : "No bands for program"}
-          loadingState={isLoading && bandCaptures.size === 0 ? "loading" : "idle"}
+          emptyContent={
+            isLoading ? <Spinner size="sm" /> : "No bands for program"
+          }
+          loadingState={
+            isLoading && bandCaptures.size === 0 ? "loading" : "idle"
+          }
         >
           {(item) => (
             <TableRow key={item.key}>
-              {(columnKey) => <TableCell>{getKeyValue(item as RowItem, columnKey as string)}</TableCell>}
+              {(columnKey) => (
+                <TableCell>
+                  {getKeyValue(item as RowItem, columnKey as string)}
+                </TableCell>
+              )}
             </TableRow>
           )}
         </TableBody>
