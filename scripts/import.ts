@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { importCSVToFirestore } from '../src/utils/importCaptures';
+import { importCSVToRTDB } from '../src/utils/importCaptures';
 
 async function main() {
   try {
@@ -8,8 +8,8 @@ async function main() {
     const csvPath = join(process.cwd(), 'public', 'data', 'tblCaptures.csv');
     const csvContent = readFileSync(csvPath, 'utf-8');
     
-    console.log('Starting Firestore import...');
-    await importCSVToFirestore(csvContent);
+    console.log('Starting RTDB import...');
+    await importCSVToRTDB(csvContent);
     
     console.log('✅ Import completed successfully!');
     process.exit(0);

@@ -1,12 +1,11 @@
-import { collection, writeBatch, doc } from "firebase/firestore";
+import { ref, set } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture } from "../types/Capture";
+import type { Band } from "../types/Band";
 
 const VALID_FIELDS = new Set([
   "IDBand",
   "Disposition",
-  "BandPrefix",
-  "BandSuffix",
   "Species",
   "WingChord",
   "Age",
@@ -16,7 +15,6 @@ const VALID_FIELDS = new Set([
   "Fat",
   "Weight",
   "CaptureDate",
-  "WeightTime",
   "Bander",
   "Scribe",
   "Net",
@@ -73,55 +71,60 @@ export function parseCSV(csvContent: string): Capture[] {
 }
 
 /**
- * Import captures to Firestore in batches
- * Firestore has a limit of 500 writes per batch
+ * Group captures by band ID (BandPrefix-BandSuffix)
  */
-export async function importCapturesToFirestore(
-  captures: Capture[]
-): Promise<void> {
-  const BATCH_SIZE = 500;
-  const capturesCollection = collection(db, "captures");
-
-  let batch = writeBatch(db);
-  let batchCount = 0;
-  let totalImported = 0;
-
-  console.log(`Starting import of ${captures.length} captures...`);
-
+function groupCapturesByBand(captures: Capture[]): Map<string, Capture[]> {
+  const bandMap = new Map<string, Capture[]>();
+  
   for (const capture of captures) {
-    // Create a new document reference
-    const docRef = doc(capturesCollection);
-    batch.set(docRef, { ...capture });
-    batchCount++;
-
-    // Commit batch when it reaches the limit
-    if (batchCount === BATCH_SIZE) {
-      await batch.commit();
-      totalImported += batchCount;
-      console.log(`Imported ${totalImported} / ${captures.length} captures`);
-
-      // Start a new batch
-      batch = writeBatch(db);
-      batchCount = 0;
+    // Skip if missing required fields
+    if (!capture.IDBand) continue;
+    
+    // Extract band ID from IDBand (format varies, but we'll use the full IDBand as the key)
+    const bandId = capture.IDBand;
+    
+    if (!bandMap.has(bandId)) {
+      bandMap.set(bandId, []);
     }
+    bandMap.get(bandId)!.push(capture);
   }
-
-  // Commit remaining items
-  if (batchCount > 0) {
-    await batch.commit();
-    totalImported += batchCount;
-    console.log(`Imported ${totalImported} / ${captures.length} captures`);
-  }
-
-  console.log("Import complete!");
+  
+  return bandMap;
 }
 
 /**
- * Import CSV file to Firestore
+ * Import captures to RTDB grouped by band
  */
-export async function importCSVToFirestore(csvContent: string): Promise<void> {
+export async function importCapturesToRTDB(captures: Capture[]): Promise<void> {
+  const bandMap = groupCapturesByBand(captures);
+  
+  console.log(`Starting import of ${captures.length} captures grouped into ${bandMap.size} bands...`);
+  
+  let processedBands = 0;
+  const totalBands = bandMap.size;
+  
+  for (const [bandId, bandCaptures] of bandMap.entries()) {
+    const bandRef = ref(db, `bands/${bandId}`);
+    const bandData: Band = {
+      id: bandId,
+      captures: bandCaptures,
+    };
+    
+    await set(bandRef, bandData);
+    processedBands++;
+    
+    if (processedBands % 100 === 0) {
+      console.log(`Processed ${processedBands} / ${totalBands} bands`);
+    }
+  }
+  
+  console.log(`Import complete! Processed ${processedBands} bands with ${captures.length} captures.`);
+}
+
+/**
+ * Import CSV file to RTDB
+ */
+export async function importCSVToRTDB(csvContent: string): Promise<void> {
   const captures = parseCSV(csvContent);
-  const hi = captures.splice(captures.length - 1000, 1000);
-  // console.log(hi.length);
-  await importCapturesToFirestore(hi);
+  await importCapturesToRTDB(captures);
 }
