@@ -28,15 +28,15 @@ export default function Captures({
   isLoading,
   error,
 }: CapturesProps) {
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const programNames = useMemo(
     () => (programs ? Array.from(programs.keys()) : []),
     [programs]
   );
   const selectedEntries = useMemo(() => {
-    if (!programs || !selectedKey) return null;
-    return programs.get(selectedKey) || null;
-  }, [programs, selectedKey]);
+    if (!programs || !selectedProgram) return null;
+    return programs.get(selectedProgram) || null;
+  }, [programs, selectedProgram]);
   const selectedBandIds = useMemo(
     () => (selectedEntries ? Array.from(selectedEntries.values()) : []),
     [selectedEntries]
@@ -61,10 +61,10 @@ export default function Captures({
       <Select
         label="Programs"
         className="w-full"
-        selectedKeys={selectedKey ? [selectedKey] : []}
+        selectedKeys={selectedProgram ? [selectedProgram] : []}
         onSelectionChange={(keys) => {
           const first = Array.from(keys)[0];
-          setSelectedKey(first ? String(first) : null);
+          setSelectedProgram(first ? String(first) : null);
         }}
         disallowEmptySelection
       >
@@ -72,18 +72,29 @@ export default function Captures({
           <SelectItem key={name}>{name}</SelectItem>
         ))}
       </Select>
-      {selectedKey && (
+      {selectedProgram && (
         <div>
-          <h3 className="text-lg font-semibold mb-2">Program: {selectedKey}</h3>
+          <h3 className="text-lg font-semibold mb-2">
+            Program: {selectedProgram}
+          </h3>
           <p className="text-sm mb-3">Band IDs: {selectedBandIds.length}</p>
-          <BandsTable bandIds={selectedBandIds} />
+          <BandsTable
+            selectedProgram={selectedProgram}
+            bandIds={selectedBandIds}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function BandsTable({ bandIds }: { bandIds: string[] }) {
+function BandsTable({
+  selectedProgram,
+  bandIds,
+}: {
+  selectedProgram: string;
+  bandIds: string[];
+}) {
   const pageSize = 50;
   const [bandCaptures, setBandCaptures] = useState<Map<string, Capture[]>>(
     new Map()
@@ -138,29 +149,60 @@ function BandsTable({ bandIds }: { bandIds: string[] }) {
     };
   }, [bandIds]);
 
+  // Flatten all captures into individual rows with bandId included
+  const allCaptureRows = useMemo(() => {
+    const rows: Array<Capture & { key: string; bandId: string }> = [];
+    for (const [bandId, captures] of bandCaptures.entries()) {
+      captures.forEach((capture, idx) => {
+        if (capture.Program === selectedProgram) {
+          rows.push({ ...capture, key: `${bandId}-${idx}`, bandId });
+        }
+      });
+    }
+    return rows;
+  }, [bandCaptures, selectedProgram]);
+
   const totalPages =
-    bandCaptures.size === 0 ? 0 : Math.ceil(bandCaptures.size / pageSize);
-  const allRows = useMemo(() => {
-    return Array.from(bandCaptures.entries()).map(([bandId, captures]) => ({
-      key: bandId,
-      bandId,
-      count: captures?.length ?? 0,
-    }));
-  }, [bandCaptures]);
+    allCaptureRows.length === 0
+      ? 0
+      : Math.ceil(allCaptureRows.length / pageSize);
   const paginatedRows = useMemo(() => {
     if (page < 1) return [];
     const start = (page - 1) * pageSize;
-    return allRows.slice(start, start + pageSize);
-  }, [allRows, page, pageSize]);
+    return allCaptureRows.slice(start, start + pageSize);
+  }, [allCaptureRows, page, pageSize]);
 
   const columns = [
     { key: "bandId", label: "Band" },
-    { key: "count", label: "# Captures" },
+    { key: "IDBand", label: "IDBand" },
+    { key: "Disposition", label: "Disposition" },
+    { key: "BandPrefix", label: "BandPrefix" },
+    { key: "BandSuffix", label: "BandSuffix" },
+    { key: "Species", label: "Species" },
+    { key: "WingChord", label: "WingChord" },
+    { key: "Age", label: "Age" },
+    { key: "HowAged", label: "HowAged" },
+    { key: "Sex", label: "Sex" },
+    { key: "HowSexed", label: "HowSexed" },
+    { key: "Fat", label: "Fat" },
+    { key: "Weight", label: "Weight" },
+    { key: "CaptureDate", label: "CaptureDate" },
+    { key: "Bander", label: "Bander" },
+    { key: "Scribe", label: "Scribe" },
+    { key: "Net", label: "Net" },
+    { key: "NotesForMBO", label: "NotesForMBO" },
+    { key: "Location", label: "Location" },
+    { key: "BirdStatus", label: "BirdStatus" },
+    { key: "PresentCondition", label: "PresentCondition" },
+    { key: "HowObtainedCode", label: "HowObtainedCode" },
+    { key: "Program", label: "Program" },
+    { key: "D18", label: "D18" },
+    { key: "D20", label: "D20" },
+    { key: "D22", label: "D22" },
   ];
-  interface RowItem {
+  interface RowItem extends Capture {
     key: string;
     bandId: string;
-    count: number;
   }
 
   return (
@@ -191,9 +233,7 @@ function BandsTable({ bandIds }: { bandIds: string[] }) {
         </TableHeader>
         <TableBody
           items={paginatedRows}
-          emptyContent={
-            isLoading ? <Spinner size="sm" /> : "No bands for program"
-          }
+          emptyContent={isLoading ? <Spinner size="sm" /> : "No captures"}
           loadingState={
             isLoading && bandCaptures.size === 0 ? "loading" : "idle"
           }
