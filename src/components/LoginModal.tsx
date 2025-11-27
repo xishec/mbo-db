@@ -185,6 +185,11 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                   setPasswordError("");
                 }}
                 onBlur={() => validatePassword(password)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSignIn();
+                  }
+                }}
                 isInvalid={!!passwordError}
                 errorMessage={passwordError}
                 isRequired
