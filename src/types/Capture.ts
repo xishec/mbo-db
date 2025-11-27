@@ -4,15 +4,14 @@ export interface Capture {
   BandPrefix?: string;
   BandSuffix?: string;
   Species?: string;
-  WingChord?: string;
+  WingChord?: number;
   Age?: string;
   HowAged?: string;
   Sex?: string;
   HowSexed?: string;
   Fat?: string;
-  Weight?: string;
+  Weight?: number;
   CaptureDate?: string;
-  WeightTime?: string;
   Bander?: string;
   Scribe?: string;
   Net?: string;

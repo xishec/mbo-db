@@ -123,7 +123,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               </DropdownMenu>
             </Dropdown>
           ) : (
-            <Button radius="full" color="primary" onPress={onOpen}>
+            <Button color="primary" onPress={onOpen}>
               Login
             </Button>
           )}

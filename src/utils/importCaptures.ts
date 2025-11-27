@@ -2,32 +2,63 @@ import { collection, writeBatch, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Capture } from "../types/Capture";
 
+const VALID_FIELDS = new Set([
+  "IDBand",
+  "Disposition",
+  "BandPrefix",
+  "BandSuffix",
+  "Species",
+  "WingChord",
+  "Age",
+  "HowAged",
+  "Sex",
+  "HowSexed",
+  "Fat",
+  "Weight",
+  "CaptureDate",
+  "WeightTime",
+  "Bander",
+  "Scribe",
+  "Net",
+  "NotesForMBO",
+  "Location",
+  "BirdStatus",
+  "PresentCondition",
+  "HowObtainedCode",
+  "Program",
+  "D18",
+  "D20",
+  "D22",
+]);
+const NUMERIC_FIELDS = new Set(["WingChord", "Weight"]);
+
 /**
  * Parse CSV row into Capture object
  */
-function parseCSVRow(headers: string[], values: string[]): Partial<Capture> {
-  const capture: Capture = {};
-
+function parseCSVRow(headers: string[], values: string[]): Capture {
+  const capture: Record<string, string | number> = {};
   headers.forEach((header, index) => {
-    // Skip fields not in Capture interface
-    if (!(header in ({} as Capture))) {
-      return;
+    if (VALID_FIELDS.has(header)) {
+      const value = values[index];
+      if (value) {
+        if (NUMERIC_FIELDS.has(header)) {
+          capture[header] = Number(value);
+        } else {
+          capture[header] = value;
+        }
+      }
     }
-
-    // Store the value
-    capture[header as keyof Capture] = values[index];
   });
-
   return capture;
 }
 
 /**
  * Parse CSV content into array of Capture objects
  */
-export function parseCSV(csvContent: string): Partial<Capture>[] {
+export function parseCSV(csvContent: string): Capture[] {
   const lines = csvContent.split("\n");
   const headers = lines[0].split(",");
-  const captures: Partial<Capture>[] = [];
+  const captures: Capture[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -46,7 +77,7 @@ export function parseCSV(csvContent: string): Partial<Capture>[] {
  * Firestore has a limit of 500 writes per batch
  */
 export async function importCapturesToFirestore(
-  captures: Partial<Capture>[]
+  captures: Capture[]
 ): Promise<void> {
   const BATCH_SIZE = 500;
   const capturesCollection = collection(db, "captures");
@@ -60,7 +91,7 @@ export async function importCapturesToFirestore(
   for (const capture of captures) {
     // Create a new document reference
     const docRef = doc(capturesCollection);
-    batch.set(docRef, capture);
+    batch.set(docRef, { ...capture });
     batchCount++;
 
     // Commit batch when it reaches the limit
@@ -90,5 +121,7 @@ export async function importCapturesToFirestore(
  */
 export async function importCSVToFirestore(csvContent: string): Promise<void> {
   const captures = parseCSV(csvContent);
-  await importCapturesToFirestore(captures);
+  const hi = captures.splice(captures.length - 1000, 1000);
+  // console.log(hi.length);
+  await importCapturesToFirestore(hi);
 }

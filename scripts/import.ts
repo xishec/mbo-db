@@ -5,7 +5,7 @@ import { importCSVToFirestore } from '../src/utils/importCaptures';
 async function main() {
   try {
     console.log('Reading CSV file...');
-    const csvPath = join(process.cwd(), 'public/data', 'tblCaptures.csv');
+    const csvPath = join(process.cwd(), 'public', 'data', 'tblCaptures.csv');
     const csvContent = readFileSync(csvPath, 'utf-8');
     
     console.log('Starting Firestore import...');
