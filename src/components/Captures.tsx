@@ -11,6 +11,7 @@ import {
   Pagination,
   getKeyValue,
 } from "@heroui/react";
+import type { SortDescriptor } from "@heroui/react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
@@ -74,10 +75,7 @@ export default function Captures({
       </Select>
       {selectedProgram && (
         <div>
-          <h3 className="text-lg font-semibold mb-2">
-            Program: {selectedProgram}
-          </h3>
-          <p className="text-sm mb-3">Band IDs: {selectedBandIds.length}</p>
+          <p className="text-sm mb-3 text-right">Band IDs: {selectedBandIds.length}</p>
           <BandsTable
             selectedProgram={selectedProgram}
             bandIds={selectedBandIds}
@@ -102,6 +100,10 @@ function BandsTable({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: "bandId",
+    direction: "ascending",
+  });
   const cacheRef = useRef<Map<string, Capture[]>>(new Map());
 
   useEffect(() => {
@@ -162,22 +164,38 @@ function BandsTable({
     return rows;
   }, [bandCaptures, selectedProgram]);
 
+  const sortedRows = useMemo(() => {
+    const { column, direction } = sortDescriptor;
+    if (!column) return allCaptureRows;
+    const collator = new Intl.Collator(undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    type RowItemLocal = Capture & { key: string; bandId: string };
+    const rowsCopy: RowItemLocal[] = [...allCaptureRows];
+    rowsCopy.sort((a, b) => {
+      const aVal = a[column as keyof RowItemLocal];
+      const bVal = b[column as keyof RowItemLocal];
+      // Treat undefined/null as empty string for stable comparisons
+      const aStr = aVal === undefined || aVal === null ? "" : String(aVal);
+      const bStr = bVal === undefined || bVal === null ? "" : String(bVal);
+      const cmp = collator.compare(aStr, bStr);
+      return direction === "descending" ? -cmp : cmp;
+    });
+    return rowsCopy;
+  }, [allCaptureRows, sortDescriptor]);
+
   const totalPages =
-    allCaptureRows.length === 0
-      ? 0
-      : Math.ceil(allCaptureRows.length / pageSize);
+    sortedRows.length === 0 ? 0 : Math.ceil(sortedRows.length / pageSize);
   const paginatedRows = useMemo(() => {
     if (page < 1) return [];
     const start = (page - 1) * pageSize;
-    return allCaptureRows.slice(start, start + pageSize);
-  }, [allCaptureRows, page, pageSize]);
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, page, pageSize]);
 
   const columns = [
     { key: "bandId", label: "Band" },
-    { key: "IDBand", label: "IDBand" },
     { key: "Disposition", label: "Disposition" },
-    { key: "BandPrefix", label: "BandPrefix" },
-    { key: "BandSuffix", label: "BandSuffix" },
     { key: "Species", label: "Species" },
     { key: "WingChord", label: "WingChord" },
     { key: "Age", label: "Age" },
@@ -209,7 +227,9 @@ function BandsTable({
     <div className="flex flex-col gap-2">
       {error && <div className="text-danger text-sm">Error: {error}</div>}
       <Table
-        aria-label="Band captures table with pagination"
+        aria-label="Band captures table with pagination and sorting"
+        sortDescriptor={sortDescriptor}
+        onSortChange={setSortDescriptor}
         bottomContent={
           totalPages > 0 ? (
             <div className="flex w-full justify-center py-2">
@@ -228,7 +248,9 @@ function BandsTable({
       >
         <TableHeader columns={columns}>
           {(column) => (
-            <TableColumn key={column.key}>{column.label}</TableColumn>
+            <TableColumn key={column.key} allowsSorting>
+              {column.label}
+            </TableColumn>
           )}
         </TableHeader>
         <TableBody
