@@ -1,21 +1,27 @@
 import Captures from './Captures';
+import type { Programs } from '../types/Programs';
 
 interface PageContentProps {
   activePage: string;
+  programs: Programs | null;
+  isLoadingPrograms: boolean;
+  programsError: string | null;
 }
 
-export default function PageContent({ activePage }: PageContentProps) {
+export default function PageContent({ activePage, programs, isLoadingPrograms, programsError }: PageContentProps) {
   return (
     <div className="min-h-screen bg-default-50 dark:bg-default-100 p-8">
       <div className="max-w-6xl mx-auto">
-        {activePage === 'captures' && <Captures />}
-        {activePage === 'customers' && (
+        {activePage === 'captures' && (
+          <Captures programs={programs} isLoading={isLoadingPrograms} error={programsError} />
+        )}
+        {activePage === 'DET' && (
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-4">DET</h2>
             <p>DET content coming soon...</p>
           </div>
         )}
-        {activePage === 'integrations' && (
+        {activePage === 'Reports' && (
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-4">Reports</h2>
             <p>Reports content coming soon...</p>

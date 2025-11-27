@@ -1,8 +1,6 @@
 import { ref, set, type Database } from "firebase/database";
 import type { Capture } from "../src/types/Capture";
 import type { Bands } from "../src/types/Bands";
-import { writeFileSync } from "fs";
-import { join } from "path";
 
 const VALID_FIELDS = new Set([
   "IDBand",
@@ -112,31 +110,45 @@ export async function CSVToRTDB(
   console.log("Grouping by band...");
   const bands = groupCapturesByBand(captures);
 
-  console.log("Converting to object...");
-  const bandsObject = { bands: Object.fromEntries(bands) };
+  // console.log("Uploading to RTDB in batches...");
+  // const BATCH_SIZE = 10000;
+  // const bandEntries = Array.from(bands.entries());
+  // let uploadedCount = 0;
 
-  console.log("Saving to file...");
-  const outputPath = join(process.cwd(), "public", "data", "bands.json");
-  writeFileSync(outputPath, JSON.stringify(bandsObject, null, 2));
-  console.log(`Saved to ${outputPath}`);
+  // for (let i = 0; i < bandEntries.length; i += BATCH_SIZE) {
+  //   const batch = bandEntries.slice(i, i + BATCH_SIZE);
 
-  console.log("Uploading to RTDB in batches...");
-  const BATCH_SIZE = 10000;
-  const bandEntries = Array.from(bands.entries());
-  let uploadedCount = 0;
+  //   // Batch multiple writes into a single Promise.all()
+  //   const promises = batch.map(([bandId, captures]) =>
+  //     set(ref(database, `bands/${bandId}`), captures)
+  //   );
+  //   await Promise.all(promises);
 
-  for (let i = 0; i < bandEntries.length; i += BATCH_SIZE) {
-    const batch = bandEntries.slice(i, i + BATCH_SIZE);
-    
-    // Batch multiple writes into a single Promise.all()
-    const promises = batch.map(([bandId, captures]) => 
-      set(ref(database, `bands/${bandId}`), captures)
-    );
-    await Promise.all(promises);
+  //   uploadedCount += batch.length;
+  //   console.log(`Uploaded ${uploadedCount}/${bands.size} bands...`);
+  // }
+  // console.log(`✅ Import complete! Uploaded ${bands.size} bands.`);
 
-    uploadedCount += batch.length;
-    console.log(`Uploaded ${uploadedCount}/${bands.size} bands...`);
+  // Build and upload programs map: programName -> [bandId]
+  console.log("Building programs map...");
+  const programs = new Map<string, Set<string>>();
+
+  for (const [bandId, captures] of bands.entries()) {
+    for (const capture of captures) {
+      const program = (capture as Capture).Program?.trim();
+      if (!program) continue;
+      if (!programs.has(program)) {
+        programs.set(program, new Set<string>());
+      }
+      programs.get(program)!.add(bandId);
+    }
+  }
+  // Convert Map<program, Set<bandId>> to plain object for RTDB
+  const programsObject: Record<string, string[]> = {};
+  for (const [program, bandSet] of programs.entries()) {
+    programsObject[program] = Array.from(bandSet).sort();
   }
 
-  console.log(`✅ Import complete! Uploaded ${bands.size} bands.`);
+  console.log("Uploading programs map to RTDB...");
+  await set(ref(database, `programs`), programsObject);
 }
