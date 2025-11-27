@@ -6,7 +6,17 @@ import {
   Link,
   Button,
   useDisclosure,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  User,
 } from "@heroui/react";
+import { ChevronDownIcon } from "@heroicons/react/24/solid";
+import { useState, useEffect } from "react";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import type { User as FirebaseUser } from "firebase/auth";
+import { app } from "../firebase";
 import LoginModal from "./LoginModal";
 
 interface NavigationProps {
@@ -16,6 +26,24 @@ interface NavigationProps {
 
 export default function Navigation({ activePage, onPageChange }: NavigationProps) {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const auth = getAuth(app);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
     <>
@@ -70,10 +98,35 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
         </NavbarItem>
       </NavbarContent>
       <NavbarContent justify="end">
-        <NavbarItem>
-          <Button radius="full" color="primary" onPress={onOpen}>
-            Login
-          </Button>
+        <NavbarItem className="flex items-center">
+          {user ? (
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <div className="flex items-center gap-2 cursor-pointer">
+                  <User
+                    as="button"
+                    name={user.email}
+                    className="transition-transform"
+                    avatarProps={{
+                      size: "sm",
+                      name: user.email?.[0].toUpperCase(),
+                    }}
+                  />
+                  <ChevronDownIcon className="w-4 h-4 text-default-900" />
+                </div>
+              </DropdownTrigger>
+              <DropdownMenu aria-label="User Actions" variant="flat">
+                <DropdownItem key="settings">Settings</DropdownItem>
+                <DropdownItem key="logout" color="danger" onPress={handleSignOut}>
+                  Log Out
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          ) : (
+            <Button radius="full" color="primary" onPress={onOpen}>
+              Login
+            </Button>
+          )}
         </NavbarItem>
       </NavbarContent>
     </Navbar>
