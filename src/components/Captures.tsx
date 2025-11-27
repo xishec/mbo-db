@@ -39,11 +39,10 @@ export default function Captures({
   }
 
   return (
-    <div className="p-4 flex flex-col gap-6 max-w-xl">
+    <div className="p-4 flex flex-col gap-6 bg-white">
       <Autocomplete
-        variant="bordered"
         label="Programs"
-        className="max-w-full"
+        className="w-full"
         defaultItems={programNames.map((name) => ({ key: name, label: name }))}
         selectedKey={selectedKey ?? undefined}
         onSelectionChange={(key) => setSelectedKey(key ? String(key) : null)}

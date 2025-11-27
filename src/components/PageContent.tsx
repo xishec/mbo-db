@@ -10,8 +10,8 @@ interface PageContentProps {
 
 export default function PageContent({ activePage, programs, isLoadingPrograms, programsError }: PageContentProps) {
   return (
-    <div className="min-h-screen bg-default-50 dark:bg-default-100 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen p-8">
+      <div className="mx-auto">
         {activePage === 'captures' && (
           <Captures programs={programs} isLoading={isLoadingPrograms} error={programsError} />
         )}
