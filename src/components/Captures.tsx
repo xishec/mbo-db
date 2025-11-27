@@ -73,7 +73,7 @@ export default function Captures({
         ))}
       </Select>
       {selectedKey && (
-        <div className="rounded-medium border border-default-200 p-4 bg-default-50 dark:bg-default-100">
+        <div>
           <h3 className="text-lg font-semibold mb-2">Program: {selectedKey}</h3>
           <p className="text-sm mb-3">Band IDs: {selectedBandIds.length}</p>
           <BandsTable bandIds={selectedBandIds} />
@@ -168,7 +168,6 @@ function BandsTable({ bandIds }: { bandIds: string[] }) {
       {error && <div className="text-danger text-sm">Error: {error}</div>}
       <Table
         aria-label="Band captures table with pagination"
-        removeWrapper
         bottomContent={
           totalPages > 0 ? (
             <div className="flex w-full justify-center py-2">
