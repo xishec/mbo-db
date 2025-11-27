@@ -16,6 +16,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   return (
     <Navbar maxWidth="full">
       <NavbarBrand>
+        <img src="/mbo-logo.svg" alt="MBO Logo" className="h-8 w-8 mr-2" />
         <p className="text-xl">
           <span className="font-bold">MBO</span> Database
         </p>
@@ -64,12 +65,9 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
         </NavbarItem>
       </NavbarContent>
       <NavbarContent justify="end">
-        <NavbarItem className="hidden lg:flex">
-          <Link href="#">Login</Link>
-        </NavbarItem>
         <NavbarItem>
-          <Button as={Link} color="primary" href="#" variant="flat">
-            Sign Up
+          <Button as={Link} radius="full" color="primary" href="#" >
+            Login
           </Button>
         </NavbarItem>
       </NavbarContent>
