@@ -1,6 +1,8 @@
 export interface Capture {
   IDBand?: string;
   Disposition?: string;
+  BandPrefix?: string;
+  BandSuffix?: string;
   Species?: string;
   WingChord?: number;
   Age?: string;

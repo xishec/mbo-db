@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { importCSVToRTDB } from '../src/utils/importCaptures';
+import { db } from './firebase-node';
 
 async function main() {
   try {
@@ -9,7 +10,7 @@ async function main() {
     const csvContent = readFileSync(csvPath, 'utf-8');
     
     console.log('Starting RTDB import...');
-    await importCSVToRTDB(csvContent);
+    await importCSVToRTDB(csvContent, db);
     
     console.log('✅ Import completed successfully!');
     process.exit(0);

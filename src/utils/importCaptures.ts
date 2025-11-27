@@ -1,7 +1,6 @@
-import { ref, set } from "firebase/database";
-import { db } from "../firebase";
+import { ref, set, type Database } from "firebase/database";
 import type { Capture } from "../types/Capture";
-import type { Band } from "../types/Band";
+import type { Bands } from "../types/Bands";
 
 const VALID_FIELDS = new Set([
   "IDBand",
@@ -54,6 +53,9 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
  * Parse CSV content into array of Capture objects
  */
 export function parseCSV(csvContent: string): Capture[] {
+  // Remove BOM if present
+  csvContent = csvContent.replace(/^\uFEFF/, "");
+
   const lines = csvContent.split("\n");
   const headers = lines[0].split(",");
   const captures: Capture[] = [];
@@ -73,58 +75,67 @@ export function parseCSV(csvContent: string): Capture[] {
 /**
  * Group captures by band ID (BandPrefix-BandSuffix)
  */
-function groupCapturesByBand(captures: Capture[]): Map<string, Capture[]> {
-  const bandMap = new Map<string, Capture[]>();
-  
+function groupCapturesByBand(captures: Capture[]): Bands {
+  const bands: Bands = new Map<string, Capture[]>();
+
   for (const capture of captures) {
-    // Skip if missing required fields
-    if (!capture.IDBand) continue;
-    
-    // Extract band ID from IDBand (format varies, but we'll use the full IDBand as the key)
-    const bandId = capture.IDBand;
-    
-    if (!bandMap.has(bandId)) {
-      bandMap.set(bandId, []);
+    const bandId = capture.BandPrefix + "-" + capture.BandSuffix;
+
+    if (!bands.has(bandId)) {
+      bands.set(bandId, []);
     }
-    bandMap.get(bandId)!.push(capture);
+    bands.get(bandId)!.push(capture);
   }
-  
-  return bandMap;
+
+  console.log(
+    `Grouped ${captures.length} captures into ${bands.size} bands for import.`
+  );
+
+  return bands;
 }
 
 /**
  * Import captures to RTDB grouped by band
  */
-export async function importCapturesToRTDB(captures: Capture[]): Promise<void> {
-  const bandMap = groupCapturesByBand(captures);
-  
-  console.log(`Starting import of ${captures.length} captures grouped into ${bandMap.size} bands...`);
-  
+export async function importCapturesToRTDB(
+  captures: Capture[],
+  database: Database
+): Promise<void> {
   let processedBands = 0;
   const totalBands = bandMap.size;
-  
+
   for (const [bandId, bandCaptures] of bandMap.entries()) {
-    const bandRef = ref(db, `bands/${bandId}`);
+    const bandRef = ref(database, `bands/${bandId}`);
     const bandData: Band = {
       id: bandId,
       captures: bandCaptures,
     };
-    
+
     await set(bandRef, bandData);
     processedBands++;
-    
+
     if (processedBands % 100 === 0) {
       console.log(`Processed ${processedBands} / ${totalBands} bands`);
     }
   }
-  
-  console.log(`Import complete! Processed ${processedBands} bands with ${captures.length} captures.`);
+
+  console.log(
+    `Import complete! Processed ${processedBands} bands with ${captures.length} captures.`
+  );
 }
 
 /**
  * Import CSV file to RTDB
  */
-export async function importCSVToRTDB(csvContent: string): Promise<void> {
+export async function importCSVToRTDB(
+  csvContent: string,
+  database: Database
+): Promise<void> {
   const captures = parseCSV(csvContent);
-  await importCapturesToRTDB(captures);
+
+  const bands: Bands = groupCapturesByBand(captures);
+
+  console.log(database.type, bands);
+
+  // await importCapturesToRTDB(captures, database);
 }
