@@ -8,7 +8,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Pagination,
   getKeyValue,
   Input,
   Chip,
@@ -79,7 +78,7 @@ export default function Captures({
   }
 
   return (
-    <div className="w-screen flex flex-col gap-8 pt-8">
+    <div className="w-screen h-[90vh] flex flex-col gap-8">
       <div className="max-w-7xl w-full mx-auto px-8 flex items-center gap-4">
         <Select
           labelPlacement="outside"
@@ -136,13 +135,11 @@ function BandsTable({
   selectedProgram: string;
   bandIds: string[];
 }) {
-  const pageSize = 50;
   const [bandCaptures, setBandCaptures] = useState<Map<string, Capture[]>>(
     new Map()
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "bandId",
     direction: "ascending",
@@ -162,7 +159,6 @@ function BandsTable({
   useEffect(() => {
     setBandCaptures(new Map());
     setError(null);
-    setPage(1);
     cacheRef.current = new Map();
     if (bandIds.length === 0) return;
     let cancelled = false;
@@ -306,20 +302,10 @@ function BandsTable({
     return rowsCopy;
   }, [allCaptureRows, sortDescriptor, filters, evaluateFilter]);
 
-  const totalPages =
-    sortedRows.length === 0 ? 0 : Math.ceil(sortedRows.length / pageSize);
-  const paginatedRows = useMemo(() => {
-    if (page < 1) return [];
-    const start = (page - 1) * pageSize;
-    return sortedRows.slice(start, start + pageSize);
-  }, [sortedRows, page, pageSize]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [filters]);
+  // Virtualized table will render all rows efficiently; no manual pagination.
 
   return (
-    <div className="w-screen flex flex-col gap-6">
+    <div className="w-screen flex flex-col gap-6 flex-1 min-h-0">
       {error && <div className="text-danger text-sm">Error: {error}</div>}
 
       <div className="max-w-7xl w-full mx-auto px-8 flex flex-col gap-4 ">
@@ -457,34 +443,19 @@ function BandsTable({
         )}
 
         <div className="flex w-full justify-end text-sm opacity-70 ml-auto">
-          Showing {paginatedRows.length} of {sortedRows.length} filtered (Total{" "}
-          {allCaptureRows.length})
+          Showing {sortedRows.length} filtered (Total {allCaptureRows.length})
         </div>
       </div>
 
-      <div className="w-screen overflow-x-auto px-8">
-        {/* Wrap table + spacer so right padding appears after horizontal scroll */}
-        <div className="flex w-max">
+      <div className="w-screen overflow-x-auto overflow-y-auto px-8 flex-1 min-h-0">
+        <div className="flex w-max min-h-full">
           <Table
-            aria-label="Band captures table with pagination and sorting"
+            isHeaderSticky
+            className="h-full py-1"
+            aria-label="Band captures virtualized table with sorting"
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
-            removeWrapper
-            bottomContent={
-              totalPages > 0 ? (
-                <div className="flex w-full justify-center py-2">
-                  <Pagination
-                    isCompact
-                    showControls
-                    showShadow
-                    page={page}
-                    total={totalPages}
-                    onChange={setPage}
-                    color="primary"
-                  />
-                </div>
-              ) : null
-            }
+            isVirtualized
           >
             <TableHeader columns={TABLE_COLUMNS}>
               {(column) => (
@@ -500,7 +471,7 @@ function BandsTable({
               )}
             </TableHeader>
             <TableBody
-              items={paginatedRows}
+              items={sortedRows}
               emptyContent={isLoading ? <Spinner size="sm" /> : "No captures"}
               loadingState={
                 isLoading && bandCaptures.size === 0 ? "loading" : "idle"
@@ -521,8 +492,7 @@ function BandsTable({
               )}
             </TableBody>
           </Table>
-          {/* Right spacer to mirror left padding when scrolled to end */}
-          <div className="shrink-0" />
+          <div className="shrink-0 w-4" />
         </div>
       </div>
     </div>
