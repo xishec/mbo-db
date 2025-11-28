@@ -20,33 +20,54 @@ import { get, ref } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture } from "../types/Capture";
 import type { Programs } from "../types/Programs";
+import type { Years } from "../types/Years";
 import { NUMERIC_FIELDS } from "../constants/constants";
 import { TABLE_COLUMNS } from "../constants/constants";
 
 interface CapturesProps {
-  programs?: Programs | null;
-  isLoading?: boolean;
-  error?: string | null;
+  programs: Programs | null;
+  years: Years | null;
+  isLoading: boolean;
 }
 
 export default function Captures({
   programs,
+  years,
   isLoading,
-  error,
 }: CapturesProps) {
+  const [selectedYear, setSelectedYear] = useState<number | "all">("all");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
-  const programNames = useMemo(
-    () => (programs ? Array.from(programs.keys()) : []),
-    [programs]
-  );
+
+  // Filter program names by selected year
+  const programNames = useMemo(() => {
+    if (!programs) return [];
+    const all = Array.from(programs.keys());
+    if (selectedYear === "all") return all;
+    const allowed = years?.get(selectedYear);
+    if (!allowed) return [];
+    const allowedSet = new Set(Array.from(allowed.values()));
+    return all.filter((p) => allowedSet.has(p));
+  }, [programs, selectedYear, years]);
+
   const selectedEntries = useMemo(() => {
     if (!programs || !selectedProgram) return null;
     return programs.get(selectedProgram) || null;
   }, [programs, selectedProgram]);
+  
   const selectedBandIds = useMemo(
     () => (selectedEntries ? Array.from(selectedEntries.values()) : []),
     [selectedEntries]
   );
+
+  const yearOptions = useMemo(() => {
+    const opts: JSX.Element[] = [<SelectItem key="all">All years</SelectItem>];
+    Array.from(years?.keys() || [])
+      .sort((a, b) => b - a)
+      .forEach((y) => {
+        opts.push(<SelectItem key={String(y)}>{String(y)}</SelectItem>);
+      });
+    return opts;
+  }, [years]);
 
   if (isLoading) {
     return (
@@ -55,30 +76,51 @@ export default function Captures({
       </div>
     );
   }
-  if (error) {
-    return <div className="p-4 text-danger">Error: {error}</div>;
-  }
+
   if (!programs || programNames.length === 0) {
     return <div className="p-4">No programs available.</div>;
   }
 
   return (
     <div className="p-4 flex flex-col gap-3">
-      <Select
-        size="sm"
-        label="Programs"
-        className="w-full"
-        selectedKeys={selectedProgram ? [selectedProgram] : []}
-        onSelectionChange={(keys) => {
-          const first = Array.from(keys)[0];
-          setSelectedProgram(first ? String(first) : null);
-        }}
-        disallowEmptySelection
-      >
-        {programNames.map((name) => (
-          <SelectItem key={name}>{name}</SelectItem>
-        ))}
-      </Select>
+      {/* Top filters row: Years + Programs */}
+      <div className="flex items-center gap-3 w-full">
+        <Select
+          size="sm"
+          label="Years"
+          className="w-full max-w-[220px]"
+          selectedKeys={
+            selectedYear === "all" ? ["all"] : [String(selectedYear)]
+          }
+          onSelectionChange={(keys) => {
+            const first = Array.from(keys)[0];
+            const next = first === "all" ? "all" : Number(first);
+            setSelectedYear(next);
+            // Reset selected program if it becomes invalid under new year
+            if (selectedProgram && !programNames.includes(selectedProgram)) {
+              setSelectedProgram(null);
+            }
+          }}
+          disallowEmptySelection
+        >
+          {yearOptions}
+        </Select>
+        <Select
+          size="sm"
+          label="Programs"
+          className="w-full"
+          selectedKeys={selectedProgram ? [selectedProgram] : []}
+          onSelectionChange={(keys) => {
+            const first = Array.from(keys)[0];
+            setSelectedProgram(first ? String(first) : null);
+          }}
+          disallowEmptySelection
+        >
+          {programNames.map((name) => (
+            <SelectItem key={name}>{name}</SelectItem>
+          ))}
+        </Select>
+      </div>
       {selectedProgram && (
         <BandsTable
           selectedProgram={selectedProgram}
@@ -170,7 +212,8 @@ function BandsTable({
     const rows: Array<Capture & { key: string; bandId: string }> = [];
     for (const [bandId, captures] of bandCaptures.entries()) {
       captures.forEach((capture, idx) => {
-        if (capture.Program === selectedProgram) {
+        const prog = capture.Program ? capture.Program.trim() : undefined;
+        if (prog === selectedProgram) {
           rows.push({ ...capture, key: `${bandId}-${idx}`, bandId });
         }
       });
