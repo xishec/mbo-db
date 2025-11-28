@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
+import Captures from "./Captures";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
@@ -108,50 +109,54 @@ export default function Programs() {
         {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
       </Breadcrumbs>
 
-      <div className="grid grid-cols-[1fr_2fr] gap-6">
-        <Table
-          isHeaderSticky
-          aria-label="Years table"
-          selectionMode="single"
-          selectedKeys={new Set([selectedYear])}
-          onSelectionChange={handleYearChange}
-          disallowEmptySelection
-          isVirtualized
-          maxTableHeight={600}
-        >
-          <TableHeader>
-            <TableColumn>Year</TableColumn>
-          </TableHeader>
-          <TableBody>
-            {yearRows.map((year) => (
-              <TableRow key={year}>
-                <TableCell>{year === "all" ? "All" : year}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {!selectedProgram && (
+        <div className="grid grid-cols-[1fr_2fr] gap-6">
+          <Table
+            isHeaderSticky
+            aria-label="Years table"
+            selectionMode="single"
+            selectedKeys={new Set([selectedYear])}
+            onSelectionChange={handleYearChange}
+            disallowEmptySelection
+            isVirtualized
+            maxTableHeight={600}
+          >
+            <TableHeader>
+              <TableColumn>Year</TableColumn>
+            </TableHeader>
+            <TableBody>
+              {yearRows.map((year) => (
+                <TableRow key={year}>
+                  <TableCell>{year === "all" ? "All" : year}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-        <Table
-          isHeaderSticky
-          aria-label="Programs table"
-          selectionMode="single"
-          selectedKeys={selectedProgram ? new Set([selectedProgram]) : new Set()}
-          onSelectionChange={handleProgramChange}
-          isVirtualized
-          maxTableHeight={600}
-        >
-          <TableHeader>
-            <TableColumn>Program Name</TableColumn>
-          </TableHeader>
-          <TableBody emptyContent="No programs found">
-            {programNames.map((name) => (
-              <TableRow key={name}>
-                <TableCell>{name}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+          <Table
+            isHeaderSticky
+            aria-label="Programs table"
+            selectionMode="single"
+            selectedKeys={selectedProgram ? new Set([selectedProgram]) : new Set()}
+            onSelectionChange={handleProgramChange}
+            isVirtualized
+            maxTableHeight={600}
+          >
+            <TableHeader>
+              <TableColumn>Program Name</TableColumn>
+            </TableHeader>
+            <TableBody emptyContent="No programs found">
+              {programNames.map((name) => (
+                <TableRow key={name}>
+                  <TableCell>{name}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {selectedProgram && <Captures selectedProgram={selectedProgram} />}
     </div>
   );
 }
