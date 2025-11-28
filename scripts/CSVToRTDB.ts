@@ -90,33 +90,35 @@ const generateDB = async (captures: Capture[], database: Database) => {
       capture.bandSuffix
     );
     const captureId = capture.id;
+    if (year && program && bandGroupId) {
+      if (!yearsMap.has(year)) {
+        yearsMap.set(year, { id: year, programs: new Set([program]) });
+      } else {
+        yearsMap.get(year)!.programs.add(program);
+      }
 
-    if (!yearsMap.has(year)) {
-      yearsMap.set(year, { id: year, programs: [program] });
-    } else {
-      yearsMap.get(year)!.programs.push(program);
-    }
+      if (!programsMap.has(program)) {
+        programsMap.set(program, {
+          name: program,
+          bandGroupIds: new Set([bandGroupId]),
+          recaptureIds: new Set([captureId]),
+        });
+      } else {
+        programsMap.get(program)!.bandGroupIds.add(bandGroupId);
+        programsMap.get(program)!.recaptureIds.add(captureId);
+      }
 
-    if (!programsMap.has(program)) {
-      programsMap.set(program, {
-        name: program,
-        bandGroupIds: [bandGroupId],
-        recaptureIds: [captureId],
-      });
-    } else {
-      programsMap.get(program)!.bandGroupIds.push(bandGroupId);
-      programsMap.get(program)!.recaptureIds.push(captureId);
-    }
-
-    if (!bandGroupsMap.has(bandGroupId)) {
-      bandGroupsMap.set(bandGroupId, {
-        id: bandGroupId,
-        captureIds: [captureId],
-      });
-    } else {
-      bandGroupsMap.get(bandGroupId)!.captureIds.push(captureId);
+      if (!bandGroupsMap.has(bandGroupId)) {
+        bandGroupsMap.set(bandGroupId, {
+          id: bandGroupId,
+          captureIds: new Set([captureId]),
+        });
+      } else {
+        bandGroupsMap.get(bandGroupId)!.captureIds.add(captureId);
+      }
     }
   }
+
   await writeObjectToDB(database, "yearsMap", yearsMap);
   await writeObjectToDB(database, "programsMap", programsMap);
   await writeObjectToDB(database, "bandGroupsMap", bandGroupsMap);

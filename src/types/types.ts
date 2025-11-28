@@ -1,17 +1,17 @@
 export interface Year {
   id: string;
-  programs: string[];
+  programs: Set<string>;
 }
 
 export interface Program {
   name: string;
-  bandGroupIds: string[];
-  recaptureIds: string[];
+  bandGroupIds: Set<string>;
+  recaptureIds: Set<string>;
 }
 
 export interface BandGroup {
   id: string;
-  captureIds: string[];
+  captureIds: Set<string>;
 }
 export const generateBandGroupId = (
   bandGroupPrefix: string,
