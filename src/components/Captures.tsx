@@ -49,15 +49,12 @@ export default function Captures({
     return all.filter((p) => allowedSet.has(p));
   }, [programs, selectedYear, years]);
 
-  const selectedEntries = useMemo(() => {
-    if (!programs || !selectedProgram) return null;
-    return programs.get(selectedProgram) || null;
+  const selectedBandIds = useMemo(() => {
+    if (!programs || !selectedProgram) return [];
+    const bandIds = programs.get(selectedProgram);
+    console.log("bandIds", bandIds);
+    return bandIds ? Array.from(bandIds.values()) : [];
   }, [programs, selectedProgram]);
-  
-  const selectedBandIds = useMemo(
-    () => (selectedEntries ? Array.from(selectedEntries.values()) : []),
-    [selectedEntries]
-  );
 
   const yearOptions = useMemo(() => {
     const opts: JSX.Element[] = [<SelectItem key="all">All years</SelectItem>];
@@ -321,8 +318,6 @@ function BandsTable({
     setPage(1);
   }, [filters]);
 
-  const columns = TABLE_COLUMNS;
-
   return (
     <div className="flex flex-col gap-3">
       {error && <div className="text-danger text-sm">Error: {error}</div>}
@@ -342,7 +337,7 @@ function BandsTable({
             }}
             className="min-w-[150px]"
           >
-            {columns.map((c) => (
+            {TABLE_COLUMNS.map((c) => (
               <SelectItem key={c.key}>{c.label}</SelectItem>
             ))}
           </Select>
@@ -431,7 +426,8 @@ function BandsTable({
                 notexists: "not exists",
               };
               const colLabel =
-                columns.find((c) => c.key === f.column)?.label || f.column;
+                TABLE_COLUMNS.find((c) => c.key === f.column)?.label ||
+                f.column;
               const valuePart = ["exists", "notexists"].includes(f.operator)
                 ? ""
                 : ` ${f.value}`;
@@ -476,7 +472,7 @@ function BandsTable({
           ) : null
         }
       >
-        <TableHeader columns={columns}>
+        <TableHeader columns={TABLE_COLUMNS}>
           {(column) => (
             <TableColumn
               key={column.key}

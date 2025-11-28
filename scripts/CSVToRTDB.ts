@@ -1,7 +1,7 @@
 import { ref, set, type Database } from "firebase/database";
 import type { Capture } from "../src/types/Capture";
 import type { Bands } from "../src/types/Bands";
-import { TABLE_COLUMNS, NUMERIC_FIELDS } from "../src/constants/constants";
+import { RAW_FIELDS, NUMERIC_FIELDS } from "../src/constants/constants";
 
 /**
  * Parse CSV row into Capture object
@@ -9,7 +9,7 @@ import { TABLE_COLUMNS, NUMERIC_FIELDS } from "../src/constants/constants";
 function parseCSVRow(headers: string[], values: string[]): Capture {
   const capture: Record<string, string | number> = {};
   headers.forEach((header, index) => {
-    if (TABLE_COLUMNS.some((col) => col.key === header)) {
+    if (RAW_FIELDS.has(header)) {
       const value = values[index];
       if (value) {
         if (NUMERIC_FIELDS.has(header)) {

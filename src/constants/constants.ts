@@ -1,7 +1,37 @@
+export const RAW_FIELDS = new Set([
+  "IDBand",
+  "Disposition",
+  "BandPrefix",
+  "BandSuffix",
+  "Species",
+  "WingChord",
+  "Age",
+  "HowAged",
+  "Sex",
+  "HowSexed",
+  "Fat",
+  "Weight",
+  "CaptureDate",
+  "Bander",
+  "Scribe",
+  "Net",
+  "NotesForMBO",
+  "Location",
+  "BirdStatus",
+  "PresentCondition",
+  "HowObtainedCode",
+  "Program",
+  "D18",
+  "D20",
+  "D22",
+]);
+
 export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
 
+
+
 export const TABLE_COLUMNS: Array<{ key: string; label: string }> = [
-  { key: "bandId", label: "Band" },
+  { key: "bandId", label: "Band ID" },
   { key: "Disposition", label: "Disposition" },
   { key: "Species", label: "Species" },
   { key: "WingChord", label: "WingChord" },
