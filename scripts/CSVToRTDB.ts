@@ -1,17 +1,17 @@
 import { ref, set, type Database } from "firebase/database";
 import { RAW_FIELDS, NUMERIC_FIELDS } from "../src/constants/constants";
-import { RawCaptureData } from "./helper";
+import { Capture } from "../src/types/types";
 
 /**
  * Parse CSV content into array of RawCaptureData
  */
-export function parseCSV(csvContent: string): RawCaptureData[] {
+export function parseCSV(csvContent: string): Capture[] {
   // Remove BOM if present
   csvContent = csvContent.replace(/^\uFEFF/, "");
 
   const rows = csvContent.split("\n");
   const headers = rows[0].split(",");
-  const captures: RawCaptureData[] = [];
+  const captures: Capture[] = [];
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i].trim();
@@ -28,8 +28,8 @@ export function parseCSV(csvContent: string): RawCaptureData[] {
 /**
  * Parse CSV row into Capture object
  */
-function parseCSVRow(headers: string[], values: string[]): RawCaptureData {
-  const capture: Record<string, string | number> = {};
+function parseCSVRow(headers: string[], values: string[]): Capture {
+  const capture: Capture = {} as Capture;
   headers.forEach((header, index) => {
     if (RAW_FIELDS.has(header)) {
       const value = values[index];

@@ -3,11 +3,22 @@ export interface Year {
   programsIds: string[];
 }
 
-export interface Program {
+export class Program {
   id: string;
   name: string;
   bandGroupIds: string[];
   recaptureIds: string[];
+
+  constructor(name: string) {
+    this.id = this.generateId(name);
+    this.name = name;
+    this.bandGroupIds = [];
+    this.recaptureIds = [];
+  }
+
+  generateId(name: string): string {
+    return name.toLowerCase().replace(/\s+/g, "-");
+  }
 }
 
 export class BandGroup {
@@ -73,7 +84,7 @@ export class Capture {
     notes: string
   ) {
     const modifiedBandSuffix = bandSuffix.slice(0, -2) + lastTwoDigitsOverwrite;
-    this.id = `${bandPrefix}-${modifiedBandSuffix}-${date}`;
+    this.id = this.generateId(bandPrefix, modifiedBandSuffix, date);
     this.programId = programId;
     this.bandPrefix = bandPrefix;
     this.bandSuffix = modifiedBandSuffix;
@@ -91,5 +102,9 @@ export class Capture {
     this.scribe = scribe;
     this.net = net;
     this.notes = notes;
+  }
+
+  generateId(bandPrefix: string, bandSuffix: string, date: string): string {
+    return `${bandPrefix}-${bandSuffix}-${date}`;
   }
 }

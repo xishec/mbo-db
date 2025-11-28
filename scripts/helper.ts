@@ -1,27 +1,26 @@
-export interface RawCaptureData {
-  IDBand?: string;
-  Disposition?: string;
-  BandPrefix?: string;
-  BandSuffix?: string;
-  Species?: string;
-  WingChord?: number;
-  Age?: string;
-  HowAged?: string;
-  Sex?: string;
-  HowSexed?: string;
-  Fat?: number;
-  Weight?: number;
-  CaptureDate?: string;
-  Bander?: string;
-  Scribe?: string;
-  Net?: string;
-  NotesForMBO?: string;
-  Location?: string;
-  BirdStatus?: string;
-  PresentCondition?: string;
-  HowObtainedCode?: string;
-  Program?: string;
-  D18?: string;
-  D20?: string;
-  D22?: string;
-}
+export const HeadersToCaptureMap = {
+    
+  BandPrefix: BandPrefix,
+  BandSuffix: BandSuffix,
+  Species: Species,
+  WingChord: WingChord,
+  Age: Age,
+  HowAged: HowAged,
+  Sex: Sex,
+  HowSexed: HowSexed,
+  Fat: Fat,
+  Weight: Weight,
+  CaptureDate: CaptureDate,
+  Bander: Bander,
+  Scribe: Scribe,
+  Net: Net,
+  NotesForMBO: NotesForMBO,
+  Location: Location,
+  BirdStatus: BirdStatus,
+  PresentCondition: PresentCondition,
+  HowObtainedCode: HowObtainedCode,
+  Program: Program,
+  D18: D18,
+  D20: D20,
+  D22: D22,
+};
