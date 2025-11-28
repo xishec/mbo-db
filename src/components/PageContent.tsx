@@ -17,7 +17,7 @@ export default function PageContent({
 }: PageContentProps) {
   return (
     <div className="h-full">
-      <div className="mx-auto">
+      <div className="mx-auto h-full">
         {activePage === "captures" && (
           <Captures
             programs={programs}

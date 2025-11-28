@@ -64,7 +64,10 @@ function App() {
           setYears(new Map());
         }
       } catch (err) {
-        console.error("Error loading programs or years:", (err as Error).message);
+        console.error(
+          "Error loading programs or years:",
+          (err as Error).message
+        );
       } finally {
         setIsLoadingPrograms(false);
       }
@@ -74,18 +77,16 @@ function App() {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col">
       <div className="flex-shrink-0">
         <Navigation activePage={activePage} onPageChange={setActivePage} />
       </div>
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <PageContent
-          activePage={activePage}
-          programs={programs}
-          years={years}
-          isLoadingPrograms={isLoadingPrograms}
-        />
-      </div>
+      <PageContent
+        activePage={activePage}
+        programs={programs}
+        years={years}
+        isLoadingPrograms={isLoadingPrograms}
+      />
     </div>
   );
 }

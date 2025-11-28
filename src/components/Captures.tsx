@@ -51,7 +51,6 @@ export default function Captures({
   const selectedBandIds = useMemo(() => {
     if (!programs || !selectedProgram) return [];
     const bandIds = programs.get(selectedProgram);
-    console.log("bandIds", bandIds);
     return bandIds ? Array.from(bandIds.values()) : [];
   }, [programs, selectedProgram]);
 
@@ -449,53 +448,53 @@ function BandsTable({
         </div>
       </div>
 
-      <div className="px-8 flex-1 min-h-0 overflow-auto w-full">
-        <div className="flex w-max min-h-full">
-          <Table
-            isHeaderSticky
-            className="h-full py-1"
-            aria-label="Band captures virtualized table with sorting"
-            sortDescriptor={sortDescriptor}
-            onSortChange={setSortDescriptor}
-            isVirtualized
+      <div
+        className="px-8 flex-1 w-full h-full overflow-scroll"
+        style={{ border: "10px solid red" }}
+      >
+        <Table
+          isHeaderSticky
+          className="h-full"
+          aria-label="Band captures virtualized table with sorting"
+          sortDescriptor={sortDescriptor}
+          onSortChange={setSortDescriptor}
+          removeWrapper
+        >
+          <TableHeader columns={TABLE_COLUMNS}>
+            {(column) => (
+              <TableColumn
+                key={column.key}
+                allowsSorting
+                className={
+                  column.key === "bandId" ? "whitespace-nowrap" : undefined
+                }
+              >
+                {column.label}
+              </TableColumn>
+            )}
+          </TableHeader>
+          <TableBody
+            items={sortedRows}
+            emptyContent={isLoading ? <Spinner size="sm" /> : "No captures"}
+            loadingState={
+              isLoading && bandCaptures.size === 0 ? "loading" : "idle"
+            }
           >
-            <TableHeader columns={TABLE_COLUMNS}>
-              {(column) => (
-                <TableColumn
-                  key={column.key}
-                  allowsSorting
-                  className={
-                    column.key === "bandId" ? "whitespace-nowrap" : undefined
-                  }
-                >
-                  {column.label}
-                </TableColumn>
-              )}
-            </TableHeader>
-            <TableBody
-              items={sortedRows}
-              emptyContent={isLoading ? <Spinner size="sm" /> : "No captures"}
-              loadingState={
-                isLoading && bandCaptures.size === 0 ? "loading" : "idle"
-              }
-            >
-              {(item) => (
-                <TableRow key={item.key}>
-                  {(columnKey) => (
-                    <TableCell
-                      className={
-                        columnKey === "bandId" ? "whitespace-nowrap" : undefined
-                      }
-                    >
-                      {getKeyValue(item as RowItem, columnKey as string)}
-                    </TableCell>
-                  )}
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <div className="shrink-0 w-4" />
-        </div>
+            {(item) => (
+              <TableRow key={item.key}>
+                {(columnKey) => (
+                  <TableCell
+                    className={
+                      columnKey === "bandId" ? "whitespace-nowrap" : undefined
+                    }
+                  >
+                    {getKeyValue(item as RowItem, columnKey as string)}
+                  </TableCell>
+                )}
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
