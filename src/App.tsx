@@ -3,7 +3,7 @@ import Navigation from "./components/Navigation";
 import PageContent from "./components/PageContent";
 
 function App() {
-  const [activePage, setActivePage] = useState("captures");
+  const [activePage, setActivePage] = useState("programs");
 
   return (
     <div className="h-screen flex flex-col">
