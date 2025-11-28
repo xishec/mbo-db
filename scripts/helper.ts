@@ -1,4 +1,4 @@
-export interface Capture {
+export interface RawCaptureData {
   IDBand?: string;
   Disposition?: string;
   BandPrefix?: string;

@@ -1,12 +1,34 @@
 import { ref, set, type Database } from "firebase/database";
-import type { Capture } from "../src/types/Capture";
-import type { Bands } from "../src/types/Bands";
 import { RAW_FIELDS, NUMERIC_FIELDS } from "../src/constants/constants";
+import { RawCaptureData } from "./helper";
+
+/**
+ * Parse CSV content into array of RawCaptureData
+ */
+export function parseCSV(csvContent: string): RawCaptureData[] {
+  // Remove BOM if present
+  csvContent = csvContent.replace(/^\uFEFF/, "");
+
+  const rows = csvContent.split("\n");
+  const headers = rows[0].split(",");
+  const captures: RawCaptureData[] = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i].trim();
+    if (!row) continue;
+
+    const values = row.split(",");
+    const capture = parseCSVRow(headers, values);
+    captures.push(capture);
+  }
+
+  return captures;
+}
 
 /**
  * Parse CSV row into Capture object
  */
-function parseCSVRow(headers: string[], values: string[]): Capture {
+function parseCSVRow(headers: string[], values: string[]): RawCaptureData {
   const capture: Record<string, string | number> = {};
   headers.forEach((header, index) => {
     if (RAW_FIELDS.has(header)) {
@@ -21,29 +43,6 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
     }
   });
   return capture;
-}
-
-/**
- * Parse CSV content into array of Capture objects
- */
-export function parseCSV(csvContent: string): Capture[] {
-  // Remove BOM if present
-  csvContent = csvContent.replace(/^\uFEFF/, "");
-
-  const lines = csvContent.split("\n");
-  const headers = lines[0].split(",");
-  const captures: Capture[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const values = line.split(",");
-    const capture = parseCSVRow(headers, values);
-    captures.push(capture);
-  }
-
-  return captures;
 }
 
 /**
