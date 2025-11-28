@@ -57,7 +57,7 @@ export default function Captures({
   }, [programs, selectedProgram]);
 
   const yearOptions = useMemo(() => {
-    const opts: JSX.Element[] = [<SelectItem key="all">All years</SelectItem>];
+    const opts: JSX.Element[] = [<SelectItem key="all">All</SelectItem>];
     Array.from(years?.keys() || [])
       .sort((a, b) => b - a)
       .forEach((y) => {
@@ -79,11 +79,10 @@ export default function Captures({
   }
 
   return (
-    <div className="p-4 flex flex-col gap-3">
-      {/* Top filters row: Years + Programs */}
-      <div className="flex items-center gap-3 w-full">
+    <div className="w-screen flex flex-col gap-8 pt-8">
+      <div className="max-w-7xl w-full mx-auto px-8 flex items-center gap-4">
         <Select
-          size="sm"
+          labelPlacement="outside"
           label="Years"
           className="w-full max-w-[220px]"
           selectedKeys={
@@ -103,8 +102,9 @@ export default function Captures({
           {yearOptions}
         </Select>
         <Select
-          size="sm"
+          labelPlacement="outside"
           label="Programs"
+          placeholder="Select a program"
           className="w-full"
           selectedKeys={selectedProgram ? [selectedProgram] : []}
           onSelectionChange={(keys) => {
@@ -118,6 +118,7 @@ export default function Captures({
           ))}
         </Select>
       </div>
+
       {selectedProgram && (
         <BandsTable
           selectedProgram={selectedProgram}
@@ -146,7 +147,6 @@ function BandsTable({
     column: "bandId",
     direction: "ascending",
   });
-  // Advanced filters state
   interface AdvancedFilter {
     id: string;
     column: string;
@@ -319,13 +319,15 @@ function BandsTable({
   }, [filters]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="w-screen flex flex-col gap-6">
       {error && <div className="text-danger text-sm">Error: {error}</div>}
-      <div className="flex flex-col gap-3 py-2 w-full">
+
+      <div className="max-w-7xl w-full mx-auto px-8 flex flex-col gap-4 ">
         {/* Line 1: filter controls */}
-        <div className="flex items-center gap-2 w-full">
+        <div className="flex items-end gap-4 w-full">
           <Select
-            size="sm"
+            labelPlacement="outside"
+            placeholder="Select column"
             variant="bordered"
             label="Filter column"
             selectedKeys={draftColumn ? [draftColumn] : []}
@@ -342,7 +344,8 @@ function BandsTable({
             ))}
           </Select>
           <Select
-            size="sm"
+            labelPlacement="outside"
+            placeholder="Select operator"
             variant="bordered"
             label="Operator"
             selectedKeys={draftOperator ? [draftOperator] : []}
@@ -367,7 +370,8 @@ function BandsTable({
             })}
           </Select>
           <Input
-            size="sm"
+            labelPlacement="outside"
+            placeholder="Enter value"
             label="Value"
             variant="bordered"
             value={draftValue}
@@ -408,9 +412,10 @@ function BandsTable({
             Add
           </Button>
         </div>
-        {/* Line 2: chips + count */}
-        <div className="flex w-full justify-between items-center gap-2 flex-wrap">
-          <div className="flex gap-2 flex-wrap">
+
+        {/* Line 2: chips */}
+        {filters.length > 0 && (
+          <div className="flex w-full justify-between items-center gap-4 flex-wrap">
             {filters.map((f) => {
               const labelMap: Record<string, string> = {
                 eq: "=",
@@ -433,9 +438,12 @@ function BandsTable({
                 : ` ${f.value}`;
               return (
                 <Chip
-                  key={f.id}
                   variant="flat"
-                  color="primary"
+                  size="lg"
+                  radius="sm"
+                  key={f.id}
+                  color="secondary"
+                  className="h-[40px]"
                   onClose={() =>
                     setFilters((prev) => prev.filter((x) => x.id !== f.id))
                   }
@@ -446,67 +454,77 @@ function BandsTable({
               );
             })}
           </div>
-          <div className="text-sm opacity-70 ml-auto">
-            Showing {paginatedRows.length} of {sortedRows.length} filtered
-            (Total {allCaptureRows.length})
-          </div>
+        )}
+
+        <div className="flex w-full justify-end text-sm opacity-70 ml-auto">
+          Showing {paginatedRows.length} of {sortedRows.length} filtered (Total{" "}
+          {allCaptureRows.length})
         </div>
       </div>
-      <Table
-        aria-label="Band captures table with pagination and sorting"
-        sortDescriptor={sortDescriptor}
-        onSortChange={setSortDescriptor}
-        bottomContent={
-          totalPages > 0 ? (
-            <div className="flex w-full justify-center py-2">
-              <Pagination
-                isCompact
-                showControls
-                showShadow
-                page={page}
-                total={totalPages}
-                onChange={setPage}
-                color="primary"
-              />
-            </div>
-          ) : null
-        }
-      >
-        <TableHeader columns={TABLE_COLUMNS}>
-          {(column) => (
-            <TableColumn
-              key={column.key}
-              allowsSorting
-              className={
-                column.key === "bandId" ? "whitespace-nowrap" : undefined
-              }
-            >
-              {column.label}
-            </TableColumn>
-          )}
-        </TableHeader>
-        <TableBody
-          items={paginatedRows}
-          emptyContent={isLoading ? <Spinner size="sm" /> : "No captures"}
-          loadingState={
-            isLoading && bandCaptures.size === 0 ? "loading" : "idle"
-          }
-        >
-          {(item) => (
-            <TableRow key={item.key}>
-              {(columnKey) => (
-                <TableCell
+
+      <div className="w-screen overflow-x-auto px-8">
+        {/* Wrap table + spacer so right padding appears after horizontal scroll */}
+        <div className="flex w-max">
+          <Table
+            aria-label="Band captures table with pagination and sorting"
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            removeWrapper
+            bottomContent={
+              totalPages > 0 ? (
+                <div className="flex w-full justify-center py-2">
+                  <Pagination
+                    isCompact
+                    showControls
+                    showShadow
+                    page={page}
+                    total={totalPages}
+                    onChange={setPage}
+                    color="primary"
+                  />
+                </div>
+              ) : null
+            }
+          >
+            <TableHeader columns={TABLE_COLUMNS}>
+              {(column) => (
+                <TableColumn
+                  key={column.key}
+                  allowsSorting
                   className={
-                    columnKey === "bandId" ? "whitespace-nowrap" : undefined
+                    column.key === "bandId" ? "whitespace-nowrap" : undefined
                   }
                 >
-                  {getKeyValue(item as RowItem, columnKey as string)}
-                </TableCell>
+                  {column.label}
+                </TableColumn>
               )}
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody
+              items={paginatedRows}
+              emptyContent={isLoading ? <Spinner size="sm" /> : "No captures"}
+              loadingState={
+                isLoading && bandCaptures.size === 0 ? "loading" : "idle"
+              }
+            >
+              {(item) => (
+                <TableRow key={item.key}>
+                  {(columnKey) => (
+                    <TableCell
+                      className={
+                        columnKey === "bandId" ? "whitespace-nowrap" : undefined
+                      }
+                    >
+                      {getKeyValue(item as RowItem, columnKey as string)}
+                    </TableCell>
+                  )}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          {/* Right spacer to mirror left padding when scrolled to end */}
+          <div className="shrink-0" />
+        </div>
+      </div>
     </div>
   );
 }

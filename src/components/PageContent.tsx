@@ -16,7 +16,7 @@ export default function PageContent({
   isLoadingPrograms,
 }: PageContentProps) {
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-[90vh]">
       <div className="mx-auto">
         {activePage === "captures" && (
           <Captures
