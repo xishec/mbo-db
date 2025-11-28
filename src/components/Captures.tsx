@@ -313,6 +313,7 @@ function BandsTable({
               setDraftOperator(first ? String(first) : null);
             }}
             className="min-w-[120px]"
+            isDisabled={!draftColumn}
           >
             {baseOperators.map((op) => {
               const isNumeric = draftColumn
