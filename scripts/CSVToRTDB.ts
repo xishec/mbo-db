@@ -1,13 +1,6 @@
 import { ref, set, type Database } from "firebase/database";
 import { NUMERIC_FIELDS } from "../src/constants/constants";
-import {
-  BandGroup,
-  Capture,
-  generateBandGroupId,
-  generateCaptureId,
-  Program,
-  Year,
-} from "../src/types/types";
+import { BandGroup, Capture, generateBandGroupId, generateCaptureId, Program, Year } from "../src/types/types";
 import { headerToCaptureProperty } from "./helper";
 
 /**
@@ -50,21 +43,14 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
     }
   });
 
-  capture.id = generateCaptureId(
-    capture.bandPrefix,
-    capture.bandSuffix,
-    capture.date
-  );
+  capture.id = generateCaptureId(capture.bandPrefix, capture.bandSuffix, capture.date);
   return capture;
 }
 
 /**
  * Import CSV file to RTDB
  */
-export async function CSVToRTDB(
-  csvContent: string,
-  database: Database
-): Promise<void> {
+export async function CSVToRTDB(csvContent: string, database: Database): Promise<void> {
   // console.log(database.type);
   console.log("Parsing CSV...");
   const captures = parseCSV(csvContent);
@@ -85,10 +71,7 @@ const generateDB = async (captures: Capture[], database: Database) => {
 
     const year = capture.date.slice(0, 4);
     const program = capture.program;
-    const bandGroupId = generateBandGroupId(
-      capture.bandPrefix,
-      capture.bandSuffix
-    );
+    const bandGroupId = generateBandGroupId(capture.bandPrefix, capture.bandSuffix);
     const captureId = capture.id;
     if (year && program && bandGroupId) {
       if (!yearsMap.has(year)) {
@@ -125,28 +108,45 @@ const generateDB = async (captures: Capture[], database: Database) => {
   await writeObjectToDB(database, "capturesMap", capturesMap);
 };
 
-const writeObjectToDB = async (
-  database: Database,
-  path: string,
-  data: Map<string, unknown>
-) => {
+const writeObjectToDB = async (database: Database, path: string, data: Map<string, unknown>) => {
   const entries = Array.from(data.entries());
   const BATCH_SIZE = 10000;
   let uploadedCount = 0;
 
   console.log(`Uploading ${entries.length} records to '${path}' in batches...`);
 
+  // Helper to convert Sets to arrays recursively
+  const serializeValue = (value: unknown): unknown => {
+    if (value instanceof Set) {
+      return Array.from(value);
+    }
+    if (value instanceof Map) {
+      const obj: Record<string, unknown> = {};
+      for (const [k, v] of value.entries()) {
+        obj[String(k)] = serializeValue(v);
+      }
+      return obj;
+    }
+    if (Array.isArray(value)) {
+      return value.map(serializeValue);
+    }
+    if (value !== null && typeof value === "object") {
+      const obj: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value)) {
+        obj[k] = serializeValue(v);
+      }
+      return obj;
+    }
+    return value;
+  };
+
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
-    const promises = batch.map(([key, value]) =>
-      set(ref(database, `${path}/${key}`), value)
-    );
+    const promises = batch.map(([key, value]) => set(ref(database, `${path}/${key}`), serializeValue(value)));
     await Promise.all(promises);
     uploadedCount += batch.length;
     console.log(`Uploaded ${uploadedCount}/${entries.length} to '${path}'...`);
   }
 
-  console.log(
-    `✅ Import to '${path}' complete! Uploaded ${entries.length} records.`
-  );
+  console.log(`✅ Import to '${path}' complete! Uploaded ${entries.length} records.`);
 };

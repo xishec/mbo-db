@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import Navigation from './components/Navigation';
-import PageContent from './components/PageContent';
+import { useState } from "react";
+import Navigation from "./components/Navigation";
+import PageContent from "./components/PageContent";
 
 function App() {
-  const [activePage, setActivePage] = useState('captures');
+  const [activePage, setActivePage] = useState("captures");
 
   return (
     <div className="h-screen flex flex-col">
