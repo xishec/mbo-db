@@ -54,14 +54,14 @@ export class Capture {
   notes: string;
 
   // to implement later
-  disposition?: string;
-  location?: string;
-  birdStatus?: string;
-  presentCondition?: string;
-  howObtainedCode?: string;
-  d18?: string;
-  d20?: string;
-  d22?: string;
+  //   disposition?: string;
+  //   location?: string;
+  //   birdStatus?: string;
+  //   presentCondition?: string;
+  //   howObtainedCode?: string;
+  //   d18?: string;
+  //   d20?: string;
+  //   d22?: string;
 
   constructor(
     programId: string,

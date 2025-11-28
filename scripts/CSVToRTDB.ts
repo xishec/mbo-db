@@ -1,6 +1,7 @@
 import { ref, set, type Database } from "firebase/database";
 import { RAW_FIELDS, NUMERIC_FIELDS } from "../src/constants/constants";
 import { Capture } from "../src/types/types";
+import { headersToCaptureMap, headerToCaptureProperty } from "./helper";
 
 /**
  * Parse CSV content into array of RawCaptureData
@@ -31,14 +32,13 @@ export function parseCSV(csvContent: string): Capture[] {
 function parseCSVRow(headers: string[], values: string[]): Capture {
   const capture: Capture = {} as Capture;
   headers.forEach((header, index) => {
-    if (RAW_FIELDS.has(header)) {
-      const value = values[index];
-      if (value) {
-        if (NUMERIC_FIELDS.has(header)) {
-          capture[header] = Number(value);
-        } else {
-          capture[header] = value;
-        }
+    const value = values[index];
+    const captureKey = headerToCaptureProperty[header];
+    if (captureKey) {
+      if (NUMERIC_FIELDS.has(header)) {
+        capture[captureKey] = Number(value);
+      } else {
+        capture[captureKey] = value;
       }
     }
   });
