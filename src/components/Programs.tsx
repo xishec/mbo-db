@@ -82,7 +82,7 @@ export default function Programs() {
   }
 
   return (
-    <div className="max-w-6xl h-full flex w-full mx-auto p-8 gap-4">
+    <div className="max-w-6xl h-full grid grid-cols-[1fr_2fr] w-full mx-auto p-8 gap-4">
       <Table
         isHeaderSticky
         aria-label="Years table"
