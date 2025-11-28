@@ -2,8 +2,8 @@ import { Spinner, Tabs, Tab } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
-import CapturesTable from "./CapturesTable";
 import type { ProgramsMap } from "../types/types";
+import NewCaptures from "./NewCaptures";
 
 export default function Captures({ selectedProgram }: { selectedProgram: string | null }) {
   const [programMap, setProgramMap] = useState<ProgramsMap>(new Map());
@@ -34,34 +34,6 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
 
   const programData = useMemo(() => programMap.get(selectedProgram ?? ""), [programMap, selectedProgram]);
 
-  const newRows = useMemo(
-    () => (programData ? Array.from(programData.bandGroupIds).map((id) => ({ id })) : []),
-    [programData]
-  );
-  const reRows = useMemo(
-    () => (programData ? Array.from(programData.recaptureIds).map((id) => ({ id })) : []),
-    [programData]
-  );
-  const summaryRows = useMemo(
-    () =>
-      programData
-        ? [
-            {
-              name: programData.name,
-              bandGroups: programData.bandGroupIds.size,
-              recaptures: programData.recaptureIds.size,
-            },
-          ]
-        : [],
-    [programData]
-  );
-
-  const inferColumns = (rows: Array<Record<string, unknown>>) => {
-    if (!rows.length) return [] as string[];
-    const keys = Object.keys(rows[0]);
-    return keys;
-  };
-
   if (!selectedProgram) {
     return null;
   }
@@ -85,13 +57,13 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
       }}
     >
       <Tab key="new" title="New captures">
-        <CapturesTable columns={inferColumns(newRows)} rows={newRows as any[]} ariaLabel="New captures table" />
+        <NewCaptures bandGroupIds={programData?.bandGroupIds ?? new Set()} />
       </Tab>
       <Tab key="re" title="Re captures">
-        <CapturesTable columns={inferColumns(reRows)} rows={reRows as any[]} ariaLabel="Re captures table" />
+        {/* <CapturesTable columns={inferColumns(reRows)} rows={reRows as any[]} ariaLabel="Re captures table" /> */}
       </Tab>
       <Tab key="summary" title="Summary">
-        <CapturesTable columns={inferColumns(summaryRows)} rows={summaryRows as any[]} ariaLabel="Summary table" />
+        {/* <CapturesTable columns={inferColumns(summaryRows)} rows={summaryRows as any[]} ariaLabel="Summary table" /> */}
       </Tab>
     </Tabs>
   );
