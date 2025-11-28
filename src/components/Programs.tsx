@@ -1,4 +1,14 @@
-import { Spinner, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
+import {
+  Breadcrumbs,
+  BreadcrumbItem,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
@@ -82,7 +92,13 @@ export default function Programs() {
   }
 
   return (
-    <div className="max-w-6xl h-full grid grid-cols-[1fr_2fr] w-full mx-auto p-8 gap-4">
+    <div className="max-w-6xl h-full grid grid-cols-[1fr_2fr] w-full mx-auto p-8 gap-6">
+      <Breadcrumbs className="col-span-2">
+        <BreadcrumbItem onPress={() => { setSelectedYear("all"); setSelectedProgram(null); }}>Programs</BreadcrumbItem>
+        <BreadcrumbItem onPress={() => setSelectedProgram(null)}>{selectedYear === "all" ? "All Years" : selectedYear}</BreadcrumbItem>
+        {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
+      </Breadcrumbs>
+
       <Table
         isHeaderSticky
         aria-label="Years table"
