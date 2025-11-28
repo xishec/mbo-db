@@ -1,0 +1,27 @@
+export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
+
+export const TABLE_COLUMNS: Array<{ key: string; label: string }> = [
+  { key: "bandId", label: "Band" },
+  { key: "Disposition", label: "Disposition" },
+  { key: "Species", label: "Species" },
+  { key: "WingChord", label: "WingChord" },
+  { key: "Age", label: "Age" },
+  { key: "HowAged", label: "HowAged" },
+  { key: "Sex", label: "Sex" },
+  { key: "HowSexed", label: "HowSexed" },
+  { key: "Fat", label: "Fat" },
+  { key: "Weight", label: "Weight" },
+  { key: "CaptureDate", label: "CaptureDate" },
+  { key: "Bander", label: "Bander" },
+  { key: "Scribe", label: "Scribe" },
+  { key: "Net", label: "Net" },
+  { key: "NotesForMBO", label: "NotesForMBO" },
+  { key: "Location", label: "Location" },
+  { key: "BirdStatus", label: "BirdStatus" },
+  { key: "PresentCondition", label: "PresentCondition" },
+  { key: "HowObtainedCode", label: "HowObtainedCode" },
+  { key: "Program", label: "Program" },
+  { key: "D18", label: "D18" },
+  { key: "D20", label: "D20" },
+  { key: "D22", label: "D22" },
+];

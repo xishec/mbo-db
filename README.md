@@ -19,55 +19,88 @@ If you are developing a production application, we recommend updating the config
 export default defineConfig([
   globalIgnores(['dist']),
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+    # MBO DB Application
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+    ## Overview
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
+    React + TypeScript + Vite application for managing and exploring band capture data with Firebase backend.
+
+    ## Development
+
+    Install dependencies and start dev server:
+
+    ```bash
+    npm install
+    npm run dev
+    ```
+
+    Build production bundle:
+
+    ```bash
+    npm run build
+    ```
+
+    ## Advanced Table Filters (Captures View)
+
+    The `Captures` view supports multi-filter advanced searching in addition to global search and species dropdown.
+
+    How to add a filter:
+    1. Choose a Column.
+    2. Pick an Operator.
+    3. (If required) Enter a Value.
+    4. Click Add.
+
+    Active filters show as chips; remove individually with the close icon or all at once with Clear.
+
+    Supported operators:
+    - Text columns: `contains`, `starts`, `ends`, `=`, `≠`
+    - Numeric columns (`WingChord`, `Weight`, `D18`, `D20`, `D22`): `>`, `>=`, `<`, `<=`, plus `=` / `≠`
+    - Presence: `exists`, `not exists`
+
+    Filter logic: all active filters AND together, then AND with species filter and free-text search. Sorting and pagination apply to the filtered result set.
+
+    To extend filters (e.g., date ranges), add a new operator and case inside `evaluateFilter` in `src/components/Captures.tsx`.
+
+    ## Linting & Type Checking
+
+    Run ESLint:
+    ```bash
+    npm run lint
+    ```
+
+    The project uses TypeScript project references (`tsconfig.app.json`, `tsconfig.node.json`).
+
+    ## Original Vite Template Notes
+
+    The underlying template started from the standard React + Vite setup. For React compiler guidance, see official docs: https://react.dev/learn/react-compiler/installation
+
+    For expanding ESLint configuration with type-aware rules:
+
+    ```js
+    export default defineConfig([
+      globalIgnores(['dist']),
+      {
+        files: ['**/*.{ts,tsx}'],
+        extends: [
+          tseslint.configs.recommendedTypeChecked,
+          // or tseslint.configs.strictTypeChecked,
+          tseslint.configs.stylisticTypeChecked,
+        ],
+        languageOptions: {
+          parserOptions: {
+            project: ['./tsconfig.node.json', './tsconfig.app.json'],
+            tsconfigRootDir: import.meta.dirname,
+          },
+        },
       },
-      // other options...
-    },
-  },
-])
-```
+    ])
+    ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+    React-specific lint plugins:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+    ```js
+    import reactX from 'eslint-plugin-react-x'
+    import reactDom from 'eslint-plugin-react-dom'
+    ```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+    Add them to your extends array as needed.

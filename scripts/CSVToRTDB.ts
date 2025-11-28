@@ -1,35 +1,7 @@
 import { ref, set, type Database } from "firebase/database";
 import type { Capture } from "../src/types/Capture";
 import type { Bands } from "../src/types/Bands";
-
-const VALID_FIELDS = new Set([
-  "IDBand",
-  "Disposition",
-  "BandPrefix",
-  "BandSuffix",
-  "Species",
-  "WingChord",
-  "Age",
-  "HowAged",
-  "Sex",
-  "HowSexed",
-  "Fat",
-  "Weight",
-  "CaptureDate",
-  "Bander",
-  "Scribe",
-  "Net",
-  "NotesForMBO",
-  "Location",
-  "BirdStatus",
-  "PresentCondition",
-  "HowObtainedCode",
-  "Program",
-  "D18",
-  "D20",
-  "D22",
-]);
-const NUMERIC_FIELDS = new Set(["WingChord", "Weight"]);
+import { TABLE_COLUMNS, NUMERIC_FIELDS } from "../src/constants/constants";
 
 /**
  * Parse CSV row into Capture object
@@ -37,7 +9,7 @@ const NUMERIC_FIELDS = new Set(["WingChord", "Weight"]);
 function parseCSVRow(headers: string[], values: string[]): Capture {
   const capture: Record<string, string | number> = {};
   headers.forEach((header, index) => {
-    if (VALID_FIELDS.has(header)) {
+    if (TABLE_COLUMNS.some(col => col.key === header)) {
       const value = values[index];
       if (value) {
         if (NUMERIC_FIELDS.has(header)) {
@@ -110,24 +82,24 @@ export async function CSVToRTDB(
   console.log("Grouping by band...");
   const bands = groupCapturesByBand(captures);
 
-  // console.log("Uploading to RTDB in batches...");
-  // const BATCH_SIZE = 10000;
-  // const bandEntries = Array.from(bands.entries());
-  // let uploadedCount = 0;
+  console.log("Uploading to RTDB in batches...");
+  const BATCH_SIZE = 10000;
+  const bandEntries = Array.from(bands.entries());
+  let uploadedCount = 0;
 
-  // for (let i = 0; i < bandEntries.length; i += BATCH_SIZE) {
-  //   const batch = bandEntries.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < bandEntries.length; i += BATCH_SIZE) {
+    const batch = bandEntries.slice(i, i + BATCH_SIZE);
 
-  //   // Batch multiple writes into a single Promise.all()
-  //   const promises = batch.map(([bandId, captures]) =>
-  //     set(ref(database, `bands/${bandId}`), captures)
-  //   );
-  //   await Promise.all(promises);
+    // Batch multiple writes into a single Promise.all()
+    const promises = batch.map(([bandId, captures]) =>
+      set(ref(database, `bands/${bandId}`), captures)
+    );
+    await Promise.all(promises);
 
-  //   uploadedCount += batch.length;
-  //   console.log(`Uploaded ${uploadedCount}/${bands.size} bands...`);
-  // }
-  // console.log(`✅ Import complete! Uploaded ${bands.size} bands.`);
+    uploadedCount += batch.length;
+    console.log(`Uploaded ${uploadedCount}/${bands.size} bands...`);
+  }
+  console.log(`✅ Import complete! Uploaded ${bands.size} bands.`);
 
   // Build and upload programs map: programName -> [bandId]
   console.log("Building programs map...");

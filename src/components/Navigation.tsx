@@ -50,7 +50,7 @@ export default function Navigation({
 
   return (
     <>
-      <Navbar maxWidth="full" className="bg-default-100 ">
+      <Navbar maxWidth="full">
         <NavbarBrand>
           <img src="/mbo-logo.svg" alt="MBO Logo" className="h-8 w-8 mr-2" />
           <p className="text-xl">

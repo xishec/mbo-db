@@ -9,7 +9,7 @@ export interface Capture {
   HowAged?: string;
   Sex?: string;
   HowSexed?: string;
-  Fat?: string;
+  Fat?: number;
   Weight?: number;
   CaptureDate?: string;
   Bander?: string;

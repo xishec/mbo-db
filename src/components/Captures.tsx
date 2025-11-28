@@ -11,13 +11,17 @@ import {
   Pagination,
   getKeyValue,
   Input,
+  Chip,
+  Button,
 } from "@heroui/react";
 import type { SortDescriptor } from "@heroui/react";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture } from "../types/Capture";
 import type { Programs } from "../types/Programs";
+import { NUMERIC_FIELDS } from "../constants/constants";
+import { TABLE_COLUMNS } from "../constants/constants";
 
 interface CapturesProps {
   programs?: Programs | null;
@@ -61,6 +65,7 @@ export default function Captures({
   return (
     <div className="p-4 flex flex-col gap-3">
       <Select
+        size="sm"
         label="Programs"
         className="w-full"
         selectedKeys={selectedProgram ? [selectedProgram] : []}
@@ -102,8 +107,17 @@ function BandsTable({
     column: "bandId",
     direction: "ascending",
   });
-  const [searchValue, setSearchValue] = useState("");
-  const [speciesFilter, setSpeciesFilter] = useState<string | null>(null);
+  // Advanced filters state
+  interface AdvancedFilter {
+    id: string;
+    column: string;
+    operator: string;
+    value: string;
+  }
+  const [filters, setFilters] = useState<AdvancedFilter[]>([]);
+  const [draftColumn, setDraftColumn] = useState<string | null>(null);
+  const [draftOperator, setDraftOperator] = useState<string | null>(null);
+  const [draftValue, setDraftValue] = useState<string>("");
   const cacheRef = useRef<Map<string, Capture[]>>(new Map());
 
   useEffect(() => {
@@ -151,7 +165,7 @@ function BandsTable({
     };
   }, [bandIds]);
 
-  // Flatten all captures into individual rows with bandId included
+  // Flatten all captures rows
   const allCaptureRows = useMemo(() => {
     const rows: Array<Capture & { key: string; bandId: string }> = [];
     for (const [bandId, captures] of bandCaptures.entries()) {
@@ -164,50 +178,93 @@ function BandsTable({
     return rows;
   }, [bandCaptures, selectedProgram]);
 
-  // Derive species list for filter (unique, sorted)
-  const speciesOptions = useMemo(() => {
-    const set = new Set<string>();
-    allCaptureRows.forEach((r) => {
-      if (r.Species) set.add(r.Species);
-    });
-    return Array.from(set.values()).sort();
-  }, [allCaptureRows]);
+  interface RowItem extends Capture {
+    key: string;
+    bandId: string;
+  }
 
-  // Apply search & species filtering before sorting
-  const filteredRows = useMemo(() => {
-    if (!searchValue && !speciesFilter) return allCaptureRows;
-    const query = searchValue.trim().toLowerCase();
-    return allCaptureRows.filter((r) => {
-      if (speciesFilter && r.Species !== speciesFilter) return false;
-      if (!query) return true;
-      const searchableKeys = Object.keys(r).filter((k) => k !== "key");
-      return searchableKeys.some((k) => {
-        const val = (r as unknown as { [key: string]: unknown })[k];
-        return typeof val === "string" && val.toLowerCase().includes(query);
-      });
-    });
-  }, [allCaptureRows, searchValue, speciesFilter]);
+  // Operators
+  const baseOperators = [
+    { key: "eq", label: "=" },
+    { key: "neq", label: "≠" },
+    { key: "contains", label: "contains" },
+    { key: "starts", label: "starts" },
+    { key: "ends", label: "ends" },
+    { key: "gt", label: ">" },
+    { key: "gte", label: ">=" },
+    { key: "lt", label: "<" },
+    { key: "lte", label: "<=" },
+    { key: "exists", label: "exists" },
+    { key: "notexists", label: "not exists" },
+  ];
 
+  const evaluateFilter = useCallback(
+    (row: RowItem, f: AdvancedFilter): boolean => {
+      const rawVal = (row as unknown as { [key: string]: unknown })[f.column];
+      const valStr =
+        rawVal === undefined || rawVal === null ? "" : String(rawVal);
+      switch (f.operator) {
+        case "exists":
+          return valStr !== "";
+        case "notexists":
+          return valStr === "";
+        case "eq":
+          return valStr === f.value;
+        case "neq":
+          return valStr !== f.value;
+        case "contains":
+          return valStr.toLowerCase().includes(f.value.toLowerCase());
+        case "starts":
+          return valStr.toLowerCase().startsWith(f.value.toLowerCase());
+        case "ends":
+          return valStr.toLowerCase().endsWith(f.value.toLowerCase());
+        case "gt":
+        case "gte":
+        case "lt":
+        case "lte": {
+          const numVal = Number(valStr);
+          const numFilter = Number(f.value);
+          if (Number.isNaN(numVal) || Number.isNaN(numFilter)) return false;
+          if (f.operator === "gt") return numVal > numFilter;
+          if (f.operator === "gte") return numVal >= numFilter;
+          if (f.operator === "lt") return numVal < numFilter;
+          if (f.operator === "lte") return numVal <= numFilter;
+          return false;
+        }
+        default:
+          return true;
+      }
+    },
+    []
+  );
   const sortedRows = useMemo(() => {
+    // Start from all capture rows for current program
+    let base: RowItem[] = allCaptureRows as RowItem[];
+    // Apply advanced filters if any
+    if (filters.length) {
+      base = base.filter((r) => filters.every((f) => evaluateFilter(r, f)));
+    }
     const { column, direction } = sortDescriptor;
-    if (!column) return filteredRows;
+    if (!column) return base;
     const collator = new Intl.Collator(undefined, {
       numeric: true,
       sensitivity: "base",
     });
-    type RowItemLocal = Capture & { key: string; bandId: string };
-    const rowsCopy: RowItemLocal[] = [...filteredRows];
+    const rowsCopy = [...base];
     rowsCopy.sort((a, b) => {
-      const aVal = a[column as keyof RowItemLocal];
-      const bVal = b[column as keyof RowItemLocal];
-      // Treat undefined/null as empty string for stable comparisons
-      const aStr = aVal === undefined || aVal === null ? "" : String(aVal);
-      const bStr = bVal === undefined || bVal === null ? "" : String(bVal);
+      const aVal = (a as unknown as { [key: string]: unknown })[
+        column as string
+      ];
+      const bVal = (b as unknown as { [key: string]: unknown })[
+        column as string
+      ];
+      const aStr = aVal == null ? "" : String(aVal);
+      const bStr = bVal == null ? "" : String(bVal);
       const cmp = collator.compare(aStr, bStr);
       return direction === "descending" ? -cmp : cmp;
     });
     return rowsCopy;
-  }, [filteredRows, sortDescriptor]);
+  }, [allCaptureRows, sortDescriptor, filters, evaluateFilter]);
 
   const totalPages =
     sortedRows.length === 0 ? 0 : Math.ceil(sortedRows.length / pageSize);
@@ -217,73 +274,140 @@ function BandsTable({
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, page, pageSize]);
 
-  // Reset page when filters/search change
   useEffect(() => {
     setPage(1);
-  }, [searchValue, speciesFilter]);
+  }, [filters]);
 
-  const columns = [
-    { key: "bandId", label: "Band" },
-    { key: "Disposition", label: "Disposition" },
-    { key: "Species", label: "Species" },
-    { key: "WingChord", label: "WingChord" },
-    { key: "Age", label: "Age" },
-    { key: "HowAged", label: "HowAged" },
-    { key: "Sex", label: "Sex" },
-    { key: "HowSexed", label: "HowSexed" },
-    { key: "Fat", label: "Fat" },
-    { key: "Weight", label: "Weight" },
-    { key: "CaptureDate", label: "CaptureDate" },
-    { key: "Bander", label: "Bander" },
-    { key: "Scribe", label: "Scribe" },
-    { key: "Net", label: "Net" },
-    { key: "NotesForMBO", label: "NotesForMBO" },
-    { key: "Location", label: "Location" },
-    { key: "BirdStatus", label: "BirdStatus" },
-    { key: "PresentCondition", label: "PresentCondition" },
-    { key: "HowObtainedCode", label: "HowObtainedCode" },
-    { key: "Program", label: "Program" },
-    { key: "D18", label: "D18" },
-    { key: "D20", label: "D20" },
-    { key: "D22", label: "D22" },
-  ];
-  interface RowItem extends Capture {
-    key: string;
-    bandId: string;
-  }
+  const columns = TABLE_COLUMNS;
 
   return (
     <div className="flex flex-col gap-3">
       {error && <div className="text-danger text-sm">Error: {error}</div>}
-      <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between py-2">
-        <Input
-          isClearable
-          label="Search"
-          variant="bordered"
-          placeholder="Search band, species, location..."
-          value={searchValue}
-          onClear={() => setSearchValue("")}
-          onValueChange={setSearchValue}
-          className="md:max-w-xs"
-        />
-        <Select
-          label="Species"
-          selectedKeys={speciesFilter ? [speciesFilter] : []}
-          onSelectionChange={(keys) => {
-            const first = Array.from(keys)[0];
-            setSpeciesFilter(first ? String(first) : null);
-          }}
-          placeholder="All species"
-          disallowEmptySelection={false}
-          className="md:max-w-xs"
-        >
-          {speciesOptions.map((sp) => (
-            <SelectItem key={sp}>{sp}</SelectItem>
-          ))}
-        </Select>
-        <div className="text-sm text-right md:text-left opacity-70">
-          Showing {paginatedRows.length} of {filteredRows.length} filtered
-          (Total {allCaptureRows.length})
+      <div className="flex flex-col gap-3 py-2 w-full">
+        {/* Line 1: filter controls */}
+        <div className="flex items-center gap-2 w-full">
+          <Select
+            size="sm"
+            label="Filter column"
+            selectedKeys={draftColumn ? [draftColumn] : []}
+            onSelectionChange={(keys) => {
+              const first = Array.from(keys)[0];
+              setDraftColumn(first ? String(first) : null);
+              setDraftOperator(null);
+              setDraftValue("");
+            }}
+            className="min-w-[150px]"
+          >
+            {columns.map((c) => (
+              <SelectItem key={c.key}>{c.label}</SelectItem>
+            ))}
+          </Select>
+          <Select
+            size="sm"
+            label="Operator"
+            selectedKeys={draftOperator ? [draftOperator] : []}
+            onSelectionChange={(keys) => {
+              const first = Array.from(keys)[0];
+              setDraftOperator(first ? String(first) : null);
+            }}
+            className="min-w-[120px]"
+          >
+            {baseOperators.map((op) => {
+              const isNumeric = draftColumn
+                ? NUMERIC_FIELDS.has(draftColumn)
+                : false;
+              const numericOnly = ["gt", "gte", "lt", "lte"];
+              const disable = !isNumeric && numericOnly.includes(op.key);
+              return (
+                <SelectItem key={op.key} isDisabled={disable}>
+                  {op.label}
+                </SelectItem>
+              );
+            })}
+          </Select>
+          <Input
+            size="sm"
+            label="Value"
+            variant="bordered"
+            value={draftValue}
+            onValueChange={setDraftValue}
+            className="min-w-[140px]"
+            isDisabled={
+              !draftOperator || ["exists", "notexists"].includes(draftOperator)
+            }
+          />
+          <Button
+            color="primary"
+            variant="solid"
+            isDisabled={
+              !draftColumn ||
+              !draftOperator ||
+              (!["exists", "notexists"].includes(draftOperator) &&
+                draftValue.trim() === "")
+            }
+            onPress={() => {
+              if (!draftColumn || !draftOperator) return;
+              if (
+                !["exists", "notexists"].includes(draftOperator) &&
+                draftValue.trim() === ""
+              )
+                return;
+              const newFilter: AdvancedFilter = {
+                id: `${draftColumn}-${draftOperator}-${Date.now()}`,
+                column: draftColumn,
+                operator: draftOperator,
+                value: draftValue.trim(),
+              };
+              setFilters((prev) => [...prev, newFilter]);
+              setDraftValue("");
+              setDraftOperator(null);
+              setDraftColumn(null);
+            }}
+          >
+            Add
+          </Button>
+        </div>
+        {/* Line 2: chips + count */}
+        <div className="flex w-full justify-between items-center gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {filters.map((f) => {
+              const labelMap: Record<string, string> = {
+                eq: "=",
+                neq: "≠",
+                contains: "contains",
+                starts: "starts",
+                ends: "ends",
+                gt: ">",
+                gte: ">=",
+                lt: "<",
+                lte: "<=",
+                exists: "exists",
+                notexists: "not exists",
+              };
+              const colLabel =
+                columns.find((c) => c.key === f.column)?.label || f.column;
+              const valuePart = ["exists", "notexists"].includes(f.operator)
+                ? ""
+                : ` ${f.value}`;
+              return (
+                <Chip
+                  key={f.id}
+                  variant="flat"
+                  color="primary"
+                  onClose={() =>
+                    setFilters((prev) => prev.filter((x) => x.id !== f.id))
+                  }
+                >
+                  {colLabel} {labelMap[f.operator]}
+                  {valuePart}
+                </Chip>
+              );
+            })}
+          </div>
+          <div className="text-sm opacity-70 ml-auto">
+            Showing {paginatedRows.length} of {sortedRows.length} filtered
+            (Total {allCaptureRows.length})
+          </div>
         </div>
       </div>
       <Table
@@ -311,7 +435,9 @@ function BandsTable({
             <TableColumn
               key={column.key}
               allowsSorting
-              className={column.key === "bandId" ? "whitespace-nowrap" : undefined}
+              className={
+                column.key === "bandId" ? "whitespace-nowrap" : undefined
+              }
             >
               {column.label}
             </TableColumn>
@@ -327,7 +453,11 @@ function BandsTable({
           {(item) => (
             <TableRow key={item.key}>
               {(columnKey) => (
-                <TableCell className={columnKey === "bandId" ? "whitespace-nowrap" : undefined}>
+                <TableCell
+                  className={
+                    columnKey === "bandId" ? "whitespace-nowrap" : undefined
+                  }
+                >
                   {getKeyValue(item as RowItem, columnKey as string)}
                 </TableCell>
               )}
