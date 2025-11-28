@@ -1,34 +1,23 @@
-import {
-  Select,
-  SelectItem,
-  Spinner,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from "@heroui/react";
+import { Spinner, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
 import type { YearsMap } from "../types/types";
 
 export default function Programs() {
-  const [selectedYear, setSelectedYear] = useState<string | "all">("all");
-  const [selectedProgram, setSelectedProgram] = useState<Set<string>>(new Set());
+  const [selectedYear, setSelectedYear] = useState("all");
+  const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [yearsMap, setYearsMap] = useState<YearsMap>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch yearsMap from RTDB
   useEffect(() => {
     const yearsRef = ref(db, "yearsMap");
-
-    const unsubscribeYears = onValue(yearsRef, (snapshot) => {
+    const unsubscribe = onValue(yearsRef, (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val() as YearsMap;
+        const data = snapshot.val();
         const newYearMap: YearsMap = new Map();
-        for (const [year, yearData] of Object.entries(data)) {
+        for (const [year, yearData] of Object.entries(data) as [string, { id: string; programs: string[] }][]) {
           newYearMap.set(year, {
             id: yearData.id,
             programs: new Set(yearData.programs),
@@ -38,40 +27,47 @@ export default function Programs() {
       }
       setIsLoading(false);
     });
-
-    return () => {
-      unsubscribeYears();
-    };
+    return unsubscribe;
   }, []);
 
-  // Get program names from yearsMap based on selected year
+  // Year rows for the table
+  const yearRows = useMemo(() => {
+    return ["all", ...Array.from(yearsMap.keys()).sort((a, b) => Number(b) - Number(a))];
+  }, [yearsMap]);
+
+  // Get program names based on selected year
   const programNames = useMemo(() => {
-    if (!yearsMap || yearsMap.size === 0) return [];
+    if (yearsMap.size === 0) return [];
     if (selectedYear === "all") {
       const allPrograms = new Set<string>();
       for (const year of yearsMap.values()) {
-        for (const programName of year.programs) {
-          allPrograms.add(programName);
-        }
+        year.programs.forEach((p) => allPrograms.add(p));
       }
       return Array.from(allPrograms).sort();
     }
-    const year = yearsMap.get(selectedYear);
-    if (!year) return [];
-    return Array.from(year.programs).sort();
+    return Array.from(yearsMap.get(selectedYear)?.programs ?? []).sort();
   }, [yearsMap, selectedYear]);
 
-  const yearOptions = useMemo(() => {
-    const opts: JSX.Element[] = [<SelectItem key="all">All</SelectItem>];
-    Array.from(yearsMap?.keys() || [])
-      .sort((a, b) => Number(b) - Number(a))
-      .forEach((y) => {
-        opts.push(<SelectItem key={y}>{y}</SelectItem>);
-      });
-    return opts;
-  }, [yearsMap]);
+  const handleYearChange = (keys: "all" | Set<React.Key>) => {
+    const newYear = keys === "all" ? "all" : String(Array.from(keys)[0]);
+    setSelectedYear(newYear);
 
-  const selectedProgramName = Array.from(selectedProgram)[0] || null;
+    // Reset program if it doesn't exist in new year
+    if (selectedProgram) {
+      const programs =
+        newYear === "all"
+          ? Array.from(yearsMap.values()).flatMap((y) => Array.from(y.programs))
+          : Array.from(yearsMap.get(newYear)?.programs ?? []);
+      if (!programs.includes(selectedProgram)) {
+        setSelectedProgram(null);
+      }
+    }
+  };
+
+  const handleProgramChange = (keys: "all" | Set<React.Key>) => {
+    const selected = keys === "all" ? null : String(Array.from(keys)[0]) || null;
+    setSelectedProgram(selected);
+  };
 
   if (isLoading) {
     return (
@@ -81,55 +77,54 @@ export default function Programs() {
     );
   }
 
-  if (!yearsMap || yearsMap.size === 0) {
+  if (yearsMap.size === 0) {
     return <div className="p-4">No programs available.</div>;
   }
 
   return (
-    <div className="h-full flex flex-col gap-6 w-full overflow-hidden">
-      <div className="max-w-7xl w-full mx-auto px-8 flex flex-col gap-4">
-        <Select
-          labelPlacement="outside"
-          label="Filter by Year"
-          className="w-full max-w-[220px]"
-          selectedKeys={selectedYear === "all" ? ["all"] : [selectedYear]}
-          onSelectionChange={(keys) => {
-            const first = Array.from(keys)[0];
-            const next = first === "all" ? "all" : String(first);
-            setSelectedYear(next);
-          }}
-          disallowEmptySelection
-        >
-          {yearOptions}
-        </Select>
+    <div className="max-w-6xl h-full flex w-full mx-auto p-8 gap-4">
+      <Table
+        isHeaderSticky
+        aria-label="Years table"
+        selectionMode="single"
+        selectedKeys={new Set([selectedYear])}
+        onSelectionChange={handleYearChange}
+        disallowEmptySelection
+        isVirtualized
+        maxTableHeight={600}
+      >
+        <TableHeader>
+          <TableColumn>Year</TableColumn>
+        </TableHeader>
+        <TableBody>
+          {yearRows.map((year) => (
+            <TableRow key={year}>
+              <TableCell>{year === "all" ? "All" : year}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
-        <Table
-          aria-label="Programs table"
-          selectionMode="single"
-          selectedKeys={selectedProgram}
-          onSelectionChange={(keys) => setSelectedProgram(keys as Set<string>)}
-          classNames={{
-            wrapper: "max-h-[400px]",
-          }}
-        >
-          <TableHeader>
-            <TableColumn>Program Name</TableColumn>
-          </TableHeader>
-          <TableBody emptyContent="No programs found">
-            {programNames.map((name) => (
-              <TableRow key={name}>
-                <TableCell>{name}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {selectedProgramName && (
-        <div className="flex-1 min-h-0 overflow-hidden px-8">
-          <p>Selected program: {selectedProgramName}</p>
-        </div>
-      )}
+      <Table
+        isHeaderSticky
+        aria-label="Programs table"
+        selectionMode="single"
+        selectedKeys={selectedProgram ? new Set([selectedProgram]) : new Set()}
+        onSelectionChange={handleProgramChange}
+        isVirtualized
+        maxTableHeight={600}
+      >
+        <TableHeader>
+          <TableColumn>Program Name</TableColumn>
+        </TableHeader>
+        <TableBody emptyContent="No programs found">
+          {programNames.map((name) => (
+            <TableRow key={name}>
+              <TableCell>{name}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

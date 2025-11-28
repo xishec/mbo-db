@@ -6,12 +6,10 @@ function App() {
   const [activePage, setActivePage] = useState("programs");
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="flex-shrink-0">
-        <Navigation activePage={activePage} onPageChange={setActivePage} />
-      </div>
+    <>
+      <Navigation activePage={activePage} onPageChange={setActivePage} />
       <PageContent activePage={activePage} />
-    </div>
+    </>
   );
 }
 
