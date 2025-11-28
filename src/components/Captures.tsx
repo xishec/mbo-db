@@ -10,6 +10,7 @@ import {
   TableCell,
   Pagination,
   getKeyValue,
+  Input,
 } from "@heroui/react";
 import type { SortDescriptor } from "@heroui/react";
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -58,7 +59,7 @@ export default function Captures({
   }
 
   return (
-    <div className="p-4 flex flex-col gap-6">
+    <div className="p-4 flex flex-col gap-3">
       <Select
         label="Programs"
         className="w-full"
@@ -74,13 +75,10 @@ export default function Captures({
         ))}
       </Select>
       {selectedProgram && (
-        <div>
-          <p className="text-sm mb-3 text-right">Band IDs: {selectedBandIds.length}</p>
-          <BandsTable
-            selectedProgram={selectedProgram}
-            bandIds={selectedBandIds}
-          />
-        </div>
+        <BandsTable
+          selectedProgram={selectedProgram}
+          bandIds={selectedBandIds}
+        />
       )}
     </div>
   );
@@ -104,6 +102,8 @@ function BandsTable({
     column: "bandId",
     direction: "ascending",
   });
+  const [searchValue, setSearchValue] = useState("");
+  const [speciesFilter, setSpeciesFilter] = useState<string | null>(null);
   const cacheRef = useRef<Map<string, Capture[]>>(new Map());
 
   useEffect(() => {
@@ -164,15 +164,39 @@ function BandsTable({
     return rows;
   }, [bandCaptures, selectedProgram]);
 
+  // Derive species list for filter (unique, sorted)
+  const speciesOptions = useMemo(() => {
+    const set = new Set<string>();
+    allCaptureRows.forEach((r) => {
+      if (r.Species) set.add(r.Species);
+    });
+    return Array.from(set.values()).sort();
+  }, [allCaptureRows]);
+
+  // Apply search & species filtering before sorting
+  const filteredRows = useMemo(() => {
+    if (!searchValue && !speciesFilter) return allCaptureRows;
+    const query = searchValue.trim().toLowerCase();
+    return allCaptureRows.filter((r) => {
+      if (speciesFilter && r.Species !== speciesFilter) return false;
+      if (!query) return true;
+      const searchableKeys = Object.keys(r).filter((k) => k !== "key");
+      return searchableKeys.some((k) => {
+        const val = (r as unknown as { [key: string]: unknown })[k];
+        return typeof val === "string" && val.toLowerCase().includes(query);
+      });
+    });
+  }, [allCaptureRows, searchValue, speciesFilter]);
+
   const sortedRows = useMemo(() => {
     const { column, direction } = sortDescriptor;
-    if (!column) return allCaptureRows;
+    if (!column) return filteredRows;
     const collator = new Intl.Collator(undefined, {
       numeric: true,
       sensitivity: "base",
     });
     type RowItemLocal = Capture & { key: string; bandId: string };
-    const rowsCopy: RowItemLocal[] = [...allCaptureRows];
+    const rowsCopy: RowItemLocal[] = [...filteredRows];
     rowsCopy.sort((a, b) => {
       const aVal = a[column as keyof RowItemLocal];
       const bVal = b[column as keyof RowItemLocal];
@@ -183,7 +207,7 @@ function BandsTable({
       return direction === "descending" ? -cmp : cmp;
     });
     return rowsCopy;
-  }, [allCaptureRows, sortDescriptor]);
+  }, [filteredRows, sortDescriptor]);
 
   const totalPages =
     sortedRows.length === 0 ? 0 : Math.ceil(sortedRows.length / pageSize);
@@ -192,6 +216,11 @@ function BandsTable({
     const start = (page - 1) * pageSize;
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, page, pageSize]);
+
+  // Reset page when filters/search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchValue, speciesFilter]);
 
   const columns = [
     { key: "bandId", label: "Band" },
@@ -224,8 +253,39 @@ function BandsTable({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {error && <div className="text-danger text-sm">Error: {error}</div>}
+      <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between py-2">
+        <Input
+          isClearable
+          label="Search"
+          variant="bordered"
+          placeholder="Search band, species, location..."
+          value={searchValue}
+          onClear={() => setSearchValue("")}
+          onValueChange={setSearchValue}
+          className="md:max-w-xs"
+        />
+        <Select
+          label="Species"
+          selectedKeys={speciesFilter ? [speciesFilter] : []}
+          onSelectionChange={(keys) => {
+            const first = Array.from(keys)[0];
+            setSpeciesFilter(first ? String(first) : null);
+          }}
+          placeholder="All species"
+          disallowEmptySelection={false}
+          className="md:max-w-xs"
+        >
+          {speciesOptions.map((sp) => (
+            <SelectItem key={sp}>{sp}</SelectItem>
+          ))}
+        </Select>
+        <div className="text-sm text-right md:text-left opacity-70">
+          Showing {paginatedRows.length} of {filteredRows.length} filtered
+          (Total {allCaptureRows.length})
+        </div>
+      </div>
       <Table
         aria-label="Band captures table with pagination and sorting"
         sortDescriptor={sortDescriptor}
@@ -248,7 +308,11 @@ function BandsTable({
       >
         <TableHeader columns={columns}>
           {(column) => (
-            <TableColumn key={column.key} allowsSorting>
+            <TableColumn
+              key={column.key}
+              allowsSorting
+              className={column.key === "bandId" ? "whitespace-nowrap" : undefined}
+            >
               {column.label}
             </TableColumn>
           )}
@@ -263,7 +327,7 @@ function BandsTable({
           {(item) => (
             <TableRow key={item.key}>
               {(columnKey) => (
-                <TableCell>
+                <TableCell className={columnKey === "bandId" ? "whitespace-nowrap" : undefined}>
                   {getKeyValue(item as RowItem, columnKey as string)}
                 </TableCell>
               )}
