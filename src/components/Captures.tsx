@@ -2,11 +2,12 @@ import { Select, SelectItem, Spinner } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
+import type { YearsMap } from "../types/types";
 
 export default function Captures() {
-  const [selectedYear, setSelectedYear] = useState<number | "all">("all");
+  const [selectedYear, setSelectedYear] = useState<string | "all">("all");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
-  const [yearsMap, setYearsMap] = useState<Map<number, Map<number, string>> | null>(null);
+  const [yearsMap, setYearsMap] = useState<YearsMap>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch yearsMap from RTDB
@@ -15,13 +16,8 @@ export default function Captures() {
 
     const unsubscribeYears = onValue(yearsRef, (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val() as Record<string, Record<number, string>>;
-        const map = new Map<number, Map<number, string>>();
-        for (const [year, programs] of Object.entries(data)) {
-          map.set(Number(year), new Map(Object.entries(programs).map(([k, v]) => [Number(k), v])));
-        }
-        setYearsMap(map);
-        console.log(map);
+        setYearsMap(snapshot.val() as YearsMap);
+        console.log("yearsMap loaded:", snapshot.val() as YearsMap);
       }
       setIsLoading(false);
     });
@@ -33,46 +29,37 @@ export default function Captures() {
 
   // Get program names from yearsMap based on selected year
   const programNames = useMemo(() => {
-    if (!yearsMap) return [];
+    if (!yearsMap || yearsMap.size === 0) return [];
     if (selectedYear === "all") {
       // Collect all unique program names across all years
       const allPrograms = new Set<string>();
-      for (const programsInYear of yearsMap.values()) {
-        for (const programName of programsInYear.values()) {
+      for (const year of yearsMap.values()) {
+        for (const programName of year.programs) {
           allPrograms.add(programName);
         }
       }
       return Array.from(allPrograms).sort();
     }
-    const programsInYear = yearsMap.get(selectedYear);
-    if (!programsInYear) return [];
-    return Array.from(new Set(programsInYear.values())).sort();
+    const year = yearsMap.get(selectedYear);
+    if (!year) return [];
+    return Array.from(year.programs).sort();
   }, [yearsMap, selectedYear]);
 
-  const selectedBandIds = useMemo(() => {
-    if (!yearsMap || !selectedProgram) return [];
-    const bandIds: string[] = [];
-    // Collect band IDs for the selected program from relevant years
-    const yearsToSearch = selectedYear === "all" ? Array.from(yearsMap.keys()) : [selectedYear];
-    for (const year of yearsToSearch) {
-      const programsInYear = yearsMap.get(year);
-      if (programsInYear) {
-        for (const [bandId, programName] of programsInYear.entries()) {
-          if (programName === selectedProgram) {
-            bandIds.push(String(bandId));
-          }
-        }
-      }
-    }
-    return bandIds;
+  // Get selected program - the Year type only stores program names, not bandIds
+  // BandIds would need to be fetched separately based on program selection
+  const selectedProgramExists = useMemo(() => {
+    if (!yearsMap || !selectedProgram) return false;
+    const yearsToSearch =
+      selectedYear === "all" ? Array.from(yearsMap.values()) : [yearsMap.get(selectedYear)].filter(Boolean);
+    return yearsToSearch.some((year) => year?.programs.has(selectedProgram));
   }, [yearsMap, selectedProgram, selectedYear]);
 
   const yearOptions = useMemo(() => {
     const opts: JSX.Element[] = [<SelectItem key="all">All</SelectItem>];
     Array.from(yearsMap?.keys() || [])
-      .sort((a, b) => b - a)
+      .sort((a, b) => Number(b) - Number(a))
       .forEach((y) => {
-        opts.push(<SelectItem key={String(y)}>{String(y)}</SelectItem>);
+        opts.push(<SelectItem key={y}>{y}</SelectItem>);
       });
     return opts;
   }, [yearsMap]);
@@ -96,10 +83,10 @@ export default function Captures() {
           labelPlacement="outside"
           label="Years"
           className="w-full max-w-[220px]"
-          selectedKeys={selectedYear === "all" ? ["all"] : [String(selectedYear)]}
+          selectedKeys={selectedYear === "all" ? ["all"] : [selectedYear]}
           onSelectionChange={(keys) => {
             const first = Array.from(keys)[0];
-            const next = first === "all" ? "all" : Number(first);
+            const next = first === "all" ? "all" : String(first);
             setSelectedYear(next);
             // Reset selected program if it becomes invalid under new year
             if (selectedProgram && !programNames.includes(selectedProgram)) {
@@ -128,10 +115,10 @@ export default function Captures() {
         </Select>
       </div>
 
-      {selectedProgram && (
+      {selectedProgram && selectedProgramExists && (
         <div className="flex-1 min-h-0 overflow-hidden">
-          {/* <BandsTable selectedProgram={selectedProgram} bandIds={selectedBandIds} /> */}
-          {selectedBandIds}
+          {/* <BandsTable selectedProgram={selectedProgram} /> */}
+          <p>Selected program: {selectedProgram}</p>
         </div>
       )}
     </div>

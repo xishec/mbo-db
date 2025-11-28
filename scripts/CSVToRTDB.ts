@@ -1,6 +1,14 @@
 import { ref, set, type Database } from "firebase/database";
 import { NUMERIC_FIELDS } from "../src/constants/constants";
-import { BandGroup, Capture, generateBandGroupId, generateCaptureId, Program, Year } from "../src/types/types";
+import {
+  BandGroupsMap,
+  Capture,
+  CapturesMap,
+  generateBandGroupId,
+  generateCaptureId,
+  ProgramsMap,
+  YearsMap,
+} from "../src/types/types";
 import { headerToCaptureProperty } from "./helper";
 
 /**
@@ -61,10 +69,10 @@ export async function CSVToRTDB(csvContent: string, database: Database): Promise
 }
 
 const generateDB = async (captures: Capture[], database: Database) => {
-  const yearsMap: Map<string, Year> = new Map();
-  const programsMap: Map<string, Program> = new Map();
-  const bandGroupsMap: Map<string, BandGroup> = new Map();
-  const capturesMap: Map<string, Capture> = new Map();
+  const yearsMap: YearsMap = new Map();
+  const programsMap: ProgramsMap = new Map();
+  const bandGroupsMap: BandGroupsMap = new Map();
+  const capturesMap: CapturesMap = new Map();
 
   for (const capture of captures) {
     capturesMap.set(capture.id, capture);
