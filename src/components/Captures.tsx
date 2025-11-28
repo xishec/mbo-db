@@ -78,7 +78,7 @@ export default function Captures({
   }
 
   return (
-    <div className="w-screen h-[90vh] flex flex-col gap-8">
+    <div className="h-full flex flex-col gap-6 w-full overflow-hidden">
       <div className="max-w-7xl w-full mx-auto px-8 flex items-center gap-4">
         <Select
           labelPlacement="outside"
@@ -119,10 +119,12 @@ export default function Captures({
       </div>
 
       {selectedProgram && (
-        <BandsTable
-          selectedProgram={selectedProgram}
-          bandIds={selectedBandIds}
-        />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <BandsTable
+            selectedProgram={selectedProgram}
+            bandIds={selectedBandIds}
+          />
+        </div>
       )}
     </div>
   );
@@ -305,7 +307,7 @@ function BandsTable({
   // Virtualized table will render all rows efficiently; no manual pagination.
 
   return (
-    <div className="w-screen flex flex-col gap-6 flex-1 min-h-0">
+    <div className="flex flex-col gap-4 h-full w-full min-h-0 overflow-hidden">
       {error && <div className="text-danger text-sm">Error: {error}</div>}
 
       <div className="max-w-7xl w-full mx-auto px-8 flex flex-col gap-4 ">
@@ -447,7 +449,7 @@ function BandsTable({
         </div>
       </div>
 
-      <div className="w-screen overflow-x-auto overflow-y-auto px-8 flex-1 min-h-0">
+      <div className="px-8 flex-1 min-h-0 overflow-auto w-full">
         <div className="flex w-max min-h-full">
           <Table
             isHeaderSticky

@@ -74,15 +74,19 @@ function App() {
   }, []);
 
   return (
-    <>
-      <Navigation activePage={activePage} onPageChange={setActivePage} />
-      <PageContent
-        activePage={activePage}
-        programs={programs}
-        years={years}
-        isLoadingPrograms={isLoadingPrograms}
+    <div className="h-screen flex flex-col overflow-hidden">
+      <div className="flex-shrink-0">
+        <Navigation activePage={activePage} onPageChange={setActivePage} />
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <PageContent
+          activePage={activePage}
+          programs={programs}
+          years={years}
+          isLoadingPrograms={isLoadingPrograms}
         />
-    </>
+      </div>
+    </div>
   );
 }
 
