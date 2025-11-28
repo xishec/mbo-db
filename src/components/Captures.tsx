@@ -75,18 +75,24 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
   }
 
   return (
-    <div className="col-span-2 mt-4">
-      <Tabs aria-label="Program Captures">
-        <Tab key="new" title="New captures">
-          <CapturesTable columns={inferColumns(newRows)} rows={newRows as any[]} ariaLabel="New captures table" />
-        </Tab>
-        <Tab key="re" title="Re captures">
-          <CapturesTable columns={inferColumns(reRows)} rows={reRows as any[]} ariaLabel="Re captures table" />
-        </Tab>
-        <Tab key="summary" title="Summary">
-          <CapturesTable columns={inferColumns(summaryRows)} rows={summaryRows as any[]} ariaLabel="Summary table" />
-        </Tab>
-      </Tabs>
-    </div>
+    <Tabs
+      color="primary"
+      classNames={{
+        base: "w-full",
+        tabList: "w-full",
+        tabContent: "text-default-800",
+        panel: "p-0",
+      }}
+    >
+      <Tab key="new" title="New captures">
+        <CapturesTable columns={inferColumns(newRows)} rows={newRows as any[]} ariaLabel="New captures table" />
+      </Tab>
+      <Tab key="re" title="Re captures">
+        <CapturesTable columns={inferColumns(reRows)} rows={reRows as any[]} ariaLabel="Re captures table" />
+      </Tab>
+      <Tab key="summary" title="Summary">
+        <CapturesTable columns={inferColumns(summaryRows)} rows={summaryRows as any[]} ariaLabel="Summary table" />
+      </Tab>
+    </Tabs>
   );
 }
