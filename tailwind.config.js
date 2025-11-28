@@ -231,6 +231,9 @@ export default {
           },
         },
       },
+      layout: {
+        disabledOpacity: "0.2",
+      },
     }),
   ],
 };

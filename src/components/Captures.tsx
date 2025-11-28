@@ -288,6 +288,7 @@ function BandsTable({
         <div className="flex items-center gap-2 w-full">
           <Select
             size="sm"
+            variant="bordered"
             label="Filter column"
             selectedKeys={draftColumn ? [draftColumn] : []}
             onSelectionChange={(keys) => {
@@ -304,6 +305,7 @@ function BandsTable({
           </Select>
           <Select
             size="sm"
+            variant="bordered"
             label="Operator"
             selectedKeys={draftOperator ? [draftOperator] : []}
             onSelectionChange={(keys) => {
