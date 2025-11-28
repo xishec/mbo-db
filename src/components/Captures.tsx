@@ -12,36 +12,26 @@ import {
   Input,
   Chip,
   Button,
-} from "@heroui/react";
-import type { SortDescriptor } from "@heroui/react";
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { get, ref } from "firebase/database";
-import { db } from "../firebase";
-import type { Capture } from "../types/Capture";
-import type { Programs } from "../types/Programs";
-import type { Years } from "../types/Years";
-import { NUMERIC_FIELDS } from "../constants/constants";
-import { TABLE_COLUMNS } from "../constants/constants";
+} from '@heroui/react';
+import type { SortDescriptor } from '@heroui/react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { get, ref } from 'firebase/database';
+import { db } from '../firebase';
+import type { Capture } from '../types/Capture';
+import type { Programs } from '../types/Programs';
+import type { Years } from '../types/Years';
+import { NUMERIC_FIELDS } from '../constants/constants';
+import { TABLE_COLUMNS } from '../constants/constants';
 
-interface CapturesProps {
-  programs: Programs | null;
-  years: Years | null;
-  isLoading: boolean;
-}
-
-export default function Captures({
-  programs,
-  years,
-  isLoading,
-}: CapturesProps) {
-  const [selectedYear, setSelectedYear] = useState<number | "all">("all");
+export default function Captures() {
+  const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
 
   // Filter program names by selected year
   const programNames = useMemo(() => {
     if (!programs) return [];
     const all = Array.from(programs.keys());
-    if (selectedYear === "all") return all;
+    if (selectedYear === 'all') return all;
     const allowed = years?.get(selectedYear);
     if (!allowed) return [];
     const allowedSet = new Set(Array.from(allowed.values()));
@@ -83,12 +73,10 @@ export default function Captures({
           labelPlacement="outside"
           label="Years"
           className="w-full max-w-[220px]"
-          selectedKeys={
-            selectedYear === "all" ? ["all"] : [String(selectedYear)]
-          }
+          selectedKeys={selectedYear === 'all' ? ['all'] : [String(selectedYear)]}
           onSelectionChange={(keys) => {
             const first = Array.from(keys)[0];
-            const next = first === "all" ? "all" : Number(first);
+            const next = first === 'all' ? 'all' : Number(first);
             setSelectedYear(next);
             // Reset selected program if it becomes invalid under new year
             if (selectedProgram && !programNames.includes(selectedProgram)) {
@@ -119,31 +107,20 @@ export default function Captures({
 
       {selectedProgram && (
         <div className="flex-1 min-h-0 overflow-hidden">
-          <BandsTable
-            selectedProgram={selectedProgram}
-            bandIds={selectedBandIds}
-          />
+          <BandsTable selectedProgram={selectedProgram} bandIds={selectedBandIds} />
         </div>
       )}
     </div>
   );
 }
 
-function BandsTable({
-  selectedProgram,
-  bandIds,
-}: {
-  selectedProgram: string;
-  bandIds: string[];
-}) {
-  const [bandCaptures, setBandCaptures] = useState<Map<string, Capture[]>>(
-    new Map()
-  );
+function BandsTable({ selectedProgram, bandIds }: { selectedProgram: string; bandIds: string[] }) {
+  const [bandCaptures, setBandCaptures] = useState<Map<string, Capture[]>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: "bandId",
-    direction: "ascending",
+    column: 'bandId',
+    direction: 'ascending',
   });
   interface AdvancedFilter {
     id: string;
@@ -154,7 +131,7 @@ function BandsTable({
   const [filters, setFilters] = useState<AdvancedFilter[]>([]);
   const [draftColumn, setDraftColumn] = useState<string | null>(null);
   const [draftOperator, setDraftOperator] = useState<string | null>(null);
-  const [draftValue, setDraftValue] = useState<string>("");
+  const [draftValue, setDraftValue] = useState<string>('');
   const cacheRef = useRef<Map<string, Capture[]>>(new Map());
 
   useEffect(() => {
@@ -183,9 +160,7 @@ function BandsTable({
         const tasks: Promise<void>[] = [];
         while (idx < bandIds.length) {
           const chunk = bandIds.slice(idx, idx + concurrency);
-          tasks.push(
-            Promise.all(chunk.map((id) => fetchOne(id))).then(() => {})
-          );
+          tasks.push(Promise.all(chunk.map((id) => fetchOne(id))).then(() => {}));
           idx += concurrency;
         }
         await Promise.all(tasks);
@@ -222,58 +197,54 @@ function BandsTable({
 
   // Operators
   const baseOperators = [
-    { key: "eq", label: "=" },
-    { key: "neq", label: "≠" },
-    { key: "contains", label: "contains" },
-    { key: "starts", label: "starts" },
-    { key: "ends", label: "ends" },
-    { key: "gt", label: ">" },
-    { key: "gte", label: ">=" },
-    { key: "lt", label: "<" },
-    { key: "lte", label: "<=" },
-    { key: "exists", label: "exists" },
-    { key: "notexists", label: "not exists" },
+    { key: 'eq', label: '=' },
+    { key: 'neq', label: '≠' },
+    { key: 'contains', label: 'contains' },
+    { key: 'starts', label: 'starts' },
+    { key: 'ends', label: 'ends' },
+    { key: 'gt', label: '>' },
+    { key: 'gte', label: '>=' },
+    { key: 'lt', label: '<' },
+    { key: 'lte', label: '<=' },
+    { key: 'exists', label: 'exists' },
+    { key: 'notexists', label: 'not exists' },
   ];
 
-  const evaluateFilter = useCallback(
-    (row: RowItem, f: AdvancedFilter): boolean => {
-      const rawVal = (row as unknown as { [key: string]: unknown })[f.column];
-      const valStr =
-        rawVal === undefined || rawVal === null ? "" : String(rawVal);
-      switch (f.operator) {
-        case "exists":
-          return valStr !== "";
-        case "notexists":
-          return valStr === "";
-        case "eq":
-          return valStr === f.value;
-        case "neq":
-          return valStr !== f.value;
-        case "contains":
-          return valStr.toLowerCase().includes(f.value.toLowerCase());
-        case "starts":
-          return valStr.toLowerCase().startsWith(f.value.toLowerCase());
-        case "ends":
-          return valStr.toLowerCase().endsWith(f.value.toLowerCase());
-        case "gt":
-        case "gte":
-        case "lt":
-        case "lte": {
-          const numVal = Number(valStr);
-          const numFilter = Number(f.value);
-          if (Number.isNaN(numVal) || Number.isNaN(numFilter)) return false;
-          if (f.operator === "gt") return numVal > numFilter;
-          if (f.operator === "gte") return numVal >= numFilter;
-          if (f.operator === "lt") return numVal < numFilter;
-          if (f.operator === "lte") return numVal <= numFilter;
-          return false;
-        }
-        default:
-          return true;
+  const evaluateFilter = useCallback((row: RowItem, f: AdvancedFilter): boolean => {
+    const rawVal = (row as unknown as { [key: string]: unknown })[f.column];
+    const valStr = rawVal === undefined || rawVal === null ? '' : String(rawVal);
+    switch (f.operator) {
+      case 'exists':
+        return valStr !== '';
+      case 'notexists':
+        return valStr === '';
+      case 'eq':
+        return valStr === f.value;
+      case 'neq':
+        return valStr !== f.value;
+      case 'contains':
+        return valStr.toLowerCase().includes(f.value.toLowerCase());
+      case 'starts':
+        return valStr.toLowerCase().startsWith(f.value.toLowerCase());
+      case 'ends':
+        return valStr.toLowerCase().endsWith(f.value.toLowerCase());
+      case 'gt':
+      case 'gte':
+      case 'lt':
+      case 'lte': {
+        const numVal = Number(valStr);
+        const numFilter = Number(f.value);
+        if (Number.isNaN(numVal) || Number.isNaN(numFilter)) return false;
+        if (f.operator === 'gt') return numVal > numFilter;
+        if (f.operator === 'gte') return numVal >= numFilter;
+        if (f.operator === 'lt') return numVal < numFilter;
+        if (f.operator === 'lte') return numVal <= numFilter;
+        return false;
       }
-    },
-    []
-  );
+      default:
+        return true;
+    }
+  }, []);
   const sortedRows = useMemo(() => {
     // Start from all capture rows for current program
     let base: RowItem[] = allCaptureRows as RowItem[];
@@ -285,20 +256,16 @@ function BandsTable({
     if (!column) return base;
     const collator = new Intl.Collator(undefined, {
       numeric: true,
-      sensitivity: "base",
+      sensitivity: 'base',
     });
     const rowsCopy = [...base];
     rowsCopy.sort((a, b) => {
-      const aVal = (a as unknown as { [key: string]: unknown })[
-        column as string
-      ];
-      const bVal = (b as unknown as { [key: string]: unknown })[
-        column as string
-      ];
-      const aStr = aVal == null ? "" : String(aVal);
-      const bStr = bVal == null ? "" : String(bVal);
+      const aVal = (a as unknown as { [key: string]: unknown })[column as string];
+      const bVal = (b as unknown as { [key: string]: unknown })[column as string];
+      const aStr = aVal == null ? '' : String(aVal);
+      const bStr = bVal == null ? '' : String(bVal);
       const cmp = collator.compare(aStr, bStr);
-      return direction === "descending" ? -cmp : cmp;
+      return direction === 'descending' ? -cmp : cmp;
     });
     return rowsCopy;
   }, [allCaptureRows, sortDescriptor, filters, evaluateFilter]);
@@ -322,7 +289,7 @@ function BandsTable({
               const first = Array.from(keys)[0];
               setDraftColumn(first ? String(first) : null);
               setDraftOperator(null);
-              setDraftValue("");
+              setDraftValue('');
             }}
             className="min-w-[150px]"
           >
@@ -344,10 +311,8 @@ function BandsTable({
             isDisabled={!draftColumn}
           >
             {baseOperators.map((op) => {
-              const isNumeric = draftColumn
-                ? NUMERIC_FIELDS.has(draftColumn)
-                : false;
-              const numericOnly = ["gt", "gte", "lt", "lte"];
+              const isNumeric = draftColumn ? NUMERIC_FIELDS.has(draftColumn) : false;
+              const numericOnly = ['gt', 'gte', 'lt', 'lte'];
               const disable = !isNumeric && numericOnly.includes(op.key);
               return (
                 <SelectItem key={op.key} isDisabled={disable}>
@@ -364,9 +329,7 @@ function BandsTable({
             value={draftValue}
             onValueChange={setDraftValue}
             className="min-w-[140px]"
-            isDisabled={
-              !draftOperator || ["exists", "notexists"].includes(draftOperator)
-            }
+            isDisabled={!draftOperator || ['exists', 'notexists'].includes(draftOperator)}
           />
           <Button
             color="primary"
@@ -374,16 +337,11 @@ function BandsTable({
             isDisabled={
               !draftColumn ||
               !draftOperator ||
-              (!["exists", "notexists"].includes(draftOperator) &&
-                draftValue.trim() === "")
+              (!['exists', 'notexists'].includes(draftOperator) && draftValue.trim() === '')
             }
             onPress={() => {
               if (!draftColumn || !draftOperator) return;
-              if (
-                !["exists", "notexists"].includes(draftOperator) &&
-                draftValue.trim() === ""
-              )
-                return;
+              if (!['exists', 'notexists'].includes(draftOperator) && draftValue.trim() === '') return;
               const newFilter: AdvancedFilter = {
                 id: `${draftColumn}-${draftOperator}-${Date.now()}`,
                 column: draftColumn,
@@ -391,7 +349,7 @@ function BandsTable({
                 value: draftValue.trim(),
               };
               setFilters((prev) => [...prev, newFilter]);
-              setDraftValue("");
+              setDraftValue('');
               setDraftOperator(null);
               setDraftColumn(null);
             }}
@@ -405,24 +363,20 @@ function BandsTable({
           <div className="flex w-full justify-between items-center gap-4 flex-wrap">
             {filters.map((f) => {
               const labelMap: Record<string, string> = {
-                eq: "=",
-                neq: "≠",
-                contains: "contains",
-                starts: "starts",
-                ends: "ends",
-                gt: ">",
-                gte: ">=",
-                lt: "<",
-                lte: "<=",
-                exists: "exists",
-                notexists: "not exists",
+                eq: '=',
+                neq: '≠',
+                contains: 'contains',
+                starts: 'starts',
+                ends: 'ends',
+                gt: '>',
+                gte: '>=',
+                lt: '<',
+                lte: '<=',
+                exists: 'exists',
+                notexists: 'not exists',
               };
-              const colLabel =
-                TABLE_COLUMNS.find((c) => c.key === f.column)?.label ||
-                f.column;
-              const valuePart = ["exists", "notexists"].includes(f.operator)
-                ? ""
-                : ` ${f.value}`;
+              const colLabel = TABLE_COLUMNS.find((c) => c.key === f.column)?.label || f.column;
+              const valuePart = ['exists', 'notexists'].includes(f.operator) ? '' : ` ${f.value}`;
               return (
                 <Chip
                   variant="flat"
@@ -431,9 +385,7 @@ function BandsTable({
                   key={f.id}
                   color="secondary"
                   className="h-[40px]"
-                  onClose={() =>
-                    setFilters((prev) => prev.filter((x) => x.id !== f.id))
-                  }
+                  onClose={() => setFilters((prev) => prev.filter((x) => x.id !== f.id))}
                 >
                   {colLabel} {labelMap[f.operator]}
                   {valuePart}
@@ -448,10 +400,7 @@ function BandsTable({
         </div>
       </div>
 
-      <div
-        className="px-8 flex-1 w-full h-full overflow-scroll"
-        style={{ border: "10px solid red" }}
-      >
+      <div className="px-8 flex-1 w-full h-full overflow-scroll" style={{ border: '10px solid red' }}>
         <Table
           isHeaderSticky
           className="h-full"
@@ -465,9 +414,7 @@ function BandsTable({
               <TableColumn
                 key={column.key}
                 allowsSorting
-                className={
-                  column.key === "bandId" ? "whitespace-nowrap" : undefined
-                }
+                className={column.key === 'bandId' ? 'whitespace-nowrap' : undefined}
               >
                 {column.label}
               </TableColumn>
@@ -475,19 +422,13 @@ function BandsTable({
           </TableHeader>
           <TableBody
             items={sortedRows}
-            emptyContent={isLoading ? <Spinner size="sm" /> : "No captures"}
-            loadingState={
-              isLoading && bandCaptures.size === 0 ? "loading" : "idle"
-            }
+            emptyContent={isLoading ? <Spinner size="sm" /> : 'No captures'}
+            loadingState={isLoading && bandCaptures.size === 0 ? 'loading' : 'idle'}
           >
             {(item) => (
               <TableRow key={item.key}>
                 {(columnKey) => (
-                  <TableCell
-                    className={
-                      columnKey === "bandId" ? "whitespace-nowrap" : undefined
-                    }
-                  >
+                  <TableCell className={columnKey === 'bandId' ? 'whitespace-nowrap' : undefined}>
                     {getKeyValue(item as RowItem, columnKey as string)}
                   </TableCell>
                 )}
