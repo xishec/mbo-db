@@ -15,19 +15,20 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { db } from "../firebase";
 import type { BandGroupsMap, CapturesMap, Capture } from "../types/types";
 
-const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className?: string }[] = [
-  { key: "id", label: "ID", className: "min-w-[260px]" },
+const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
+  { key: "lastTwoDigits", label: "Band" },
   { key: "species", label: "Species" },
-  { key: "bandPrefix", label: "Band Prefix" },
-  { key: "bandSuffix", label: "Band Suffix" },
+  { key: "wing", label: "Wing" },
+  { key: "age", label: "Age" },
+  { key: "howAged", label: "How Aged" },
+  { key: "sex", label: "Sex" },
+  { key: "howSexed", label: "How Sexed" },
+  { key: "fat", label: "Fat" },
+  { key: "weight", label: "Weight" },
   { key: "date", label: "Date" },
   { key: "time", label: "Time" },
-  { key: "age", label: "Age" },
-  { key: "sex", label: "Sex" },
-  { key: "wing", label: "Wing" },
-  { key: "weight", label: "Weight" },
-  { key: "fat", label: "Fat" },
   { key: "bander", label: "Bander" },
+  { key: "scribe", label: "Scribe" },
   { key: "net", label: "Net" },
   { key: "notes", label: "Notes" },
 ];
@@ -37,7 +38,7 @@ export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string
   const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
-  const [isLoadingCaptures, setIsLoadingCaptures] = useState(false);
+  const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({});
 
   // Fetch BandGroupsMap from RTDB
@@ -60,28 +61,45 @@ export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string
     return unsubscribe;
   }, []);
 
-  // Fetch CapturesMap from RTDB
+  // Fetch CapturesMap from RTDB (only for selected band group's captureIds)
   useEffect(() => {
     if (!selectedBandGroupId) {
+      return;
+    }
+
+    const bandGroup = bandGroupsMap.get(selectedBandGroupId);
+    if (!bandGroup) {
+      setIsLoadingCaptures(false);
+      return;
+    }
+
+    const captureIds = Array.from(bandGroup.captureIds);
+    if (captureIds.length === 0) {
       setCapturesMap(new Map());
+      setIsLoadingCaptures(false);
       return;
     }
 
     setIsLoadingCaptures(true);
-    const capturesRef = ref(db, "capturesMap");
-    const unsubscribe = onValue(capturesRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const newCapturesMap: CapturesMap = new Map();
-        for (const [id, captureData] of Object.entries(data) as [string, Capture][]) {
-          newCapturesMap.set(id, captureData);
+    const newCapturesMap: CapturesMap = new Map();
+    let loadedCount = 0;
+
+    const unsubscribes = captureIds.map((captureId) => {
+      const captureRef = ref(db, `capturesMap/${captureId}`);
+      return onValue(captureRef, (snapshot) => {
+        if (snapshot.exists()) {
+          newCapturesMap.set(captureId, snapshot.val() as Capture);
         }
-        setCapturesMap(newCapturesMap);
-      }
-      setIsLoadingCaptures(false);
+        loadedCount++;
+        if (loadedCount === captureIds.length) {
+          setCapturesMap(new Map(newCapturesMap));
+          setIsLoadingCaptures(false);
+        }
+      });
     });
-    return unsubscribe;
-  }, [selectedBandGroupId]);
+
+    return () => unsubscribes.forEach((unsub) => unsub());
+  }, [selectedBandGroupId, bandGroupsMap]);
 
   // Filter bandGroupIds to only those passed from parent
   const filteredBandGroupIds = useMemo(() => {
@@ -158,7 +176,7 @@ export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string
         >
           <TableHeader columns={CAPTURE_COLUMNS}>
             {(column) => (
-              <TableColumn key={column.key} allowsSorting className={column.className}>
+              <TableColumn key={column.key} allowsSorting>
                 {column.label}
               </TableColumn>
             )}

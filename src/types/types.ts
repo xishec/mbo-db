@@ -28,6 +28,7 @@ export interface Capture {
 
   bandPrefix: string;
   bandSuffix: string;
+  lastTwoDigits: string;
 
   species: string;
   wing: number;

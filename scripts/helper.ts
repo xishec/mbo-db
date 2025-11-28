@@ -3,6 +3,7 @@ export const headerToCaptureProperty: Record<string, string> = {
 
   BandPrefix: "bandPrefix",
   BandSuffix: "bandSuffix",
+
   Species: "species",
   WingChord: "wing",
   Age: "age",

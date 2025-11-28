@@ -52,6 +52,7 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
   });
 
   capture.id = generateCaptureId(capture.bandPrefix, capture.bandSuffix, capture.date);
+  capture.lastTwoDigits = capture.bandSuffix.slice(-2);
   return capture;
 }
 
