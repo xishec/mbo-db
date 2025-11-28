@@ -53,15 +53,6 @@ export default function Programs() {
     return Array.from(year.programs).sort();
   }, [yearsMap, selectedYear]);
 
-  // Get selected program - the Year type only stores program names, not bandIds
-  // BandIds would need to be fetched separately based on program selection
-  const selectedProgramExists = useMemo(() => {
-    if (!yearsMap || !selectedProgram) return false;
-    const yearsToSearch =
-      selectedYear === "all" ? Array.from(yearsMap.values()) : [yearsMap.get(selectedYear)].filter(Boolean);
-    return yearsToSearch.some((year) => year?.programs.has(selectedProgram));
-  }, [yearsMap, selectedProgram, selectedYear]);
-
   const yearOptions = useMemo(() => {
     const opts: JSX.Element[] = [<SelectItem key="all">All</SelectItem>];
     Array.from(yearsMap?.keys() || [])
@@ -123,7 +114,7 @@ export default function Programs() {
         </Select>
       </div>
 
-      {selectedProgram && selectedProgramExists && (
+      {selectedProgram && (
         <div className="flex-1 min-h-0 overflow-hidden">
           <p>Selected program: {selectedProgram}</p>
         </div>
