@@ -24,10 +24,7 @@ interface NavigationProps {
   onPageChange: (page: string) => void;
 }
 
-export default function Navigation({
-  activePage,
-  onPageChange,
-}: NavigationProps) {
+export default function Navigation({ activePage, onPageChange }: NavigationProps) {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
@@ -58,18 +55,18 @@ export default function Navigation({
           </p>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">
-          <NavbarItem isActive={activePage === "captures"} className="w-24">
+          <NavbarItem isActive={activePage === "programs"} className="w-24">
             <Link
-              aria-current={activePage === "captures" ? "page" : undefined}
-              color={activePage === "captures" ? "primary" : "foreground"}
+              aria-current={activePage === "programs" ? "page" : undefined}
+              color={activePage === "programs" ? "primary" : "foreground"}
               href="#"
               className="inline-block w-full text-center"
               onClick={(e) => {
                 e.preventDefault();
-                onPageChange("captures");
+                onPageChange("programs");
               }}
             >
-              Captures
+              Programs
             </Link>
           </NavbarItem>
           <NavbarItem isActive={activePage === "customers"} className="w-24">
@@ -120,11 +117,7 @@ export default function Navigation({
                 </DropdownTrigger>
                 <DropdownMenu aria-label="User Actions" variant="flat">
                   <DropdownItem key="settings">Settings</DropdownItem>
-                  <DropdownItem
-                    key="logout"
-                    color="danger"
-                    onPress={handleSignOut}
-                  >
+                  <DropdownItem key="logout" color="danger" onPress={handleSignOut}>
                     Log Out
                   </DropdownItem>
                 </DropdownMenu>

@@ -1,4 +1,4 @@
-import Captures from "./Captures";
+import Programs from "./Programs";
 
 interface PageContentProps {
   activePage: string;
@@ -8,7 +8,7 @@ export default function PageContent({ activePage }: PageContentProps) {
   return (
     <div className="h-full">
       <div className="mx-auto h-full">
-        {activePage === "captures" && <Captures />}
+        {activePage === "programs" && <Programs />}
         {activePage === "DET" && (
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-4">DET</h2>

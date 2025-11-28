@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
 import type { YearsMap } from "../types/types";
 
-export default function Captures() {
+export default function Programs() {
   const [selectedYear, setSelectedYear] = useState<string | "all">("all");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [yearsMap, setYearsMap] = useState<YearsMap>(new Map());
@@ -125,7 +125,6 @@ export default function Captures() {
 
       {selectedProgram && selectedProgramExists && (
         <div className="flex-1 min-h-0 overflow-hidden">
-          {/* <BandsTable selectedProgram={selectedProgram} /> */}
           <p>Selected program: {selectedProgram}</p>
         </div>
       )}
