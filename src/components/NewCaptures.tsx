@@ -8,27 +8,28 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
+  type SortDescriptor,
 } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { db } from "../firebase";
 import type { BandGroupsMap, CapturesMap, Capture } from "../types/types";
 
-const CAPTURE_COLUMNS: (keyof Capture)[] = [
-  "id",
-  "species",
-  "bandPrefix",
-  "bandSuffix",
-  "date",
-  "time",
-  "age",
-  "sex",
-  "wing",
-  "weight",
-  "fat",
-  "bander",
-  "net",
-  "notes",
+const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className?: string }[] = [
+  { key: "id", label: "ID", className: "min-w-[260px]" },
+  { key: "species", label: "Species" },
+  { key: "bandPrefix", label: "Band Prefix" },
+  { key: "bandSuffix", label: "Band Suffix" },
+  { key: "date", label: "Date" },
+  { key: "time", label: "Time" },
+  { key: "age", label: "Age" },
+  { key: "sex", label: "Sex" },
+  { key: "wing", label: "Wing" },
+  { key: "weight", label: "Weight" },
+  { key: "fat", label: "Fat" },
+  { key: "bander", label: "Bander" },
+  { key: "net", label: "Net" },
+  { key: "notes", label: "Notes" },
 ];
 
 export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string> }) {
@@ -37,6 +38,7 @@ export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(false);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({});
 
   // Fetch BandGroupsMap from RTDB
   useEffect(() => {
@@ -98,6 +100,28 @@ export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string
     return captureIds.map((id) => capturesMap.get(id)).filter((c): c is Capture => c !== undefined);
   }, [captureIds, capturesMap]);
 
+  // Sort captures based on sortDescriptor
+  const sortedCaptures = useMemo(() => {
+    if (!sortDescriptor.column) return captures;
+
+    return [...captures].sort((a, b) => {
+      const column = sortDescriptor.column as keyof Capture;
+      const first = a[column];
+      const second = b[column];
+      let cmp = (parseInt(String(first)) || first) < (parseInt(String(second)) || second) ? -1 : 1;
+
+      if (sortDescriptor.direction === "descending") {
+        cmp *= -1;
+      }
+
+      return cmp;
+    });
+  }, [captures, sortDescriptor]);
+
+  const handleSortChange = useCallback((descriptor: SortDescriptor) => {
+    setSortDescriptor(descriptor);
+  }, []);
+
   if (isLoadingBandGroups) {
     return (
       <div className="p-4 flex items-center gap-2">
@@ -126,18 +150,23 @@ export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string
           <Spinner size="sm" /> Loading captures...
         </div>
       ) : (
-        <Table isHeaderSticky aria-label="Captures table">
-          <TableHeader>
-            {CAPTURE_COLUMNS.map((col) => (
-              <TableColumn key={col}>{col}</TableColumn>
-            ))}
+        <Table
+          isHeaderSticky
+          aria-label="Captures table"
+          sortDescriptor={sortDescriptor}
+          onSortChange={handleSortChange}
+        >
+          <TableHeader columns={CAPTURE_COLUMNS}>
+            {(column) => (
+              <TableColumn key={column.key} allowsSorting className={column.className}>
+                {column.label}
+              </TableColumn>
+            )}
           </TableHeader>
-          <TableBody items={captures} emptyContent="Select a band group to view captures">
+          <TableBody items={sortedCaptures} emptyContent="Select a band group to view captures">
             {(item) => (
               <TableRow key={item.id}>
-                {CAPTURE_COLUMNS.map((col) => (
-                  <TableCell key={col}>{String(item[col] ?? "")}</TableCell>
-                ))}
+                {(columnKey) => <TableCell>{String(item[columnKey as keyof Capture] ?? "")}</TableCell>}
               </TableRow>
             )}
           </TableBody>
