@@ -1,4 +1,6 @@
 export const headerToCaptureProperty: Record<string, string> = {
+  Program: "program",
+
   BandPrefix: "bandPrefix",
   BandSuffix: "bandSuffix",
   Species: "species",
@@ -21,7 +23,6 @@ export const headerToCaptureProperty: Record<string, string> = {
   //   BirdStatus: "birdStatus",
   //   PresentCondition: "presentCondition",
   //   HowObtainedCode: "howObtainedCode",
-  //   Program: "program",
   //   D18: "d18",
   //   D20: "d20",
   //   D22: "d22",
