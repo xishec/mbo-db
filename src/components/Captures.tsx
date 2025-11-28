@@ -16,7 +16,15 @@ export default function Captures() {
 
     const unsubscribeYears = onValue(yearsRef, (snapshot) => {
       if (snapshot.exists()) {
-        setYearsMap(snapshot.val() as YearsMap);
+        const data = snapshot.val() as YearsMap;
+        const newYearMap: YearsMap = new Map();
+        for (const [year, yearData] of Object.entries(data)) {
+          newYearMap.set(year, {
+            id: yearData.id,
+            programs: new Set(yearData.programs),
+          });
+        }
+        setYearsMap(newYearMap);
         console.log("yearsMap loaded:", snapshot.val() as YearsMap);
       }
       setIsLoading(false);
