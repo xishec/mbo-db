@@ -166,6 +166,7 @@ export default function NewCaptures({ program }: { program: Program }) {
       <div className="w-full max-w-6xl">
         <Autocomplete
           labelPlacement="outside"
+          variant="bordered"
           label="Select Band Group"
           placeholder="Search band groups..."
           selectedKey={selectedBandGroupId}
@@ -176,6 +177,7 @@ export default function NewCaptures({ program }: { program: Program }) {
             <AutocompleteItem key={id}>{id}</AutocompleteItem>
           ))}
         </Autocomplete>
+        
       </div>
 
       {isLoadingCaptures ? (
