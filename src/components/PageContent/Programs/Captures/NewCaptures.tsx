@@ -46,7 +46,7 @@ export default function NewCaptures({ program, bandGroupIds }: NewCapturesProps)
     return unsubscribe;
   }, []);
 
-  // Fetch captures for the selected bandGroup only
+  // Fetch all captures for the selected bandGroup (including related captures from other programs)
   useEffect(() => {
     if (isLoadingBandGroups || !selectedBandGroupId) {
       setCaptures(new Set());
