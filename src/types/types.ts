@@ -43,6 +43,7 @@ export interface Capture {
   scribe: string;
   net: string;
   notes: string;
+  status: string;
 
   // to implement later
   //   disposition?: string;
@@ -50,7 +51,6 @@ export interface Capture {
   //   birdStatus?: string;
   //   presentCondition?: string;
   //   howObtainedCode?: string;
-  //   d18?: string;
   //   d20?: string;
   //   d22?: string;
 }

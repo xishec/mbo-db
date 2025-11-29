@@ -1,27 +1,32 @@
 export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
 
-export const TABLE_COLUMNS: Array<{ key: string; label: string }> = [
-  { key: "bandId", label: "Band ID" },
-  { key: "Disposition", label: "Disposition" },
-  { key: "Species", label: "Species" },
-  { key: "WingChord", label: "WingChord" },
-  { key: "Age", label: "Age" },
-  { key: "HowAged", label: "HowAged" },
-  { key: "Sex", label: "Sex" },
-  { key: "HowSexed", label: "HowSexed" },
-  { key: "Fat", label: "Fat" },
-  { key: "Weight", label: "Weight" },
-  { key: "CaptureDate", label: "CaptureDate" },
-  { key: "Bander", label: "Bander" },
-  { key: "Scribe", label: "Scribe" },
-  { key: "Net", label: "Net" },
-  { key: "NotesForMBO", label: "NotesForMBO" },
-  { key: "Location", label: "Location" },
-  { key: "BirdStatus", label: "BirdStatus" },
-  { key: "PresentCondition", label: "PresentCondition" },
-  { key: "HowObtainedCode", label: "HowObtainedCode" },
-  { key: "Program", label: "Program" },
-  { key: "D18", label: "D18" },
-  { key: "D20", label: "D20" },
-  { key: "D22", label: "D22" },
-];
+export const headerToCaptureProperty: Record<string, string> = {
+  Program: "program",
+
+  BandPrefix: "bandPrefix",
+  BandSuffix: "bandSuffix",
+
+  Species: "species",
+  WingChord: "wing",
+  Age: "age",
+  HowAged: "howAged",
+  Sex: "sex",
+  HowSexed: "howSexed",
+  Fat: "fat",
+  Weight: "weight",
+  CaptureDate: "date",
+  Bander: "bander",
+  Scribe: "scribe",
+  Net: "net",
+  NotesForMBO: "notes",
+  D18: "status",
+
+  // to implement later
+  //   Disposition: "disposition",
+  //   Location: "location",
+  //   BirdStatus: "birdStatus",
+  //   PresentCondition: "presentCondition",
+  //   HowObtainedCode: "howObtainedCode",
+  //   D20: "d20",
+  //   D22: "d22",
+};

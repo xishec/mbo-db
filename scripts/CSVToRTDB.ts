@@ -1,5 +1,5 @@
 import { ref, set, type Database } from "firebase/database";
-import { NUMERIC_FIELDS } from "../src/constants/constants";
+import { headerToCaptureProperty, NUMERIC_FIELDS } from "../src/constants/constants";
 import {
   BandGroupsMap,
   Capture,
@@ -9,7 +9,6 @@ import {
   ProgramsMap,
   YearsMap,
 } from "../src/types/types";
-import { headerToCaptureProperty } from "./helper";
 
 /**
  * Parse a single CSV line respecting quoted fields (handles commas inside quotes)
@@ -67,7 +66,7 @@ export function parseCSV(csvContent: string): Capture[] {
   const headers = parseCSVLine(rows[0]);
   const captures: Capture[] = [];
 
-  const lastRows = rows.slice(-10000);
+  const lastRows = rows.slice(-5000);
 
   for (let i = 1; i < lastRows.length; i++) {
     const row = lastRows[i].trim();
@@ -132,30 +131,30 @@ const generateDB = async (captures: Capture[], database: Database) => {
     const captureId = capture.id;
     if (year && program && bandGroupId) {
       if (!yearsMap.has(year)) {
-        yearsMap.set(year, { id: year, programs: new Set([program]) });
-      } else {
-        yearsMap.get(year)!.programs.add(program);
+        yearsMap.set(year, { id: year, programs: new Set([]) });
       }
+      yearsMap.get(year)!.programs.add(program);
 
       if (!programsMap.has(program)) {
         programsMap.set(program, {
           name: program,
-          bandGroupIds: new Set([bandGroupId]),
-          recaptureIds: new Set([captureId]),
+          bandGroupIds: new Set([]),
+          recaptureIds: new Set([]),
         });
-      } else {
+      }
+      if (capture.status === "Banded") {
         programsMap.get(program)!.bandGroupIds.add(bandGroupId);
+      } else {
         programsMap.get(program)!.recaptureIds.add(captureId);
       }
 
       if (!bandGroupsMap.has(bandGroupId)) {
         bandGroupsMap.set(bandGroupId, {
           id: bandGroupId,
-          captureIds: new Set([captureId]),
+          captureIds: new Set([]),
         });
-      } else {
-        bandGroupsMap.get(bandGroupId)!.captureIds.add(captureId);
       }
+      bandGroupsMap.get(bandGroupId)!.captureIds.add(captureId);
     }
   }
 
