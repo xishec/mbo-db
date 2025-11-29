@@ -1,8 +1,8 @@
 import { Spinner } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { db } from "../../../../firebase";
-import { type Capture, type CapturesMap } from "../../../../helper/helper";
+import { type Capture } from "../../../../helper/helper";
 import CapturesTable from "./CapturesTable";
 
 interface ReCapturesProps {
@@ -11,20 +11,20 @@ interface ReCapturesProps {
 }
 
 export default function ReCaptures({ program, reCaptureIds }: ReCapturesProps) {
-  const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
+  const [captures, setCaptures] = useState<Set<Capture>>(new Set());
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
 
   // Fetch captures by reCaptureIds
   useEffect(() => {
     if (reCaptureIds.size === 0) {
-      setCapturesMap(new Map());
+      setCaptures(new Set());
       setIsLoadingCaptures(false);
       return;
     }
 
     setIsLoadingCaptures(true);
     const captureIdArray = Array.from(reCaptureIds);
-    const newCapturesMap: CapturesMap = new Map();
+    const newCaptures: Set<Capture> = new Set();
     let loadedCount = 0;
 
     const unsubscribes = captureIdArray.map((captureId) => {
@@ -32,11 +32,11 @@ export default function ReCaptures({ program, reCaptureIds }: ReCapturesProps) {
       return onValue(captureRef, (snapshot) => {
         if (snapshot.exists()) {
           const rawCapture = snapshot.val() as Capture;
-          newCapturesMap.set(captureId, rawCapture);
+          newCaptures.add(rawCapture);
         }
         loadedCount++;
         if (loadedCount >= captureIdArray.length) {
-          setCapturesMap(new Map(newCapturesMap));
+          setCaptures(new Set(newCaptures));
           setIsLoadingCaptures(false);
         }
       });
@@ -44,10 +44,6 @@ export default function ReCaptures({ program, reCaptureIds }: ReCapturesProps) {
 
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [reCaptureIds]);
-
-  const captures = useMemo(() => {
-    return Array.from(capturesMap.values());
-  }, [capturesMap]);
 
   if (isLoadingCaptures) {
     return (
@@ -57,5 +53,5 @@ export default function ReCaptures({ program, reCaptureIds }: ReCapturesProps) {
     );
   }
 
-  return <CapturesTable program={program} captures={captures} />;
+  return <CapturesTable program={program} captures={Array.from(captures)} />;
 }

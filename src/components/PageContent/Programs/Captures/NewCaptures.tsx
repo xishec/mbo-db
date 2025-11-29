@@ -15,12 +15,13 @@ export default function NewCaptures({ program, bandGroupIds }: NewCapturesProps)
   const [captures, setCaptures] = useState<Set<Capture>>(new Set());
   const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(false);
-  const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
 
   // Convert bandGroupIds Set to sorted array for autocomplete
   const bandGroupOptions = useMemo(() => {
     return Array.from(bandGroupIds).sort();
   }, [bandGroupIds]);
+
+  const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(bandGroupOptions[0] ?? null);
 
   // Fetch bandGroupsMap from RTDB
   useEffect(() => {

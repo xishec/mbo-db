@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem, Spinner, useDisclosure } from "@heroui/react";
+import { Button, Spinner, Tab, Tabs, useDisclosure } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../../../../firebase";
@@ -59,23 +59,14 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
       <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} />
 
       <div className="w-full flex items-end justify-between gap-4">
-        <div className="flex items-end gap-4">
-          <Select
-            label="Capture Type"
-            size="sm"
-            radius="md"
-            variant="bordered"
-            selectedKeys={[captureType]}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as CaptureType;
-              if (selected) setCaptureType(selected);
-            }}
-          >
-            {CAPTURE_TYPE_OPTIONS.map((option) => (
-              <SelectItem key={option.key}>{option.label}</SelectItem>
-            ))}
-          </Select>
-        </div>
+        <Tabs
+          selectedKey={captureType}
+          onSelectionChange={(key) => setCaptureType(key as CaptureType)}
+        >
+          {CAPTURE_TYPE_OPTIONS.map((option) => (
+            <Tab key={option.key} title={option.label} />
+          ))}
+        </Tabs>
         <Button color="secondary" onPress={onOpen}>
           Add Capture
         </Button>
