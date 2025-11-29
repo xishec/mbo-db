@@ -142,11 +142,8 @@ const generateDB = async (captures: Capture[], database: Database) => {
           recaptureIds: new Set([]),
         });
       }
-      if (capture.status === "Banded") {
-        programsMap.get(program)!.bandGroupIds.add(bandGroupId);
-      } else {
-        programsMap.get(program)!.recaptureIds.add(captureId);
-      }
+      programsMap.get(program)!.bandGroupIds.add(bandGroupId);
+      programsMap.get(program)!.recaptureIds.add(captureId);
 
       if (!bandGroupsMap.has(bandGroupId)) {
         bandGroupsMap.set(bandGroupId, {

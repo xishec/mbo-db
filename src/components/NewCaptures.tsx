@@ -109,7 +109,7 @@ export default function NewCaptures({ program }: { program: Program }) {
       return onValue(captureRef, (snapshot) => {
         if (snapshot.exists()) {
           const rawCapture = snapshot.val() as Capture;
-          if (rawCapture.program === program.name) {
+          if (rawCapture.program === program.name && rawCapture.status === "Banded") {
             newCapturesMap.set(captureId, rawCapture);
           }
         }
@@ -199,7 +199,7 @@ export default function NewCaptures({ program }: { program: Program }) {
         label="Select Band Group"
         placeholder="Search band groups..."
         selectedKey={selectedBandGroupId}
-        onSelectionChange={(key) => setSelectedBandGroupId(key as string ?? "All")}
+        onSelectionChange={(key) => setSelectedBandGroupId((key as string) ?? "All")}
         className="max-w-md"
       >
         {filteredBandGroupIds.map((id) => (
