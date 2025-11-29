@@ -22,14 +22,14 @@ import {
   generateCaptureTableId,
 } from "../types/types";
 
-const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className?: string }[] = [
-  { key: "lastTwoDigits", label: "Band ID", className: "min-w-[150px]" },
+const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
+  { key: "lastTwoDigits", label: "Band ID" },
   { key: "species", label: "Species" },
   { key: "wing", label: "Wing" },
   { key: "age", label: "Age" },
   { key: "howAged", label: "How Aged" },
-  { key: "sex", label: "Sex" },
   { key: "howSexed", label: "How Sexed" },
+  { key: "sex", label: "Sex" },
   { key: "fat", label: "Fat" },
   { key: "weight", label: "Weight" },
   { key: "date", label: "Date" },
@@ -37,7 +37,7 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className?: string }
   { key: "bander", label: "Bander" },
   { key: "scribe", label: "Scribe" },
   { key: "net", label: "Net" },
-  { key: "notes", label: "Notes", className: "min-w-[200px]" },
+  { key: "notes", label: "Notes" },
 ];
 
 export default function NewCaptures({ program }: { program: Program }) {
@@ -232,7 +232,7 @@ export default function NewCaptures({ program }: { program: Program }) {
         >
           <TableHeader columns={CAPTURE_COLUMNS}>
             {(column) => (
-              <TableColumn key={column.key} allowsSorting className={column.className}>
+              <TableColumn key={column.key} allowsSorting className="whitespace-nowrap">
                 {column.label}
               </TableColumn>
             )}
@@ -242,9 +242,9 @@ export default function NewCaptures({ program }: { program: Program }) {
               <TableRow key={item.id}>
                 {(columnKey) => {
                   if (columnKey === "lastTwoDigits") {
-                    return <TableCell>{generateCaptureTableId(item)}</TableCell>;
+                    return <TableCell className="whitespace-nowrap">{generateCaptureTableId(item)}</TableCell>;
                   } else {
-                    return <TableCell>{item[columnKey as keyof Capture]}</TableCell>;
+                    return <TableCell className="whitespace-nowrap">{item[columnKey as keyof Capture]}</TableCell>;
                   }
                 }}
               </TableRow>
