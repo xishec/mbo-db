@@ -1,5 +1,6 @@
 import { ref, set, type Database } from "firebase/database";
 import {
+  BandGroupsMap,
   Capture,
   CapturesMap,
   generateBandGroupId,
@@ -119,6 +120,7 @@ export async function CSVToRTDB(csvContent: string, database: Database): Promise
 const generateDB = async (captures: Capture[], database: Database) => {
   const yearsMap: YearsMap = new Map();
   const programsMap: ProgramsMap = new Map();
+  const bandGroupsMap: BandGroupsMap = new Map();
   const capturesMap: CapturesMap = new Map();
 
   for (const capture of captures) {
@@ -137,23 +139,31 @@ const generateDB = async (captures: Capture[], database: Database) => {
       if (!programsMap.has(program)) {
         programsMap.set(program, {
           name: program,
-          newCapturesIds: new Map(),
+          bandGroupIds: new Set([]),
           reCaptureIds: new Set([]),
         });
       }
       if (capture.status === "Banded") {
-        if (!programsMap.get(program)!.newCapturesIds.has(bandGroupId)) {
-          programsMap.get(program)!.newCapturesIds.set(bandGroupId, new Set());
-        }
-        programsMap.get(program)!.newCapturesIds.get(bandGroupId)!.add(captureId);
+        programsMap.get(program)!.bandGroupIds.add(bandGroupId);
       } else {
         programsMap.get(program)!.reCaptureIds.add(captureId);
       }
+
+      if (capture.status === "Banded") {
+        if (!bandGroupsMap.has(bandGroupId)) {
+          bandGroupsMap.set(bandGroupId, {
+            id: bandGroupId,
+            captureIds: new Set([]),
+          });
+        }
+        bandGroupsMap.get(bandGroupId)!.captureIds.add(captureId);
+      }
     }
   }
-  console.log(programsMap);
+  console.log(bandGroupsMap);
   await writeObjectToDB(database, "yearsMap", yearsMap);
   await writeObjectToDB(database, "programsMap", programsMap);
+  await writeObjectToDB(database, "bandGroupsMap", bandGroupsMap);
   await writeObjectToDB(database, "capturesMap", capturesMap);
 };
 
