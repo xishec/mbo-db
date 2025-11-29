@@ -89,11 +89,9 @@ export default function NewCaptures({ program }: { program: Program }) {
       }
     } else {
       const bandGroup = bandGroupsMap.get(selectedBandGroupId);
-      if (!bandGroup) {
-        setIsLoadingCaptures(false);
-        return;
+      if (bandGroup) {
+        captureIds = Array.from(bandGroup.captureIds);
       }
-      captureIds = Array.from(bandGroup.captureIds);
     }
 
     if (captureIds.length === 0) {
@@ -104,6 +102,7 @@ export default function NewCaptures({ program }: { program: Program }) {
 
     setIsLoadingCaptures(true);
     const newCapturesMap: CapturesMap = new Map();
+    let loadedCount = 0;
 
     const unsubscribes = captureIds.map((captureId) => {
       const captureRef = ref(db, `capturesMap/${captureId}`);
@@ -114,8 +113,11 @@ export default function NewCaptures({ program }: { program: Program }) {
             newCapturesMap.set(captureId, rawCapture);
           }
         }
-        setCapturesMap(new Map(newCapturesMap));
-        setIsLoadingCaptures(false);
+        loadedCount++;
+        if (loadedCount >= captureIds.length) {
+          setCapturesMap(new Map(newCapturesMap));
+          setIsLoadingCaptures(false);
+        }
       });
     });
 
@@ -197,7 +199,7 @@ export default function NewCaptures({ program }: { program: Program }) {
         label="Select Band Group"
         placeholder="Search band groups..."
         selectedKey={selectedBandGroupId}
-        onSelectionChange={(key) => setSelectedBandGroupId(key as string | null)}
+        onSelectionChange={(key) => setSelectedBandGroupId(key as string ?? "All")}
         className="max-w-md"
       >
         {filteredBandGroupIds.map((id) => (
