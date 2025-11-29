@@ -2,7 +2,7 @@ import { Autocomplete, AutocompleteItem, Spinner } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../../../../firebase";
-import { type BandGroup, type BandGroupsMap, type Capture, type CapturesMap } from "../../../../helper/helper";
+import { type BandGroup, type BandGroupsMap, type Capture } from "../../../../helper/helper";
 import CapturesTable from "./CapturesTable";
 
 interface NewCapturesProps {
@@ -11,7 +11,7 @@ interface NewCapturesProps {
 
 export default function NewCaptures({ bandGroupIds }: NewCapturesProps) {
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>(new Map());
-  const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
+  const [captures, setCaptures] = useState<Set<Capture>>(new Set());
   const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(false);
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
@@ -47,19 +47,19 @@ export default function NewCaptures({ bandGroupIds }: NewCapturesProps) {
   // Fetch captures for the selected bandGroup only
   useEffect(() => {
     if (isLoadingBandGroups || !selectedBandGroupId) {
-      setCapturesMap(new Map());
+      setCaptures(new Set());
       return;
     }
 
     const bandGroup = bandGroupsMap.get(selectedBandGroupId);
     if (!bandGroup || bandGroup.captureIds.size === 0) {
-      setCapturesMap(new Map());
+      setCaptures(new Set());
       return;
     }
 
     setIsLoadingCaptures(true);
     const captureIdArray = Array.from(bandGroup.captureIds);
-    const newCapturesMap: CapturesMap = new Map();
+    const newCaptures: Set<Capture> = new Set();
     let loadedCount = 0;
 
     const unsubscribes = captureIdArray.map((captureId) => {
@@ -67,11 +67,11 @@ export default function NewCaptures({ bandGroupIds }: NewCapturesProps) {
       return onValue(captureRef, (snapshot) => {
         if (snapshot.exists()) {
           const rawCapture = snapshot.val() as Capture;
-          newCapturesMap.set(captureId, rawCapture);
+          newCaptures.add(rawCapture);
         }
         loadedCount++;
         if (loadedCount >= captureIdArray.length) {
-          setCapturesMap(new Map(newCapturesMap));
+          setCaptures(new Set(newCaptures));
           setIsLoadingCaptures(false);
         }
       });
@@ -79,11 +79,6 @@ export default function NewCaptures({ bandGroupIds }: NewCapturesProps) {
 
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [selectedBandGroupId, bandGroupsMap, isLoadingBandGroups]);
-
-  // Filter to only show captures with status === "Banded"
-  const captures = useMemo(() => {
-    return Array.from(capturesMap.values()).filter((capture) => capture.status === "Banded");
-  }, [capturesMap]);
 
   if (isLoadingBandGroups) {
     return (
@@ -113,7 +108,7 @@ export default function NewCaptures({ bandGroupIds }: NewCapturesProps) {
           <Spinner size="sm" /> Loading captures...
         </div>
       ) : selectedBandGroupId ? (
-        <CapturesTable captures={captures} />
+        <CapturesTable captures={Array.from(captures)} />
       ) : (
         <div className="p-4 text-default-500">Select a band group to view captures</div>
       )}
