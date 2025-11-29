@@ -1,5 +1,4 @@
 import { ref, set, type Database } from "firebase/database";
-import { headerToCaptureProperty, NUMERIC_FIELDS } from "../src/constants/constants";
 import {
   BandGroupsMap,
   Capture,
@@ -8,7 +7,9 @@ import {
   generateCaptureId,
   ProgramsMap,
   YearsMap,
-} from "../src/types/types";
+  NUMERIC_FIELDS,
+  HEADER_TO_CAPTURE_PROPERTY,
+} from "../src/helper/helper";
 
 /**
  * Parse a single CSV line respecting quoted fields (handles commas inside quotes)
@@ -87,7 +88,7 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
   const capture: Capture = {} as Capture;
   headers.forEach((header, index) => {
     const value = values[index];
-    const captureKey = headerToCaptureProperty[header] as keyof Capture;
+    const captureKey = HEADER_TO_CAPTURE_PROPERTY[header] as keyof Capture;
     if (captureKey) {
       if (NUMERIC_FIELDS.has(header)) {
         (capture[captureKey] as number) = Number(value);

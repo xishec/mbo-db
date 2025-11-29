@@ -3,8 +3,6 @@ import {
   AutocompleteItem,
   Button,
   Pagination,
-  Select,
-  SelectItem,
   Spinner,
   Table,
   TableBody,
@@ -12,22 +10,12 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
-  useDisclosure,
   type SortDescriptor,
 } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { db } from "../firebase";
-import {
-  CAPTURE_TYPE_OPTIONS,
-  type Capture,
-  type CaptureType,
-  type CapturesMap,
-  type Program,
-  type ProgramsMap,
-  generateCaptureTableId,
-} from "../helper/helper";
-import AddCaptureModal from "./AddCaptureModal";
+import { type CapturesMap, type Capture, type Program, generateCaptureTableId } from "../helper/helper";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
   { key: "bandGroupId", label: "Band Group" },
@@ -48,73 +36,40 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
   { key: "notes", label: "Notes" },
 ];
 
-export default function Captures({ selectedProgram }: { selectedProgram: string }) {
-  const [programsMap, setProgramsMap] = useState<ProgramsMap>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
-  const [captureType, setCaptureType] = useState<CaptureType>("NEW_CAPTURES");
+interface NewCapturesProps {
+  program: Program;
+  onAddCapture?: () => void;
+}
+
+export default function NewCaptures({ program, onAddCapture }: NewCapturesProps) {
   const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string>("All");
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([]);
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-
-  // Fetch programs map
-  useEffect(() => {
-    const programsMapRef = ref(db, "programsMap");
-
-    const unsubscribe = onValue(programsMapRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const rawProgramsMap = snapshot.val() as ProgramsMap;
-        const newProgramsMap: ProgramsMap = new Map(
-          Object.entries(rawProgramsMap).map(([name, program]) => [
-            name,
-            {
-              name: name,
-              newCaptureIds: new Set(program.newCaptureIds ?? []),
-              reCaptureIds: new Set(program.reCaptureIds ?? []),
-            },
-          ])
-        );
-        setProgramsMap(newProgramsMap);
-      }
-      setIsLoading(false);
-    });
-    return unsubscribe;
-  }, []);
-
-  const program: Program | undefined = useMemo(
-    () => programsMap.get(selectedProgram ?? ""),
-    [programsMap, selectedProgram]
-  );
-
-  // Get the relevant capture IDs based on capture type
-  const captureIds = useMemo(() => {
-    if (!program) return new Set<string>();
-    return captureType === "NEW_CAPTURES" ? program.newCaptureIds : program.reCaptureIds;
-  }, [program, captureType]);
 
   // Extract bandGroupId from captureId (captureId format: ${date}-${bandGroupId}${lastTwoDigits})
   const extractBandGroupId = (captureId: string): string => {
+    // Remove the date prefix (YYYY-MM-DD-) and the last two digits
     const withoutDate = captureId.replace(/^\d{4}-\d{2}-\d{2}-/, "");
     return withoutDate.slice(0, -2);
   };
 
-  // Compute unique band group IDs from captureIds
+  // Compute unique band group IDs from program.newCaptureIds
   const bandGroupIds = useMemo(() => {
     const bandGroupSet = new Set<string>();
-    for (const captureId of captureIds) {
+    for (const captureId of program.newCaptureIds) {
       bandGroupSet.add(extractBandGroupId(captureId));
     }
     return ["All", ...Array.from(bandGroupSet).sort()];
-  }, [captureIds]);
+  }, [program.newCaptureIds]);
 
-  // Fetch captures from RTDB
+  // Fetch captures from RTDB for all newCaptureIds
   useEffect(() => {
-    const captureIdArray = Array.from(captureIds);
+    const captureIds = Array.from(program.newCaptureIds);
 
-    if (captureIdArray.length === 0) {
+    if (captureIds.length === 0) {
       setCapturesMap(new Map());
       setIsLoadingCaptures(false);
       return;
@@ -124,7 +79,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     const newCapturesMap: CapturesMap = new Map();
     let loadedCount = 0;
 
-    const unsubscribes = captureIdArray.map((captureId) => {
+    const unsubscribes = captureIds.map((captureId) => {
       const captureRef = ref(db, `capturesMap/${captureId}`);
       return onValue(captureRef, (snapshot) => {
         if (snapshot.exists()) {
@@ -132,7 +87,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
           newCapturesMap.set(captureId, rawCapture);
         }
         loadedCount++;
-        if (loadedCount >= captureIdArray.length) {
+        if (loadedCount >= captureIds.length) {
           setCapturesMap(new Map(newCapturesMap));
           setIsLoadingCaptures(false);
         }
@@ -140,13 +95,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     });
 
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-  }, [captureIds]);
-
-  // Reset band group selection when capture type changes
-  useEffect(() => {
-    setSelectedBandGroupId("All");
-    setPage(1);
-  }, [captureType]);
+  }, [program.newCaptureIds]);
 
   // Get captures filtered by selected band group
   const captures = useMemo(() => {
@@ -164,19 +113,23 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     if (sortDescriptors.length === 0) return captures;
 
     return [...captures].sort((a, b) => {
+      // Iterate through sort descriptors in order (primary first)
       for (const descriptor of sortDescriptors) {
         const column = descriptor.column as keyof Capture;
         const first = a[column];
         const second = b[column];
 
+        // Compare values (try numeric comparison first)
         const firstVal = parseInt(String(first)) || first;
         const secondVal = parseInt(String(second)) || second;
 
         const cmp = firstVal < secondVal ? -1 : firstVal > secondVal ? 1 : 0;
 
         if (cmp !== 0) {
+          // Apply direction and return
           return descriptor.direction === "descending" ? -cmp : cmp;
         }
+        // If equal, continue to next sort descriptor
       }
       return 0;
     });
@@ -195,70 +148,45 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
       const existingIndex = prev.findIndex((d) => d.column === descriptor.column);
 
       if (existingIndex === 0) {
+        // Already primary sort - just update direction
         const updated = [...prev];
         updated[0] = descriptor;
         return updated;
       } else if (existingIndex > 0) {
+        // Was secondary sort - move to primary
         const updated = prev.filter((d) => d.column !== descriptor.column);
         return [descriptor, ...updated];
       } else {
-        return [descriptor, ...prev].slice(0, 3);
+        // New column - add as primary, keep others as secondary
+        return [descriptor, ...prev].slice(0, 3); // Limit to 3 sort levels
       }
     });
-    setPage(1);
+    setPage(1); // Reset to first page when sorting changes
   }, []);
 
+  // Get the primary sort descriptor for HeroUI Table
   const primarySortDescriptor = sortDescriptors[0];
 
-  if (!selectedProgram) {
-    return null;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="p-4 flex items-center gap-2">
-        <Spinner size="sm" /> Loading captures...
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full flex flex-col items-center gap-4">
-      <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} />
-
+    <div className="flex flex-col gap-4 items-center w-full">
       <div className="w-full max-w-6xl flex items-end justify-between gap-4">
-        <div className="flex items-end gap-4">
-          <Select
-            label="Capture Type"
-            labelPlacement="outside"
-            variant="bordered"
-            selectedKeys={[captureType]}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as CaptureType;
-              if (selected) setCaptureType(selected);
-            }}
-          >
-            {CAPTURE_TYPE_OPTIONS.map((option) => (
-              <SelectItem key={option.key}>{option.label}</SelectItem>
-            ))}
-          </Select>
-
-          <Autocomplete
-            labelPlacement="outside"
-            variant="bordered"
-            label="Select Band Group"
-            placeholder="Search band groups..."
-            selectedKey={selectedBandGroupId}
-            onSelectionChange={(key) => setSelectedBandGroupId((key as string) ?? "All")}
-          >
-            {bandGroupIds.map((id) => (
-              <AutocompleteItem key={id}>{id}</AutocompleteItem>
-            ))}
-          </Autocomplete>
-        </div>
-        <Button color="secondary" onPress={onOpen}>
-          Add Capture
-        </Button>
+        <Autocomplete
+          labelPlacement="outside"
+          variant="bordered"
+          label="Select Band Group"
+          placeholder="Search band groups..."
+          selectedKey={selectedBandGroupId}
+          onSelectionChange={(key) => setSelectedBandGroupId((key as string) ?? "All")}
+        >
+          {bandGroupIds.map((id) => (
+            <AutocompleteItem key={id}>{id}</AutocompleteItem>
+          ))}
+        </Autocomplete>
+        {onAddCapture && (
+          <Button color="secondary" onPress={onAddCapture}>
+            Add Capture
+          </Button>
+        )}
       </div>
 
       {isLoadingCaptures ? (
@@ -288,13 +216,15 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
           }
         >
           <TableHeader columns={CAPTURE_COLUMNS}>
-            {(column) => (
-              <TableColumn key={column.key} allowsSorting className="whitespace-nowrap">
-                {column.label}
-              </TableColumn>
-            )}
+            {(column) => {
+              return (
+                <TableColumn key={column.key} allowsSorting className="whitespace-nowrap">
+                  {column.label}
+                </TableColumn>
+              );
+            }}
           </TableHeader>
-          <TableBody items={paginatedCaptures} emptyContent="No captures found">
+          <TableBody items={paginatedCaptures} emptyContent="Select a band group to view captures">
             {(item) => (
               <TableRow key={item.id}>
                 {(columnKey) => {

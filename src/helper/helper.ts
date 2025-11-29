@@ -63,3 +63,43 @@ export const generateCaptureId = (capture: Capture): string => {
 export const generateCaptureTableId = (capture: Capture): string => {
   return `${capture.bandGroupId}${capture.bandLastTwoDigits}`;
 };
+
+export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
+
+export const HEADER_TO_CAPTURE_PROPERTY: Record<string, string> = {
+  Program: "program",
+
+  BandPrefix: "bandPrefix",
+  BandSuffix: "bandSuffix",
+
+  Species: "species",
+  WingChord: "wing",
+  Age: "age",
+  HowAged: "howAged",
+  Sex: "sex",
+  HowSexed: "howSexed",
+  Fat: "fat",
+  Weight: "weight",
+  CaptureDate: "date",
+  Bander: "bander",
+  Scribe: "scribe",
+  Net: "net",
+  NotesForMBO: "notes",
+  D18: "status",
+
+  // to implement later
+  //   Disposition: "disposition",
+  //   Location: "location",
+  //   BirdStatus: "birdStatus",
+  //   PresentCondition: "presentCondition",
+  //   HowObtainedCode: "howObtainedCode",
+  //   D20: "d20",
+  //   D22: "d22",
+};
+
+export type CaptureType = "NEW_CAPTURES" | "RE_CAPTURES";
+
+export const CAPTURE_TYPE_OPTIONS: { key: CaptureType; label: string }[] = [
+  { key: "NEW_CAPTURES", label: "New Captures" },
+  { key: "RE_CAPTURES", label: "Re Captures" },
+];
