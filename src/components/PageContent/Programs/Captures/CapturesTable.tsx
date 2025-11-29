@@ -20,6 +20,7 @@ import {
 } from "../../../../helper/helper";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
+  { key: "program", label: "Program" },
   { key: "bandGroupId", label: "Band Group" },
   { key: "bandLastTwoDigits", label: "Band" },
   { key: "species", label: "Species" },
@@ -203,7 +204,7 @@ export default function CapturesTable({ program, captures }: CapturesTableProps)
       </TableHeader>
       <TableBody items={sortedCaptures} emptyContent="No captures found">
         {(item) => (
-          <TableRow key={item.id} className={item.program !== program ? "opacity-10" : ""}>
+          <TableRow key={item.id} className={item.program !== program ? "opacity-20" : ""}>
             {(columnKey) => {
               if (columnKey === "lastTwoDigits") {
                 return <TableCell className="whitespace-nowrap">{generateCaptureTableId(item)}</TableCell>;
