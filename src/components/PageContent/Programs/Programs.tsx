@@ -14,12 +14,14 @@ import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../../../firebase";
 import type { YearsMap } from "../../../helper/helper";
+import { useProgramData } from "../../../services/useProgramData";
 
 export default function Programs() {
   const [selectedYear, setSelectedYear] = useState<string>("");
-  const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [yearsMap, setYearsMap] = useState<YearsMap>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+
+  const { selectProgram, selectedProgram } = useProgramData();
 
   // Fetch yearsMap from RTDB
   useEffect(() => {
@@ -61,12 +63,12 @@ export default function Programs() {
   const handleYearChange = (keys: "all" | Set<React.Key>) => {
     const newYear = keys === "all" ? "" : String(Array.from(keys)[0]);
     setSelectedYear(newYear);
-    setSelectedProgram(null);
+    selectProgram(null);
   };
 
   const handleProgramChange = (keys: "all" | Set<React.Key>) => {
     const selected = keys === "all" ? null : String(Array.from(keys)[0]) || null;
-    setSelectedProgram(selected);
+    selectProgram(selected);
   };
 
   if (isLoading) {
@@ -88,12 +90,12 @@ export default function Programs() {
           <BreadcrumbItem
             onPress={() => {
               setSelectedYear("");
-              setSelectedProgram(null);
+              selectProgram(null);
             }}
           >
             Years
           </BreadcrumbItem>
-          {selectedYear && <BreadcrumbItem onPress={() => setSelectedProgram(null)}>{selectedYear}</BreadcrumbItem>}
+          {selectedYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{selectedYear}</BreadcrumbItem>}
           {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
         </Breadcrumbs>
       </div>
@@ -148,7 +150,7 @@ export default function Programs() {
         </div>
       )}
 
-      {selectedProgram && <Captures selectedProgram={selectedProgram} />}
+      {selectedProgram && <Captures />}
     </div>
   );
 }
