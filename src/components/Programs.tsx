@@ -16,7 +16,7 @@ import { db } from "../firebase";
 import type { YearsMap } from "../types/types";
 
 export default function Programs() {
-  const [selectedYear, setSelectedYear] = useState<string>("All");
+  const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [yearsMap, setYearsMap] = useState<YearsMap>(new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -43,36 +43,19 @@ export default function Programs() {
 
   // Year rows for the table
   const yearRows = useMemo(() => {
-    return ["All", ...Array.from(yearsMap.keys()).sort((a, b) => Number(b) - Number(a))];
+    return Array.from(yearsMap.keys()).sort((a, b) => Number(b) - Number(a));
   }, [yearsMap]);
 
-  // Get program names based on selected year
-  const programNames = useMemo(() => {
-    if (yearsMap.size === 0) return [];
-    if (selectedYear === "All") {
-      const AllPrograms = new Set<string>();
-      for (const year of yearsMap.values()) {
-        year.programs.forEach((p) => AllPrograms.add(p));
-      }
-      return Array.from(AllPrograms).sort();
-    }
-    return Array.from(yearsMap.get(selectedYear)?.programs ?? []).sort();
+  // Get programs for selected year
+  const programs = useMemo(() => {
+    if (!selectedYear || yearsMap.size === 0) return new Set<string>();
+    return yearsMap.get(selectedYear)?.programs ?? new Set<string>();
   }, [yearsMap, selectedYear]);
 
   const handleYearChange = (keys: "all" | Set<React.Key>) => {
-    const newYear = keys === "all" ? "All" : String(Array.from(keys)[0]);
+    const newYear = keys === "all" ? "" : String(Array.from(keys)[0]);
     setSelectedYear(newYear);
-
-    // Reset program if it doesn't exist in new year
-    if (selectedProgram) {
-      const programs =
-        newYear === "All"
-          ? Array.from(yearsMap.values()).flatMap((y) => Array.from(y.programs))
-          : Array.from(yearsMap.get(newYear)?.programs ?? []);
-      if (!programs.includes(selectedProgram)) {
-        setSelectedProgram(null);
-      }
-    }
+    setSelectedProgram(null);
   };
 
   const handleProgramChange = (keys: "all" | Set<React.Key>) => {
@@ -97,15 +80,17 @@ export default function Programs() {
       <Breadcrumbs className="col-span-2">
         <BreadcrumbItem
           onPress={() => {
-            setSelectedYear("All");
+            setSelectedYear("");
             setSelectedProgram(null);
           }}
         >
           Programs
         </BreadcrumbItem>
-        <BreadcrumbItem onPress={() => setSelectedProgram(null)}>
-          {selectedYear === "All" ? "All Years" : selectedYear}
-        </BreadcrumbItem>
+        {selectedYear && (
+          <BreadcrumbItem onPress={() => setSelectedProgram(null)}>
+            {selectedYear}
+          </BreadcrumbItem>
+        )}
         {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
       </Breadcrumbs>
 
@@ -115,9 +100,8 @@ export default function Programs() {
             isHeaderSticky
             aria-label="Years table"
             selectionMode="single"
-            selectedKeys={new Set([selectedYear])}
+            selectedKeys={selectedYear ? new Set([selectedYear]) : new Set()}
             onSelectionChange={handleYearChange}
-            disallowEmptySelection
             isVirtualized
             maxTableHeight={600}
           >
@@ -127,7 +111,7 @@ export default function Programs() {
             <TableBody>
               {yearRows.map((year) => (
                 <TableRow key={year}>
-                  <TableCell>{year === "All" ? "All" : year}</TableCell>
+                  <TableCell>{year}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -144,15 +128,15 @@ export default function Programs() {
           >
             <TableHeader>
               <TableColumn>Program Name</TableColumn>
-              <TableColumn>Year</TableColumn>
             </TableHeader>
-            <TableBody emptyContent="No programs found">
-              {programNames.map((name) => (
-                <TableRow key={name}>
-                  <TableCell>{name}</TableCell>
-                  <TableCell>{yearsMap.get(name)?.id}</TableCell>
-                </TableRow>
-              ))}
+            <TableBody emptyContent={selectedYear ? "No programs found" : "Select a year"}>
+              {Array.from(programs)
+                .sort((a, b) => a.localeCompare(b))
+                .map((name) => (
+                  <TableRow key={name}>
+                    <TableCell>{name}</TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </div>
