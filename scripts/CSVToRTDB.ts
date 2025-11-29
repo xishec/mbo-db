@@ -139,12 +139,12 @@ const generateDB = async (captures: Capture[], database: Database) => {
       if (!programsMap.has(program)) {
         programsMap.set(program, {
           name: program,
-          newCaptureIds: new Set([]),
+          bandGroupIds: new Set([]),
           reCaptureIds: new Set([]),
         });
       }
       if (capture.status === "Banded") {
-        programsMap.get(program)!.newCaptureIds.add(captureId);
+        programsMap.get(program)!.bandGroupIds.add(bandGroupId);
       } else {
         programsMap.get(program)!.reCaptureIds.add(captureId);
       }

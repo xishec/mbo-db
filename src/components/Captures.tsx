@@ -1,21 +1,8 @@
-import {
-  Button,
-  Select,
-  SelectItem,
-  Spinner,
-  useDisclosure,
-} from "@heroui/react";
+import { Button, Select, SelectItem, Spinner, useDisclosure } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
-import {
-  CAPTURE_TYPE_OPTIONS,
-  type Capture,
-  type CaptureType,
-  type CapturesMap,
-  type Program,
-  type ProgramsMap,
-} from "../helper/helper";
+import { CAPTURE_TYPE_OPTIONS, type CaptureType, type Program, type ProgramsMap } from "../helper/helper";
 import AddCaptureModal from "./AddCaptureModal";
 import CapturesTable from "./CapturesTable";
 
@@ -23,8 +10,6 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
   const [programsMap, setProgramsMap] = useState<ProgramsMap>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [captureType, setCaptureType] = useState<CaptureType>("NEW_CAPTURES");
-  const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
-  const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   // Fetch programs map
@@ -39,7 +24,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
             name,
             {
               name: name,
-              newCaptureIds: new Set(program.newCaptureIds ?? []),
+              bandGroupIds: new Set(program.bandGroupIds ?? []),
               reCaptureIds: new Set(program.reCaptureIds ?? []),
             },
           ])
@@ -55,49 +40,6 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     () => programsMap.get(selectedProgram ?? ""),
     [programsMap, selectedProgram]
   );
-
-  // Get the relevant capture IDs based on capture type
-  const captureIds = useMemo(() => {
-    if (!program) return new Set<string>();
-    return captureType === "NEW_CAPTURES" ? program.newCaptureIds : program.reCaptureIds;
-  }, [program, captureType]);
-
-  // Fetch captures from RTDB
-  useEffect(() => {
-    const captureIdArray = Array.from(captureIds);
-
-    if (captureIdArray.length === 0) {
-      setCapturesMap(new Map());
-      setIsLoadingCaptures(false);
-      return;
-    }
-
-    setIsLoadingCaptures(true);
-    const newCapturesMap: CapturesMap = new Map();
-    let loadedCount = 0;
-
-    const unsubscribes = captureIdArray.map((captureId) => {
-      const captureRef = ref(db, `capturesMap/${captureId}`);
-      return onValue(captureRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const rawCapture = snapshot.val() as Capture;
-          newCapturesMap.set(captureId, rawCapture);
-        }
-        loadedCount++;
-        if (loadedCount >= captureIdArray.length) {
-          setCapturesMap(new Map(newCapturesMap));
-          setIsLoadingCaptures(false);
-        }
-      });
-    });
-
-    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-  }, [captureIds]);
-
-  // Get all captures
-  const captures = useMemo(() => {
-    return Array.from(capturesMap.values());
-  }, [capturesMap]);
 
   if (!selectedProgram) {
     return null;
@@ -137,13 +79,13 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
         </Button>
       </div>
 
-      {isLoadingCaptures ? (
-        <div className="p-4 flex items-center gap-2">
-          <Spinner size="sm" /> Loading captures...
-        </div>
-      ) : (
-        <CapturesTable captures={captures} captureType={captureType} />
-      )}
+      
+      
+      <CapturesTable
+        bandGroupIds={program?.bandGroupIds ?? new Set()}
+        reCaptureIds={program?.reCaptureIds ?? new Set()}
+        captureType={captureType}
+      />
     </div>
   );
 }
