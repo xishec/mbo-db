@@ -35,6 +35,12 @@ export default function Programs() {
           });
         }
         setYearsMap(newYearMap);
+
+        // Select the most recent year by default
+        const years = Array.from(newYearMap.keys()).sort((a, b) => Number(b) - Number(a));
+        if (years.length > 0 && !selectedYear) {
+          setSelectedYear(years[0]);
+        }
       }
       setIsLoading(false);
     });
@@ -86,11 +92,7 @@ export default function Programs() {
         >
           Programs
         </BreadcrumbItem>
-        {selectedYear && (
-          <BreadcrumbItem onPress={() => setSelectedProgram(null)}>
-            {selectedYear}
-          </BreadcrumbItem>
-        )}
+        {selectedYear && <BreadcrumbItem onPress={() => setSelectedProgram(null)}>{selectedYear}</BreadcrumbItem>}
         {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
       </Breadcrumbs>
 

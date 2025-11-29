@@ -67,8 +67,10 @@ export function parseCSV(csvContent: string): Capture[] {
   const headers = parseCSVLine(rows[0]);
   const captures: Capture[] = [];
 
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i].trim();
+  const lastRows = rows.slice(-10000);
+
+  for (let i = 1; i < lastRows.length; i++) {
+    const row = lastRows[i].trim();
     if (!row) continue;
 
     const values = parseCSVLine(row);
@@ -96,8 +98,9 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
     }
   });
 
-  capture.id = generateCaptureId(capture.bandPrefix, capture.bandSuffix, capture.date);
-  capture.lastTwoDigits = capture.bandSuffix.slice(-2);
+  capture.bandLastTwoDigits = capture.bandSuffix.slice(-2);
+  capture.bandGroupId = generateBandGroupId(capture);
+  capture.id = generateCaptureId(capture);
   return capture;
 }
 
@@ -125,7 +128,7 @@ const generateDB = async (captures: Capture[], database: Database) => {
 
     const year = capture.date.slice(0, 4);
     const program = capture.program;
-    const bandGroupId = generateBandGroupId(capture.bandPrefix, capture.bandSuffix);
+    const bandGroupId = generateBandGroupId(capture);
     const captureId = capture.id;
     if (year && program && bandGroupId) {
       if (!yearsMap.has(year)) {

@@ -16,9 +16,6 @@ export interface BandGroup {
   id: string;
   captureIds: Set<string>;
 }
-export const generateBandGroupId = (bandGroupPrefix: string, bandGroupSuffix: string): string => {
-  return `${bandGroupPrefix}-${bandGroupSuffix.slice(0, -2)}01`;
-};
 
 export type CapturesMap = Map<string, Capture>;
 export interface Capture {
@@ -28,7 +25,9 @@ export interface Capture {
 
   bandPrefix: string;
   bandSuffix: string;
-  lastTwoDigits: string;
+
+  bandGroupId: string;
+  bandLastTwoDigits: string;
 
   species: string;
   wing: number;
@@ -55,9 +54,12 @@ export interface Capture {
   //   d20?: string;
   //   d22?: string;
 }
-export const generateCaptureId = (bandPrefix: string, bandSuffix: string, date: string): string => {
-  return `${bandPrefix}-${bandSuffix}-${date}`;
+export const generateBandGroupId = (capture: Capture): string => {
+  return `${capture.bandPrefix}-${capture.bandSuffix.slice(0, -2)}`;
+};
+export const generateCaptureId = (capture: Capture): string => {
+  return `${capture.date}-${capture.bandGroupId}${capture.bandLastTwoDigits}`;
 };
 export const generateCaptureTableId = (capture: Capture): string => {
-  return `${capture.bandPrefix}-${capture.bandSuffix.slice(0, 3)} ${capture.lastTwoDigits}`;
+  return `${capture.bandGroupId}${capture.bandLastTwoDigits}`;
 };

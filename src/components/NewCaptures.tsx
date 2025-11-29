@@ -23,7 +23,8 @@ import {
 } from "../types/types";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
-  { key: "lastTwoDigits", label: "Band ID" },
+  { key: "bandGroupId", label: "Band Group" },
+  { key: "bandLastTwoDigits", label: "Band" },
   { key: "species", label: "Species" },
   { key: "wing", label: "Wing" },
   { key: "age", label: "Age" },

@@ -15,7 +15,6 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     const unsubscribe = onValue(programsMapRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        console.log(data);
         const newProgramsMap: ProgramsMap = new Map();
         for (const [name, programData] of Object.entries(data) as [
           string,
