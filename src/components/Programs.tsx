@@ -82,7 +82,7 @@ export default function Programs() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col items-center p-8 gap-6">
+    <div className="h-full w-full flex flex-col items-center pt-4 p-8 gap-4">
       <div className="w-full max-w-6xl">
         <Breadcrumbs>
           <BreadcrumbItem
@@ -99,7 +99,7 @@ export default function Programs() {
       </div>
 
       {!selectedProgram && (
-        <div className="w-full max-w-6xl grid grid-cols-[1fr_2fr] gap-6">
+        <div className="w-full max-w-6xl grid grid-cols-[1fr_2fr] gap-4">
           <Table
             isHeaderSticky
             aria-label="Years table"
