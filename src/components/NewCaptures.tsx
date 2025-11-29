@@ -88,7 +88,6 @@ export default function NewCaptures({ program }: { program: Program }) {
       return onValue(captureRef, (snapshot) => {
         if (snapshot.exists()) {
           const rawCapture = snapshot.val() as Capture;
-          console.log(rawCapture.program, program);
           if (rawCapture.program === program.name) {
             newCapturesMap.set(captureId, rawCapture);
           }

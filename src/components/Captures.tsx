@@ -7,13 +7,16 @@ import NewCaptures from "./NewCaptures";
 
 export default function Captures({ selectedProgram }: { selectedProgram: string }) {
   const [programsMap, setProgramsMap] = useState<ProgramsMap>(new Map());
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const programRef = ref(db, "programsMap");
-    const unsubscribe = onValue(programRef, (snapshot) => {
+    setIsLoading(true);
+    const programsMapRef = ref(db, "programsMap");
+
+    const unsubscribe = onValue(programsMapRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
+        console.log(data);
         const newProgramsMap: ProgramsMap = new Map();
         for (const [name, programData] of Object.entries(data) as [
           string,
@@ -30,7 +33,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
       setIsLoading(false);
     });
     return unsubscribe;
-  }, [selectedProgram]);
+  }, []);
 
   const program: Program | undefined = useMemo(
     () => programsMap.get(selectedProgram ?? ""),
