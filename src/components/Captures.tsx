@@ -1,6 +1,4 @@
 import {
-  Autocomplete,
-  AutocompleteItem,
   Button,
   Select,
   SelectItem,
@@ -26,7 +24,6 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
   const [isLoading, setIsLoading] = useState(true);
   const [captureType, setCaptureType] = useState<CaptureType>("NEW_CAPTURES");
   const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
-  const [selectedBandGroupId, setSelectedBandGroupId] = useState<string>("All");
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
@@ -65,21 +62,6 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     return captureType === "NEW_CAPTURES" ? program.newCaptureIds : program.reCaptureIds;
   }, [program, captureType]);
 
-  // Extract bandGroupId from captureId (captureId format: ${date}-${bandGroupId}${lastTwoDigits})
-  const extractBandGroupId = (captureId: string): string => {
-    const withoutDate = captureId.replace(/^\d{4}-\d{2}-\d{2}-/, "");
-    return withoutDate.slice(0, -2);
-  };
-
-  // Compute unique band group IDs from captureIds
-  const bandGroupIds = useMemo(() => {
-    const bandGroupSet = new Set<string>();
-    for (const captureId of captureIds) {
-      bandGroupSet.add(extractBandGroupId(captureId));
-    }
-    return ["All", ...Array.from(bandGroupSet).sort()];
-  }, [captureIds]);
-
   // Fetch captures from RTDB
   useEffect(() => {
     const captureIdArray = Array.from(captureIds);
@@ -112,21 +94,10 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [captureIds]);
 
-  // Reset band group selection when capture type changes
-  useEffect(() => {
-    setSelectedBandGroupId("All");
-  }, [captureType]);
-
-  // Get captures filtered by selected band group
+  // Get all captures
   const captures = useMemo(() => {
-    const allCaptures = Array.from(capturesMap.values());
-
-    if (selectedBandGroupId === "All") {
-      return allCaptures;
-    }
-
-    return allCaptures.filter((capture) => capture.bandGroupId === selectedBandGroupId);
-  }, [capturesMap, selectedBandGroupId]);
+    return Array.from(capturesMap.values());
+  }, [capturesMap]);
 
   if (!selectedProgram) {
     return null;
@@ -160,19 +131,6 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
               <SelectItem key={option.key}>{option.label}</SelectItem>
             ))}
           </Select>
-
-          <Autocomplete
-            labelPlacement="outside"
-            variant="bordered"
-            label="Select Band Group"
-            placeholder="Search band groups..."
-            selectedKey={selectedBandGroupId}
-            onSelectionChange={(key) => setSelectedBandGroupId((key as string) ?? "All")}
-          >
-            {bandGroupIds.map((id) => (
-              <AutocompleteItem key={id}>{id}</AutocompleteItem>
-            ))}
-          </Autocomplete>
         </div>
         <Button color="secondary" onPress={onOpen}>
           Add Capture
@@ -184,7 +142,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
           <Spinner size="sm" /> Loading captures...
         </div>
       ) : (
-        <CapturesTable captures={captures} />
+        <CapturesTable captures={captures} captureType={captureType} />
       )}
     </div>
   );

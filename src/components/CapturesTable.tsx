@@ -1,5 +1,5 @@
 import {
-  Pagination,
+  Spinner,
   Table,
   TableBody,
   TableCell,
@@ -8,8 +8,17 @@ import {
   TableRow,
   type SortDescriptor,
 } from "@heroui/react";
-import { useCallback, useMemo, useState } from "react";
-import { type Capture, generateCaptureTableId } from "../helper/helper";
+import { onValue, ref } from "firebase/database";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { db } from "../firebase";
+import {
+  type BandGroup,
+  type BandGroupsMap,
+  type Capture,
+  type CapturesMap,
+  type CaptureType,
+  generateCaptureTableId,
+} from "../helper/helper";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
   { key: "bandGroupId", label: "Band Group" },
@@ -32,18 +41,110 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
 
 interface CapturesTableProps {
   captures: Capture[];
+  captureType: CaptureType;
 }
 
-export default function CapturesTable({ captures }: CapturesTableProps) {
+export default function CapturesTable({ captures, captureType }: CapturesTableProps) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([]);
-  const [page, setPage] = useState(1);
-  const rowsPerPage = 50;
+  const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>(new Map());
+  const [relatedCapturesMap, setRelatedCapturesMap] = useState<CapturesMap>(new Map());
+  const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
+  const [isLoadingRelatedCaptures, setIsLoadingRelatedCaptures] = useState(false);
+
+  // Fetch bandGroupsMap from RTDB
+  useEffect(() => {
+    const bandGroupsRef = ref(db, "bandGroupsMap");
+
+    const unsubscribe = onValue(bandGroupsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const rawBandGroupsMap = snapshot.val() as Record<string, BandGroup>;
+        const newBandGroupsMap: BandGroupsMap = new Map(
+          Object.entries(rawBandGroupsMap).map(([id, bandGroup]) => [
+            id,
+            {
+              id: id,
+              captureIds: new Set(bandGroup.captureIds ?? []),
+            },
+          ])
+        );
+        setBandGroupsMap(newBandGroupsMap);
+      }
+      setIsLoadingBandGroups(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Get unique bandGroupIds from captures, sorted
+  const bandGroupIds = useMemo(() => {
+    const bandGroupSet = new Set<string>();
+    for (const capture of captures) {
+      if (capture.bandGroupId) {
+        bandGroupSet.add(capture.bandGroupId);
+      }
+    }
+    return Array.from(bandGroupSet).sort();
+  }, [captures]);
+
+  // Fetch captures for all bandGroupIds
+  useEffect(() => {
+    if (isLoadingBandGroups || bandGroupIds.length === 0) {
+      setRelatedCapturesMap(new Map());
+      return;
+    }
+
+    // Collect all captureIds from all bandGroups
+    const captureIdsToFetch = new Set<string>();
+    for (const bandGroupId of bandGroupIds) {
+      const bandGroup = bandGroupsMap.get(bandGroupId);
+      if (bandGroup) {
+        for (const captureId of bandGroup.captureIds) {
+          captureIdsToFetch.add(captureId);
+        }
+      }
+    }
+
+    if (captureIdsToFetch.size === 0) {
+      setRelatedCapturesMap(new Map());
+      return;
+    }
+
+    setIsLoadingRelatedCaptures(true);
+    const captureIdArray = Array.from(captureIdsToFetch);
+    const newCapturesMap: CapturesMap = new Map();
+    let loadedCount = 0;
+
+    const unsubscribes = captureIdArray.map((captureId) => {
+      const captureRef = ref(db, `capturesMap/${captureId}`);
+      return onValue(captureRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const rawCapture = snapshot.val() as Capture;
+          newCapturesMap.set(captureId, rawCapture);
+        }
+        loadedCount++;
+        if (loadedCount >= captureIdArray.length) {
+          setRelatedCapturesMap(new Map(newCapturesMap));
+          setIsLoadingRelatedCaptures(false);
+        }
+      });
+    });
+
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [bandGroupIds, bandGroupsMap, isLoadingBandGroups]);
+
+  // Get captures to display, filtered by captureType
+  const capturesToDisplay = useMemo(() => {
+    const allCaptures = Array.from(relatedCapturesMap.values());
+    if (captureType === "NEW_CAPTURES") {
+      return allCaptures.filter((capture) => capture.status === "Banded");
+    }
+    return allCaptures;
+  }, [relatedCapturesMap, captureType]);
 
   // Sort captures based on multiple sortDescriptors (cascading sort)
   const sortedCaptures = useMemo(() => {
-    if (sortDescriptors.length === 0) return captures;
+    if (sortDescriptors.length === 0) return capturesToDisplay;
 
-    return [...captures].sort((a, b) => {
+    return [...capturesToDisplay].sort((a, b) => {
       for (const descriptor of sortDescriptors) {
         const column = descriptor.column as keyof Capture;
         const first = a[column];
@@ -60,15 +161,7 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
       }
       return 0;
     });
-  }, [captures, sortDescriptors]);
-
-  // Calculate pagination
-  const pages = Math.ceil(sortedCaptures.length / rowsPerPage);
-  const paginatedCaptures = useMemo(() => {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    return sortedCaptures.slice(start, end);
-  }, [page, sortedCaptures]);
+  }, [capturesToDisplay, sortDescriptors]);
 
   const handleSortChange = useCallback((descriptor: SortDescriptor) => {
     setSortDescriptors((prev) => {
@@ -85,10 +178,17 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
         return [descriptor, ...prev].slice(0, 3);
       }
     });
-    setPage(1);
   }, []);
 
   const primarySortDescriptor = sortDescriptors[0];
+
+  if (isLoadingBandGroups || isLoadingRelatedCaptures) {
+    return (
+      <div className="p-4 flex items-center gap-2">
+        <Spinner size="sm" /> Loading captures...
+      </div>
+    );
+  }
 
   return (
     <Table
@@ -96,21 +196,6 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
       aria-label="Captures table"
       sortDescriptor={primarySortDescriptor}
       onSortChange={handleSortChange}
-      bottomContent={
-        pages > 1 ? (
-          <div className="flex w-full justify-center">
-            <Pagination
-              isCompact
-              showControls
-              showShadow
-              color="primary"
-              page={page}
-              total={pages}
-              onChange={setPage}
-            />
-          </div>
-        ) : null
-      }
     >
       <TableHeader columns={CAPTURE_COLUMNS}>
         {(column) => (
@@ -119,7 +204,7 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
           </TableColumn>
         )}
       </TableHeader>
-      <TableBody items={paginatedCaptures} emptyContent="No captures found">
+      <TableBody items={sortedCaptures} emptyContent="No captures found">
         {(item) => (
           <TableRow key={item.id}>
             {(columnKey) => {
