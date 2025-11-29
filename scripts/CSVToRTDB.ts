@@ -1,6 +1,5 @@
 import { ref, set, type Database } from "firebase/database";
 import {
-  BandGroupsMap,
   Capture,
   CapturesMap,
   generateBandGroupId,
@@ -67,7 +66,7 @@ export function parseCSV(csvContent: string): Capture[] {
   const headers = parseCSVLine(rows[0]);
   const captures: Capture[] = [];
 
-  const lastRows = rows.slice(-5000);
+  const lastRows = rows.slice(-10000);
 
   for (let i = 1; i < lastRows.length; i++) {
     const row = lastRows[i].trim();
@@ -120,7 +119,6 @@ export async function CSVToRTDB(csvContent: string, database: Database): Promise
 const generateDB = async (captures: Capture[], database: Database) => {
   const yearsMap: YearsMap = new Map();
   const programsMap: ProgramsMap = new Map();
-  const bandGroupsMap: BandGroupsMap = new Map();
   const capturesMap: CapturesMap = new Map();
 
   for (const capture of captures) {
@@ -139,29 +137,23 @@ const generateDB = async (captures: Capture[], database: Database) => {
       if (!programsMap.has(program)) {
         programsMap.set(program, {
           name: program,
-          bandGroupIds: new Set([]),
+          newCapturesIds: new Map(),
           reCaptureIds: new Set([]),
         });
       }
       if (capture.status === "Banded") {
-        programsMap.get(program)!.bandGroupIds.add(bandGroupId);
+        if (!programsMap.get(program)!.newCapturesIds.has(bandGroupId)) {
+          programsMap.get(program)!.newCapturesIds.set(bandGroupId, new Set());
+        }
+        programsMap.get(program)!.newCapturesIds.get(bandGroupId)!.add(captureId);
       } else {
         programsMap.get(program)!.reCaptureIds.add(captureId);
       }
-
-      if (!bandGroupsMap.has(bandGroupId)) {
-        bandGroupsMap.set(bandGroupId, {
-          id: bandGroupId,
-          captureIds: new Set([]),
-        });
-      }
-      bandGroupsMap.get(bandGroupId)!.captureIds.add(captureId);
     }
   }
-
+  console.log(programsMap);
   await writeObjectToDB(database, "yearsMap", yearsMap);
   await writeObjectToDB(database, "programsMap", programsMap);
-  await writeObjectToDB(database, "bandGroupsMap", bandGroupsMap);
   await writeObjectToDB(database, "capturesMap", capturesMap);
 };
 
