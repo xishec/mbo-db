@@ -108,6 +108,7 @@ export default function Programs() {
             onSelectionChange={handleYearChange}
             isVirtualized
             maxTableHeight={600}
+            color="primary"
           >
             <TableHeader>
               <TableColumn>Year</TableColumn>
@@ -129,6 +130,7 @@ export default function Programs() {
             onSelectionChange={handleProgramChange}
             isVirtualized
             maxTableHeight={600}
+            color="primary"
           >
             <TableHeader>
               <TableColumn>Program Name</TableColumn>

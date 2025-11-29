@@ -52,7 +52,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
   return (
     <div className="w-full flex flex-col items-center gap-4">
       <Tabs
-        color="primary"
+        color="default"
         classNames={{
           base: "w-full max-w-6xl",
           tabList: "w-full",
