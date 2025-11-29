@@ -39,7 +39,7 @@ export default function NewCaptures({ program }: { program: Program }) {
   const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string>("All");
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>();
+  const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([]);
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
 
@@ -102,23 +102,32 @@ export default function NewCaptures({ program }: { program: Program }) {
     return allCaptures.filter((capture) => capture.bandGroupId === selectedBandGroupId);
   }, [capturesMap, selectedBandGroupId]);
 
-  // Sort captures based on sortDescriptor
+  // Sort captures based on multiple sortDescriptors (cascading sort)
   const sortedCaptures = useMemo(() => {
-    if (!sortDescriptor?.column) return captures;
+    if (sortDescriptors.length === 0) return captures;
 
     return [...captures].sort((a, b) => {
-      const column = sortDescriptor.column as keyof Capture;
-      const first = a[column];
-      const second = b[column];
-      let cmp = (parseInt(String(first)) || first) < (parseInt(String(second)) || second) ? -1 : 1;
+      // Iterate through sort descriptors in order (primary first)
+      for (const descriptor of sortDescriptors) {
+        const column = descriptor.column as keyof Capture;
+        const first = a[column];
+        const second = b[column];
 
-      if (sortDescriptor.direction === "descending") {
-        cmp *= -1;
+        // Compare values (try numeric comparison first)
+        const firstVal = parseInt(String(first)) || first;
+        const secondVal = parseInt(String(second)) || second;
+
+        const cmp = firstVal < secondVal ? -1 : firstVal > secondVal ? 1 : 0;
+
+        if (cmp !== 0) {
+          // Apply direction and return
+          return descriptor.direction === "descending" ? -cmp : cmp;
+        }
+        // If equal, continue to next sort descriptor
       }
-
-      return cmp;
+      return 0;
     });
-  }, [captures, sortDescriptor]);
+  }, [captures, sortDescriptors]);
 
   // Calculate pagination
   const pages = Math.ceil(sortedCaptures.length / rowsPerPage);
@@ -129,9 +138,28 @@ export default function NewCaptures({ program }: { program: Program }) {
   }, [page, sortedCaptures]);
 
   const handleSortChange = useCallback((descriptor: SortDescriptor) => {
-    setSortDescriptor(descriptor);
+    setSortDescriptors((prev) => {
+      const existingIndex = prev.findIndex((d) => d.column === descriptor.column);
+
+      if (existingIndex === 0) {
+        // Already primary sort - just update direction
+        const updated = [...prev];
+        updated[0] = descriptor;
+        return updated;
+      } else if (existingIndex > 0) {
+        // Was secondary sort - move to primary
+        const updated = prev.filter((d) => d.column !== descriptor.column);
+        return [descriptor, ...updated];
+      } else {
+        // New column - add as primary, keep others as secondary
+        return [descriptor, ...prev].slice(0, 3); // Limit to 3 sort levels
+      }
+    });
     setPage(1); // Reset to first page when sorting changes
   }, []);
+
+  // Get the primary sort descriptor for HeroUI Table
+  const primarySortDescriptor = sortDescriptors[0];
 
   return (
     <div className="flex flex-col gap-4 items-center w-full">
@@ -158,7 +186,7 @@ export default function NewCaptures({ program }: { program: Program }) {
         <Table
           isHeaderSticky
           aria-label="Captures table"
-          sortDescriptor={sortDescriptor}
+          sortDescriptor={primarySortDescriptor}
           onSortChange={handleSortChange}
           bottomContent={
             pages > 1 ? (
@@ -177,11 +205,13 @@ export default function NewCaptures({ program }: { program: Program }) {
           }
         >
           <TableHeader columns={CAPTURE_COLUMNS}>
-            {(column) => (
-              <TableColumn key={column.key} allowsSorting className="whitespace-nowrap">
-                {column.label}
-              </TableColumn>
-            )}
+            {(column) => {
+              return (
+                <TableColumn key={column.key} allowsSorting className="whitespace-nowrap">
+                  {column.label}
+                </TableColumn>
+              );
+            }}
           </TableHeader>
           <TableBody items={paginatedCaptures} emptyContent="Select a band group to view captures">
             {(item) => (
