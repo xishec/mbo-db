@@ -2,11 +2,11 @@ import { Spinner, Tabs, Tab } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
-import type { ProgramsMap } from "../types/types";
+import type { Program, ProgramsMap } from "../types/types";
 import NewCaptures from "./NewCaptures";
 
-export default function Captures({ selectedProgram }: { selectedProgram: string | null }) {
-  const [programMap, setProgramMap] = useState<ProgramsMap>(new Map());
+export default function Captures({ selectedProgram }: { selectedProgram: string }) {
+  const [programsMap, setProgramsMap] = useState<ProgramsMap>(new Map());
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -14,25 +14,28 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     const unsubscribe = onValue(programRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        const newProgramMap: ProgramsMap = new Map();
+        const newProgramsMap: ProgramsMap = new Map();
         for (const [name, programData] of Object.entries(data) as [
           string,
           { name: string; bandGroupIds: string[]; recaptureIds: string[] }
         ][]) {
-          newProgramMap.set(name, {
+          newProgramsMap.set(name, {
             name: programData.name,
             bandGroupIds: new Set(programData.bandGroupIds ?? []),
             recaptureIds: new Set(programData.recaptureIds ?? []),
           });
         }
-        setProgramMap(newProgramMap);
+        setProgramsMap(newProgramsMap);
       }
       setIsLoading(false);
     });
     return unsubscribe;
   }, [selectedProgram]);
 
-  const programData = useMemo(() => programMap.get(selectedProgram ?? ""), [programMap, selectedProgram]);
+  const program: Program | undefined = useMemo(
+    () => programsMap.get(selectedProgram ?? ""),
+    [programsMap, selectedProgram]
+  );
 
   if (!selectedProgram) {
     return null;
@@ -57,7 +60,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
       }}
     >
       <Tab key="new" title="New captures">
-        <NewCaptures bandGroupIds={programData?.bandGroupIds ?? new Set()} />
+        <NewCaptures program={program!} />
       </Tab>
       <Tab key="re" title="Re captures">
         {/* <CapturesTable columns={inferColumns(reRows)} rows={reRows as any[]} ariaLabel="Re captures table" /> */}

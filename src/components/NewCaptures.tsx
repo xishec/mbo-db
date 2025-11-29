@@ -13,7 +13,7 @@ import {
 import { onValue, ref } from "firebase/database";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { db } from "../firebase";
-import type { BandGroupsMap, CapturesMap, Capture } from "../types/types";
+import type { BandGroupsMap, CapturesMap, Capture, Program } from "../types/types";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
   { key: "lastTwoDigits", label: "Band" },
@@ -33,13 +33,13 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
   { key: "notes", label: "Notes" },
 ];
 
-export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string> }) {
+export default function NewCaptures({ program }: { program: Program }) {
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>(new Map());
   const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({});
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>();
 
   // Fetch BandGroupsMap from RTDB
   useEffect(() => {
@@ -82,29 +82,29 @@ export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string
 
     setIsLoadingCaptures(true);
     const newCapturesMap: CapturesMap = new Map();
-    let loadedCount = 0;
 
     const unsubscribes = captureIds.map((captureId) => {
       const captureRef = ref(db, `capturesMap/${captureId}`);
       return onValue(captureRef, (snapshot) => {
         if (snapshot.exists()) {
-          newCapturesMap.set(captureId, snapshot.val() as Capture);
+          const rawCapture = snapshot.val() as Capture;
+          console.log(rawCapture.program, program);
+          if (rawCapture.program === program.name) {
+            newCapturesMap.set(captureId, rawCapture);
+          }
         }
-        loadedCount++;
-        if (loadedCount === captureIds.length) {
-          setCapturesMap(new Map(newCapturesMap));
-          setIsLoadingCaptures(false);
-        }
+        setCapturesMap(new Map(newCapturesMap));
+        setIsLoadingCaptures(false);
       });
     });
 
-    return () => unsubscribes.forEach((unsub) => unsub());
-  }, [selectedBandGroupId, bandGroupsMap]);
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [selectedBandGroupId, bandGroupsMap, program]);
 
   // Filter bandGroupIds to only those passed from parent
   const filteredBandGroupIds = useMemo(() => {
-    return Array.from(bandGroupIds).sort();
-  }, [bandGroupIds]);
+    return Array.from(program.bandGroupIds).sort();
+  }, [program.bandGroupIds]);
 
   // Get captureIds for selected band group
   const captureIds = useMemo(() => {
@@ -120,7 +120,7 @@ export default function NewCaptures({ bandGroupIds }: { bandGroupIds: Set<string
 
   // Sort captures based on sortDescriptor
   const sortedCaptures = useMemo(() => {
-    if (!sortDescriptor.column) return captures;
+    if (!sortDescriptor?.column) return captures;
 
     return [...captures].sort((a, b) => {
       const column = sortDescriptor.column as keyof Capture;
