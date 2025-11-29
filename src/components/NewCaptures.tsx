@@ -22,8 +22,8 @@ import {
   generateCaptureTableId,
 } from "../types/types";
 
-const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
-  { key: "lastTwoDigits", label: "Band ID" },
+const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className?: string }[] = [
+  { key: "lastTwoDigits", label: "Band ID", className: "min-w-[150px]" },
   { key: "species", label: "Species" },
   { key: "wing", label: "Wing" },
   { key: "age", label: "Age" },
@@ -37,7 +37,7 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
   { key: "bander", label: "Bander" },
   { key: "scribe", label: "Scribe" },
   { key: "net", label: "Net" },
-  { key: "notes", label: "Notes" },
+  { key: "notes", label: "Notes", className: "min-w-[200px]" },
 ];
 
 export default function NewCaptures({ program }: { program: Program }) {
@@ -232,7 +232,7 @@ export default function NewCaptures({ program }: { program: Program }) {
         >
           <TableHeader columns={CAPTURE_COLUMNS}>
             {(column) => (
-              <TableColumn key={column.key} allowsSorting>
+              <TableColumn key={column.key} allowsSorting className={column.className}>
                 {column.label}
               </TableColumn>
             )}
