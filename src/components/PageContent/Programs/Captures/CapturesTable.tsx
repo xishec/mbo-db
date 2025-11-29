@@ -83,12 +83,16 @@ export default function CapturesTable({ program, captures }: CapturesTableProps)
   const primarySortDescriptor = sortDescriptors[0];
 
   return (
-    <Table
-      isHeaderSticky
-      aria-label="Captures table"
-      sortDescriptor={primarySortDescriptor}
-      onSortChange={handleSortChange}
-    >
+    <div className="w-full flex flex-col gap-2">
+      <div className="text-default-700 text-sm">
+        {captures.length} {captures.length === 1 ? "capture" : "captures"}
+      </div>
+      <Table
+        isHeaderSticky
+        aria-label="Captures table"
+        sortDescriptor={primarySortDescriptor}
+        onSortChange={handleSortChange}
+      >
       <TableHeader columns={CAPTURE_COLUMNS}>
         {(column) => (
           <TableColumn key={column.key} allowsSorting className="whitespace-nowrap">
@@ -108,7 +112,8 @@ export default function CapturesTable({ program, captures }: CapturesTableProps)
             }}
           </TableRow>
         )}
-      </TableBody>
-    </Table>
+        </TableBody>
+      </Table>
+    </div>
   );
 }

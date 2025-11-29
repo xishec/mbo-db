@@ -60,6 +60,7 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
 
       <div className="w-full flex items-end justify-between gap-4">
         <Tabs
+          color="secondary"
           selectedKey={captureType}
           onSelectionChange={(key) => setCaptureType(key as CaptureType)}
         >
