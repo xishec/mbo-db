@@ -2,12 +2,7 @@ import { Spinner } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../../../../firebase";
-import {
-  type BandGroup,
-  type BandGroupsMap,
-  type Capture,
-  type CapturesMap,
-} from "../../../../helper/helper";
+import { type BandGroup, type BandGroupsMap, type Capture, type CapturesMap } from "../../../../helper/helper";
 import CapturesTable from "./CapturesTable";
 
 interface NewCapturesProps {

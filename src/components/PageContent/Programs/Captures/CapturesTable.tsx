@@ -1,5 +1,4 @@
 import {
-  Pagination,
   Spinner,
   Table,
   TableBody,
@@ -45,7 +44,6 @@ interface CapturesTableProps {
 
 export default function CapturesTable({ captures }: CapturesTableProps) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([]);
-  const [page, setPage] = useState(1);
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>(new Map());
   const [relatedCapturesMap, setRelatedCapturesMap] = useState<CapturesMap>(new Map());
   const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
@@ -85,26 +83,31 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
     return Array.from(bandGroupSet).sort();
   }, [captures]);
 
-  // Get the current bandGroupId based on page (one bandGroupId per page)
-  const currentBandGroupId = useMemo(() => {
-    return bandGroupIds[page - 1] ?? null;
-  }, [bandGroupIds, page]);
-
-  // Fetch captures for the current bandGroupId
+  // Fetch captures for all bandGroupIds
   useEffect(() => {
-    if (isLoadingBandGroups || !currentBandGroupId) {
+    if (isLoadingBandGroups || bandGroupIds.length === 0) {
       setRelatedCapturesMap(new Map());
       return;
     }
 
-    const bandGroup = bandGroupsMap.get(currentBandGroupId);
-    if (!bandGroup || bandGroup.captureIds.size === 0) {
+    // Collect all captureIds from all bandGroups
+    const captureIdsToFetch = new Set<string>();
+    for (const bandGroupId of bandGroupIds) {
+      const bandGroup = bandGroupsMap.get(bandGroupId);
+      if (bandGroup) {
+        for (const captureId of bandGroup.captureIds) {
+          captureIdsToFetch.add(captureId);
+        }
+      }
+    }
+
+    if (captureIdsToFetch.size === 0) {
       setRelatedCapturesMap(new Map());
       return;
     }
 
     setIsLoadingRelatedCaptures(true);
-    const captureIdArray = Array.from(bandGroup.captureIds);
+    const captureIdArray = Array.from(captureIdsToFetch);
     const newCapturesMap: CapturesMap = new Map();
     let loadedCount = 0;
 
@@ -124,7 +127,7 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
     });
 
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-  }, [currentBandGroupId, bandGroupsMap, isLoadingBandGroups]);
+  }, [bandGroupIds, bandGroupsMap, isLoadingBandGroups]);
 
   // Get captures to display for current bandGroupId
   const capturesToDisplay = useMemo(() => {
@@ -154,9 +157,6 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
     });
   }, [capturesToDisplay, sortDescriptors]);
 
-  // Calculate pagination based on bandGroupIds (one bandGroupId per page)
-  const pages = bandGroupIds.length;
-
   const handleSortChange = useCallback((descriptor: SortDescriptor) => {
     setSortDescriptors((prev) => {
       const existingIndex = prev.findIndex((d) => d.column === descriptor.column);
@@ -172,7 +172,6 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
         return [descriptor, ...prev].slice(0, 3);
       }
     });
-    setPage(1);
   }, []);
 
   const primarySortDescriptor = sortDescriptors[0];
@@ -191,21 +190,6 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
       aria-label="Captures table"
       sortDescriptor={primarySortDescriptor}
       onSortChange={handleSortChange}
-      bottomContent={
-        pages > 1 ? (
-          <div className="flex w-full justify-center">
-            <Pagination
-              isCompact
-              showControls
-              showShadow
-              color="primary"
-              page={page}
-              total={pages}
-              onChange={setPage}
-            />
-          </div>
-        ) : null
-      }
     >
       <TableHeader columns={CAPTURE_COLUMNS}>
         {(column) => (
