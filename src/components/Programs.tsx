@@ -82,22 +82,24 @@ export default function Programs() {
   }
 
   return (
-    <div className="max-w-6xl h-full w-full flex flex-col mx-auto p-8 gap-6">
-      <Breadcrumbs className="col-span-2">
-        <BreadcrumbItem
-          onPress={() => {
-            setSelectedYear("");
-            setSelectedProgram(null);
-          }}
-        >
-          Programs
-        </BreadcrumbItem>
-        {selectedYear && <BreadcrumbItem onPress={() => setSelectedProgram(null)}>{selectedYear}</BreadcrumbItem>}
-        {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
-      </Breadcrumbs>
+    <div className="h-full w-full flex flex-col items-center p-8 gap-6">
+      <div className="w-full max-w-6xl">
+        <Breadcrumbs>
+          <BreadcrumbItem
+            onPress={() => {
+              setSelectedYear("");
+              setSelectedProgram(null);
+            }}
+          >
+            Programs
+          </BreadcrumbItem>
+          {selectedYear && <BreadcrumbItem onPress={() => setSelectedProgram(null)}>{selectedYear}</BreadcrumbItem>}
+          {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
+        </Breadcrumbs>
+      </div>
 
       {!selectedProgram && (
-        <div className="grid grid-cols-[1fr_2fr] gap-6">
+        <div className="w-full max-w-6xl grid grid-cols-[1fr_2fr] gap-6">
           <Table
             isHeaderSticky
             aria-label="Years table"

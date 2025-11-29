@@ -134,19 +134,21 @@ export default function NewCaptures({ program }: { program: Program }) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Autocomplete
-        labelPlacement="outside"
-        label="Select Band Group"
-        placeholder="Search band groups..."
-        selectedKey={selectedBandGroupId}
-        onSelectionChange={(key) => setSelectedBandGroupId((key as string) ?? "All")}
-        className="max-w-md"
-      >
-        {bandGroupIds.map((id) => (
-          <AutocompleteItem key={id}>{id}</AutocompleteItem>
-        ))}
-      </Autocomplete>
+    <div className="flex flex-col gap-4 items-center w-full">
+      <div className="w-full max-w-6xl">
+        <Autocomplete
+          labelPlacement="outside"
+          label="Select Band Group"
+          placeholder="Search band groups..."
+          selectedKey={selectedBandGroupId}
+          onSelectionChange={(key) => setSelectedBandGroupId((key as string) ?? "All")}
+          className="max-w-md"
+        >
+          {bandGroupIds.map((id) => (
+            <AutocompleteItem key={id}>{id}</AutocompleteItem>
+          ))}
+        </Autocomplete>
+      </div>
 
       {isLoadingCaptures ? (
         <div className="p-4 flex items-center gap-2">

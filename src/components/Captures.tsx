@@ -50,24 +50,26 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
   }
 
   return (
-    <Tabs
-      color="primary"
-      classNames={{
-        base: "w-full",
-        tabList: "w-full",
-        tabContent: "text-default-800",
-        panel: "p-0",
-      }}
-    >
-      <Tab key="new" title="New captures">
-        <NewCaptures program={program!} />
-      </Tab>
-      <Tab key="re" title="Re captures">
-        {/* <CapturesTable columns={inferColumns(reRows)} rows={reRows as any[]} ariaLabel="Re captures table" /> */}
-      </Tab>
-      <Tab key="summary" title="Summary">
-        {/* <CapturesTable columns={inferColumns(summaryRows)} rows={summaryRows as any[]} ariaLabel="Summary table" /> */}
-      </Tab>
-    </Tabs>
+    <div className="w-full flex flex-col items-center gap-4">
+      <Tabs
+        color="primary"
+        classNames={{
+          base: "w-full max-w-6xl",
+          tabList: "w-full",
+          tabContent: "text-default-800",
+          panel: "px-8 py-0 w-screen ",
+        }}
+      >
+        <Tab key="new" title="New captures">
+          <NewCaptures program={program!} />
+        </Tab>
+        <Tab key="re" title="Re captures">
+          {/* <CapturesTable columns={inferColumns(reRows)} rows={reRows as any[]} ariaLabel="Re captures table" /> */}
+        </Tab>
+        <Tab key="summary" title="Summary">
+          {/* <CapturesTable columns={inferColumns(summaryRows)} rows={summaryRows as any[]} ariaLabel="Summary table" /> */}
+        </Tab>
+      </Tabs>
+    </div>
   );
 }
