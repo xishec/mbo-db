@@ -58,11 +58,12 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
     <div className="w-full flex flex-col items-center gap-4">
       <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} />
 
-      <div className="w-full max-w-6xl flex items-end justify-between gap-4">
+      <div className="w-full flex items-end justify-between gap-4">
         <div className="flex items-end gap-4">
           <Select
             label="Capture Type"
-            labelPlacement="outside"
+            size="sm"
+            radius="md"
             variant="bordered"
             selectedKeys={[captureType]}
             onSelectionChange={(keys) => {

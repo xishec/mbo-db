@@ -83,7 +83,7 @@ export default function Programs() {
 
   return (
     <div className="h-full w-full flex flex-col items-center pt-4 p-8 gap-4">
-      <div className="w-full max-w-6xl">
+      <div className="w-full">
         <Breadcrumbs>
           <BreadcrumbItem
             onPress={() => {
@@ -91,7 +91,7 @@ export default function Programs() {
               setSelectedProgram(null);
             }}
           >
-            Programs
+            Years
           </BreadcrumbItem>
           {selectedYear && <BreadcrumbItem onPress={() => setSelectedProgram(null)}>{selectedYear}</BreadcrumbItem>}
           {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
@@ -99,7 +99,7 @@ export default function Programs() {
       </div>
 
       {!selectedProgram && (
-        <div className="w-full max-w-6xl grid grid-cols-[1fr_2fr] gap-4">
+        <div className="w-full grid grid-cols-[1fr_2fr] gap-4">
           <Table
             isHeaderSticky
             aria-label="Years table"

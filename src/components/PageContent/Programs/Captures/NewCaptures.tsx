@@ -90,14 +90,15 @@ export default function NewCaptures({ program, bandGroupIds }: NewCapturesProps)
   }
 
   return (
-    <div className="w-full max-w-6xl flex flex-col gap-4">
+    <div className="w-full flex flex-col gap-4">
       <Autocomplete
         label="Band Group"
         placeholder="Select a band group"
         variant="bordered"
         selectedKey={selectedBandGroupId}
         onSelectionChange={(key) => setSelectedBandGroupId(key as string | null)}
-        className="max-w-xs"
+        size="sm"
+        radius="md"
       >
         {bandGroupOptions.map((bandGroupId) => (
           <AutocompleteItem key={bandGroupId}>{bandGroupId}</AutocompleteItem>

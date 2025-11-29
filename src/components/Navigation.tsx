@@ -47,7 +47,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
 
   return (
     <>
-      <Navbar maxWidth="full">
+      <Navbar maxWidth="full" classNames={{ wrapper: "px-8" }}>
         <NavbarBrand>
           <img src="/mbo-logo.svg" alt="MBO Logo" className="h-8 w-8 mr-2" />
           <p className="text-xl">
