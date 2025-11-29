@@ -6,10 +6,11 @@ import { type BandGroup, type BandGroupsMap, type Capture } from "../../../../he
 import CapturesTable from "./CapturesTable";
 
 interface NewCapturesProps {
+  program: string;
   bandGroupIds: Set<string>;
 }
 
-export default function NewCaptures({ bandGroupIds }: NewCapturesProps) {
+export default function NewCaptures({ program, bandGroupIds }: NewCapturesProps) {
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>(new Map());
   const [captures, setCaptures] = useState<Set<Capture>>(new Set());
   const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
@@ -108,7 +109,7 @@ export default function NewCaptures({ bandGroupIds }: NewCapturesProps) {
           <Spinner size="sm" /> Loading captures...
         </div>
       ) : selectedBandGroupId ? (
-        <CapturesTable captures={Array.from(captures)} />
+        <CapturesTable program={program} captures={Array.from(captures)} />
       ) : (
         <div className="p-4 text-default-500">Select a band group to view captures</div>
       )}

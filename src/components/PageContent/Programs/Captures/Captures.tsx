@@ -81,9 +81,9 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
       </div>
 
       {captureType === "NEW_CAPTURES" ? (
-        <NewCaptures bandGroupIds={program?.bandGroupIds ?? new Set()} />
+        <NewCaptures program={selectedProgram} bandGroupIds={program?.bandGroupIds ?? new Set()} />
       ) : (
-        <ReCaptures reCaptureIds={program?.reCaptureIds ?? new Set()} />
+        <ReCaptures program={selectedProgram} reCaptureIds={program?.reCaptureIds ?? new Set()} />
       )}
     </div>
   );

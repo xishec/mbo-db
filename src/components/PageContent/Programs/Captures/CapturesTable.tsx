@@ -39,10 +39,11 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
 ];
 
 interface CapturesTableProps {
+  program: string;
   captures: Capture[];
 }
 
-export default function CapturesTable({ captures }: CapturesTableProps) {
+export default function CapturesTable({ program, captures }: CapturesTableProps) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([]);
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>(new Map());
   const [relatedCapturesMap, setRelatedCapturesMap] = useState<CapturesMap>(new Map());
@@ -176,6 +177,11 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
 
   const primarySortDescriptor = sortDescriptors[0];
 
+  // Get IDs of captures that don't belong to the current program
+  const disabledKeys = useMemo(() => {
+    return sortedCaptures.filter((capture) => capture.program !== program).map((capture) => capture.id);
+  }, [sortedCaptures, program]);
+
   if (isLoadingBandGroups || isLoadingRelatedCaptures) {
     return (
       <div className="p-4 flex items-center gap-2">
@@ -190,6 +196,7 @@ export default function CapturesTable({ captures }: CapturesTableProps) {
       aria-label="Captures table"
       sortDescriptor={primarySortDescriptor}
       onSortChange={handleSortChange}
+      disabledKeys={disabledKeys}
     >
       <TableHeader columns={CAPTURE_COLUMNS}>
         {(column) => (

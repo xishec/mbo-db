@@ -6,10 +6,11 @@ import { type Capture, type CapturesMap } from "../../../../helper/helper";
 import CapturesTable from "./CapturesTable";
 
 interface ReCapturesProps {
+  program: string;
   reCaptureIds: Set<string>;
 }
 
-export default function ReCaptures({ reCaptureIds }: ReCapturesProps) {
+export default function ReCaptures({ program, reCaptureIds }: ReCapturesProps) {
   const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
 
@@ -56,5 +57,5 @@ export default function ReCaptures({ reCaptureIds }: ReCapturesProps) {
     );
   }
 
-  return <CapturesTable captures={captures} />;
+  return <CapturesTable program={program} captures={captures} />;
 }
