@@ -12,22 +12,21 @@ export default function NewCaptures() {
     return Array.from(program?.bandGroupIds ?? []).sort();
   }, [program?.bandGroupIds]);
 
-  const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(
-    bandGroupOptions[0] ?? null
-  );
+  const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
 
-  // Update selection when bandGroupOptions changes (new program selected)
-  useMemo(() => {
-    if (bandGroupOptions.length > 0 && !bandGroupOptions.includes(selectedBandGroupId ?? "")) {
-      setSelectedBandGroupId(bandGroupOptions[0]);
+  // Derive effective selection: use selected if valid, otherwise default to first option
+  const effectiveBandGroupId = useMemo(() => {
+    if (selectedBandGroupId && bandGroupOptions.includes(selectedBandGroupId)) {
+      return selectedBandGroupId;
     }
-  }, [bandGroupOptions, selectedBandGroupId]);
+    return bandGroupOptions[0] ?? null;
+  }, [selectedBandGroupId, bandGroupOptions]);
 
   // Get captures for the selected bandGroup from the cache
   const captures = useMemo(() => {
-    if (!selectedBandGroupId) return [];
-    return capturesByBandGroup.get(selectedBandGroupId) ?? [];
-  }, [selectedBandGroupId, capturesByBandGroup]);
+    if (!effectiveBandGroupId) return [];
+    return capturesByBandGroup.get(effectiveBandGroupId) ?? [];
+  }, [effectiveBandGroupId, capturesByBandGroup]);
 
   if (isLoadingCaptures && capturesByBandGroup.size === 0) {
     return (
@@ -43,7 +42,7 @@ export default function NewCaptures() {
         label="Band Group"
         placeholder="Select a band group"
         variant="bordered"
-        selectedKey={selectedBandGroupId}
+        selectedKey={effectiveBandGroupId}
         onSelectionChange={(key) => setSelectedBandGroupId(key as string | null)}
         size="sm"
         radius="md"
@@ -53,7 +52,7 @@ export default function NewCaptures() {
         ))}
       </Autocomplete>
 
-      {selectedBandGroupId ? (
+      {effectiveBandGroupId ? (
         <CapturesTable program={selectedProgram ?? ""} captures={captures} />
       ) : (
         <div className="p-4 text-default-500">Select a band group to view captures</div>
