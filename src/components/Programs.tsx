@@ -45,7 +45,7 @@ export default function Programs() {
       setIsLoading(false);
     });
     return unsubscribe;
-  }, []);
+  }, [selectedYear]);
 
   // Year rows for the table
   const yearRows = useMemo(() => {

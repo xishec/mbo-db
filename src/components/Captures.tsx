@@ -1,13 +1,15 @@
-import { Spinner, Tabs, Tab } from "@heroui/react";
+import { Button, Spinner, Tabs, Tab, useDisclosure } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
 import type { Program, ProgramsMap } from "../types/types";
+import AddCaptureModal from "./AddCaptureModal";
 import NewCaptures from "./NewCaptures";
 
 export default function Captures({ selectedProgram }: { selectedProgram: string }) {
   const [programsMap, setProgramsMap] = useState<ProgramsMap>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   useEffect(() => {
     const programsMapRef = ref(db, "programsMap");
@@ -51,6 +53,13 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
+      <div className="w-full max-w-6xl flex justify-end px-8">
+        <Button color="secondary" onPress={onOpen}>
+          Add Capture
+        </Button>
+      </div>
+      <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} />
+
       <Tabs
         color="default"
         classNames={{

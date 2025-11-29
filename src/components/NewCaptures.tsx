@@ -1,12 +1,6 @@
 import {
   Autocomplete,
   AutocompleteItem,
-  Button,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
   Pagination,
   Spinner,
   Table,
@@ -15,7 +9,6 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
-  useDisclosure,
   type SortDescriptor,
 } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
@@ -49,7 +42,6 @@ export default function NewCaptures({ program }: { program: Program }) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([]);
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   // Extract bandGroupId from captureId (captureId format: ${date}-${bandGroupId}${lastTwoDigits})
   const extractBandGroupId = (captureId: string): string => {
@@ -184,31 +176,7 @@ export default function NewCaptures({ program }: { program: Program }) {
             <AutocompleteItem key={id}>{id}</AutocompleteItem>
           ))}
         </Autocomplete>
-        <Button color="secondary" onPress={onOpen}>
-          Add Capture
-        </Button>
       </div>
-
-      <Modal isDismissable={false} isKeyboardDismissDisabled={true} isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">Add New Capture</ModalHeader>
-              <ModalBody>
-                <p>Capture form fields will go here.</p>
-              </ModalBody>
-              <ModalFooter>
-                <Button color="danger" variant="light" onPress={onClose}>
-                  Cancel
-                </Button>
-                <Button color="primary" onPress={onClose}>
-                  Save Capture
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
 
       {isLoadingCaptures ? (
         <div className="p-4 flex items-center gap-2">
