@@ -11,14 +11,14 @@ import {
 } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { db } from "../firebase";
+import { db } from "../../../../firebase";
 import {
   type BandGroup,
   type BandGroupsMap,
   type Capture,
   type CapturesMap,
   generateCaptureTableId,
-} from "../helper/helper";
+} from "../../../../helper/helper";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
   { key: "bandGroupId", label: "Band Group" },

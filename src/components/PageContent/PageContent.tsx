@@ -1,4 +1,4 @@
-import Programs from "./Programs";
+import Programs from "./Programs/Programs";
 
 interface PageContentProps {
   activePage: string;

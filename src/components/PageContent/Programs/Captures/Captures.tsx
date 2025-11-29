@@ -1,15 +1,15 @@
 import { Button, Select, SelectItem, Spinner, useDisclosure } from "@heroui/react";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
-import { db } from "../firebase";
+import { db } from "../../../../firebase";
 import {
   CAPTURE_TYPE_OPTIONS,
   type CaptureType,
   type Program,
   type ProgramsMap,
-} from "../helper/helper";
+} from "../../../../helper/helper";
 import AddCaptureModal from "./AddCaptureModal";
-import NewCaptures from "./PageContent/Programs/Captures/NewCaptures";
+import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
 
 export default function Captures({ selectedProgram }: { selectedProgram: string }) {

@@ -9,11 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
-import Captures from "./Captures";
+import Captures from "./Captures/Captures";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
-import { db } from "../firebase";
-import type { YearsMap } from "../helper/helper";
+import { db } from "../../../firebase";
+import type { YearsMap } from "../../../helper/helper";
 
 export default function Programs() {
   const [selectedYear, setSelectedYear] = useState<string>("");
