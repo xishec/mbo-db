@@ -7,8 +7,8 @@ export interface Year {
 export type ProgramsMap = Map<string, Program>;
 export interface Program {
   name: string;
-  bandGroupIds: Set<string>;
-  recaptureIds: Set<string>;
+  newCaptureIds: Set<string>;
+  reCaptureIds: Set<string>;
 }
 
 export type BandGroupsMap = Map<string, BandGroup>;

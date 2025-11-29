@@ -14,13 +14,7 @@ import {
 import { onValue, ref } from "firebase/database";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { db } from "../firebase";
-import {
-  type BandGroupsMap,
-  type CapturesMap,
-  type Capture,
-  type Program,
-  generateCaptureTableId,
-} from "../types/types";
+import { type CapturesMap, type Capture, type Program, generateCaptureTableId } from "../types/types";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
   { key: "bandGroupId", label: "Band Group" },
@@ -42,57 +36,32 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
 ];
 
 export default function NewCaptures({ program }: { program: Program }) {
-  const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>(new Map());
   const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string>("All");
-  const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>();
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
 
-  // Fetch BandGroupsMap from RTDB
-  useEffect(() => {
-    const bandGroupsRef = ref(db, "bandGroupsMap");
-    const unsubscribe = onValue(bandGroupsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const newBandGroupsMap: BandGroupsMap = new Map();
-        for (const [id, bandGroupData] of Object.entries(data) as [string, { id: string; captureIds: string[] }][]) {
-          newBandGroupsMap.set(id, {
-            id: bandGroupData.id,
-            captureIds: new Set(bandGroupData.captureIds ?? []),
-          });
-        }
-        setBandGroupsMap(newBandGroupsMap);
-      }
-      setIsLoadingBandGroups(false);
-    });
-    return unsubscribe;
-  }, []);
+  // Extract bandGroupId from captureId (captureId format: ${date}-${bandGroupId}${lastTwoDigits})
+  const extractBandGroupId = (captureId: string): string => {
+    // Remove the date prefix (YYYY-MM-DD-) and the last two digits
+    const withoutDate = captureId.replace(/^\d{4}-\d{2}-\d{2}-/, "");
+    return withoutDate.slice(0, -2);
+  };
 
-  // Fetch CapturesMap from RTDB (only for selected band group's captureIds, or all if "All" is selected)
-  useEffect(() => {
-    if (!selectedBandGroupId) {
-      return;
+  // Compute unique band group IDs from program.newCaptureIds
+  const bandGroupIds = useMemo(() => {
+    const bandGroupSet = new Set<string>();
+    for (const captureId of program.newCaptureIds) {
+      bandGroupSet.add(extractBandGroupId(captureId));
     }
+    return ["All", ...Array.from(bandGroupSet).sort()];
+  }, [program.newCaptureIds]);
 
-    let captureIds: string[] = [];
-
-    if (selectedBandGroupId === "All") {
-      // Get captureIds from all band groups in the program
-      for (const bandGroupId of program.bandGroupIds) {
-        const bandGroup = bandGroupsMap.get(bandGroupId);
-        if (bandGroup) {
-          captureIds.push(...Array.from(bandGroup.captureIds));
-        }
-      }
-    } else {
-      const bandGroup = bandGroupsMap.get(selectedBandGroupId);
-      if (bandGroup) {
-        captureIds = Array.from(bandGroup.captureIds);
-      }
-    }
+  // Fetch captures from RTDB for all newCaptureIds
+  useEffect(() => {
+    const captureIds = Array.from(program.newCaptureIds);
 
     if (captureIds.length === 0) {
       setCapturesMap(new Map());
@@ -109,9 +78,7 @@ export default function NewCaptures({ program }: { program: Program }) {
       return onValue(captureRef, (snapshot) => {
         if (snapshot.exists()) {
           const rawCapture = snapshot.val() as Capture;
-          if (rawCapture.program === program.name && rawCapture.status === "Banded") {
-            newCapturesMap.set(captureId, rawCapture);
-          }
+          newCapturesMap.set(captureId, rawCapture);
         }
         loadedCount++;
         if (loadedCount >= captureIds.length) {
@@ -122,36 +89,18 @@ export default function NewCaptures({ program }: { program: Program }) {
     });
 
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-  }, [selectedBandGroupId, bandGroupsMap, program]);
+  }, [program.newCaptureIds]);
 
-  // Filter bandGroupIds to only those passed from parent, with "All" option
-  const filteredBandGroupIds = useMemo(() => {
-    return ["All", ...Array.from(program.bandGroupIds).sort()];
-  }, [program.bandGroupIds]);
-
-  // Get captureIds for selected band group (or all band groups if "All" is selected)
-  const captureIds = useMemo(() => {
-    if (!selectedBandGroupId) return [];
+  // Get captures filtered by selected band group
+  const captures = useMemo(() => {
+    const allCaptures = Array.from(capturesMap.values());
 
     if (selectedBandGroupId === "All") {
-      const allCaptureIds: string[] = [];
-      for (const bandGroupId of program.bandGroupIds) {
-        const bandGroup = bandGroupsMap.get(bandGroupId);
-        if (bandGroup) {
-          allCaptureIds.push(...Array.from(bandGroup.captureIds));
-        }
-      }
-      return allCaptureIds;
+      return allCaptures;
     }
 
-    const bandGroup = bandGroupsMap.get(selectedBandGroupId);
-    return bandGroup ? Array.from(bandGroup.captureIds) : [];
-  }, [selectedBandGroupId, bandGroupsMap, program.bandGroupIds]);
-
-  // Get captures for the selected band group
-  const captures = useMemo(() => {
-    return captureIds.map((id) => capturesMap.get(id)).filter((c): c is Capture => c !== undefined);
-  }, [captureIds, capturesMap]);
+    return allCaptures.filter((capture) => capture.bandGroupId === selectedBandGroupId);
+  }, [capturesMap, selectedBandGroupId]);
 
   // Sort captures based on sortDescriptor
   const sortedCaptures = useMemo(() => {
@@ -184,14 +133,6 @@ export default function NewCaptures({ program }: { program: Program }) {
     setPage(1); // Reset to first page when sorting changes
   }, []);
 
-  if (isLoadingBandGroups) {
-    return (
-      <div className="p-4 flex items-center gap-2">
-        <Spinner size="sm" /> Loading band groups...
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <Autocomplete
@@ -202,7 +143,7 @@ export default function NewCaptures({ program }: { program: Program }) {
         onSelectionChange={(key) => setSelectedBandGroupId((key as string) ?? "All")}
         className="max-w-md"
       >
-        {filteredBandGroupIds.map((id) => (
+        {bandGroupIds.map((id) => (
           <AutocompleteItem key={id}>{id}</AutocompleteItem>
         ))}
       </Autocomplete>

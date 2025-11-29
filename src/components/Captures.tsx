@@ -14,18 +14,17 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
 
     const unsubscribe = onValue(programsMapRef, (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val();
-        const newProgramsMap: ProgramsMap = new Map();
-        for (const [name, programData] of Object.entries(data) as [
-          string,
-          { name: string; bandGroupIds: string[]; recaptureIds: string[] }
-        ][]) {
-          newProgramsMap.set(name, {
-            name: programData.name,
-            bandGroupIds: new Set(programData.bandGroupIds ?? []),
-            recaptureIds: new Set(programData.recaptureIds ?? []),
-          });
-        }
+        const rawProgramsMap = snapshot.val() as ProgramsMap;
+        const newProgramsMap: ProgramsMap = new Map(
+          Object.entries(rawProgramsMap).map(([name, program]) => [
+            name,
+            {
+              name: name,
+              newCaptureIds: new Set(program.newCaptureIds ?? []),
+              reCaptureIds: new Set(program.reCaptureIds ?? []),
+            },
+          ])
+        );
         setProgramsMap(newProgramsMap);
       }
       setIsLoading(false);
