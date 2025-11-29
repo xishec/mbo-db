@@ -10,7 +10,6 @@ export default function Captures({ selectedProgram }: { selectedProgram: string 
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
     const programsMapRef = ref(db, "programsMap");
 
     const unsubscribe = onValue(programsMapRef, (snapshot) => {

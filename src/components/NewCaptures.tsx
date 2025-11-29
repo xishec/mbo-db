@@ -1,6 +1,7 @@
 import {
   Autocomplete,
   AutocompleteItem,
+  Pagination,
   Spinner,
   Table,
   TableBody,
@@ -13,10 +14,16 @@ import {
 import { onValue, ref } from "firebase/database";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { db } from "../firebase";
-import type { BandGroupsMap, CapturesMap, Capture, Program } from "../types/types";
+import {
+  type BandGroupsMap,
+  type CapturesMap,
+  type Capture,
+  type Program,
+  generateCaptureTableId,
+} from "../types/types";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
-  { key: "lastTwoDigits", label: "Band" },
+  { key: "lastTwoDigits", label: "Band ID" },
   { key: "species", label: "Species" },
   { key: "wing", label: "Wing" },
   { key: "age", label: "Age" },
@@ -36,10 +43,12 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
 export default function NewCaptures({ program }: { program: Program }) {
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>(new Map());
   const [capturesMap, setCapturesMap] = useState<CapturesMap>(new Map());
-  const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
+  const [selectedBandGroupId, setSelectedBandGroupId] = useState<string>("All");
   const [isLoadingBandGroups, setIsLoadingBandGroups] = useState(true);
   const [isLoadingCaptures, setIsLoadingCaptures] = useState(true);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>();
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
 
   // Fetch BandGroupsMap from RTDB
   useEffect(() => {
@@ -61,19 +70,31 @@ export default function NewCaptures({ program }: { program: Program }) {
     return unsubscribe;
   }, []);
 
-  // Fetch CapturesMap from RTDB (only for selected band group's captureIds)
+  // Fetch CapturesMap from RTDB (only for selected band group's captureIds, or all if "All" is selected)
   useEffect(() => {
     if (!selectedBandGroupId) {
       return;
     }
 
-    const bandGroup = bandGroupsMap.get(selectedBandGroupId);
-    if (!bandGroup) {
-      setIsLoadingCaptures(false);
-      return;
+    let captureIds: string[] = [];
+
+    if (selectedBandGroupId === "All") {
+      // Get captureIds from all band groups in the program
+      for (const bandGroupId of program.bandGroupIds) {
+        const bandGroup = bandGroupsMap.get(bandGroupId);
+        if (bandGroup) {
+          captureIds.push(...Array.from(bandGroup.captureIds));
+        }
+      }
+    } else {
+      const bandGroup = bandGroupsMap.get(selectedBandGroupId);
+      if (!bandGroup) {
+        setIsLoadingCaptures(false);
+        return;
+      }
+      captureIds = Array.from(bandGroup.captureIds);
     }
 
-    const captureIds = Array.from(bandGroup.captureIds);
     if (captureIds.length === 0) {
       setCapturesMap(new Map());
       setIsLoadingCaptures(false);
@@ -100,17 +121,29 @@ export default function NewCaptures({ program }: { program: Program }) {
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [selectedBandGroupId, bandGroupsMap, program]);
 
-  // Filter bandGroupIds to only those passed from parent
+  // Filter bandGroupIds to only those passed from parent, with "All" option
   const filteredBandGroupIds = useMemo(() => {
-    return Array.from(program.bandGroupIds).sort();
+    return ["All", ...Array.from(program.bandGroupIds).sort()];
   }, [program.bandGroupIds]);
 
-  // Get captureIds for selected band group
+  // Get captureIds for selected band group (or all band groups if "All" is selected)
   const captureIds = useMemo(() => {
     if (!selectedBandGroupId) return [];
+
+    if (selectedBandGroupId === "All") {
+      const allCaptureIds: string[] = [];
+      for (const bandGroupId of program.bandGroupIds) {
+        const bandGroup = bandGroupsMap.get(bandGroupId);
+        if (bandGroup) {
+          allCaptureIds.push(...Array.from(bandGroup.captureIds));
+        }
+      }
+      return allCaptureIds;
+    }
+
     const bandGroup = bandGroupsMap.get(selectedBandGroupId);
     return bandGroup ? Array.from(bandGroup.captureIds) : [];
-  }, [selectedBandGroupId, bandGroupsMap]);
+  }, [selectedBandGroupId, bandGroupsMap, program.bandGroupIds]);
 
   // Get captures for the selected band group
   const captures = useMemo(() => {
@@ -135,8 +168,17 @@ export default function NewCaptures({ program }: { program: Program }) {
     });
   }, [captures, sortDescriptor]);
 
+  // Calculate pagination
+  const pages = Math.ceil(sortedCaptures.length / rowsPerPage);
+  const paginatedCaptures = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    return sortedCaptures.slice(start, end);
+  }, [page, sortedCaptures]);
+
   const handleSortChange = useCallback((descriptor: SortDescriptor) => {
     setSortDescriptor(descriptor);
+    setPage(1); // Reset to first page when sorting changes
   }, []);
 
   if (isLoadingBandGroups) {
@@ -172,6 +214,21 @@ export default function NewCaptures({ program }: { program: Program }) {
           aria-label="Captures table"
           sortDescriptor={sortDescriptor}
           onSortChange={handleSortChange}
+          bottomContent={
+            pages > 1 ? (
+              <div className="flex w-full justify-center">
+                <Pagination
+                  isCompact
+                  showControls
+                  showShadow
+                  color="primary"
+                  page={page}
+                  total={pages}
+                  onChange={setPage}
+                />
+              </div>
+            ) : null
+          }
         >
           <TableHeader columns={CAPTURE_COLUMNS}>
             {(column) => (
@@ -180,10 +237,16 @@ export default function NewCaptures({ program }: { program: Program }) {
               </TableColumn>
             )}
           </TableHeader>
-          <TableBody items={sortedCaptures} emptyContent="Select a band group to view captures">
+          <TableBody items={paginatedCaptures} emptyContent="Select a band group to view captures">
             {(item) => (
               <TableRow key={item.id}>
-                {(columnKey) => <TableCell>{String(item[columnKey as keyof Capture] ?? "")}</TableCell>}
+                {(columnKey) => {
+                  if (columnKey === "lastTwoDigits") {
+                    return <TableCell>{generateCaptureTableId(item)}</TableCell>;
+                  } else {
+                    return <TableCell>{item[columnKey as keyof Capture]}</TableCell>;
+                  }
+                }}
               </TableRow>
             )}
           </TableBody>

@@ -58,3 +58,6 @@ export interface Capture {
 export const generateCaptureId = (bandPrefix: string, bandSuffix: string, date: string): string => {
   return `${bandPrefix}-${bandSuffix}-${date}`;
 };
+export const generateCaptureTableId = (capture: Capture): string => {
+  return `${capture.bandPrefix}-${capture.bandSuffix.slice(0, 3)} ${capture.lastTwoDigits}`;
+};
