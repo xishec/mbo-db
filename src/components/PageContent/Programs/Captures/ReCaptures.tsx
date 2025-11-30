@@ -21,6 +21,7 @@ export default function ReCaptures() {
       maxTableHeight={800}
       sortColumn="date"
       sortDirection="descending"
+      showOtherPrograms={true}
     />
   );
 }

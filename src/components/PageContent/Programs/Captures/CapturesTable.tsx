@@ -28,6 +28,7 @@ interface CapturesTableProps {
   maxTableHeight: number;
   sortColumn: keyof Capture;
   sortDirection: "ascending" | "descending";
+  showOtherPrograms: boolean;
 }
 
 export default function CapturesTable({
@@ -36,16 +37,25 @@ export default function CapturesTable({
   maxTableHeight,
   sortColumn,
   sortDirection,
+  showOtherPrograms,
 }: CapturesTableProps) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([
     { column: sortColumn, direction: sortDirection },
   ]);
 
+  // Filter captures based on showOtherPrograms
+  const filteredCaptures = useMemo(() => {
+    if (showOtherPrograms) {
+      return captures;
+    }
+    return captures.filter((capture) => capture.program === program);
+  }, [captures, showOtherPrograms, program]);
+
   // Sort captures based on multiple sortDescriptors (cascading sort)
   const sortedCaptures = useMemo(() => {
-    if (sortDescriptors.length === 0) return captures;
+    if (sortDescriptors.length === 0) return filteredCaptures;
 
-    return [...captures].sort((a, b) => {
+    return [...filteredCaptures].sort((a, b) => {
       for (const descriptor of sortDescriptors) {
         const column = descriptor.column as keyof Capture;
         const first = a[column];
@@ -73,7 +83,7 @@ export default function CapturesTable({
       }
       return 0;
     });
-  }, [captures, sortDescriptors]);
+  }, [filteredCaptures, sortDescriptors]);
 
   const handleSortChange = useCallback((descriptor: SortDescriptor) => {
     setSortDescriptors((prev) => {
