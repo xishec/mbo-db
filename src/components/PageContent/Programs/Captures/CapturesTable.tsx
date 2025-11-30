@@ -2,24 +2,24 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type S
 import { useCallback, useMemo, useState } from "react";
 import { type Capture, generateCaptureTableId } from "../../../../helper/helper";
 
-const CAPTURE_COLUMNS: { key: keyof Capture; label: string }[] = [
-  { key: "program", label: "Program" },
-  { key: "bandGroupId", label: "Band Group" },
-  { key: "bandLastTwoDigits", label: "Band" },
-  { key: "species", label: "Species" },
-  { key: "wing", label: "Wing" },
-  { key: "age", label: "Age" },
-  { key: "howAged", label: "How Aged" },
-  { key: "howSexed", label: "How Sexed" },
-  { key: "sex", label: "Sex" },
-  { key: "fat", label: "Fat" },
-  { key: "weight", label: "Weight" },
-  { key: "date", label: "Date" },
-  { key: "time", label: "Time" },
-  { key: "bander", label: "Bander" },
-  { key: "scribe", label: "Scribe" },
-  { key: "net", label: "Net" },
-  { key: "notes", label: "Notes" },
+const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[] = [
+  { key: "program", label: "Program", className: "min-w-[150px]" },
+  { key: "bandGroupId", label: "Band Group", className: "" },
+  { key: "bandLastTwoDigits", label: "Band", className: "" },
+  { key: "species", label: "Species", className: "" },
+  { key: "wing", label: "Wing", className: "" },
+  { key: "age", label: "Age", className: "" },
+  { key: "howAged", label: "How Aged", className: "" },
+  { key: "sex", label: "Sex", className: "w-[50px]" },
+  { key: "howSexed", label: "How Sexed", className: "" },
+  { key: "fat", label: "Fat", className: "" },
+  { key: "weight", label: "Weight", className: "" },
+  { key: "date", label: "Date", className: "" },
+  { key: "time", label: "Time", className: "" },
+  { key: "bander", label: "Bander", className: "" },
+  { key: "scribe", label: "Scribe", className: "" },
+  { key: "net", label: "Net", className: "" },
+  { key: "notes", label: "Notes", className: "min-w-[300px]" },
 ];
 
 interface CapturesTableProps {
@@ -111,7 +111,7 @@ export default function CapturesTable({
       >
         <TableHeader columns={CAPTURE_COLUMNS}>
           {(column) => (
-            <TableColumn key={column.key} allowsSorting className="whitespace-nowrap">
+            <TableColumn key={column.key} allowsSorting className={`whitespace-nowrap ${column.className}`}>
               {column.label}
             </TableColumn>
           )}
