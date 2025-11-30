@@ -23,8 +23,7 @@ interface AddCaptureModalProps {
 
 interface CaptureFormData {
   program: string;
-  bandPrefix: string;
-  bandSuffix: string;
+  bandGroup: string;
   bandLastTwoDigits: string;
   species: string;
   wing: string;
@@ -47,8 +46,7 @@ const getDefaultFormData = (program: string): CaptureFormData => {
 
   return {
     program,
-    bandPrefix: "",
-    bandSuffix: "",
+    bandGroup: "",
     bandLastTwoDigits: "",
     species: "",
     wing: "",
@@ -73,8 +71,7 @@ const CAPTURE_COLUMNS: {
   maxLength?: number;
 }[] = [
   { key: "program", label: "Program", className: "min-w-[150px]" },
-  { key: "bandPrefix", label: "Band Prefix", className: "", maxLength: 4 },
-  { key: "bandSuffix", label: "Band Suffix", className: "", maxLength: 3 },
+  { key: "bandGroup", label: "Band Group", className: "", maxLength: 8 },
   { key: "bandLastTwoDigits", label: "Band", className: "", maxLength: 2 },
   { key: "species", label: "Species", className: "", maxLength: 4 },
   { key: "wing", label: "Wing", className: "min-w-[60px]" },
@@ -105,13 +102,14 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   }
 
   const handleInputChange = (field: keyof CaptureFormData, value: string, maxLength?: number) => {
-    // Limit bandPrefix to 4 digits only
-    if (field === "bandPrefix") {
-      value = value.replace(/\D/g, "").slice(0, 4);
-    }
-    // Limit bandSuffix to 3 digits only
-    if (field === "bandSuffix") {
-      value = value.replace(/\D/g, "").slice(0, 3);
+    // Limit bandGroup to format "4 digits - 3 digits" (e.g., "2801-123") - auto-insert -
+    if (field === "bandGroup") {
+      const digits = value.replace(/\D/g, "").slice(0, 7);
+      if (digits.length <= 4) {
+        value = digits;
+      } else {
+        value = `${digits.slice(0, 4)}-${digits.slice(4)}`;
+      }
     }
     // Limit bandLastTwoDigits to 2 digits only
     if (field === "bandLastTwoDigits") {
