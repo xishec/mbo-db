@@ -25,8 +25,7 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[
 interface CapturesTableProps {
   program: string;
   captures: Capture[];
-  maxHeight?: number;
-  isVirtualized?: boolean;
+  maxTableHeight: number;
   sortColumn: keyof Capture;
   sortDirection: "ascending" | "descending";
 }
@@ -34,8 +33,7 @@ interface CapturesTableProps {
 export default function CapturesTable({
   program,
   captures,
-  maxHeight,
-  isVirtualized = false,
+  maxTableHeight,
   sortColumn,
   sortDirection,
 }: CapturesTableProps) {
@@ -106,8 +104,8 @@ export default function CapturesTable({
         aria-label="Captures table"
         sortDescriptor={primarySortDescriptor}
         onSortChange={handleSortChange}
-        isVirtualized={isVirtualized}
-        maxTableHeight={maxHeight}
+        isVirtualized
+        maxTableHeight={maxTableHeight}
       >
         <TableHeader columns={CAPTURE_COLUMNS}>
           {(column) => (

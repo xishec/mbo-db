@@ -56,8 +56,7 @@ export default function NewCaptures() {
         <CapturesTable
           program={selectedProgram ?? ""}
           captures={captures}
-          maxHeight={800}
-          isVirtualized={true}
+          maxTableHeight={800}
           sortColumn="bandLastTwoDigits"
           sortDirection="ascending"
         />

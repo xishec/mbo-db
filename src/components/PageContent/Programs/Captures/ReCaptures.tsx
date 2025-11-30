@@ -18,8 +18,7 @@ export default function ReCaptures() {
     <CapturesTable
       program={selectedProgram ?? ""}
       captures={reCaptures}
-      maxHeight={800}
-      isVirtualized={true}
+      maxTableHeight={800}
       sortColumn="date"
       sortDirection="descending"
     />
