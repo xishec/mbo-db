@@ -17,6 +17,7 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[
   { key: "bander", label: "Bander", className: "" },
   { key: "scribe", label: "Scribe", className: "" },
   { key: "net", label: "Net", className: "" },
+  { key: "captureType", label: "Capture Type", className: "" },
   { key: "notes", label: "Notes", className: "min-w-[300px]" },
 ];
 
@@ -74,9 +75,8 @@ export default function CapturesTable({
           const secondVal = secondNum || 100;
           cmp = firstVal - secondVal;
         } else {
-          const firstVal = parseInt(String(first)) || first;
-          const secondVal = parseInt(String(second)) || second;
-          cmp = firstVal < secondVal ? -1 : firstVal > secondVal ? 1 : 0;
+          // String comparison works for date (YYYY-MM-DD), time, and other text columns
+          cmp = String(first).localeCompare(String(second));
         }
 
         if (cmp !== 0) {

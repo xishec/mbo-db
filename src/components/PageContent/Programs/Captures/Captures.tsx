@@ -1,13 +1,18 @@
 import { Button, Spinner, Tab, Tabs, useDisclosure } from "@heroui/react";
 import { useState } from "react";
-import { CAPTURE_TYPE_OPTIONS, type CaptureType } from "../../../../helper/helper";
 import { useProgramData } from "../../../../services/useProgramData";
 import AddCaptureModal from "./AddCaptureModal";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
 
+const CAPTURE_TAB_OPTIONS = {
+  NEW_CAPTURES: "New Captures",
+  RE_CAPTURES: "Re-Captures",
+};
+type CaptureTabType = keyof typeof CAPTURE_TAB_OPTIONS;
+
 export default function Captures() {
-  const [captureType, setCaptureType] = useState<CaptureType>("NEW_CAPTURES");
+  const [captureTabType, setCaptureTabType] = useState<CaptureTabType>("NEW_CAPTURES");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { programData, selectedProgram } = useProgramData();
 
@@ -31,11 +36,14 @@ export default function Captures() {
         <Tabs
           color="secondary"
           size="md"
-          selectedKey={captureType}
-          onSelectionChange={(key) => setCaptureType(key as CaptureType)}
+          selectedKey={captureTabType}
+          onSelectionChange={(key) => setCaptureTabType(key as CaptureTabType)}
+          classNames={{
+            tabContent: "text-gray-700",
+          }}
         >
-          {CAPTURE_TYPE_OPTIONS.map((option) => (
-            <Tab key={option.key} title={option.label} />
+          {(Object.keys(CAPTURE_TAB_OPTIONS) as CaptureTabType[]).map((key) => (
+            <Tab key={key} title={CAPTURE_TAB_OPTIONS[key]} />
           ))}
         </Tabs>
         <Button color="secondary" onPress={onOpen}>
@@ -43,7 +51,7 @@ export default function Captures() {
         </Button>
       </div>
 
-      {captureType === "NEW_CAPTURES" ? <NewCaptures /> : <ReCaptures />}
+      {captureTabType === "NEW_CAPTURES" ? <NewCaptures /> : <ReCaptures />}
     </div>
   );
 }

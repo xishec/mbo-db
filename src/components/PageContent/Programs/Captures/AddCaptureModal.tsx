@@ -318,10 +318,12 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
               </Table>
               {existingCaptures.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-medium mb-2">Existing captures for this band:</h3>
+                  <h3 className="text-lg font-normal mb-2">
+                    Existing data for band <span className="font-bold">{bandId}</span> :
+                  </h3>
                   <CapturesTable
                     captures={existingCaptures}
-                    maxTableHeight={300}
+                    maxTableHeight={200}
                     sortColumn="date"
                     sortDirection="descending"
                   />

@@ -42,7 +42,7 @@ export interface Capture {
   scribe: string;
   net: string;
   notes: string;
-  captureType: CaptureType;
+  captureType: keyof typeof CaptureType;
 
   // to implement later
   //   disposition?: string;
@@ -94,10 +94,3 @@ export const HEADER_TO_CAPTURE_PROPERTY: Record<string, string> = {
   //   D20: "d20",
   //   D22: "d22",
 };
-
-export type CaptureType = "NEW_CAPTURES" | "RE_CAPTURES";
-
-export const CAPTURE_TYPE_OPTIONS: { key: CaptureType; label: string }[] = [
-  { key: "NEW_CAPTURES", label: "New Captures" },
-  { key: "RE_CAPTURES", label: "Re Captures" },
-];
