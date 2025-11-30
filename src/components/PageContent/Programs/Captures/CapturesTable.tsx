@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
 import { useCallback, useMemo, useState } from "react";
-import { type Capture, generateCaptureTableId } from "../../../../helper/helper";
+import { type Capture } from "../../../../helper/helper";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[] = [
   { key: "program", label: "Program", className: "min-w-[150px]" },
@@ -128,11 +128,7 @@ export default function CapturesTable({
           {(item) => (
             <TableRow key={item.id} className={item.program !== program ? "opacity-20" : ""}>
               {(columnKey) => {
-                if (columnKey === "lastTwoDigits") {
-                  return <TableCell className="whitespace-nowrap">{generateCaptureTableId(item)}</TableCell>;
-                } else {
-                  return <TableCell className="whitespace-nowrap">{item[columnKey as keyof Capture]}</TableCell>;
-                }
+                return <TableCell className="whitespace-nowrap">{item[columnKey as keyof Capture]}</TableCell>;
               }}
             </TableRow>
           )}

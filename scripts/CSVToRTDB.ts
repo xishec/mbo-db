@@ -1,14 +1,12 @@
 import { ref, set, type Database } from "firebase/database";
 import {
-  BandGroupsMap,
   Capture,
-  CapturesMap,
-  generateBandGroupId,
-  generateCaptureId,
-  ProgramsMap,
-  YearsMap,
   NUMERIC_FIELDS,
   HEADER_TO_CAPTURE_PROPERTY,
+  BandIdToCaptureIdsMap,
+  CaptureIdToCaptureMap,
+  ProgramToCaptureIdsMap,
+  YearToProgramMap,
 } from "../src/helper/helper";
 
 /**
@@ -98,9 +96,10 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
     }
   });
 
+  capture.bandGroupId = `${capture.bandPrefix}-${capture.bandSuffix.slice(0, -2)}`;
   capture.bandLastTwoDigits = capture.bandSuffix.slice(-2);
-  capture.bandGroupId = generateBandGroupId(capture);
-  capture.id = generateCaptureId(capture);
+  capture.bandId = `${capture.bandGroupId}${capture.bandLastTwoDigits}`;
+  capture.id = `${capture.date}-${capture.bandId}`;
   return capture;
 }
 
@@ -118,53 +117,35 @@ export async function CSVToRTDB(csvContent: string, database: Database): Promise
 }
 
 const generateDB = async (captures: Capture[], database: Database) => {
-  const yearsMap: YearsMap = new Map();
-  const programsMap: ProgramsMap = new Map();
-  const bandGroupsMap: BandGroupsMap = new Map();
-  const capturesMap: CapturesMap = new Map();
+  const yearsToProgramMap: YearToProgramMap = new Map();
+  const programToCaptureIdsMap: ProgramToCaptureIdsMap = new Map();
+  const bandIdToCaptureIdsMap: BandIdToCaptureIdsMap = new Map();
+  const captureIdToCaptureMap: CaptureIdToCaptureMap = new Map();
 
   for (const capture of captures) {
-    capturesMap.set(capture.id, capture);
+    captureIdToCaptureMap.set(capture.id, capture);
 
     const year = capture.date.slice(0, 4);
-    const program = capture.program;
-    const bandGroupId = generateBandGroupId(capture);
-    const captureId = capture.id;
-    if (year && program && bandGroupId) {
-      if (!yearsMap.has(year)) {
-        yearsMap.set(year, { id: year, programs: new Set([]) });
-      }
-      yearsMap.get(year)!.programs.add(program);
 
-      if (!programsMap.has(program)) {
-        programsMap.set(program, {
-          name: program,
-          bandGroupIds: new Set([]),
-          reCaptureIds: new Set([]),
-        });
-      }
-      if (capture.status === "Banded") {
-        programsMap.get(program)!.bandGroupIds.add(bandGroupId);
-      } else {
-        programsMap.get(program)!.reCaptureIds.add(captureId);
-      }
-
-      if (capture.status === "Banded") {
-        if (!bandGroupsMap.has(bandGroupId)) {
-          bandGroupsMap.set(bandGroupId, {
-            id: bandGroupId,
-            captureIds: new Set([]),
-          });
-        }
-        bandGroupsMap.get(bandGroupId)!.captureIds.add(captureId);
-      }
+    if (!yearsToProgramMap.has(year)) {
+      yearsToProgramMap.set(year, new Set());
     }
+    yearsToProgramMap.get(year)!.add(capture.program);
+
+    if (!programToCaptureIdsMap.has(capture.program)) {
+      programToCaptureIdsMap.set(capture.program, new Set([]));
+    }
+    programToCaptureIdsMap.get(capture.program)!.add(capture.id);
+
+    if (!bandIdToCaptureIdsMap.has(capture.bandId)) {
+      bandIdToCaptureIdsMap.set(capture.bandId, new Set([]));
+    }
+    bandIdToCaptureIdsMap.get(capture.bandId)!.add(capture.id);
   }
-  console.log(bandGroupsMap);
-  await writeObjectToDB(database, "yearsMap", yearsMap);
-  await writeObjectToDB(database, "programsMap", programsMap);
-  await writeObjectToDB(database, "bandGroupsMap", bandGroupsMap);
-  await writeObjectToDB(database, "capturesMap", capturesMap);
+  await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
+  await writeObjectToDB(database, "programToCaptureIdsMap", programToCaptureIdsMap);
+  await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
+  await writeObjectToDB(database, "captureIdToCaptureMap", captureIdToCaptureMap);
 };
 
 const writeObjectToDB = async (database: Database, path: string, data: Map<string, unknown>) => {

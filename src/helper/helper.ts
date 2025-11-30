@@ -1,33 +1,22 @@
-export type YearsMap = Map<string, Year>;
-export interface Year {
-  id: string;
-  programs: Set<string>;
-}
+export type YearToProgramMap = Map<string, Set<string>>;
 
-export type ProgramsMap = Map<string, Program>;
-export interface Program {
-  name: string;
-  bandGroupIds: Set<string>;
-  reCaptureIds: Set<string>;
-}
+export type ProgramToCaptureIdsMap = Map<string, Set<string>>;
 
-export type BandGroupsMap = Map<string, BandGroup>;
-export interface BandGroup {
-  id: string;
-  captureIds: Set<string>;
-}
+export type BandIdToCaptureIdsMap = Map<string, Set<string>>;
 
-export type CapturesMap = Map<string, Capture>;
+export type CaptureIdToCaptureMap = Map<string, Capture>;
 export interface Capture {
+  // generated
   id: string;
+  bandGroupId: string;
+  bandLastTwoDigits: string;
+  bandId: string;
+  // --------------
 
   program: string;
 
   bandPrefix: string;
   bandSuffix: string;
-
-  bandGroupId: string;
-  bandLastTwoDigits: string;
 
   species: string;
   wing: number;
@@ -54,15 +43,6 @@ export interface Capture {
   //   d20?: string;
   //   d22?: string;
 }
-export const generateBandGroupId = (capture: Capture): string => {
-  return `${capture.bandPrefix}-${capture.bandSuffix.slice(0, -2)}`;
-};
-export const generateCaptureId = (capture: Capture): string => {
-  return `${capture.date}-${capture.bandGroupId}${capture.bandLastTwoDigits}`;
-};
-export const generateCaptureTableId = (capture: Capture): string => {
-  return `${capture.bandGroupId}${capture.bandLastTwoDigits}`;
-};
 
 export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
 

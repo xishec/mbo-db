@@ -13,7 +13,7 @@ import Captures from "./Captures/Captures";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../../../firebase";
-import type { YearsMap } from "../../../helper/helper";
+import type { YearToProgramMap } from "../../../helper/helper";
 import { useProgramData } from "../../../services/useProgramData";
 
 export default function Programs() {
@@ -28,18 +28,15 @@ export default function Programs() {
     const yearsRef = ref(db, "yearsMap");
     const unsubscribe = onValue(yearsRef, (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val();
-        const newYearMap: YearsMap = new Map();
-        for (const [year, yearData] of Object.entries(data) as [string, { id: string; programs: string[] }][]) {
-          newYearMap.set(year, {
-            id: yearData.id,
-            programs: new Set(yearData.programs),
-          });
+        const data = snapshot.val() as YearToProgramMap;
+        const newYearToProgramMap: YearToProgramMap = new Map();
+        for (const [year, yearData] of Object.entries(data)) {
+          newYearToProgramMap.set(year, new Set(yearData));
         }
-        setYearsMap(newYearMap);
+        setYearsMap(newYearToProgramMap);
 
         // Select the most recent year by default
-        const years = Array.from(newYearMap.keys()).sort((a, b) => Number(b) - Number(a));
+        const years = Array.from(newYearToProgramMap.keys()).sort((a, b) => Number(b) - Number(a));
         if (years.length > 0 && !selectedYear) {
           setSelectedYear(years[0]);
         }

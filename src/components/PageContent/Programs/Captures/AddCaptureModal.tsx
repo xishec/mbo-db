@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   Input,
   Modal,
   ModalBody,
@@ -260,7 +259,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
               Add Capture in <span className="font-bold">{selectedProgram}</span>
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
-              <Table removeWrapper>
+              <Table>
                 <TableHeader columns={CAPTURE_COLUMNS}>
                   {(column) => (
                     <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
