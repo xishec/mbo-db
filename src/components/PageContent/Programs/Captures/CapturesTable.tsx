@@ -3,8 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 import { type Capture } from "../../../../helper/helper";
 
 const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[] = [
-  { key: "program", label: "Program", className: "min-w-[150px]" },
-  { key: "bandGroupId", label: "Band Group", className: "" },
+  { key: "programId", label: "Program", className: "min-w-[150px]" },
+  { key: "bandGroup", label: "Band Group", className: "" },
   { key: "bandLastTwoDigits", label: "Band", className: "" },
   { key: "species", label: "Species", className: "" },
   { key: "wing", label: "Wing", className: "" },
@@ -48,7 +48,7 @@ export default function CapturesTable({
     if (showOtherPrograms) {
       return captures;
     }
-    return captures.filter((capture) => capture.program === program);
+    return captures.filter((capture) => capture.programId === program);
   }, [captures, showOtherPrograms, program]);
 
   // Sort captures based on multiple sortDescriptors (cascading sort)
@@ -107,7 +107,7 @@ export default function CapturesTable({
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="text-default-700 text-sm">
-        {captures.length} {captures.length === 1 ? "capture" : "captures"}
+        {filteredCaptures.length} of {captures.length} {captures.length === 1 ? "capture" : "captures"}
       </div>
       <Table
         isHeaderSticky
@@ -126,7 +126,7 @@ export default function CapturesTable({
         </TableHeader>
         <TableBody items={sortedCaptures} emptyContent="No captures found">
           {(item) => (
-            <TableRow key={item.id} className={item.program !== program ? "opacity-20" : ""}>
+            <TableRow key={item.id} className={item.programId !== program ? "opacity-20" : ""}>
               {(columnKey) => {
                 return <TableCell className="whitespace-nowrap">{item[columnKey as keyof Capture]}</TableCell>;
               }}
