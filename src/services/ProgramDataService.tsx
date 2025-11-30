@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture } from "../helper/helper";
+import { CaptureType } from "../helper/helper";
 import { ProgramDataContext, defaultProgramData } from "./ProgramDataContext";
 import type { ProgramData } from "./ProgramDataContext";
 
@@ -13,62 +14,12 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
   // Track current fetch to cancel stale requests
   const fetchIdRef = useRef(0);
 
-  // Fetch captures for a list of captureIds, including all related captures with same band prefix (varying last 2 digits of bandId 00-99)
-  // captureId format: "0816-34893-2024-06-05" where "0816-34893" is bandId
-  // bandId = bandPrefix + "-" + bandSuffix = "0816" + "-" + "34893"
-  // bandGroupId = bandPrefix + "-" + bandSuffix[:-2] = "0816-348"
-  const fetchAllRelatedCaptures = useCallback(async (captureIds: string[]): Promise<Capture[]> => {
+
+  // Fetch captures by their IDs from capturesMap
+  const fetchCaptures = useCallback(async (captureIds: string[]): Promise<Capture[]> => {
     if (captureIds.length === 0) return [];
 
-    // Get unique bandGroupIds (bandId without last 2 digits)
-    // e.g., "0816-34893-2024-06-05" -> bandId: "0816-34893" -> bandGroupId: "0816-348"
-    const bandGroups = new Set<string>();
-    for (const captureId of captureIds) {
-      // Split into parts: ["0816", "34893", "2024", "06", "05"]
-      const parts = captureId.split("-");
-      if (parts.length >= 2) {
-        const bandPrefix = parts[0]; // "0816"
-        const bandSuffix = parts[1]; // "34893"
-
-        // Get bandGroup (bandSuffix without last 2 digits)
-        const bandGroupId = `${bandPrefix}-${bandSuffix.slice(0, -2)}`; // "0816-348"
-
-        bandGroups.add(bandGroupId);
-      }
-    }
-
-    // Generate all possible bandIds by varying last 2 digits (00-99)
-    // bandId = bandGroupId + last2digits (no hyphen)
-    const allBandIds: string[] = [];
-    for (const bandGroup of bandGroups) {
-      for (let i = 0; i < 100; i++) {
-        const last2Digits = i.toString().padStart(2, "0");
-        allBandIds.push(`${bandGroup}${last2Digits}`); // e.g., "0816-34800", "0816-34801", ...
-      }
-    }
-
-    // 1. Fetch all captureIds for each bandId from bandIdToCaptureIdsMap
-    const bandIdPromises = allBandIds.map((bandId) => get(ref(db, `bandIdToCaptureIdsMap/${bandId}`)));
-    const bandIdSnapshots = await Promise.all(bandIdPromises);
-
-    const allCaptureIds: string[] = [];
-    for (const snapshot of bandIdSnapshots) {
-      if (snapshot.exists()) {
-        const captureIdsForBand = snapshot.val();
-        // Handle both array and object formats from Firebase
-        if (Array.isArray(captureIdsForBand)) {
-          allCaptureIds.push(...captureIdsForBand);
-        } else if (typeof captureIdsForBand === "object") {
-          allCaptureIds.push(...Object.values(captureIdsForBand as Record<string, string>));
-        }
-      }
-    }
-
-    if (allCaptureIds.length === 0) return [];
-
-    // 2. Fetch all captures from captureIdToCaptureMap
-    const capturePromises = allCaptureIds.map((captureId) => get(ref(db, `captureIdToCaptureMap/${captureId}`)));
-
+    const capturePromises = captureIds.map((captureId) => get(ref(db, `capturesMap/${captureId}`)));
     const snapshots = await Promise.all(capturePromises);
     const captures: Capture[] = [];
 
@@ -80,6 +31,32 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
 
     return captures;
   }, []);
+
+  // Fetch captures by bandGroups using bandGroupToCaptureIdsMap, then fetch captures
+  const fetchByBandGroups = useCallback(async (bandGroups: string[]): Promise<Capture[]> => {
+    if (bandGroups.length === 0) return [];
+
+    // 1. Fetch all captureIds for each bandGroup from bandGroupToCaptureIdsMap
+    const bandGroupPromises = bandGroups.map((bandGroup) => get(ref(db, `bandGroupToCaptureIdsMap/${bandGroup}`)));
+    const bandGroupSnapshots = await Promise.all(bandGroupPromises);
+
+    const allCaptureIds: string[] = [];
+    for (const snapshot of bandGroupSnapshots) {
+      if (snapshot.exists()) {
+        const captureIdsForBandGroup = snapshot.val();
+        // Handle both array and object formats from Firebase
+        if (Array.isArray(captureIdsForBandGroup)) {
+          allCaptureIds.push(...captureIdsForBandGroup);
+        } else if (typeof captureIdsForBandGroup === "object") {
+          allCaptureIds.push(...Object.values(captureIdsForBandGroup as Record<string, string>));
+        }
+      }
+    }
+
+    // 2. Fetch all captures using fetchCaptures
+    return fetchCaptures(allCaptureIds);
+  }, [fetchCaptures]);
+
 
   // Select a program and prefetch all its data
   const selectProgram = useCallback(
@@ -121,7 +98,7 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
         }));
 
         // 2. Fetch all captures for this program
-        const captures = await fetchAllRelatedCaptures(programCaptureIds);
+        const captures = await fetchCaptures(programCaptureIds);
 
         if (currentFetchId !== fetchIdRef.current) return; // Cancelled
 
@@ -130,11 +107,11 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
         const newReCaptures: Capture[] = [];
 
         for (const capture of captures) {
-          const bandGroupId = capture.bandGroupId;
+          const bandGroupId = capture.bandGroup;
           if (!newBandGroupToNewCaptures.has(bandGroupId)) {
             newBandGroupToNewCaptures.set(bandGroupId, []);
           }
-          if (capture.status === "Banded") {
+          if (capture.captureType === CaptureType.Banded) {
             newBandGroupToNewCaptures.get(bandGroupId)!.push(capture);
           } else {
             newReCaptures.push(capture);
@@ -147,7 +124,7 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
             newBandGroupToNewCaptures.delete(bandGroupId);
           }
         }
-        
+
         if (currentFetchId !== fetchIdRef.current) return; // Cancelled
 
         setProgramData({
@@ -164,7 +141,7 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
         }
       }
     },
-    [fetchAllRelatedCaptures]
+    [fetchCaptures]
   );
 
   return (

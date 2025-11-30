@@ -7,7 +7,8 @@ import {
   YearToProgramMap,
   ProgramsMap,
   CapturesMap,
-  Program,
+  CaptureType,
+  BandGroupToCaptureIdsMap,
 } from "../src/helper/helper";
 
 /**
@@ -122,28 +123,38 @@ const generateDB = async (captures: Capture[], database: Database) => {
   const programsMap: ProgramsMap = new Map();
   const bandIdToCaptureIdsMap: BandIdToCaptureIdsMap = new Map();
   const capturesMap: CapturesMap = new Map();
+  const bandGroupToCaptureIdsMap: BandGroupToCaptureIdsMap = new Map();
 
   for (const capture of captures) {
+    // capturesMap
     capturesMap.set(capture.id, capture);
 
+    // year
     const year = capture.date.slice(0, 4);
-
     if (!yearsToProgramMap.has(year)) {
       yearsToProgramMap.set(year, new Set());
     }
     yearsToProgramMap.get(year)!.add(capture.programId);
 
+    // programsMap and bandGroupsMap
     if (!programsMap.has(capture.programId)) {
-      const newProgram: Program = {
+      programsMap.set(capture.programId, {
         name: capture.programId,
-        usedBandGroups: new Set<string>(),
+        usedBandGroupIds: new Set<string>(),
         reCaptureIds: new Set<string>(),
-      };
-      programsMap.set(capture.programId, newProgram);
+      });
     }
-    programsMap.get(capture.programId)!.usedBandGroups.add(capture.bandGroup);
-    programsMap.get(capture.programId)!.reCaptureIds.add(capture.id);
+    if (!bandGroupToCaptureIdsMap.has(capture.bandGroup)) {
+      bandGroupToCaptureIdsMap.set(capture.bandGroup, new Set<string>());
+    }
+    if (capture.captureType === CaptureType.Banded) {
+      programsMap.get(capture.programId)!.usedBandGroupIds.add(capture.bandGroup);
+      bandGroupToCaptureIdsMap.get(capture.bandGroup)!.add(capture.id);
+    } else {
+      programsMap.get(capture.programId)!.reCaptureIds.add(capture.id);
+    }
 
+    // bandIdToCaptureIdsMap
     if (!bandIdToCaptureIdsMap.has(capture.bandId)) {
       bandIdToCaptureIdsMap.set(capture.bandId, new Set([]));
     }
@@ -153,6 +164,7 @@ const generateDB = async (captures: Capture[], database: Database) => {
   await writeObjectToDB(database, "programsMap", programsMap);
   await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
   await writeObjectToDB(database, "capturesMap", capturesMap);
+  await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
 };
 
 const writeObjectToDB = async (database: Database, path: string, data: Map<string, unknown>) => {

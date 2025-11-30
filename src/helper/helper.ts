@@ -5,9 +5,11 @@ export type ProgramsMap = Map<string, Program>;
 
 export interface Program {
   name: string;
-  usedBandGroups: Set<string>;
+  usedBandGroupIds: Set<string>;
   reCaptureIds: Set<string>;
 }
+
+export type BandGroupToCaptureIdsMap = Map<string, Set<string>>;
 
 export type BandIdToCaptureIdsMap = Map<string, Set<string>>;
 
@@ -40,7 +42,7 @@ export interface Capture {
   scribe: string;
   net: string;
   notes: string;
-  status: string;
+  captureType: CaptureType;
 
   // to implement later
   //   disposition?: string;
@@ -51,6 +53,14 @@ export interface Capture {
   //   d20?: string;
   //   d22?: string;
 }
+
+export const CaptureType = {
+  Banded: "Banded",
+  Alien: "Alien",
+  Repeat: "Repeat",
+  Return: "Return",
+  None: "None",
+};
 
 export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
 
@@ -73,7 +83,7 @@ export const HEADER_TO_CAPTURE_PROPERTY: Record<string, string> = {
   Scribe: "scribe",
   Net: "net",
   NotesForMBO: "notes",
-  D18: "status",
+  D18: "captureType",
 
   // to implement later
   //   Disposition: "disposition",
