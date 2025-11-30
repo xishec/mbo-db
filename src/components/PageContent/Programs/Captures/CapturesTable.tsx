@@ -9,9 +9,7 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[
   { key: "species", label: "Species", className: "" },
   { key: "wing", label: "Wing", className: "" },
   { key: "age", label: "Age", className: "" },
-  { key: "howAged", label: "How Aged", className: "" },
-  { key: "sex", label: "Sex", className: "w-[50px]" },
-  { key: "howSexed", label: "How Sexed", className: "" },
+  { key: "sex", label: "Sex", className: "" },
   { key: "fat", label: "Fat", className: "" },
   { key: "weight", label: "Weight", className: "" },
   { key: "date", label: "Date", className: "" },
@@ -128,7 +126,13 @@ export default function CapturesTable({
           {(item) => (
             <TableRow key={item.id} className={item.programId !== program ? "opacity-20" : ""}>
               {(columnKey) => {
-                return <TableCell className="whitespace-nowrap">{item[columnKey as keyof Capture]}</TableCell>;
+                let value: string | number = item[columnKey as keyof Capture];
+                if (columnKey === "age" && item.howAged) {
+                  value = `${item.age} | ${item.howAged}`;
+                } else if (columnKey === "sex" && item.howSexed) {
+                  value = `${item.sex} | ${item.howSexed}`;
+                }
+                return <TableCell className="whitespace-nowrap">{value}</TableCell>;
               }}
             </TableRow>
           )}

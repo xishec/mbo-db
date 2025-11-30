@@ -29,9 +29,7 @@ interface CaptureFormData {
   species: string;
   wing: string;
   age: string;
-  howAged: string;
   sex: string;
-  howSexed: string;
   fat: string;
   weight: string;
   date: string;
@@ -55,9 +53,7 @@ const getDefaultFormData = (program: string): CaptureFormData => {
     species: "",
     wing: "",
     age: "",
-    howAged: "",
     sex: "",
-    howSexed: "",
     fat: "",
     weight: "",
     date,
@@ -76,15 +72,14 @@ const CAPTURE_COLUMNS: {
   className?: string;
   maxLength?: number;
 }[] = [
+  { key: "program", label: "Program", className: "min-w-[150px]" },
   { key: "bandPrefix", label: "Band Prefix", className: "", maxLength: 4 },
   { key: "bandSuffix", label: "Band Suffix", className: "", maxLength: 3 },
   { key: "bandLastTwoDigits", label: "Band", className: "", maxLength: 2 },
   { key: "species", label: "Species", className: "", maxLength: 4 },
   { key: "wing", label: "Wing", className: "min-w-[60px]" },
-  { key: "age", label: "Age", className: "", maxLength: 1 },
-  { key: "howAged", label: "How Aged", className: "", maxLength: 1 },
-  { key: "sex", label: "Sex", className: "", maxLength: 1 },
-  { key: "howSexed", label: "How Sexed", className: "", maxLength: 1 },
+  { key: "age", label: "Age", className: "min-w-[60px]", maxLength: 3 },
+  { key: "sex", label: "Sex", className: "min-w-[60px]", maxLength: 3 },
   { key: "fat", label: "Fat", className: "", maxLength: 1 },
   { key: "weight", label: "Weight", className: "" },
   { key: "date", label: "Date", type: "date", className: "" },
@@ -133,24 +128,29 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     if (field === "wing") {
       value = value.replace(/\D/g, "");
     }
-    // Age: 1 digit only
+    // Age: format "digit | digit" (e.g., "4 | 1") - auto-insert |
     if (field === "age") {
-      value = value.replace(/\D/g, "").slice(0, 1);
+      // Remove everything except digits
+      const digits = value.replace(/[^0-9]/g, "").slice(0, 2);
+      if (digits.length === 0) {
+        value = "";
+      } else if (digits.length === 1) {
+        value = digits;
+      } else {
+        value = `${digits[0]} | ${digits[1]}`;
+      }
     }
-    // How Aged: 1 digit only
-    if (field === "howAged") {
-      value = value.replace(/\D/g, "").slice(0, 1);
-    }
-    // Sex: 1 digit only
+    // Sex: format "digit | letter/digit" (e.g., "5 | P") - auto-insert |
     if (field === "sex") {
-      value = value.replace(/\D/g, "").slice(0, 1);
-    }
-    // How Sexed: 1 letter or number
-    if (field === "howSexed") {
-      value = value
-        .replace(/[^a-zA-Z0-9]/g, "")
-        .toUpperCase()
-        .slice(0, 1);
+      // Remove everything except alphanumeric
+      const chars = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 2);
+      if (chars.length === 0) {
+        value = "";
+      } else if (chars.length === 1) {
+        value = chars;
+      } else {
+        value = `${chars[0]} | ${chars[1]}`;
+      }
     }
     // Fat: 1 digit only
     if (field === "fat") {
