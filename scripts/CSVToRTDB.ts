@@ -4,9 +4,10 @@ import {
   NUMERIC_FIELDS,
   HEADER_TO_CAPTURE_PROPERTY,
   BandIdToCaptureIdsMap,
-  CaptureIdToCaptureMap,
-  ProgramToCaptureIdsMap,
   YearToProgramMap,
+  ProgramsMap,
+  CapturesMap,
+  Program,
 } from "../src/helper/helper";
 
 /**
@@ -96,9 +97,9 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
     }
   });
 
-  capture.bandGroupId = `${capture.bandPrefix}-${capture.bandSuffix.slice(0, -2)}`;
+  capture.bandGroup = `${capture.bandPrefix}-${capture.bandSuffix.slice(0, -2)}`;
   capture.bandLastTwoDigits = capture.bandSuffix.slice(-2);
-  capture.bandId = `${capture.bandGroupId}${capture.bandLastTwoDigits}`;
+  capture.bandId = `${capture.bandGroup}${capture.bandLastTwoDigits}`;
   capture.id = `${capture.bandId}-${capture.date}`;
   return capture;
 }
@@ -118,24 +119,30 @@ export async function CSVToRTDB(csvContent: string, database: Database): Promise
 
 const generateDB = async (captures: Capture[], database: Database) => {
   const yearsToProgramMap: YearToProgramMap = new Map();
-  const programToCaptureIdsMap: ProgramToCaptureIdsMap = new Map();
+  const programsMap: ProgramsMap = new Map();
   const bandIdToCaptureIdsMap: BandIdToCaptureIdsMap = new Map();
-  const captureIdToCaptureMap: CaptureIdToCaptureMap = new Map();
+  const capturesMap: CapturesMap = new Map();
 
   for (const capture of captures) {
-    captureIdToCaptureMap.set(capture.id, capture);
+    capturesMap.set(capture.id, capture);
 
     const year = capture.date.slice(0, 4);
 
     if (!yearsToProgramMap.has(year)) {
       yearsToProgramMap.set(year, new Set());
     }
-    yearsToProgramMap.get(year)!.add(capture.program);
+    yearsToProgramMap.get(year)!.add(capture.programId);
 
-    if (!programToCaptureIdsMap.has(capture.program)) {
-      programToCaptureIdsMap.set(capture.program, new Set([]));
+    if (!programsMap.has(capture.programId)) {
+      const newProgram: Program = {
+        name: capture.programId,
+        usedBandGroups: new Set<string>(),
+        reCaptureIds: new Set<string>(),
+      };
+      programsMap.set(capture.programId, newProgram);
     }
-    programToCaptureIdsMap.get(capture.program)!.add(capture.id);
+    programsMap.get(capture.programId)!.usedBandGroups.add(capture.bandGroup);
+    programsMap.get(capture.programId)!.reCaptureIds.add(capture.id);
 
     if (!bandIdToCaptureIdsMap.has(capture.bandId)) {
       bandIdToCaptureIdsMap.set(capture.bandId, new Set([]));
@@ -143,9 +150,9 @@ const generateDB = async (captures: Capture[], database: Database) => {
     bandIdToCaptureIdsMap.get(capture.bandId)!.add(capture.id);
   }
   await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
-  await writeObjectToDB(database, "programToCaptureIdsMap", programToCaptureIdsMap);
+  await writeObjectToDB(database, "programsMap", programsMap);
   await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
-  await writeObjectToDB(database, "captureIdToCaptureMap", captureIdToCaptureMap);
+  await writeObjectToDB(database, "capturesMap", capturesMap);
 };
 
 const writeObjectToDB = async (database: Database, path: string, data: Map<string, unknown>) => {

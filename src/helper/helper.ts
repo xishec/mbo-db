@@ -1,21 +1,27 @@
 // Database structure types (as stored in Firebase RTDB after serialization)
 export type YearToProgramMap = Map<string, Set<string>>;
 
-export type ProgramToCaptureIdsMap = Map<string, Set<string>>;
+export type ProgramsMap = Map<string, Program>;
+
+export interface Program {
+  name: string;
+  usedBandGroups: Set<string>;
+  reCaptureIds: Set<string>;
+}
 
 export type BandIdToCaptureIdsMap = Map<string, Set<string>>;
 
-export type CaptureIdToCaptureMap = Map<string, Capture>;
+export type CapturesMap = Map<string, Capture>;
 
 export interface Capture {
   // generated
   id: string;
-  bandGroupId: string;
+  bandGroup: string;
   bandLastTwoDigits: string;
   bandId: string;
   // --------------
 
-  program: string;
+  programId: string;
 
   bandPrefix: string;
   bandSuffix: string;
@@ -49,7 +55,7 @@ export interface Capture {
 export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
 
 export const HEADER_TO_CAPTURE_PROPERTY: Record<string, string> = {
-  Program: "program",
+  Program: "programId",
 
   BandPrefix: "bandPrefix",
   BandSuffix: "bandSuffix",

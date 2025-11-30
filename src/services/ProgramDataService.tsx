@@ -15,33 +15,35 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
 
   // Fetch captures for a list of captureIds, including all related captures with same band prefix (varying last 2 digits of bandId 00-99)
   // captureId format: "0816-34893-2024-06-05" where "0816-34893" is bandId
+  // bandId = bandPrefix + "-" + bandSuffix = "0816" + "-" + "34893"
+  // bandGroupId = bandPrefix + "-" + bandSuffix[:-2] = "0816-348"
   const fetchAllRelatedCaptures = useCallback(async (captureIds: string[]): Promise<Capture[]> => {
     if (captureIds.length === 0) return [];
 
-    // Get unique band prefixes (bandId without last 2 digits)
-    // e.g., "0816-34893-2024-06-05" -> bandId: "0816-34893" -> bandIdPrefix: "0816-348"
-    const bandIdPrefixes = new Set<string>();
+    // Get unique bandGroupIds (bandId without last 2 digits)
+    // e.g., "0816-34893-2024-06-05" -> bandId: "0816-34893" -> bandGroupId: "0816-348"
+    const bandGroups = new Set<string>();
     for (const captureId of captureIds) {
       // Split into parts: ["0816", "34893", "2024", "06", "05"]
       const parts = captureId.split("-");
       if (parts.length >= 2) {
-        const bandIdPart1 = parts[0]; // "0816"
-        const bandIdPart2 = parts[1]; // "34893"
+        const bandPrefix = parts[0]; // "0816"
+        const bandSuffix = parts[1]; // "34893"
 
-        // Get prefix of bandIdPart2 (without last 2 digits)
-        const bandIdPart2Prefix = bandIdPart2.slice(0, -2); // "348"
-        const bandIdPrefix = `${bandIdPart1}-${bandIdPart2Prefix}`; // "0816-348"
+        // Get bandGroup (bandSuffix without last 2 digits)
+        const bandGroupId = `${bandPrefix}-${bandSuffix.slice(0, -2)}`; // "0816-348"
 
-        bandIdPrefixes.add(bandIdPrefix);
+        bandGroups.add(bandGroupId);
       }
     }
 
     // Generate all possible bandIds by varying last 2 digits (00-99)
+    // bandId = bandGroupId + last2digits (no hyphen)
     const allBandIds: string[] = [];
-    for (const bandIdPrefix of bandIdPrefixes) {
+    for (const bandGroup of bandGroups) {
       for (let i = 0; i < 100; i++) {
-        const suffix = i.toString().padStart(2, "0");
-        allBandIds.push(`${bandIdPrefix}${suffix}`); // e.g., "0816-34800", "0816-34801", ...
+        const last2Digits = i.toString().padStart(2, "0");
+        allBandIds.push(`${bandGroup}${last2Digits}`); // e.g., "0816-34800", "0816-34801", ...
       }
     }
 
@@ -52,8 +54,13 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
     const allCaptureIds: string[] = [];
     for (const snapshot of bandIdSnapshots) {
       if (snapshot.exists()) {
-        const captureIdsForBand = snapshot.val() as string[];
-        allCaptureIds.push(...captureIdsForBand);
+        const captureIdsForBand = snapshot.val();
+        // Handle both array and object formats from Firebase
+        if (Array.isArray(captureIdsForBand)) {
+          allCaptureIds.push(...captureIdsForBand);
+        } else if (typeof captureIdsForBand === "object") {
+          allCaptureIds.push(...Object.values(captureIdsForBand as Record<string, string>));
+        }
       }
     }
 
@@ -134,6 +141,13 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
           }
         }
 
+        // Filter out empty band groups
+        for (const [bandGroupId, captures] of newBandGroupToNewCaptures) {
+          if (captures.length === 0) {
+            newBandGroupToNewCaptures.delete(bandGroupId);
+          }
+        }
+        
         if (currentFetchId !== fetchIdRef.current) return; // Cancelled
 
         setProgramData({
