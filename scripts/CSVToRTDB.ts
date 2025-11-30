@@ -99,7 +99,7 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
   capture.bandGroupId = `${capture.bandPrefix}-${capture.bandSuffix.slice(0, -2)}`;
   capture.bandLastTwoDigits = capture.bandSuffix.slice(-2);
   capture.bandId = `${capture.bandGroupId}${capture.bandLastTwoDigits}`;
-  capture.id = `${capture.date}-${capture.bandId}`;
+  capture.id = `${capture.bandId}-${capture.date}`;
   return capture;
 }
 
