@@ -5,12 +5,12 @@ import CapturesTable from "./CapturesTable";
 
 export default function NewCaptures() {
   const { programData, selectedProgram } = useProgramData();
-  const { bandGroupIds, capturesByBandGroup, isLoadingCaptures } = programData;
+  const { bandGroupToNewCaptures, isLoadingCaptures } = programData;
 
-  // Convert bandGroupIds Set to sorted array for autocomplete
+  // Convert bandGroupToNewCaptures keys to sorted array for autocomplete
   const bandGroupOptions = useMemo(() => {
-    return Array.from(bandGroupIds).sort();
-  }, [bandGroupIds]);
+    return Array.from(bandGroupToNewCaptures.keys()).sort();
+  }, [bandGroupToNewCaptures]);
 
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const [showOtherPrograms, setShowOtherPrograms] = useState(false);
@@ -26,10 +26,10 @@ export default function NewCaptures() {
   // Get captures for the selected bandGroup from the cache
   const captures = useMemo(() => {
     if (!effectiveBandGroupId) return [];
-    return capturesByBandGroup.get(effectiveBandGroupId) ?? [];
-  }, [effectiveBandGroupId, capturesByBandGroup]);
+    return bandGroupToNewCaptures.get(effectiveBandGroupId) ?? [];
+  }, [effectiveBandGroupId, bandGroupToNewCaptures]);
 
-  if (isLoadingCaptures && capturesByBandGroup.size === 0) {
+  if (isLoadingCaptures && bandGroupToNewCaptures.size === 0) {
     return (
       <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading captures...
@@ -37,6 +37,7 @@ export default function NewCaptures() {
     );
   }
 
+  console.log(programData);
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="flex items-center gap-4">
