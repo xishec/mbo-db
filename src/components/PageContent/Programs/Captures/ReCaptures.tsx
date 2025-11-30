@@ -14,5 +14,14 @@ export default function ReCaptures() {
     );
   }
 
-  return <CapturesTable program={selectedProgram ?? ""} captures={reCaptures} />;
+  return (
+    <CapturesTable
+      program={selectedProgram ?? ""}
+      captures={reCaptures}
+      maxHeight={800}
+      isVirtualized={true}
+      sortColumn="date"
+      sortDirection="descending"
+    />
+  );
 }

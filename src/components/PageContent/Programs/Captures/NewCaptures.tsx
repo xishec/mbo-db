@@ -53,7 +53,14 @@ export default function NewCaptures() {
       </Autocomplete>
 
       {effectiveBandGroupId ? (
-        <CapturesTable program={selectedProgram ?? ""} captures={captures} />
+        <CapturesTable
+          program={selectedProgram ?? ""}
+          captures={captures}
+          maxHeight={800}
+          isVirtualized={true}
+          sortColumn="bandLastTwoDigits"
+          sortDirection="ascending"
+        />
       ) : (
         <div className="p-4 text-default-500">Select a band group to view captures</div>
       )}
