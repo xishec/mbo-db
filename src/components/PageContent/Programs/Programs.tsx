@@ -18,20 +18,20 @@ import { useProgramData } from "../../../services/useProgramData";
 
 export default function Programs() {
   const [selectedYear, setSelectedYear] = useState<string>("");
-  const [yearsMap, setYearsMap] = useState<YearsMap>(new Map());
+  const [yearsMap, setYearsMap] = useState<YearToProgramMap>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
   const { selectProgram, selectedProgram } = useProgramData();
 
   // Fetch yearsMap from RTDB
   useEffect(() => {
-    const yearsRef = ref(db, "yearsMap");
+    const yearsRef = ref(db, "yearsToProgramMap");
     const unsubscribe = onValue(yearsRef, (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val() as YearToProgramMap;
+        const data = snapshot.val() as Record<string, string[]>;
         const newYearToProgramMap: YearToProgramMap = new Map();
-        for (const [year, yearData] of Object.entries(data)) {
-          newYearToProgramMap.set(year, new Set(yearData));
+        for (const [year, programs] of Object.entries(data)) {
+          newYearToProgramMap.set(year, new Set(programs));
         }
         setYearsMap(newYearToProgramMap);
 
@@ -54,7 +54,7 @@ export default function Programs() {
   // Get programs for selected year
   const programs = useMemo(() => {
     if (!selectedYear || yearsMap.size === 0) return new Set<string>();
-    return yearsMap.get(selectedYear)?.programs ?? new Set<string>();
+    return yearsMap.get(selectedYear) ?? new Set<string>();
   }, [yearsMap, selectedYear]);
 
   const handleYearChange = (keys: "all" | Set<React.Key>) => {

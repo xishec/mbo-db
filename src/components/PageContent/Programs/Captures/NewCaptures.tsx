@@ -5,12 +5,12 @@ import CapturesTable from "./CapturesTable";
 
 export default function NewCaptures() {
   const { programData, selectedProgram } = useProgramData();
-  const { program, capturesByBandGroup, isLoadingCaptures } = programData;
+  const { bandGroupIds, capturesByBandGroup, isLoadingCaptures } = programData;
 
   // Convert bandGroupIds Set to sorted array for autocomplete
   const bandGroupOptions = useMemo(() => {
-    return Array.from(program?.bandGroupIds ?? []).sort();
-  }, [program?.bandGroupIds]);
+    return Array.from(bandGroupIds).sort();
+  }, [bandGroupIds]);
 
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const [showOtherPrograms, setShowOtherPrograms] = useState(false);
