@@ -13,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useProgramData } from "../../../../services/useProgramData";
 
 interface AddCaptureModalProps {
   isOpen: boolean;
@@ -40,24 +41,30 @@ interface CaptureFormData {
   notes: string;
 }
 
-const initialFormData: CaptureFormData = {
-  program: "",
-  bandGroupId: "",
-  bandLastTwoDigits: "",
-  species: "",
-  wing: "",
-  age: "",
-  howAged: "",
-  sex: "",
-  howSexed: "",
-  fat: "",
-  weight: "",
-  date: "",
-  time: "",
-  bander: "",
-  scribe: "",
-  net: "",
-  notes: "",
+const getDefaultFormData = (program: string): CaptureFormData => {
+  const now = new Date();
+  const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
+  const time = now.toTimeString().slice(0, 5); // HH:MM
+
+  return {
+    program,
+    bandGroupId: "",
+    bandLastTwoDigits: "",
+    species: "",
+    wing: "",
+    age: "",
+    howAged: "",
+    sex: "",
+    howSexed: "",
+    fat: "",
+    weight: "",
+    date,
+    time,
+    bander: "",
+    scribe: "",
+    net: "",
+    notes: "",
+  };
 };
 
 const CAPTURE_COLUMNS: { key: keyof CaptureFormData; label: string; type?: string; className?: string }[] = [
@@ -81,14 +88,20 @@ const CAPTURE_COLUMNS: { key: keyof CaptureFormData; label: string; type?: strin
 ];
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const [formData, setFormData] = useState<CaptureFormData>(initialFormData);
+  const { selectedProgram } = useProgramData();
+  const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(getDefaultFormData(selectedProgram || ""));
+    }
+  }, [isOpen, selectedProgram]);
 
   const handleInputChange = (field: keyof CaptureFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleClose = () => {
-    setFormData(initialFormData);
     onOpenChange(false);
   };
 
@@ -124,7 +137,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                     {CAPTURE_COLUMNS.map((column) => (
                       <TableCell key={column.key} className="p-1">
                         <Input
-                          size="sm"
                           variant="bordered"
                           aria-label={column.label}
                           type={column.type || "text"}
