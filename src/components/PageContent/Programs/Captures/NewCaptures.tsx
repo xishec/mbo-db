@@ -66,7 +66,7 @@ export default function NewCaptures() {
 
       {effectiveBandGroupId ? (
         <CapturesTable
-          program={selectedProgram ?? ""}
+          programId={selectedProgram ?? undefined}
           captures={captures}
           maxTableHeight={800}
           sortColumn="bandLastTwoDigits"

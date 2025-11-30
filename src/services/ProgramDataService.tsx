@@ -30,6 +30,20 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
     return captures;
   }, []);
 
+  // Fetch captures by bandId using bandIdToCaptureIdsMap
+  const fetchCapturesByBandId = useCallback(
+    async (bandId: string): Promise<Capture[]> => {
+      if (!bandId) return [];
+
+      const snapshot = await get(ref(db, `bandIdToCaptureIdsMap/${bandId}`));
+      if (!snapshot.exists()) return [];
+
+      const captureIds = snapshot.val() as string[];
+      return fetchCaptures(captureIds);
+    },
+    [fetchCaptures]
+  );
+
   // Fetch captures by bandGroups using bandGroupToCaptureIdsMap, then fetch captures
   // Returns a Map of bandGroup -> Capture[]
   const fetchByBandGroups = useCallback(
@@ -165,6 +179,7 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
         programData,
         selectProgram,
         selectedProgram,
+        fetchCapturesByBandId,
       }}
     >
       {children}

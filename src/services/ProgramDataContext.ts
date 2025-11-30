@@ -13,6 +13,7 @@ export interface ProgramDataContextType {
   programData: ProgramData;
   selectProgram: (programName: string | null) => void;
   selectedProgram: string | null;
+  fetchCapturesByBandId: (bandId: string) => Promise<Capture[]>;
 }
 
 export const defaultProgramData: ProgramData = {

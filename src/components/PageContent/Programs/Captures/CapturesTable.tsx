@@ -21,16 +21,16 @@ const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[
 ];
 
 interface CapturesTableProps {
-  program: string;
+  programId?: string;
+  showOtherPrograms?: boolean;
   captures: Capture[];
   maxTableHeight: number;
   sortColumn: keyof Capture;
   sortDirection: "ascending" | "descending";
-  showOtherPrograms: boolean;
 }
 
 export default function CapturesTable({
-  program,
+  programId,
   captures,
   maxTableHeight,
   sortColumn,
@@ -43,11 +43,15 @@ export default function CapturesTable({
 
   // Filter captures based on showOtherPrograms
   const filteredCaptures = useMemo(() => {
-    if (showOtherPrograms) {
+    if (programId === undefined || showOtherPrograms === undefined) {
       return captures;
     }
-    return captures.filter((capture) => capture.programId === program);
-  }, [captures, showOtherPrograms, program]);
+    if (showOtherPrograms) {
+      return captures;
+    } else {
+      return captures.filter((capture) => capture.programId === programId);
+    }
+  }, [captures, showOtherPrograms, programId]);
 
   // Sort captures based on multiple sortDescriptors (cascading sort)
   const sortedCaptures = useMemo(() => {
@@ -124,7 +128,7 @@ export default function CapturesTable({
         </TableHeader>
         <TableBody items={sortedCaptures} emptyContent="No captures found">
           {(item) => (
-            <TableRow key={item.id} className={item.programId !== program ? "opacity-20" : ""}>
+            <TableRow key={item.id} className={programId && item.programId !== programId ? "opacity-20" : ""}>
               {(columnKey) => {
                 let value: string | number = item[columnKey as keyof Capture];
                 if (columnKey === "age" && item.howAged) {

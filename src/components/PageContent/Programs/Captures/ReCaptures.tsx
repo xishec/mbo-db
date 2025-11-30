@@ -3,7 +3,7 @@ import { useProgramData } from "../../../../services/useProgramData";
 import CapturesTable from "./CapturesTable";
 
 export default function ReCaptures() {
-  const { programData, selectedProgram } = useProgramData();
+  const { programData } = useProgramData();
   const { reCaptures, isLoadingReCaptures } = programData;
 
   if (isLoadingReCaptures) {
@@ -14,14 +14,5 @@ export default function ReCaptures() {
     );
   }
 
-  return (
-    <CapturesTable
-      program={selectedProgram ?? ""}
-      captures={reCaptures}
-      maxTableHeight={800}
-      sortColumn="date"
-      sortDirection="descending"
-      showOtherPrograms={true}
-    />
-  );
+  return <CapturesTable captures={reCaptures} maxTableHeight={800} sortColumn="date" sortDirection="descending" />;
 }

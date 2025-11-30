@@ -13,8 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useProgramData } from "../../../../services/useProgramData";
+import type { Capture } from "../../../../helper/helper";
+import CapturesTable from "./CapturesTable";
 
 interface AddCaptureModalProps {
   isOpen: boolean;
@@ -88,18 +90,38 @@ const CAPTURE_COLUMNS: {
 ];
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const { selectedProgram } = useProgramData();
+  const { selectedProgram, fetchCapturesByBandId } = useProgramData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [lastOpenState, setLastOpenState] = useState(false);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const [existingCaptures, setExistingCaptures] = useState<Capture[]>([]);
 
   // Reset form data when modal opens
   if (isOpen && !lastOpenState) {
     setFormData(getDefaultFormData(selectedProgram || ""));
+    setExistingCaptures([]);
   }
   if (isOpen !== lastOpenState) {
     setLastOpenState(isOpen);
   }
+
+  // Build bandId from bandGroup and bandLastTwoDigits
+  const bandId = useMemo(() => {
+    if (formData.bandGroup.length === 8 && formData.bandLastTwoDigits.length === 2) {
+      return `${formData.bandGroup}${formData.bandLastTwoDigits}`;
+    }
+    return "";
+  }, [formData.bandGroup, formData.bandLastTwoDigits]);
+
+  // Fetch existing captures when bandId is complete
+  useEffect(() => {
+    if (bandId) {
+      console.log(bandId);
+      fetchCapturesByBandId(bandId).then(setExistingCaptures);
+    } else {
+      setExistingCaptures([]);
+    }
+  }, [bandId, fetchCapturesByBandId]);
 
   const handleInputChange = (field: keyof CaptureFormData, value: string, maxLength?: number) => {
     // Limit bandGroup to format "4 digits - 3 digits" (e.g., "2801-123") - auto-insert -
@@ -141,7 +163,10 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     // Sex: format "digit | letter/digit" (e.g., "5 | P") - auto-insert |
     if (field === "sex") {
       // Remove everything except alphanumeric
-      const chars = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 2);
+      const chars = value
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase()
+        .slice(0, 2);
       if (chars.length === 0) {
         value = "";
       } else if (chars.length === 1) {
@@ -291,6 +316,17 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                   </TableRow>
                 </TableBody>
               </Table>
+              {existingCaptures.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium mb-2">Existing captures for this band:</h3>
+                  <CapturesTable
+                    captures={existingCaptures}
+                    maxTableHeight={300}
+                    sortColumn="date"
+                    sortDirection="descending"
+                  />
+                </div>
+              )}
             </ModalBody>
             <ModalFooter className="gap-4 p-8 pt-0">
               <Button color="danger" variant="light" onPress={handleClose}>
