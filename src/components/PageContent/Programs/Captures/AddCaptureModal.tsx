@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useProgramData } from "../../../../services/useProgramData";
 
 interface AddCaptureModalProps {
@@ -23,7 +23,8 @@ interface AddCaptureModalProps {
 
 interface CaptureFormData {
   program: string;
-  bandGroupId: string;
+  bandPrefix: string;
+  bandSuffix: string;
   bandLastTwoDigits: string;
   species: string;
   wing: string;
@@ -48,7 +49,8 @@ const getDefaultFormData = (program: string): CaptureFormData => {
 
   return {
     program,
-    bandGroupId: "",
+    bandPrefix: "",
+    bandSuffix: "",
     bandLastTwoDigits: "",
     species: "",
     wing: "",
@@ -67,10 +69,10 @@ const getDefaultFormData = (program: string): CaptureFormData => {
   };
 };
 
-const CAPTURE_COLUMNS: { key: keyof CaptureFormData; label: string; type?: string; className?: string }[] = [
-  { key: "program", label: "Program", className: "min-w-[150px]" },
-  { key: "bandGroupId", label: "Band Group", className: "" },
-  { key: "bandLastTwoDigits", label: "Band", className: "" },
+const CAPTURE_COLUMNS: { key: keyof CaptureFormData; label: string; type?: string; className?: string; maxLength?: number }[] = [
+  { key: "bandPrefix", label: "Band Prefix", className: "", maxLength: 4 },
+  { key: "bandSuffix", label: "Band Suffix", className: "", maxLength: 3 },
+  { key: "bandLastTwoDigits", label: "Band", className: "", maxLength: 2 },
   { key: "species", label: "Species", className: "min-" },
   { key: "wing", label: "Wing", type: "number", className: "" },
   { key: "age", label: "Age", className: "" },
@@ -90,14 +92,25 @@ const CAPTURE_COLUMNS: { key: keyof CaptureFormData; label: string; type?: strin
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
   const { selectedProgram } = useProgramData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
+  const [lastOpenState, setLastOpenState] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormData(getDefaultFormData(selectedProgram || ""));
-    }
-  }, [isOpen, selectedProgram]);
+  // Reset form data when modal opens
+  if (isOpen && !lastOpenState) {
+    setFormData(getDefaultFormData(selectedProgram || ""));
+  }
+  if (isOpen !== lastOpenState) {
+    setLastOpenState(isOpen);
+  }
 
   const handleInputChange = (field: keyof CaptureFormData, value: string) => {
+    // Limit bandPrefix to 4 digits
+    if (field === "bandPrefix") {
+      value = value.replace(/\D/g, "").slice(0, 4);
+    }
+    // Limit bandSuffix to 3 digits
+    if (field === "bandSuffix") {
+      value = value.replace(/\D/g, "").slice(0, 3);
+    }
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -122,9 +135,9 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-col gap-1 p-8 pb-0">Add New Capture</ModalHeader>
+            <ModalHeader className="flex flex-col gap-1 p-8 pb-0">Add Capture</ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
-              <Table aria-label="Add capture form" removeWrapper>
+              <Table aria-label="Add capture" removeWrapper>
                 <TableHeader columns={CAPTURE_COLUMNS}>
                   {(column) => (
                     <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
@@ -140,6 +153,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                           variant="bordered"
                           aria-label={column.label}
                           type={column.type || "text"}
+                          maxLength={column.maxLength}
                           value={formData[column.key]}
                           onChange={(e) => handleInputChange(column.key, e.target.value)}
                           classNames={{
@@ -158,7 +172,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 Cancel
               </Button>
               <Button color="primary" onPress={handleSave}>
-                Save Capture
+                Save
               </Button>
             </ModalFooter>
           </>
