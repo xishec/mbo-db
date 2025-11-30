@@ -13,11 +13,27 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
   // Track current fetch to cancel stale requests
   const fetchIdRef = useRef(0);
 
-  // Fetch captures for a list of captureIds
-  const fetchCaptures = useCallback(async (captureIds: string[]): Promise<Capture[]> => {
+  // Fetch captures for a list of captureIds, including all related captures with same prefix (varying last 2 digits 00-99)
+  const fetchAllRelatedCaptures = useCallback(async (captureIds: string[]): Promise<Capture[]> => {
     if (captureIds.length === 0) return [];
 
-    const capturePromises = captureIds.map((captureId) => get(ref(db, `captureIdToCaptureMap/${captureId}`)));
+    // Get unique prefixes (captureId without last 2 digits)
+    const prefixes = new Set<string>();
+    for (const captureId of captureIds) {
+      if (captureId.length >= 2) {
+        prefixes.add(captureId.slice(0, -2));
+      }
+    }
+
+    // Generate all possible captureIds by appending 00-99 to each prefix
+    const allCaptureIds: string[] = [];
+    for (const prefix of prefixes) {
+      for (let i = 0; i < 100; i++) {
+        allCaptureIds.push(`${prefix}${i.toString().padStart(2, "0")}`);
+      }
+    }
+
+    const capturePromises = allCaptureIds.map((captureId) => get(ref(db, `captureIdToCaptureMap/${captureId}`)));
 
     const snapshots = await Promise.all(capturePromises);
     const captures: Capture[] = [];
@@ -63,7 +79,7 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
           return;
         }
 
-        const captureIds = programCaptureIdsSnapshot.val() as string[];
+        const programCaptureIds = programCaptureIdsSnapshot.val() as string[];
 
         setProgramData((prev) => ({
           ...prev,
@@ -71,7 +87,7 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
         }));
 
         // 2. Fetch all captures for this program
-        const captures = await fetchCaptures(captureIds);
+        const captures = await fetchAllRelatedCaptures(programCaptureIds);
 
         if (currentFetchId !== fetchIdRef.current) return; // Cancelled
 
@@ -107,7 +123,7 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
         }
       }
     },
-    [fetchCaptures]
+    [fetchAllRelatedCaptures]
   );
 
   return (
