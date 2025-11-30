@@ -2,7 +2,6 @@ import { useState, useCallback, useRef } from "react";
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture } from "../helper/helper";
-import { CaptureType } from "../helper/helper";
 import { ProgramDataContext, defaultProgramData } from "./ProgramDataContext";
 import type { ProgramData } from "./ProgramDataContext";
 
@@ -13,7 +12,6 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
 
   // Track current fetch to cancel stale requests
   const fetchIdRef = useRef(0);
-
 
   // Fetch captures by their IDs from capturesMap
   const fetchCaptures = useCallback(async (captureIds: string[]): Promise<Capture[]> => {
@@ -33,30 +31,57 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
   }, []);
 
   // Fetch captures by bandGroups using bandGroupToCaptureIdsMap, then fetch captures
-  const fetchByBandGroups = useCallback(async (bandGroups: string[]): Promise<Capture[]> => {
-    if (bandGroups.length === 0) return [];
+  // Returns a Map of bandGroup -> Capture[]
+  const fetchByBandGroups = useCallback(
+    async (bandGroups: string[]): Promise<Map<string, Capture[]>> => {
+      if (bandGroups.length === 0) return new Map();
 
-    // 1. Fetch all captureIds for each bandGroup from bandGroupToCaptureIdsMap
-    const bandGroupPromises = bandGroups.map((bandGroup) => get(ref(db, `bandGroupToCaptureIdsMap/${bandGroup}`)));
-    const bandGroupSnapshots = await Promise.all(bandGroupPromises);
+      // 1. Fetch all captureIds for each bandGroup from bandGroupToCaptureIdsMap
+      const bandGroupPromises = bandGroups.map((bandGroup) => get(ref(db, `bandGroupToCaptureIdsMap/${bandGroup}`)));
+      const bandGroupSnapshots = await Promise.all(bandGroupPromises);
 
-    const allCaptureIds: string[] = [];
-    for (const snapshot of bandGroupSnapshots) {
-      if (snapshot.exists()) {
-        const captureIdsForBandGroup = snapshot.val();
-        // Handle both array and object formats from Firebase
-        if (Array.isArray(captureIdsForBandGroup)) {
-          allCaptureIds.push(...captureIdsForBandGroup);
-        } else if (typeof captureIdsForBandGroup === "object") {
-          allCaptureIds.push(...Object.values(captureIdsForBandGroup as Record<string, string>));
+      // Build a map of bandGroup -> captureIds
+      const bandGroupToCaptureIds = new Map<string, string[]>();
+      const allCaptureIds: string[] = [];
+
+      for (let i = 0; i < bandGroups.length; i++) {
+        const bandGroup = bandGroups[i];
+        const snapshot = bandGroupSnapshots[i];
+        if (snapshot.exists()) {
+          const captureIds = snapshot.val() as string[];
+          bandGroupToCaptureIds.set(bandGroup, captureIds);
+          allCaptureIds.push(...captureIds);
         }
       }
-    }
 
-    // 2. Fetch all captures using fetchCaptures
-    return fetchCaptures(allCaptureIds);
-  }, [fetchCaptures]);
+      // 2. Fetch all captures using fetchCaptures
+      const captures = await fetchCaptures(allCaptureIds);
 
+      // 3. Create a lookup map from captureId -> Capture
+      const captureIdToCapture = new Map<string, Capture>();
+      for (const capture of captures) {
+        captureIdToCapture.set(capture.id, capture);
+      }
+
+      // 4. Build the result map of bandGroup -> Capture[]
+      const result = new Map<string, Capture[]>();
+      for (const [bandGroup, captureIds] of bandGroupToCaptureIds) {
+        const capturesForBandGroup: Capture[] = [];
+        for (const captureId of captureIds) {
+          const capture = captureIdToCapture.get(captureId);
+          if (capture) {
+            capturesForBandGroup.push(capture);
+          }
+        }
+        if (capturesForBandGroup.length > 0) {
+          result.set(bandGroup, capturesForBandGroup);
+        }
+      }
+
+      return result;
+    },
+    [fetchCaptures]
+  );
 
   // Select a program and prefetch all its data
   const selectProgram = useCallback(
@@ -80,60 +105,50 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
       });
 
       try {
-        // 1. Fetch all captureIds for this program
-        const programCaptureIdsSnapshot = await get(ref(db, `programToCaptureIdsMap/${programName}`));
+        // 1. Fetch program data from programsMap (contains usedBandGroupIds and reCaptureIds)
+        const programSnapshot = await get(ref(db, `programsMap/${programName}`));
 
         if (currentFetchId !== fetchIdRef.current) return; // Cancelled
 
-        if (!programCaptureIdsSnapshot.exists()) {
+        if (!programSnapshot.exists()) {
           setProgramData(defaultProgramData);
           return;
         }
 
-        const programCaptureIds = programCaptureIdsSnapshot.val() as string[];
+        const program = programSnapshot.val() as {
+          name: string;
+          usedBandGroupIds: string[];
+          reCaptureIds: string[];
+        };
 
         setProgramData((prev) => ({
           ...prev,
           isLoadingProgram: false,
         }));
 
-        // 2. Fetch all captures for this program
-        const captures = await fetchCaptures(programCaptureIds);
+        // 2. Fetch new captures using usedBandGroupIds -> fetchByBandGroups
+        const bandGroupIds = program.usedBandGroupIds ?? [];
+        const bandGroupToNewCaptures = await fetchByBandGroups(bandGroupIds);
 
         if (currentFetchId !== fetchIdRef.current) return; // Cancelled
 
-        // 3. Separate new captures vs recaptures
-        const newBandGroupToNewCaptures = new Map<string, Capture[]>();
-        const newReCaptures: Capture[] = [];
-
-        for (const capture of captures) {
-          const bandGroupId = capture.bandGroup;
-          if (!newBandGroupToNewCaptures.has(bandGroupId)) {
-            newBandGroupToNewCaptures.set(bandGroupId, []);
-          }
-          if (capture.captureType === CaptureType.Banded) {
-            newBandGroupToNewCaptures.get(bandGroupId)!.push(capture);
-          } else {
-            newReCaptures.push(capture);
-          }
-        }
-
-        // Filter out empty band groups
-        for (const [bandGroupId, captures] of newBandGroupToNewCaptures) {
-          if (captures.length === 0) {
-            newBandGroupToNewCaptures.delete(bandGroupId);
-          }
-        }
-
-        if (currentFetchId !== fetchIdRef.current) return; // Cancelled
-
-        setProgramData({
-          bandGroupToNewCaptures: newBandGroupToNewCaptures,
-          reCaptures: newReCaptures,
-          isLoadingProgram: false,
+        setProgramData((prev) => ({
+          ...prev,
+          bandGroupToNewCaptures,
           isLoadingCaptures: false,
+        }));
+
+        // 3. Fetch recaptures using reCaptureIds -> fetchCaptures
+        const reCaptureIds = program.reCaptureIds ?? [];
+        const reCaptures = await fetchCaptures(reCaptureIds);
+
+        if (currentFetchId !== fetchIdRef.current) return; // Cancelled
+
+        setProgramData((prev) => ({
+          ...prev,
+          reCaptures,
           isLoadingReCaptures: false,
-        });
+        }));
       } catch (error) {
         console.error("Error fetching program data:", error);
         if (currentFetchId === fetchIdRef.current) {
@@ -141,7 +156,7 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
         }
       }
     },
-    [fetchCaptures]
+    [fetchByBandGroups, fetchCaptures]
   );
 
   return (
