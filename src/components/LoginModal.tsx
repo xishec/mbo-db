@@ -144,7 +144,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1 px-8 pt-8 pb-4">
+            <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
               <h2 className="text-2xl font-bold">Log in</h2>
               <p className="text-sm text-default-500 font-normal">Enter your credentials to access your account</p>
             </ModalHeader>
@@ -163,6 +163,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 placeholder="Enter your email"
                 variant="bordered"
                 value={email}
+                labelPlacement="outside"
                 onChange={(e) => {
                   setEmail(e.target.value.trim());
                   setEmailError("");
@@ -180,6 +181,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 type="password"
                 variant="bordered"
                 value={password}
+                labelPlacement="outside"
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setPasswordError("");
@@ -210,8 +212,8 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 </Link>
               </div>
             </ModalBody>
-            <ModalFooter className="gap-4 px-8 pt-4 pb-8">
-              <Button color="danger" variant="bordered" onPress={onClose} className="flex-1">
+            <ModalFooter className="gap-4 p-8 pt-0">
+              <Button color="danger" variant="light" onPress={onClose} className="flex-1">
                 Close
               </Button>
               <Button

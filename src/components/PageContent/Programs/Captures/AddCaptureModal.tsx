@@ -109,8 +109,8 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-col gap-1">Add New Capture</ModalHeader>
-            <ModalBody>
+            <ModalHeader className="flex flex-col gap-1 p-8 pb-0">Add New Capture</ModalHeader>
+            <ModalBody className="gap-4 px-8 py-4">
               <Table aria-label="Add capture form" removeWrapper>
                 <TableHeader columns={CAPTURE_COLUMNS}>
                   {(column) => (
@@ -141,7 +141,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 </TableBody>
               </Table>
             </ModalBody>
-            <ModalFooter>
+            <ModalFooter className="gap-4 p-8 pt-0">
               <Button color="danger" variant="light" onPress={handleClose}>
                 Cancel
               </Button>

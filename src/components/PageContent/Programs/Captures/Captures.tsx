@@ -30,6 +30,7 @@ export default function Captures() {
       <div className="w-full flex items-end justify-between gap-4">
         <Tabs
           color="secondary"
+          size="md"
           selectedKey={captureType}
           onSelectionChange={(key) => setCaptureType(key as CaptureType)}
         >
@@ -42,11 +43,7 @@ export default function Captures() {
         </Button>
       </div>
 
-      {captureType === "NEW_CAPTURES" ? (
-        <NewCaptures />
-      ) : (
-        <ReCaptures />
-      )}
+      {captureType === "NEW_CAPTURES" ? <NewCaptures /> : <ReCaptures />}
     </div>
   );
 }

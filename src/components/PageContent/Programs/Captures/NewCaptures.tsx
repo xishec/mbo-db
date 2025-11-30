@@ -46,19 +46,15 @@ export default function NewCaptures() {
           variant="bordered"
           selectedKey={effectiveBandGroupId}
           onSelectionChange={(key) => setSelectedBandGroupId(key as string | null)}
-          size="sm"
-          radius="md"
+          size="md"
+          labelPlacement="outside"
           className="max-w-xs"
         >
           {bandGroupOptions.map((bandGroupId) => (
             <AutocompleteItem key={bandGroupId}>{bandGroupId}</AutocompleteItem>
           ))}
         </Autocomplete>
-        <Switch
-          isSelected={showOtherPrograms}
-          onValueChange={setShowOtherPrograms}
-          size="sm"
-        >
+        <Switch isSelected={showOtherPrograms} onValueChange={setShowOtherPrograms} size="md">
           Show other programs
         </Switch>
       </div>
