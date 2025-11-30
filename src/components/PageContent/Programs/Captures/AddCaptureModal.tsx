@@ -100,7 +100,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   return (
     <Modal
-      isDismissable={false}
       isKeyboardDismissDisabled={true}
       isOpen={isOpen}
       onOpenChange={onOpenChange}

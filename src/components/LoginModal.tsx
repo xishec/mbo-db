@@ -1,16 +1,13 @@
 import { useState } from "react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Checkbox, Input, Link } from "@heroui/react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  Checkbox,
-  Input,
-  Link,
-} from "@heroui/react";
-import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
+  getAuth,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
 import { app } from "../firebase";
 
 interface LoginModalProps {
@@ -101,7 +98,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
     try {
       // Set persistence based on "Remember me" checkbox
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-      
+
       await signInWithEmailAndPassword(auth, email, password);
       onOpenChange(); // Close modal on success
       setEmail("");
@@ -147,18 +144,18 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">
+            <ModalHeader className="flex flex-col gap-1 px-8 pt-8 pb-4">
               <h2 className="text-2xl font-bold">Log in</h2>
-              <p className="text-sm text-default-500 font-normal">
-                Enter your credentials to access your account
-              </p>
+              <p className="text-sm text-default-500 font-normal">Enter your credentials to access your account</p>
             </ModalHeader>
-            <ModalBody className="gap-4">
+            <ModalBody className="gap-4 px-8 py-4">
               {(error || success) && (
-                <div className={`${error ? 'bg-danger-50 border-danger-200' : 'bg-success-50 border-success-200'} border rounded-lg p-3 flex items-start gap-4`}>
-                  <span className={`${error ? 'text-danger' : 'text-success'} text-sm`}>
-                    {error || success}
-                  </span>
+                <div
+                  className={`${
+                    error ? "bg-danger-50 border-danger-200" : "bg-success-50 border-success-200"
+                  } border rounded-lg p-3 flex items-start gap-4`}
+                >
+                  <span className={`${error ? "text-danger" : "text-success"} text-sm`}>{error || success}</span>
                 </div>
               )}
               <Input
@@ -208,23 +205,13 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 >
                   Remember me
                 </Checkbox>
-                <Link 
-                  color="primary" 
-                  size="sm"
-                  className="cursor-pointer"
-                  onPress={handleForgotPassword}
-                >
+                <Link color="primary" size="sm" className="cursor-pointer" onPress={handleForgotPassword}>
                   Forgot password?
                 </Link>
               </div>
             </ModalBody>
-            <ModalFooter className="gap-4">
-              <Button
-                color="danger"
-                variant="light"
-                onPress={onClose}
-                className="flex-1"
-              >
+            <ModalFooter className="gap-4 px-8 pt-4 pb-8">
+              <Button color="danger" variant="bordered" onPress={onClose} className="flex-1">
                 Close
               </Button>
               <Button
