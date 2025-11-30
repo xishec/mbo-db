@@ -50,12 +50,17 @@ export default function NewCaptures() {
           labelPlacement="outside"
           className="max-w-xs"
         >
-          {bandGroupOptions.map((bandGroupId) => (
-            <AutocompleteItem key={bandGroupId}>{bandGroupId}</AutocompleteItem>
-          ))}
+          {bandGroupOptions.map((bandGroupId) => {
+            const count = bandGroupToNewCaptures.get(bandGroupId)?.length ?? 0;
+            return (
+              <AutocompleteItem key={bandGroupId} endContent={`${count} used`}>
+                {bandGroupId}
+              </AutocompleteItem>
+            );
+          })}
         </Autocomplete>
         <Switch isSelected={showOtherPrograms} onValueChange={setShowOtherPrograms} size="md">
-          Show other programs
+          Show all captures
         </Switch>
       </div>
 

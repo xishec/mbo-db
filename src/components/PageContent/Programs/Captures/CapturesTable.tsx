@@ -106,7 +106,7 @@ export default function CapturesTable({
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <div className="text-default-700 text-sm">
+      <div className="text-sm">
         {filteredCaptures.length} of {captures.length} {captures.length === 1 ? "capture" : "captures"}
       </div>
       <Table
