@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   Input,
   Modal,
   ModalBody,
@@ -69,7 +70,13 @@ const getDefaultFormData = (program: string): CaptureFormData => {
   };
 };
 
-const CAPTURE_COLUMNS: { key: keyof CaptureFormData; label: string; type?: string; className?: string; maxLength?: number }[] = [
+const CAPTURE_COLUMNS: {
+  key: keyof CaptureFormData;
+  label: string;
+  type?: string;
+  className?: string;
+  maxLength?: number;
+}[] = [
   { key: "bandPrefix", label: "Band Prefix", className: "", maxLength: 4 },
   { key: "bandSuffix", label: "Band Suffix", className: "", maxLength: 3 },
   { key: "bandLastTwoDigits", label: "Band", className: "", maxLength: 2 },
@@ -118,7 +125,10 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
     // Species: 4 letters only
     if (field === "species") {
-      value = value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4);
+      value = value
+        .replace(/[^a-zA-Z]/g, "")
+        .toUpperCase()
+        .slice(0, 4);
     }
     // Wing: digits only (no decimal)
     if (field === "wing") {
@@ -138,7 +148,10 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
     // How Sexed: 1 letter or number
     if (field === "howSexed") {
-      value = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 1);
+      value = value
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase()
+        .slice(0, 1);
     }
     // Fat: 1 digit only
     if (field === "fat") {
@@ -160,15 +173,24 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
     // Bander: 3 letters only
     if (field === "bander") {
-      value = value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3);
+      value = value
+        .replace(/[^a-zA-Z]/g, "")
+        .toUpperCase()
+        .slice(0, 3);
     }
     // Scribe: 3 letters only
     if (field === "scribe") {
-      value = value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3);
+      value = value
+        .replace(/[^a-zA-Z]/g, "")
+        .toUpperCase()
+        .slice(0, 3);
     }
     // Net: 2 letters or numbers
     if (field === "net") {
-      value = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 2);
+      value = value
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase()
+        .slice(0, 2);
     }
     setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -234,9 +256,11 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-col gap-1 p-8 pb-0">Add Capture</ModalHeader>
+            <ModalHeader className="flex flex-row items-center gap-1 p-8 pb-0 font-normal">
+              Add Capture in <span className="font-bold">{selectedProgram}</span>
+            </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
-              <Table aria-label="Add capture" removeWrapper>
+              <Table removeWrapper>
                 <TableHeader columns={CAPTURE_COLUMNS}>
                   {(column) => (
                     <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
@@ -246,7 +270,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 </TableHeader>
                 <TableBody>
                   <TableRow key="new-capture">
-                    {CAPTURE_COLUMNS.map((column, index) => (
+                    {CAPTURE_COLUMNS.map((column) => (
                       <TableCell key={column.key} className="p-1">
                         <Input
                           ref={(el) => {
@@ -260,7 +284,8 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                           onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
                           onKeyDown={(e) => handleKeyDown(e, column.key)}
                           classNames={{
-                            input: "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                            input:
+                              "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                             inputWrapper: "min-h-unit-8 h-unit-8",
                           }}
                         />
