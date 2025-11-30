@@ -105,7 +105,7 @@ export default function CapturesTable({
   const primarySortDescriptor = sortDescriptors[0];
 
   return (
-    <div className="w-full flex flex-col gap-2">
+    <div className="w-full flex flex-col gap-4">
       <div className="text-default-700 text-sm">
         {captures.length} {captures.length === 1 ? "capture" : "captures"}
       </div>

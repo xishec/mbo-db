@@ -17,7 +17,7 @@ export default function Captures() {
 
   if (programData.isLoadingProgram) {
     return (
-      <div className="p-4 flex items-center gap-2">
+      <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading program...
       </div>
     );

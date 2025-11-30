@@ -102,7 +102,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
             {user ? (
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
-                  <div className="flex items-center gap-2 cursor-pointer">
+                  <div className="flex items-center gap-4 cursor-pointer">
                     <User
                       as="button"
                       name={user.email}

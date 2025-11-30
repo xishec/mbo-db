@@ -8,7 +8,7 @@ export default function ReCaptures() {
 
   if (isLoadingReCaptures) {
     return (
-      <div className="p-4 flex items-center gap-2">
+      <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading recaptures...
       </div>
     );

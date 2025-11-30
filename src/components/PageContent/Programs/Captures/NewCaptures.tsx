@@ -31,7 +31,7 @@ export default function NewCaptures() {
 
   if (isLoadingCaptures && capturesByBandGroup.size === 0) {
     return (
-      <div className="p-4 flex items-center gap-2">
+      <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading captures...
       </div>
     );

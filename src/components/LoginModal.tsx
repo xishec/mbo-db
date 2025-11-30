@@ -155,7 +155,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
             </ModalHeader>
             <ModalBody className="gap-4">
               {(error || success) && (
-                <div className={`${error ? 'bg-danger-50 border-danger-200' : 'bg-success-50 border-success-200'} border rounded-lg p-3 flex items-start gap-2`}>
+                <div className={`${error ? 'bg-danger-50 border-danger-200' : 'bg-success-50 border-success-200'} border rounded-lg p-3 flex items-start gap-4`}>
                   <span className={`${error ? 'text-danger' : 'text-success'} text-sm`}>
                     {error || success}
                   </span>
@@ -218,7 +218,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 </Link>
               </div>
             </ModalBody>
-            <ModalFooter className="gap-2">
+            <ModalFooter className="gap-4">
               <Button
                 color="danger"
                 variant="light"

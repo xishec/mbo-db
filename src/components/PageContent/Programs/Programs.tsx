@@ -73,7 +73,7 @@ export default function Programs() {
 
   if (isLoading) {
     return (
-      <div className="p-4 flex items-center gap-2">
+      <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading programs...
       </div>
     );
