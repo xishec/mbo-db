@@ -250,6 +250,16 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       ...(shouldResetSpecies ? { species: "" } : {}),
     }));
 
+    // Auto-focus previous input when field becomes empty
+    if (value === "" && formData[field] !== "") {
+      const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === field);
+      if (currentIndex > 0) {
+        const prevKey = CAPTURE_COLUMNS[currentIndex - 1].key;
+        const prevInput = inputRefs.current.get(prevKey);
+        prevInput?.focus();
+      }
+    }
+
     // Auto-focus next input when maxLength is reached
     if (maxLength && value.length >= maxLength) {
       const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === field);
