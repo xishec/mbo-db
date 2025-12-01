@@ -87,7 +87,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     bander: "",
     scribe: "",
     net: "",
-    captureType: CaptureType.None,
+    captureType: CaptureType.Banded,
     notes: "",
   };
 }

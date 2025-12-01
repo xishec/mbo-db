@@ -263,12 +263,32 @@ const generateDB = async (captures: Capture[], database: Database) => {
     }
   }
 
+  console.log("Uploading data to RTDB...");
+  
   await set(ref(database, "yearsToProgramMap"), yearsToProgramMap);
   await set(ref(database, "programsMap"), programsMap);
-  await set(ref(database, "bandIdToCaptureIdsMap"), bandIdToCaptureIdsMap);
-  await set(ref(database, "capturesMap"), capturesMap);
-  await set(ref(database, "bandGroupToCaptureIdsMap"), bandGroupToCaptureIdsMap);
+  await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
+  await writeObjectToDB(database, "capturesMap", capturesMap);
+  await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
   await set(ref(database, "magicTable/mbo"), mboMagicTable);
+ 
+  console.log("✅ All data uploaded successfully!");
+};
 
-  console.log("✅ Generated RTDB structure");
+const writeObjectToDB = async (database: Database, path: string, data: Record<string, unknown>) => {
+  const entries = Object.entries(data);
+  const BATCH_SIZE = 1000;
+  let uploadedCount = 0;
+
+  console.log(`Uploading ${entries.length} records to '${path}' in batches...`);
+
+  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+    const batch = entries.slice(i, i + BATCH_SIZE);
+    const promises = batch.map(([key, value]) => set(ref(database, `${path}/${key}`), value));
+    await Promise.all(promises);
+    uploadedCount += batch.length;
+    console.log(`Uploaded ${uploadedCount}/${entries.length} to '${path}'...`);
+  }
+
+  console.log(`✅ Import to '${path}' complete! Uploaded ${entries.length} records.`);
 };
