@@ -68,8 +68,8 @@ export function parseCSV(csvContent: string): Capture[] {
   const headers = parseCSVLine(rows[0]);
   const captures: Capture[] = [];
 
-  const lastRows = rows.slice(-10000);
-  // const lastRows = rows;
+  // const lastRows = rows.slice(-10000);
+  const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
     const row = lastRows[i].trim();
@@ -130,9 +130,9 @@ const generateDB = async (captures: Capture[], database: Database) => {
   const mboMagicTable: Record<string, SpeciesRange> = {};
 
   for (const capture of captures) {
-    if (capture.captureType === CaptureType.None) {
-      continue;
-    }
+    // if (capture.captureType === CaptureType.None) {
+    //   continue;
+    // }
 
     // capturesMap
     capturesMap[capture.id] = capture;

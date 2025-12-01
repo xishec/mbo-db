@@ -164,11 +164,35 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
     fetchCapturesByBandId(bandId).then((captures) => {
       setExistingCaptures(captures);
-      if (captures.length > 0 && captures[0].species) {
-        setFormData((prev) => ({ ...prev, species: captures[0].species }));
-      }
+
+      setFormData((prev) => {
+        const updates: Partial<CaptureFormData> = {};
+
+        // Auto-compute captureType if date is available
+        if (prev.date) {
+          let captureType = "Banded";
+          if (captures.length > 0) {
+            // Check if any capture was within 90 days
+            const currentDate = new Date(prev.date);
+            const hasRecentCapture = captures.some((capture) => {
+              const captureDate = new Date(capture.date);
+              const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
+              return daysDiff <= 90;
+            });
+            captureType = hasRecentCapture ? "Repeat" : "Return";
+          }
+          updates.captureType = captureType;
+        }
+
+        // Set species from first capture
+        if (captures.length > 0 && captures[0].species) {
+          updates.species = captures[0].species;
+        }
+
+        return { ...prev, ...updates };
+      });
     });
-  }, [bandId, fetchCapturesByBandId]);
+  }, [bandId, formData.date, fetchCapturesByBandId]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
