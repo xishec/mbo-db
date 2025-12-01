@@ -68,11 +68,11 @@ async function main() {
     const csvContent = readFileSync(csvPath, "utf-8");
 
     console.log("Parsing magic table...");
-    const magicTable = parseCSV(csvContent);
-    console.log(`Parsed ${Object.keys(magicTable.pyle).length} species entries`);
+    const pyleMagicTable = parseCSV(csvContent);
+    console.log(`Parsed ${Object.keys(pyleMagicTable).length} species entries`);
 
     console.log("Starting RTDB import...");
-    await importMagicTable(db, magicTable);
+    await importMagicTable(db, pyleMagicTable);
 
     console.log("✅ Magic table import completed successfully!");
     process.exit(0);
