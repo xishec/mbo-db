@@ -105,6 +105,17 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     setLastOpenState(isOpen);
   }
 
+  // Focus on bandGroup input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to ensure modal is rendered
+      const timer = setTimeout(() => {
+        inputRefs.current.get("bandGroup")?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
     if (formData.bandGroup.length === 8 && formData.bandLastTwoDigits.length === 2) {
@@ -115,12 +126,17 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   // Fetch existing captures when bandId is complete
   useEffect(() => {
-    if (bandId) {
-      console.log(bandId);
-      fetchCapturesByBandId(bandId).then(setExistingCaptures);
-    } else {
-      setExistingCaptures([]);
+    if (!bandId) {
+      return;
     }
+
+    fetchCapturesByBandId(bandId).then((captures) => {
+      setExistingCaptures(captures);
+      // Auto-fill species from first existing capture
+      if (captures.length > 0 && captures[0].species) {
+        setFormData((prev) => ({ ...prev, species: captures[0].species }));
+      }
+    });
   }, [bandId, fetchCapturesByBandId]);
 
   const handleInputChange = (field: keyof CaptureFormData, value: string, maxLength?: number) => {
@@ -132,10 +148,24 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       } else {
         value = `${digits.slice(0, 4)}-${digits.slice(4)}`;
       }
+      // Reset species and existing captures when bandGroup changes and bandId becomes invalid
+      const newBandId = value.length === 8 && formData.bandLastTwoDigits.length === 2;
+      if (!newBandId) {
+        setExistingCaptures([]);
+        setFormData((prev) => ({ ...prev, [field]: value, species: "" }));
+        return;
+      }
     }
     // Limit bandLastTwoDigits to 2 digits only
     if (field === "bandLastTwoDigits") {
       value = value.replace(/\D/g, "").slice(0, 2);
+      // Reset species and existing captures when bandLastTwoDigits changes and bandId becomes invalid
+      const newBandId = formData.bandGroup.length === 8 && value.length === 2;
+      if (!newBandId) {
+        setExistingCaptures([]);
+        setFormData((prev) => ({ ...prev, [field]: value, species: "" }));
+        return;
+      }
     }
     // Species: 4 letters only
     if (field === "species") {
