@@ -290,7 +290,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 <TableHeader columns={CAPTURE_COLUMNS}>
                   {(column) => (
                     <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
-                      {column.label}
+                      {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
                     </TableColumn>
                   )}
                 </TableHeader>
@@ -309,7 +309,11 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                               variant="bordered"
                               color={inputColor || "default"}
                               aria-label={column.label}
-                              selectedKeys={formData[column.key as keyof CaptureFormData] ? [formData[column.key as keyof CaptureFormData]] : []}
+                              selectedKeys={
+                                formData[column.key as keyof CaptureFormData]
+                                  ? [formData[column.key as keyof CaptureFormData]]
+                                  : []
+                              }
                               onSelectionChange={(keys) => {
                                 const selected = Array.from(keys)[0] as string;
                                 handleInputChange(column.key, selected || "");
@@ -319,9 +323,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                               }}
                             >
                               {Object.values(CaptureType).map((value) => (
-                                <SelectItem key={value}>
-                                  {value}
-                                </SelectItem>
+                                <SelectItem key={value}>{value}</SelectItem>
                               ))}
                             </Select>
                           ) : (
@@ -340,7 +342,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                               classNames={{
                                 input:
                                   "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                inputWrapper: getBorderClass(inputColor),
+                                inputWrapper: `min-w-[40px] ${getBorderClass(inputColor)}`,
                               }}
                             />
                           )}

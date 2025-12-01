@@ -118,7 +118,9 @@ export interface CaptureFormData {
   species: string;
   wing: string;
   age: string;
+  howAged: string;
   sex: string;
+  howSexed: string;
   fat: string;
   weight: string;
   date: string;

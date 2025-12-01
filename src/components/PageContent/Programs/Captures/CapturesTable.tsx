@@ -131,12 +131,7 @@ export default function CapturesTable({
           {(item) => (
             <TableRow key={item.id} className={programId && item.programId !== programId ? "opacity-20" : ""}>
               {(columnKey) => {
-                let value: string | number = item[columnKey as keyof Capture];
-                if (columnKey === "age" && item.howAged) {
-                  value = `${item.age} | ${item.howAged}`;
-                } else if (columnKey === "sex" && item.howSexed) {
-                  value = `${item.sex} | ${item.howSexed}`;
-                }
+                const value: string | number = item[columnKey as keyof Capture];
                 return <TableCell className="whitespace-nowrap">{value}</TableCell>;
               }}
             </TableRow>

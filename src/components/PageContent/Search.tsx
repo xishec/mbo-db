@@ -3,31 +3,32 @@ import { useState, useMemo, useCallback } from "react";
 import { useData } from "../../services/useData";
 import type { Capture } from "../../types";
 import CapturesTable from "./Programs/Captures/CapturesTable";
+import { CAPTURE_COLUMNS } from "./Programs/Captures/helpers";
 
-// Capture properties available for filtering
-const CAPTURE_PROPERTIES: { key: keyof Capture; label: string; type: "string" | "number" }[] = [
-  { key: "bandGroup", label: "Band Group", type: "string" },
-  { key: "bandLastTwoDigits", label: "Band Last Two Digits", type: "string" },
-  { key: "bandId", label: "Band ID", type: "string" },
-  { key: "programId", label: "Program ID", type: "string" },
-  { key: "bandPrefix", label: "Band Prefix", type: "string" },
-  { key: "bandSuffix", label: "Band Suffix", type: "string" },
-  { key: "species", label: "Species", type: "string" },
-  { key: "wing", label: "Wing", type: "number" },
-  { key: "age", label: "Age", type: "string" },
-  { key: "howAged", label: "How Aged", type: "string" },
-  { key: "sex", label: "Sex", type: "string" },
-  { key: "howSexed", label: "How Sexed", type: "string" },
-  { key: "fat", label: "Fat", type: "number" },
-  { key: "weight", label: "Weight", type: "number" },
-  { key: "date", label: "Date", type: "string" },
-  { key: "time", label: "Time", type: "string" },
-  { key: "bander", label: "Bander", type: "string" },
-  { key: "scribe", label: "Scribe", type: "string" },
-  { key: "net", label: "Net", type: "string" },
-  { key: "notes", label: "Notes", type: "string" },
-  { key: "captureType", label: "Capture Type", type: "string" },
-];
+// // Capture properties available for filtering
+// const CAPTURE_COLUMNS: { key: keyof Capture; label: string; type: "string" | "number" }[] = [
+//   { key: "bandGroup", label: "Band Group", type: "string" },
+//   { key: "bandLastTwoDigits", label: "Band Last Two Digits", type: "string" },
+//   { key: "bandId", label: "Band ID", type: "string" },
+//   { key: "programId", label: "Program ID", type: "string" },
+//   { key: "bandPrefix", label: "Band Prefix", type: "string" },
+//   { key: "bandSuffix", label: "Band Suffix", type: "string" },
+//   { key: "species", label: "Species", type: "string" },
+//   { key: "wing", label: "Wing", type: "number" },
+//   { key: "age", label: "Age", type: "string" },
+//   { key: "howAged", label: "How Aged", type: "string" },
+//   { key: "sex", label: "Sex", type: "string" },
+//   { key: "howSexed", label: "How Sexed", type: "string" },
+//   { key: "fat", label: "Fat", type: "number" },
+//   { key: "weight", label: "Weight", type: "number" },
+//   { key: "date", label: "Date", type: "string" },
+//   { key: "time", label: "Time", type: "string" },
+//   { key: "bander", label: "Bander", type: "string" },
+//   { key: "scribe", label: "Scribe", type: "string" },
+//   { key: "net", label: "Net", type: "string" },
+//   { key: "notes", label: "Notes", type: "string" },
+//   { key: "captureType", label: "Capture Type", type: "string" },
+// ];
 
 // Operators for filtering
 const STRING_OPERATORS = [
@@ -70,7 +71,7 @@ export default function Search() {
 
   // Get property type for current selection
   const currentPropertyType = useMemo(() => {
-    const prop = CAPTURE_PROPERTIES.find((p) => p.key === currentProperty);
+    const prop = CAPTURE_COLUMNS.find((p) => p.key === currentProperty);
     return prop?.type ?? "string";
   }, [currentProperty]);
 
@@ -119,7 +120,7 @@ export default function Search() {
     return allCaptures.filter((capture) => {
       return filters.every((filter) => {
         const rawValue = capture[filter.property];
-        const propType = CAPTURE_PROPERTIES.find((p) => p.key === filter.property)?.type ?? "string";
+        const propType = CAPTURE_COLUMNS.find((p) => p.key === filter.property)?.type ?? "string";
 
         // Handle defined/not_defined operators (work for both types)
         if (filter.operator === "defined") {
@@ -176,14 +177,14 @@ export default function Search() {
 
   // Get operator label for display
   const getOperatorLabel = (operator: string, propertyKey: keyof Capture) => {
-    const propType = CAPTURE_PROPERTIES.find((p) => p.key === propertyKey)?.type ?? "string";
+    const propType = CAPTURE_COLUMNS.find((p) => p.key === propertyKey)?.type ?? "string";
     const operators = propType === "number" ? NUMBER_OPERATORS : STRING_OPERATORS;
     return operators.find((o) => o.key === operator)?.label ?? operator;
   };
 
   // Get property label for display
   const getPropertyLabel = (propertyKey: keyof Capture) => {
-    return CAPTURE_PROPERTIES.find((p) => p.key === propertyKey)?.label ?? propertyKey;
+    return CAPTURE_COLUMNS.find((p) => p.key === propertyKey)?.label ?? propertyKey;
   };
 
   const canAddFilter = currentProperty && currentOperator && (operatorRequiresValue ? currentValue : true);
@@ -203,7 +204,7 @@ export default function Search() {
             onSelectionChange={handlePropertyChange}
             className="w-48"
           >
-            {CAPTURE_PROPERTIES.map((prop) => (
+            {CAPTURE_COLUMNS.map((prop) => (
               <SelectItem key={prop.key}>{prop.label}</SelectItem>
             ))}
           </Select>

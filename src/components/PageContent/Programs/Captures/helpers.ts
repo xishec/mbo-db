@@ -8,8 +8,10 @@ export const CAPTURE_COLUMNS: CaptureColumn[] = [
   { key: "bandLastTwoDigits", label: "Band", maxLength: 2, minLength: 2 },
   { key: "species", label: "Species", maxLength: 4, minLength: 4 },
   { key: "wing", label: "Wing", className: "min-w-[60px]", minLength: 1 },
-  { key: "age", label: "Age", className: "min-w-[60px]", maxLength: 3, minLength: 3 },
-  { key: "sex", label: "Sex", className: "min-w-[60px]", maxLength: 3, minLength: 3 },
+  { key: "age", label: "Age", className: "", maxLength: 1, minLength: 1 },
+  { key: "howAged", label: "How Aged", className: "", maxLength: 1, minLength: 1 },
+  { key: "sex", label: "Sex", className: "", maxLength: 1, minLength: 1 },
+  { key: "howSexed", label: "How Sexed", className: "", maxLength: 1, minLength: 1 },
   { key: "fat", label: "Fat", maxLength: 1, minLength: 1 },
   { key: "weight", label: "Weight", minLength: 1 },
   { key: "date", label: "Date", type: "date" },
@@ -75,7 +77,9 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     species: "",
     wing: "",
     age: "",
+    howAged: "",
     sex: "",
+    howSexed: "",
     fat: "",
     weight: "",
     date,
@@ -103,17 +107,15 @@ export function formatFieldValue(field: keyof CaptureFormData, value: string): s
         .slice(0, 4);
     case "wing":
       return value.replace(/\D/g, "");
-    case "age": {
-      const digits = value.replace(/[^0-9]/g, "").slice(0, 2);
-      return digits.length <= 1 ? digits : `${digits[0]} | ${digits[1]}`;
-    }
-    case "sex": {
-      const chars = value
+    case "age":
+    case "howAged":
+      return value.replace(/[^0-9]/g, "").slice(0, 1);
+    case "sex":
+    case "howSexed":
+      return value
         .replace(/[^a-zA-Z0-9]/g, "")
         .toUpperCase()
-        .slice(0, 2);
-      return chars.length <= 1 ? chars : `${chars[0]} | ${chars[1]}`;
-    }
+        .slice(0, 1);
     case "fat":
       return value.replace(/\D/g, "").slice(0, 1);
     case "weight": {
