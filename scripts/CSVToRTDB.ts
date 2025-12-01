@@ -149,26 +149,28 @@ const generateDB = async (captures: Capture[], database: Database) => {
     }
 
     // programsMap and bandGroupsMap
-    if (!programsMap[capture.programId]) {
-      programsMap[capture.programId] = {
-        name: capture.programId,
-        usedBandGroupIds: [],
-        reCaptureIds: [],
-      };
-    }
-    if (!bandGroupToCaptureIdsMap[capture.bandGroup]) {
-      bandGroupToCaptureIdsMap[capture.bandGroup] = [];
-    }
-    if (capture.captureType === CaptureType.Banded) {
-      if (!programsMap[capture.programId].usedBandGroupIds.includes(capture.bandGroup)) {
-        programsMap[capture.programId].usedBandGroupIds.push(capture.bandGroup);
+    if (capture.programId) {
+      if (!programsMap[capture.programId]) {
+        programsMap[capture.programId] = {
+          name: capture.programId,
+          usedBandGroupIds: [],
+          reCaptureIds: [],
+        };
       }
-      if (!bandGroupToCaptureIdsMap[capture.bandGroup].includes(capture.id)) {
-        bandGroupToCaptureIdsMap[capture.bandGroup].push(capture.id);
+      if (!bandGroupToCaptureIdsMap[capture.bandGroup]) {
+        bandGroupToCaptureIdsMap[capture.bandGroup] = [];
       }
-    } else {
-      if (!programsMap[capture.programId].reCaptureIds.includes(capture.id)) {
-        programsMap[capture.programId].reCaptureIds.push(capture.id);
+      if (capture.captureType === CaptureType.Banded) {
+        if (!programsMap[capture.programId].usedBandGroupIds.includes(capture.bandGroup)) {
+          programsMap[capture.programId].usedBandGroupIds.push(capture.bandGroup);
+        }
+        if (!bandGroupToCaptureIdsMap[capture.bandGroup].includes(capture.id)) {
+          bandGroupToCaptureIdsMap[capture.bandGroup].push(capture.id);
+        }
+      } else {
+        if (!programsMap[capture.programId].reCaptureIds.includes(capture.id)) {
+          programsMap[capture.programId].reCaptureIds.push(capture.id);
+        }
       }
     }
 
