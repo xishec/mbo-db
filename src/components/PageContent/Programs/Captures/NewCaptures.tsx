@@ -9,7 +9,7 @@ export default function NewCaptures() {
 
   // Convert bandGroupToNewCaptures keys to sorted array for autocomplete
   const bandGroupOptions = useMemo(() => {
-    return Array.from(bandGroupToNewCaptures.keys()).sort();
+    return Object.keys(bandGroupToNewCaptures).sort();
   }, [bandGroupToNewCaptures]);
 
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
@@ -26,10 +26,10 @@ export default function NewCaptures() {
   // Get captures for the selected bandGroup from the cache
   const captures = useMemo(() => {
     if (!effectiveBandGroupId) return [];
-    return bandGroupToNewCaptures.get(effectiveBandGroupId) ?? [];
+    return bandGroupToNewCaptures[effectiveBandGroupId] ?? [];
   }, [effectiveBandGroupId, bandGroupToNewCaptures]);
 
-  if (isLoadingCaptures && bandGroupToNewCaptures.size === 0) {
+  if (isLoadingCaptures && Object.keys(bandGroupToNewCaptures).length === 0) {
     return (
       <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading captures...
@@ -51,7 +51,7 @@ export default function NewCaptures() {
           className="max-w-xs"
         >
           {bandGroupOptions.map((bandGroupId) => {
-            const count = bandGroupToNewCaptures.get(bandGroupId)?.length ?? 0;
+            const count = bandGroupToNewCaptures[bandGroupId]?.length ?? 0;
             return (
               <AutocompleteItem key={bandGroupId} endContent={`${count} used`}>
                 {bandGroupId}

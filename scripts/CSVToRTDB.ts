@@ -119,50 +119,56 @@ export async function CSVToRTDB(csvContent: string, database: Database): Promise
 }
 
 const generateDB = async (captures: Capture[], database: Database) => {
-  const yearsToProgramMap: YearToProgramMap = new Map();
-  const programsMap: ProgramsMap = new Map();
-  const bandIdToCaptureIdsMap: BandIdToCaptureIdsMap = new Map();
-  const capturesMap: CapturesMap = new Map();
-  const bandGroupToCaptureIdsMap: BandGroupToCaptureIdsMap = new Map();
-  const magicTable: MagicTable = {};
+  const yearsToProgramMap: YearToProgramMap = {};
+  const programsMap: ProgramsMap = {};
+  const bandIdToCaptureIdsMap: BandIdToCaptureIdsMap = {};
+  const capturesMap: CapturesMap = {};
+  const bandGroupToCaptureIdsMap: BandGroupToCaptureIdsMap = {};
 
   for (const capture of captures) {
     // capturesMap
-    capturesMap.set(capture.id, capture);
+    capturesMap[capture.id] = capture;
 
     // year
     const year = capture.date.slice(0, 4);
-    if (!yearsToProgramMap.has(year)) {
-      yearsToProgramMap.set(year, new Set());
+    if (!yearsToProgramMap[year]) {
+      yearsToProgramMap[year] = [];
     }
-    yearsToProgramMap.get(year)!.add(capture.programId);
+    if (!yearsToProgramMap[year].includes(capture.programId)) {
+      yearsToProgramMap[year].push(capture.programId);
+    }
 
     // programsMap and bandGroupsMap
-    if (!programsMap.has(capture.programId)) {
-      programsMap.set(capture.programId, {
+    if (!programsMap[capture.programId]) {
+      programsMap[capture.programId] = {
         name: capture.programId,
-        usedBandGroupIds: new Set<string>(),
-        reCaptureIds: new Set<string>(),
-      });
+        usedBandGroupIds: [],
+        reCaptureIds: [],
+      };
     }
-    if (!bandGroupToCaptureIdsMap.has(capture.bandGroup)) {
-      bandGroupToCaptureIdsMap.set(capture.bandGroup, new Set<string>());
+    if (!bandGroupToCaptureIdsMap[capture.bandGroup]) {
+      bandGroupToCaptureIdsMap[capture.bandGroup] = [];
     }
     if (capture.captureType === CaptureType.Banded) {
-      programsMap.get(capture.programId)!.usedBandGroupIds.add(capture.bandGroup);
-      bandGroupToCaptureIdsMap.get(capture.bandGroup)!.add(capture.id);
+      if (!programsMap[capture.programId].usedBandGroupIds.includes(capture.bandGroup)) {
+        programsMap[capture.programId].usedBandGroupIds.push(capture.bandGroup);
+      }
+      if (!bandGroupToCaptureIdsMap[capture.bandGroup].includes(capture.id)) {
+        bandGroupToCaptureIdsMap[capture.bandGroup].push(capture.id);
+      }
     } else {
-      programsMap.get(capture.programId)!.reCaptureIds.add(capture.id);
+      if (!programsMap[capture.programId].reCaptureIds.includes(capture.id)) {
+        programsMap[capture.programId].reCaptureIds.push(capture.id);
+      }
     }
 
     // bandIdToCaptureIdsMap
-    if (!bandIdToCaptureIdsMap.has(capture.bandId)) {
-      bandIdToCaptureIdsMap.set(capture.bandId, new Set([]));
+    if (!bandIdToCaptureIdsMap[capture.bandId]) {
+      bandIdToCaptureIdsMap[capture.bandId] = [];
     }
-    bandIdToCaptureIdsMap.get(capture.bandId)!.add(capture.id);
-
-    // MagicTable
-
+    if (!bandIdToCaptureIdsMap[capture.bandId].includes(capture.id)) {
+      bandIdToCaptureIdsMap[capture.bandId].push(capture.id);
+    }
   }
   await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
   await writeObjectToDB(database, "programsMap", programsMap);
@@ -171,41 +177,16 @@ const generateDB = async (captures: Capture[], database: Database) => {
   await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
 };
 
-const writeObjectToDB = async (database: Database, path: string, data: Map<string, unknown>) => {
-  const entries = Array.from(data.entries());
+const writeObjectToDB = async (database: Database, path: string, data: Record<string, unknown>) => {
+  const entries = Object.entries(data);
   const BATCH_SIZE = 10000;
   let uploadedCount = 0;
 
   console.log(`Uploading ${entries.length} records to '${path}' in batches...`);
 
-  // Helper to convert Sets to arrays recursively
-  const serializeValue = (value: unknown): unknown => {
-    if (value instanceof Set) {
-      return Array.from(value);
-    }
-    if (value instanceof Map) {
-      const obj: Record<string, unknown> = {};
-      for (const [k, v] of value.entries()) {
-        obj[String(k)] = serializeValue(v);
-      }
-      return obj;
-    }
-    if (Array.isArray(value)) {
-      return value.map(serializeValue);
-    }
-    if (value !== null && typeof value === "object") {
-      const obj: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(value)) {
-        obj[k] = serializeValue(v);
-      }
-      return obj;
-    }
-    return value;
-  };
-
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
-    const promises = batch.map(([key, value]) => set(ref(database, `${path}/${key}`), serializeValue(value)));
+    const promises = batch.map(([key, value]) => set(ref(database, `${path}/${key}`), value));
     await Promise.all(promises);
     uploadedCount += batch.length;
     console.log(`Uploaded ${uploadedCount}/${entries.length} to '${path}'...`);

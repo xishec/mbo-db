@@ -18,7 +18,7 @@ import { useData } from "../../../services/useData";
 
 export default function Programs() {
   const [selectedYear, setSelectedYear] = useState<string>("");
-  const [yearsMap, setYearsMap] = useState<YearToProgramMap>(new Map());
+  const [yearsMap, setYearsMap] = useState<YearToProgramMap>({});
   const [isLoading, setIsLoading] = useState(true);
 
   const { selectProgram, selectedProgram } = useData();
@@ -28,15 +28,11 @@ export default function Programs() {
     const yearsRef = ref(db, "yearsToProgramMap");
     const unsubscribe = onValue(yearsRef, (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val() as Record<string, string[]>;
-        const newYearToProgramMap: YearToProgramMap = new Map();
-        for (const [year, programs] of Object.entries(data)) {
-          newYearToProgramMap.set(year, new Set(programs));
-        }
-        setYearsMap(newYearToProgramMap);
+        const data = snapshot.val() as YearToProgramMap;
+        setYearsMap(data);
 
         // Select the most recent year by default
-        const years = Array.from(newYearToProgramMap.keys()).sort((a, b) => Number(b) - Number(a));
+        const years = Object.keys(data).sort((a, b) => Number(b) - Number(a));
         if (years.length > 0 && !selectedYear) {
           setSelectedYear(years[0]);
         }
@@ -48,13 +44,13 @@ export default function Programs() {
 
   // Year rows for the table
   const yearRows = useMemo(() => {
-    return Array.from(yearsMap.keys()).sort((a, b) => Number(b) - Number(a));
+    return Object.keys(yearsMap).sort((a, b) => Number(b) - Number(a));
   }, [yearsMap]);
 
   // Get programs for selected year
   const programs = useMemo(() => {
-    if (!selectedYear || yearsMap.size === 0) return new Set<string>();
-    return yearsMap.get(selectedYear) ?? new Set<string>();
+    if (!selectedYear || Object.keys(yearsMap).length === 0) return [];
+    return yearsMap[selectedYear] ?? [];
   }, [yearsMap, selectedYear]);
 
   const handleYearChange = (keys: "all" | Set<React.Key>) => {
@@ -76,7 +72,7 @@ export default function Programs() {
     );
   }
 
-  if (yearsMap.size === 0) {
+  if (Object.keys(yearsMap).length === 0) {
     return <div className="p-4">No programs available.</div>;
   }
 
@@ -138,7 +134,7 @@ export default function Programs() {
               <TableColumn>Program Name</TableColumn>
             </TableHeader>
             <TableBody emptyContent={selectedYear ? "No programs found" : "Select a year"}>
-              {Array.from(programs)
+              {[...programs]
                 .sort((a, b) => a.localeCompare(b))
                 .map((name) => (
                   <TableRow key={name}>

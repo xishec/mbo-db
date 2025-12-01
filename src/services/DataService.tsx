@@ -78,17 +78,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Fetch captures by bandGroups using bandGroupToCaptureIdsMap, then fetch captures
-  // Returns a Map of bandGroup -> Capture[]
+  // Returns a Record of bandGroup -> Capture[]
   const fetchByBandGroups = useCallback(
-    async (bandGroups: string[]): Promise<Map<string, Capture[]>> => {
-      if (bandGroups.length === 0) return new Map();
+    async (bandGroups: string[]): Promise<Record<string, Capture[]>> => {
+      if (bandGroups.length === 0) return {};
 
       // 1. Fetch all captureIds for each bandGroup from bandGroupToCaptureIdsMap
       const bandGroupPromises = bandGroups.map((bandGroup) => get(ref(db, `bandGroupToCaptureIdsMap/${bandGroup}`)));
       const bandGroupSnapshots = await Promise.all(bandGroupPromises);
 
-      // Build a map of bandGroup -> captureIds
-      const bandGroupToCaptureIds = new Map<string, string[]>();
+      // Build a record of bandGroup -> captureIds
+      const bandGroupToCaptureIds: Record<string, string[]> = {};
       const allCaptureIds: string[] = [];
 
       for (let i = 0; i < bandGroups.length; i++) {
@@ -96,7 +96,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const snapshot = bandGroupSnapshots[i];
         if (snapshot.exists()) {
           const captureIds = snapshot.val() as string[];
-          bandGroupToCaptureIds.set(bandGroup, captureIds);
+          bandGroupToCaptureIds[bandGroup] = captureIds;
           allCaptureIds.push(...captureIds);
         }
       }
@@ -104,24 +104,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // 2. Fetch all captures using fetchCaptures
       const captures = await fetchCaptures(allCaptureIds);
 
-      // 3. Create a lookup map from captureId -> Capture
-      const captureIdToCapture = new Map<string, Capture>();
+      // 3. Create a lookup record from captureId -> Capture
+      const captureIdToCapture: Record<string, Capture> = {};
       for (const capture of captures) {
-        captureIdToCapture.set(capture.id, capture);
+        captureIdToCapture[capture.id] = capture;
       }
 
-      // 4. Build the result map of bandGroup -> Capture[]
-      const result = new Map<string, Capture[]>();
-      for (const [bandGroup, captureIds] of bandGroupToCaptureIds) {
+      // 4. Build the result record of bandGroup -> Capture[]
+      const result: Record<string, Capture[]> = {};
+      for (const [bandGroup, captureIds] of Object.entries(bandGroupToCaptureIds)) {
         const capturesForBandGroup: Capture[] = [];
         for (const captureId of captureIds) {
-          const capture = captureIdToCapture.get(captureId);
+          const capture = captureIdToCapture[captureId];
           if (capture) {
             capturesForBandGroup.push(capture);
           }
         }
         if (capturesForBandGroup.length > 0) {
-          result.set(bandGroup, capturesForBandGroup);
+          result[bandGroup] = capturesForBandGroup;
         }
       }
 
@@ -144,7 +144,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const currentFetchId = ++fetchIdRef.current;
 
       setProgramData({
-        bandGroupToNewCaptures: new Map(),
+        bandGroupToNewCaptures: {},
         reCaptures: [],
         isLoadingProgram: true,
         isLoadingCaptures: true,

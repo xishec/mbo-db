@@ -14,10 +14,12 @@ interface SpeciesRange {
   mWingUpper: number;
 }
 
-interface MagicTable {
-  pyle: Map<string, SpeciesRange>;
-  mbo: Map<string, SpeciesRange>;
+interface SpeciesSources {
+  pyle: SpeciesRange;
+  mbo: SpeciesRange;
 }
+
+type MagicTable = Record<string, SpeciesSources>;
 
 /**
  * Parse the magic_table CSV into a structured object with pyle source

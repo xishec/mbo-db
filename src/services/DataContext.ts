@@ -2,7 +2,7 @@ import { createContext } from "react";
 import type { Capture } from "../helper/helper";
 
 export interface ProgramData {
-  bandGroupToNewCaptures: Map<string, Capture[]>;
+  bandGroupToNewCaptures: Record<string, Capture[]>;
   reCaptures: Capture[];
   isLoadingProgram: boolean;
   isLoadingCaptures: boolean;
@@ -19,7 +19,7 @@ export interface DataContextType {
 }
 
 export const defaultProgramData: ProgramData = {
-  bandGroupToNewCaptures: new Map(),
+  bandGroupToNewCaptures: {},
   reCaptures: [],
   isLoadingProgram: false,
   isLoadingCaptures: false,

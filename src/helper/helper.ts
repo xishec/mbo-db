@@ -1,19 +1,19 @@
 // Database structure types (as stored in Firebase RTDB after serialization)
-export type YearToProgramMap = Map<string, Set<string>>;
+export type YearToProgramMap = Record<string, string[]>;
 
-export type ProgramsMap = Map<string, Program>;
+export type ProgramsMap = Record<string, Program>;
 
 export interface Program {
   name: string;
-  usedBandGroupIds: Set<string>;
-  reCaptureIds: Set<string>;
+  usedBandGroupIds: string[];
+  reCaptureIds: string[];
 }
 
-export type BandGroupToCaptureIdsMap = Map<string, Set<string>>;
+export type BandGroupToCaptureIdsMap = Record<string, string[]>;
 
-export type BandIdToCaptureIdsMap = Map<string, Set<string>>;
+export type BandIdToCaptureIdsMap = Record<string, string[]>;
 
-export type CapturesMap = Map<string, Capture>;
+export type CapturesMap = Record<string, Capture>;
 
 export interface Capture {
   // generated
