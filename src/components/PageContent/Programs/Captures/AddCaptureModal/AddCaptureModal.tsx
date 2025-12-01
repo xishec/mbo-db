@@ -325,6 +325,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                       {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
                     </TableColumn>
                   )}
+
                 </TableHeader>
                 <TableBody>
                   <TableRow key="new-capture">
@@ -337,29 +338,9 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                               {selectedProgram}
                             </div>
                           ) : column.key === "captureType" ? (
-                            <Select
-                              variant="bordered"
-                              color={inputColor || "default"}
-                              aria-label={column.label}
-                              isRequired={false}
-                              validationBehavior="aria"
-                              selectedKeys={
-                                formData[column.key as keyof CaptureFormData]
-                                  ? [formData[column.key as keyof CaptureFormData]]
-                                  : []
-                              }
-                              onSelectionChange={(keys) => {
-                                const selected = Array.from(keys)[0] as string;
-                                handleInputChange(column.key, selected || "");
-                              }}
-                              classNames={{
-                                trigger: getBorderClass(inputColor),
-                              }}
-                            >
-                              {Object.values(CaptureType).map((value) => (
-                                <SelectItem key={value}>{value}</SelectItem>
-                              ))}
-                            </Select>
+                            <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border">
+                              {formData.captureType}
+                            </div>
                           ) : (
                             <Input
                               ref={(el) => {
