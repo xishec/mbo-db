@@ -3,7 +3,7 @@ import { get, ref } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture } from "../helper/helper";
 import { DataContext, defaultProgramData } from "./DataContext";
-import type { ProgramData } from "./DataContext";
+import type { ProgramData, MagicTable } from "./DataContext";
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   // Current program state
@@ -13,6 +13,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // All captures cache (loaded on mount)
   const [allCaptures, setAllCaptures] = useState<Capture[]>([]);
   const [isLoadingAllCaptures, setIsLoadingAllCaptures] = useState(true);
+
+  // Magic table cache (loaded on mount)
+  const [magicTable, setMagicTable] = useState<MagicTable | null>(null);
 
   // Track current fetch to cancel stale requests
   const fetchIdRef = useRef(0);
@@ -71,6 +74,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadAllCaptures();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load magic table on mount (background fetch)
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMagicTable = async () => {
+      try {
+        const snapshot = await get(ref(db, "magicTable"));
+        if (cancelled) return;
+
+        if (snapshot.exists()) {
+          setMagicTable(snapshot.val() as MagicTable);
+        }
+      } catch (error) {
+        console.error("Error loading magic table:", error);
+      }
+    };
+
+    loadMagicTable();
 
     return () => {
       cancelled = true;
@@ -215,6 +242,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         fetchCapturesByBandId,
         allCaptures,
         isLoadingAllCaptures,
+        magicTable,
       }}
     >
       {children}
