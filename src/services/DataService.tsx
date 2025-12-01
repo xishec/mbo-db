@@ -41,11 +41,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     async (bandId: string): Promise<Capture[]> => {
       if (!bandId) return [];
 
-      const snapshot = await get(ref(db, `bandIdToCaptureIdsMap/${bandId}`));
-      if (!snapshot.exists()) return [];
+      try {
+        const snapshot = await get(ref(db, `bandIdToCaptureIdsMap/${bandId}`));
+        if (!snapshot.exists()) return [];
 
-      const captureIds = snapshot.val() as string[];
-      return fetchCaptures(captureIds);
+        const captureIds = snapshot.val() as string[];
+        return fetchCaptures(captureIds);
+      } catch (error) {
+        console.error(`Error fetching captures for bandId ${bandId} from bandIdToCaptureIdsMap:`, error);
+        return [];
+      }
     },
     [fetchCaptures]
   );
@@ -69,6 +74,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (snapshot.exists()) {
           const capturesMap = snapshot.val() as Record<string, Capture>;
           setAllCaptures(Object.values(capturesMap));
+        } else {
+          console.error("Error: capturesMap is missing from the database. Please run import scripts.");
         }
       } catch (error) {
         console.error("Error loading all captures:", error);
@@ -96,7 +103,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         if (snapshot.exists()) {
-          setMagicTable(snapshot.val() as MagicTable);
+          const magicTableData = snapshot.val() as MagicTable;
+          
+          // Validate that both pyle and mbo tables exist
+          if (!magicTableData.pyle) {
+            console.error("Error: magicTable/pyle is missing from the database. Please run import scripts.");
+          }
+          if (!magicTableData.mbo) {
+            console.error("Error: magicTable/mbo is missing from the database. Please run import scripts.");
+          }
+          
+          setMagicTable(magicTableData);
+        } else {
+          console.error("Error: magicTable is missing from the database. Please run import scripts.");
         }
       } catch (error) {
         console.error("Error loading magic table:", error);
@@ -191,6 +210,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (currentFetchId !== fetchIdRef.current) return; // Cancelled
 
         if (!programSnapshot.exists()) {
+          console.error(`Error: Program "${programName}" not found in programsMap. Please run import scripts.`);
           setProgramData(defaultProgramData);
           return;
         }

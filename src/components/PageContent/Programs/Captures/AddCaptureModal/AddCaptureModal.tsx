@@ -54,12 +54,12 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   // Species range lookups
   const pyleSpeciesRange = useMemo(() => {
-    if (formData.species.length !== 4 || !magicTable) return null;
+    if (formData.species.length !== 4 || !magicTable || !magicTable.pyle) return null;
     return magicTable.pyle[formData.species] || null;
   }, [formData.species, magicTable]);
 
   const mboSpeciesRange = useMemo(() => {
-    if (formData.species.length !== 4 || !magicTable) return null;
+    if (formData.species.length !== 4 || !magicTable || !magicTable.mbo) return null;
     return magicTable.mbo[formData.species] || null;
   }, [formData.species, magicTable]);
 
