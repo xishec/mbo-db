@@ -6,8 +6,6 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Select,
-  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -18,7 +16,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../../services/useData";
 import type { Capture, CaptureFormData } from "../../../../../types";
-import { CaptureType } from "../../../../../types";
 import { CAPTURE_COLUMNS } from "../helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
 import CapturesTable from "../CapturesTable";
@@ -30,7 +27,7 @@ interface AddCaptureModalProps {
 }
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const { selectedProgram, fetchCapturesByBandId, magicTable } = useData();
+  const { selectedProgram, fetchCapturesByBandId, checkBandIdExists, magicTable } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [lastOpenState, setLastOpenState] = useState(false);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -161,17 +158,39 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     return "";
   }, [formData.bandGroup, formData.bandLastTwoDigits]);
 
-  // Fetch existing captures when bandId is complete
+  // Fetch existing captures when bandId is complete and auto-compute captureType
   useEffect(() => {
-    if (!bandId) return;
+    if (!bandId || !formData.date) return;
 
-    fetchCapturesByBandId(bandId).then((captures) => {
+    Promise.all([fetchCapturesByBandId(bandId), checkBandIdExists(bandId)]).then(([captures, exists]) => {
       setExistingCaptures(captures);
-      if (captures.length > 0 && captures[0].species) {
-        setFormData((prev) => ({ ...prev, species: captures[0].species }));
+
+      // Auto-compute captureType
+      let captureType = "None";
+      if (captures.length > 0) {
+        // Check if any capture was within 90 days
+        const currentDate = new Date(formData.date);
+        const hasRecentCapture = captures.some((capture) => {
+          const captureDate = new Date(capture.date);
+          const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
+          return daysDiff <= 90;
+        });
+        captureType = hasRecentCapture ? "Repeat" : "Return";
+      } else if (!exists) {
+        captureType = "Alien";
+      } else {
+        captureType = "Banded";
       }
+
+      setFormData((prev) => {
+        const updates: Partial<CaptureFormData> = { captureType };
+        if (captures.length > 0 && captures[0].species) {
+          updates.species = captures[0].species;
+        }
+        return { ...prev, ...updates };
+      });
     });
-  }, [bandId, fetchCapturesByBandId]);
+  }, [bandId, formData.date, fetchCapturesByBandId, checkBandIdExists]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
@@ -325,7 +344,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                       {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
                     </TableColumn>
                   )}
-
                 </TableHeader>
                 <TableBody>
                   <TableRow key="new-capture">

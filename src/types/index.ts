@@ -105,6 +105,7 @@ export interface DataContextType {
   selectProgram: (programName: string | null) => void;
   selectedProgram: string | null;
   fetchCapturesByBandId: (bandId: string) => Promise<Capture[]>;
+  checkBandIdExists: (bandId: string) => Promise<boolean>;
   allCaptures: Capture[];
   isLoadingAllCaptures: boolean;
   magicTable: MagicTable | null;

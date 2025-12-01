@@ -50,6 +50,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [fetchCaptures]
   );
 
+  // Check if bandId exists in bandIdToCaptureIdsMap
+  const checkBandIdExists = useCallback(async (bandId: string): Promise<boolean> => {
+    if (!bandId) return false;
+    const snapshot = await get(ref(db, `bandIdToCaptureIdsMap/${bandId}`));
+    return snapshot.exists();
+  }, []);
+
   // Load all captures on mount (background fetch)
   useEffect(() => {
     let cancelled = false;
@@ -239,6 +246,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         selectProgram,
         selectedProgram,
         fetchCapturesByBandId,
+        checkBandIdExists,
         allCaptures,
         isLoadingAllCaptures,
         magicTable,

@@ -129,6 +129,10 @@ const generateDB = async (captures: Capture[], database: Database) => {
   const mboMagicTable: Record<string, SpeciesRange> = {}; // To implement later
 
   for (const capture of captures) {
+    if (capture.captureType === CaptureType.None) {
+      continue;
+    }
+
     // capturesMap
     capturesMap[capture.id] = capture;
 
@@ -258,28 +262,13 @@ const generateDB = async (captures: Capture[], database: Database) => {
       }
     }
   }
-  await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
-  await writeObjectToDB(database, "programsMap", programsMap);
-  await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
-  await writeObjectToDB(database, "capturesMap", capturesMap);
-  await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
-  await writeObjectToDB(database, "magicTable/mbo", mboMagicTable);
-};
 
-const writeObjectToDB = async (database: Database, path: string, data: Record<string, unknown>) => {
-  const entries = Object.entries(data);
-  const BATCH_SIZE = 10000;
-  let uploadedCount = 0;
+  await set(ref(database, "yearsToProgramMap"), yearsToProgramMap);
+  await set(ref(database, "programsMap"), programsMap);
+  await set(ref(database, "bandIdToCaptureIdsMap"), bandIdToCaptureIdsMap);
+  await set(ref(database, "capturesMap"), capturesMap);
+  await set(ref(database, "bandGroupToCaptureIdsMap"), bandGroupToCaptureIdsMap);
+  await set(ref(database, "magicTable/mbo"), mboMagicTable);
 
-  console.log(`Uploading ${entries.length} records to '${path}' in batches...`);
-
-  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
-    const batch = entries.slice(i, i + BATCH_SIZE);
-    const promises = batch.map(([key, value]) => set(ref(database, `${path}/${key}`), value));
-    await Promise.all(promises);
-    uploadedCount += batch.length;
-    console.log(`Uploaded ${uploadedCount}/${entries.length} to '${path}'...`);
-  }
-
-  console.log(`✅ Import to '${path}' complete! Uploaded ${entries.length} records.`);
+  console.log("✅ Generated RTDB structure");
 };
