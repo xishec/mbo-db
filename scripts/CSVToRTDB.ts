@@ -68,8 +68,8 @@ export function parseCSV(csvContent: string): Capture[] {
   const headers = parseCSVLine(rows[0]);
   const captures: Capture[] = [];
 
-  // const lastRows = rows.slice(-10000);
-  const lastRows = rows;
+  const lastRows = rows.slice(-10000);
+  // const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
     const row = lastRows[i].trim();
@@ -100,6 +100,7 @@ function parseCSVRow(headers: string[], values: string[]): Capture {
     }
   });
 
+  capture.time = "10:00";
   capture.bandGroup = `${capture.bandPrefix}-${capture.bandSuffix.slice(0, -2)}`;
   capture.bandLastTwoDigits = capture.bandSuffix.slice(-2);
   capture.bandId = `${capture.bandGroup}${capture.bandLastTwoDigits}`;

@@ -165,36 +165,36 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     Promise.all([fetchCapturesByBandId(bandId), checkBandIdExists(bandId)]).then(([captures, exists]) => {
       setExistingCaptures(captures);
 
-      setFormData((prev) => {
-        const updates: Partial<CaptureFormData> = {};
+      // setFormData((prev) => {
+      //   const updates: Partial<CaptureFormData> = {};
 
-        // Auto-compute captureType if date is available
-        if (prev.date) {
-          let captureType = "None";
-          if (captures.length > 0) {
-            // Check if any capture was within 90 days
-            const currentDate = new Date(prev.date);
-            const hasRecentCapture = captures.some((capture) => {
-              const captureDate = new Date(capture.date);
-              const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
-              return daysDiff <= 90;
-            });
-            captureType = hasRecentCapture ? "Repeat" : "Return";
-          } else if (!exists) {
-            captureType = "Alien";
-          } else {
-            captureType = "Banded";
-          }
-          updates.captureType = captureType;
-        }
+      //   // Auto-compute captureType if date is available
+      //   if (prev.date) {
+      //     let captureType = "None";
+      //     if (captures.length > 0) {
+      //       // Check if any capture was within 90 days
+      //       const currentDate = new Date(prev.date);
+      //       const hasRecentCapture = captures.some((capture) => {
+      //         const captureDate = new Date(capture.date);
+      //         const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
+      //         return daysDiff <= 90;
+      //       });
+      //       captureType = hasRecentCapture ? "Repeat" : "Return";
+      //     } else if (!exists) {
+      //       captureType = "Alien";
+      //     } else {
+      //       captureType = "Banded";
+      //     }
+      //     updates.captureType = captureType;
+      //   }
 
-        // Set species from first capture
-        if (captures.length > 0 && captures[0].species) {
-          updates.species = captures[0].species;
-        }
+      //   // Set species from first capture
+      //   if (captures.length > 0 && captures[0].species) {
+      //     updates.species = captures[0].species;
+      //   }
 
-        return { ...prev, ...updates };
-      });
+      //   return { ...prev, ...updates };
+      // });
     });
   }, [bandId, fetchCapturesByBandId, checkBandIdExists]);
 
