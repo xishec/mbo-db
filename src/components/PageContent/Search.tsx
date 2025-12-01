@@ -197,10 +197,11 @@ export default function Search() {
             label="Property"
             placeholder="Select property"
             variant="bordered"
+            labelPlacement="outside"
+            size="md"
             selectedKeys={currentProperty ? [currentProperty] : []}
             onSelectionChange={handlePropertyChange}
             className="w-48"
-            size="sm"
           >
             {CAPTURE_PROPERTIES.map((prop) => (
               <SelectItem key={prop.key}>{prop.label}</SelectItem>
@@ -211,13 +212,14 @@ export default function Search() {
             label="Operator"
             placeholder="Select operator"
             variant="bordered"
+            labelPlacement="outside"
+            size="md"
             selectedKeys={currentOperator ? [currentOperator] : []}
             onSelectionChange={(keys) => {
               const selected = Array.from(keys)[0] as string | undefined;
               setCurrentOperator(selected ?? "");
             }}
             className="w-40"
-            size="sm"
             isDisabled={!currentProperty}
           >
             {availableOperators.map((op) => (
@@ -229,10 +231,11 @@ export default function Search() {
             label="Value"
             placeholder="Enter value"
             variant="bordered"
+            labelPlacement="outside"
+            size="md"
             value={currentValue}
             onValueChange={setCurrentValue}
             className="w-48"
-            size="sm"
             isDisabled={!currentProperty}
             type={currentPropertyType === "number" ? "number" : "text"}
             onKeyDown={(e) => {
@@ -242,13 +245,7 @@ export default function Search() {
             }}
           />
 
-          <Button
-            color="secondary"
-            variant="flat"
-            onPress={addFilter}
-            isDisabled={!canAddFilter}
-            size="sm"
-          >
+          <Button color="secondary" variant="flat" onPress={addFilter} isDisabled={!canAddFilter}>
             Add Filter
           </Button>
         </div>
@@ -260,22 +257,13 @@ export default function Search() {
             {filters.map((filter, index) => (
               <div key={filter.id} className="flex items-center gap-1">
                 {index > 0 && <span className="text-sm text-default-400">&&</span>}
-                <Chip
-                  onClose={() => removeFilter(filter.id)}
-                  variant="flat"
-                  color="secondary"
-                  size="sm"
-                >
-                  {getPropertyLabel(filter.property)} {getOperatorLabel(filter.operator, filter.property)} "{filter.value}"
+                <Chip onClose={() => removeFilter(filter.id)} variant="flat" color="secondary">
+                  {getPropertyLabel(filter.property)} {getOperatorLabel(filter.operator, filter.property)} "
+                  {filter.value}"
                 </Chip>
               </div>
             ))}
-            <Button
-              size="sm"
-              variant="light"
-              color="danger"
-              onPress={() => setFilters([])}
-            >
+            <Button variant="light" color="danger" onPress={() => setFilters([])}>
               Clear All
             </Button>
           </div>
@@ -283,12 +271,7 @@ export default function Search() {
 
         {isLoadingAllCaptures && (
           <div className="w-full max-w-md flex flex-col gap-2">
-            <Progress
-              size="sm"
-              isIndeterminate
-              aria-label="Loading captures..."
-              color="secondary"
-            />
+            <Progress size="sm" isIndeterminate aria-label="Loading captures..." color="secondary" />
             <p className="text-sm text-default-500">Loading all captures...</p>
           </div>
         )}
