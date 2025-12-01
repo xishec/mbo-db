@@ -237,8 +237,19 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       });
     }
 
+    // Check for incomplete inputs
+    for (const column of CAPTURE_COLUMNS) {
+      const value = formData[column.key];
+      if (column.minLength && value.length > 0 && value.length < column.minLength) {
+        messages.push({
+          text: `${column.label} is incomplete`,
+          color: "warning",
+        });
+      }
+    }
+
     return messages;
-  }, [rangeValidation, formData.wing, formData.weight, sexCode, pyleRange, mboRange]);
+  }, [rangeValidation, formData, sexCode, pyleRange, mboRange]);
 
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
