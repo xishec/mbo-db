@@ -236,7 +236,7 @@ export default function Search() {
             value={currentValue}
             onValueChange={setCurrentValue}
             className="w-48"
-            isDisabled={!currentProperty}
+            isDisabled={!currentProperty || !operatorRequiresValue}
             type={currentPropertyType === "number" ? "number" : "text"}
             onKeyDown={(e) => {
               if (e.key === "Enter" && canAddFilter) {
@@ -253,13 +253,12 @@ export default function Search() {
         {/* Active Filters */}
         {filters.length > 0 && (
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-default-500">Active filters:</span>
-            {filters.map((filter, index) => (
+            <span className="text-sm">Active filters:</span>
+            {filters.map((filter) => (
               <div key={filter.id} className="flex items-center gap-1">
-                {index > 0 && <span className="text-sm text-default-400">&&</span>}
-                <Chip onClose={() => removeFilter(filter.id)} variant="flat" color="secondary">
-                  {getPropertyLabel(filter.property)} {getOperatorLabel(filter.operator, filter.property)} "
-                  {filter.value}"
+                <Chip onClose={() => removeFilter(filter.id)} variant="flat" color="secondary" size="md">
+                  {getPropertyLabel(filter.property)} {getOperatorLabel(filter.operator, filter.property)}
+                  {filter.operator !== "defined" && filter.operator !== "not_defined" && ` "${filter.value}"`}
                 </Chip>
               </div>
             ))}
@@ -272,7 +271,7 @@ export default function Search() {
         {isLoadingAllCaptures && (
           <div className="w-full max-w-md flex flex-col gap-2">
             <Progress size="sm" isIndeterminate aria-label="Loading captures..." color="secondary" />
-            <p className="text-sm text-default-500">Loading all captures...</p>
+            <p className="text-sm">Loading all captures...</p>
           </div>
         )}
 
@@ -291,7 +290,7 @@ export default function Search() {
         )}
 
         {!isLoadingAllCaptures && filters.length > 0 && filteredCaptures.length === 0 && (
-          <div className="p-4 text-default-500">No captures match the current filters</div>
+          <div className="p-4">No captures match the current filters</div>
         )}
       </div>
     </div>

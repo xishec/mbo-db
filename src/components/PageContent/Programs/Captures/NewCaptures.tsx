@@ -74,7 +74,7 @@ export default function NewCaptures() {
           showOtherPrograms={showOtherPrograms}
         />
       ) : (
-        <div className="p-4 text-default-500">Select a band group to view captures</div>
+        <div className="p-4">Select a band group to view captures</div>
       )}
     </div>
   );

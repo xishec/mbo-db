@@ -146,7 +146,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
           <>
             <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
               <h2 className="text-2xl font-bold">Log in</h2>
-              <p className="text-sm text-default-500 font-normal">Enter your credentials to access your account</p>
+              <p className="text-sm font-normal">Enter your credentials to access your account</p>
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
               {(error || success) && (

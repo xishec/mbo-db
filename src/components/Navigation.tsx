@@ -126,7 +126,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
                         name: user.email?.[0].toUpperCase(),
                       }}
                     />
-                    <ChevronDownIcon className="w-4 h-4 text-default-900" />
+                    <ChevronDownIcon className="w-4 h-4" />
                   </div>
                 </DropdownTrigger>
                 <DropdownMenu aria-label="User Actions" variant="flat">
