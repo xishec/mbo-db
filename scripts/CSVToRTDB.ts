@@ -277,6 +277,11 @@ const generateDB = async (captures: Capture[], database: Database) => {
   await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
   await set(ref(database, "magicTable/mbo"), mboMagicTable);
 
+  // Update lastUpdated timestamp
+  const lastUpdated = Date.now();
+  await set(ref(database, "metadata/lastUpdated"), lastUpdated);
+  console.log(`Set lastUpdated timestamp: ${lastUpdated}`);
+
   console.log("✅ All data uploaded successfully!");
 };
 

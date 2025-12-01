@@ -1,8 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { get, ref } from "firebase/database";
+import { get, ref, onValue } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture, ProgramData, MagicTable } from "../types";
 import { DataContext, defaultProgramData } from "./DataContext";
+import {
+  getAllCapturesFromIndexedDB,
+  saveCaptureMapToIndexedDB,
+  getMagicTableFromIndexedDB,
+  saveMagicTableToIndexedDB,
+  getLastUpdatedFromIndexedDB,
+  saveLastUpdatedToIndexedDB,
+} from "./indexedDB";
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   // Current program state
@@ -65,21 +73,99 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Load all captures on mount (background fetch)
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
+    let initialTimestamp: number | null = null;
 
     const loadAllCaptures = async () => {
       try {
-        const snapshot = await get(ref(db, "capturesMap"));
-        if (cancelled) return;
+        // 1. Check IndexedDB cache and timestamp
+        const [cachedCaptures, cachedTimestamp] = await Promise.all([
+          getAllCapturesFromIndexedDB(),
+          getLastUpdatedFromIndexedDB(),
+        ]);
 
-        if (snapshot.exists()) {
-          const capturesMap = snapshot.val() as Record<string, Capture>;
-          setAllCaptures(Object.values(capturesMap));
+        // 2. Get RTDB timestamp
+        const rtdbTimestampSnapshot = await get(ref(db, "metadata/lastUpdated"));
+        const rtdbTimestamp = rtdbTimestampSnapshot.exists() ? (rtdbTimestampSnapshot.val() as number) : null;
+        initialTimestamp = rtdbTimestamp;
+
+        console.log("📊 Cache check:", {
+          cachedCount: cachedCaptures.length,
+          cachedTimestamp,
+          rtdbTimestamp,
+        });
+
+        // 3. Decide whether to use cache or fetch from RTDB
+        const shouldUseCache =
+          cachedCaptures.length > 0 && cachedTimestamp !== null && rtdbTimestamp !== null && cachedTimestamp >= rtdbTimestamp;
+
+        if (shouldUseCache) {
+          console.log("✅ Loading captures from IndexedDB cache");
+          if (!cancelled) {
+            setAllCaptures(cachedCaptures);
+            setIsLoadingAllCaptures(false);
+          }
         } else {
-          console.error("Error: capturesMap is missing from the database. Please run import scripts.");
+          console.log("Fetching captures from Firebase RTDB");
+          const snapshot = await get(ref(db, "capturesMap"));
+          if (cancelled) return;
+
+          if (snapshot.exists()) {
+            const capturesMap = snapshot.val() as Record<string, Capture>;
+            const captures = Object.values(capturesMap);
+            setAllCaptures(captures);
+
+            // Save to IndexedDB
+            await saveCaptureMapToIndexedDB(capturesMap);
+            if (rtdbTimestamp) {
+              await saveLastUpdatedToIndexedDB(rtdbTimestamp);
+              console.log("Saved captures to IndexedDB with timestamp:", rtdbTimestamp);
+            } else {
+              console.log("Saved captures to IndexedDB (no timestamp)");
+            }
+          } else {
+            console.error("Error: capturesMap is missing from the database. Please run import scripts.");
+          }
+
+          if (!cancelled) {
+            setIsLoadingAllCaptures(false);
+          }
+        }
+
+        // 4. Set up real-time listener for future updates (only triggers on changes after initial load)
+        if (!cancelled) {
+          unsubscribe = onValue(ref(db, "metadata/lastUpdated"), async (snapshot) => {
+            if (snapshot.exists()) {
+              const newTimestamp = snapshot.val() as number;
+              
+              // Skip the initial callback (listener fires immediately with current value)
+              if (initialTimestamp !== null && newTimestamp === initialTimestamp) {
+                initialTimestamp = null; // Clear flag after first callback
+                return;
+              }
+
+              const currentCachedTimestamp = await getLastUpdatedFromIndexedDB();
+
+              // If RTDB has newer data, refetch
+              if (currentCachedTimestamp === null || newTimestamp > currentCachedTimestamp) {
+                console.log("🔄 Detected RTDB update, refreshing captures...");
+                const capturesSnapshot = await get(ref(db, "capturesMap"));
+                if (capturesSnapshot.exists()) {
+                  const capturesMap = capturesSnapshot.val() as Record<string, Capture>;
+                  const captures = Object.values(capturesMap);
+                  setAllCaptures(captures);
+
+                  // Update cache
+                  await saveCaptureMapToIndexedDB(capturesMap);
+                  await saveLastUpdatedToIndexedDB(newTimestamp);
+                  console.log("Updated captures cache");
+                }
+              }
+            }
+          });
         }
       } catch (error) {
         console.error("Error loading all captures:", error);
-      } finally {
         if (!cancelled) {
           setIsLoadingAllCaptures(false);
         }
@@ -90,32 +176,107 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, []);
 
   // Load magic table on mount (background fetch)
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
+    let initialTimestamp: number | null = null;
 
     const loadMagicTable = async () => {
       try {
-        const snapshot = await get(ref(db, "magicTable"));
-        if (cancelled) return;
+        // 1. Check IndexedDB cache and timestamp
+        const [cachedMagicTable, cachedTimestamp] = await Promise.all([
+          getMagicTableFromIndexedDB(),
+          getLastUpdatedFromIndexedDB(),
+        ]);
 
-        if (snapshot.exists()) {
-          const magicTableData = snapshot.val() as MagicTable;
-          
-          // Validate that both pyle and mbo tables exist
-          if (!magicTableData.pyle) {
-            console.error("Error: magicTable/pyle is missing from the database. Please run import scripts.");
+        // 2. Get RTDB timestamp
+        const rtdbTimestampSnapshot = await get(ref(db, "metadata/lastUpdated"));
+        const rtdbTimestamp = rtdbTimestampSnapshot.exists() ? (rtdbTimestampSnapshot.val() as number) : null;
+        initialTimestamp = rtdbTimestamp;
+
+        console.log("📊 Magic table cache check:", {
+          hasCachedTable: cachedMagicTable !== null,
+          cachedTimestamp,
+          rtdbTimestamp,
+        });
+
+        // 3. Decide whether to use cache or fetch from RTDB
+        const shouldUseCache =
+          cachedMagicTable !== null && cachedTimestamp !== null && rtdbTimestamp !== null && cachedTimestamp >= rtdbTimestamp;
+
+        if (shouldUseCache) {
+          console.log("✅ Loading magic table from IndexedDB cache");
+          if (!cancelled) {
+            setMagicTable(cachedMagicTable);
           }
-          if (!magicTableData.mbo) {
-            console.error("Error: magicTable/mbo is missing from the database. Please run import scripts.");
-          }
-          
-          setMagicTable(magicTableData);
         } else {
-          console.error("Error: magicTable is missing from the database. Please run import scripts.");
+          console.log("Fetching magic table from Firebase RTDB");
+          const snapshot = await get(ref(db, "magicTable"));
+          if (cancelled) return;
+
+          if (snapshot.exists()) {
+            const magicTableData = snapshot.val() as MagicTable;
+
+            // Validate that both pyle and mbo tables exist
+            if (!magicTableData.pyle) {
+              console.error("Error: magicTable/pyle is missing from the database. Please run import scripts.");
+            }
+            if (!magicTableData.mbo) {
+              console.error("Error: magicTable/mbo is missing from the database. Please run import scripts.");
+            }
+
+            setMagicTable(magicTableData);
+
+            // Save to IndexedDB
+            await saveMagicTableToIndexedDB(magicTableData);
+            if (rtdbTimestamp) {
+              await saveLastUpdatedToIndexedDB(rtdbTimestamp);
+              console.log("Saved magic table to IndexedDB with timestamp:", rtdbTimestamp);
+            } else {
+              console.log("Saved magic table to IndexedDB (no timestamp)");
+            }
+          } else {
+            console.error("Error: magicTable is missing from the database. Please run import scripts.");
+          }
+        }
+
+        // 4. Set up real-time listener for future updates (only triggers on changes after initial load)
+        if (!cancelled) {
+          unsubscribe = onValue(ref(db, "metadata/lastUpdated"), async (snapshot) => {
+            if (snapshot.exists()) {
+              const newTimestamp = snapshot.val() as number;
+              
+              // Skip the initial callback (listener fires immediately with current value)
+              if (initialTimestamp !== null && newTimestamp === initialTimestamp) {
+                initialTimestamp = null; // Clear flag after first callback
+                return;
+              }
+
+              const currentCachedTimestamp = await getLastUpdatedFromIndexedDB();
+
+              // If RTDB has newer data, refetch
+              if (currentCachedTimestamp === null || newTimestamp > currentCachedTimestamp) {
+                console.log("🔄 Detected RTDB update, refreshing magic table...");
+                const magicTableSnapshot = await get(ref(db, "magicTable"));
+                if (magicTableSnapshot.exists()) {
+                  const magicTableData = magicTableSnapshot.val() as MagicTable;
+                  setMagicTable(magicTableData);
+
+                  // Update cache
+                  await saveMagicTableToIndexedDB(magicTableData);
+                  await saveLastUpdatedToIndexedDB(newTimestamp);
+                  console.log("Updated magic table cache");
+                }
+              }
+            }
+          });
         }
       } catch (error) {
         console.error("Error loading magic table:", error);
@@ -126,6 +287,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, []);
 
