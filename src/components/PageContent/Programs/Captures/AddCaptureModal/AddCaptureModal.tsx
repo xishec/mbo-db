@@ -309,6 +309,8 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                               variant="bordered"
                               color={inputColor || "default"}
                               aria-label={column.label}
+                              isRequired={false}
+                              validationBehavior="aria"
                               selectedKeys={
                                 formData[column.key as keyof CaptureFormData]
                                   ? [formData[column.key as keyof CaptureFormData]]
@@ -336,13 +338,15 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                               aria-label={column.label}
                               type={column.type || "text"}
                               maxLength={column.maxLength}
+                              validationBehavior="aria"
                               value={formData[column.key as keyof CaptureFormData]}
                               onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
                               onKeyDown={(e) => handleKeyDown(e, column.key)}
+                              style={column.maxLength ? { width: `${10 * column.maxLength}px` } : undefined}
                               classNames={{
                                 input:
                                   "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                inputWrapper: `min-w-[40px] ${getBorderClass(inputColor)}`,
+                                inputWrapper: getBorderClass(inputColor),
                               }}
                             />
                           )}
