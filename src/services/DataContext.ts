@@ -14,7 +14,8 @@ export interface DataContextType {
   selectProgram: (programName: string | null) => void;
   selectedProgram: string | null;
   fetchCapturesByBandId: (bandId: string) => Promise<Capture[]>;
-  fetchAllCaptures: () => Promise<Capture[]>;
+  allCaptures: Capture[];
+  isLoadingAllCaptures: boolean;
 }
 
 export const defaultProgramData: ProgramData = {

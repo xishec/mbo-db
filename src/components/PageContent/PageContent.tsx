@@ -1,5 +1,5 @@
 import Programs from "./Programs/Programs";
-import Search from "./Search/Search";
+import Search from "./Search";
 
 interface PageContentProps {
   activePage: string;

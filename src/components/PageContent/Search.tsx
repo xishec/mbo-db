@@ -1,36 +1,18 @@
-import { Input, Spinner } from "@heroui/react";
+import { Input, Progress } from "@heroui/react";
 import { useEffect, useState } from "react";
-import { useData } from "../../../services/useData";
-import type { Capture } from "../../../helper/helper";
-import CapturesTable from "../Programs/Captures/CapturesTable";
+import { useData } from "../../services/useData";
+import type { Capture } from "../../helper/helper";
+import CapturesTable from "./Programs/Captures/CapturesTable";
 
 export default function Search() {
-  const { fetchCapturesByBandId, fetchAllCaptures } = useData();
+  const { fetchCapturesByBandId, allCaptures, isLoadingAllCaptures } = useData();
   const [bandId, setBandId] = useState("");
-  const [allCaptures, setAllCaptures] = useState<Capture[]>([]);
   const [filteredCaptures, setFilteredCaptures] = useState<Capture[]>([]);
-  const [isLoadingAll, setIsLoadingAll] = useState(true);
   const [searchedBandId, setSearchedBandId] = useState<string | null>(null);
 
   // Check if bandId is complete (format: 2980-85665 = 4 digits + hyphen + 5 digits = 10 chars)
   const isComplete = bandId.length === 10;
   const isSearching = isComplete && bandId !== searchedBandId;
-
-  // Fetch all captures on mount
-  useEffect(() => {
-    let cancelled = false;
-
-    fetchAllCaptures().then((result) => {
-      if (!cancelled) {
-        setAllCaptures(result);
-        setIsLoadingAll(false);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchAllCaptures]);
 
   // Fetch captures when bandId is complete
   useEffect(() => {
@@ -55,7 +37,7 @@ export default function Search() {
 
   // Determine which captures to display
   const displayCaptures = isComplete ? filteredCaptures : allCaptures;
-  const isLoading = isLoadingAll || isSearching;
+  const isLoading = isLoadingAllCaptures || isSearching;
 
   const handleBandIdChange = (value: string) => {
     // Remove all non-digits
@@ -83,8 +65,16 @@ export default function Search() {
         />
 
         {isLoading && (
-          <div className="p-4 flex items-center gap-4">
-            <Spinner size="sm" /> {isLoadingAll ? "Loading captures..." : "Searching..."}
+          <div className="w-full max-w-md flex flex-col gap-2">
+            <Progress
+              size="sm"
+              isIndeterminate
+              aria-label={isLoadingAllCaptures ? "Loading captures..." : "Searching..."}
+              color="secondary"
+            />
+            <p className="text-sm text-default-500">
+              {isLoadingAllCaptures ? "Loading all captures..." : "Searching..."}
+            </p>
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture } from "../helper/helper";
@@ -9,6 +9,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Current program state
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [programData, setProgramData] = useState<ProgramData>(defaultProgramData);
+
+  // All captures cache (loaded on mount)
+  const [allCaptures, setAllCaptures] = useState<Capture[]>([]);
+  const [isLoadingAllCaptures, setIsLoadingAllCaptures] = useState(true);
 
   // Track current fetch to cancel stale requests
   const fetchIdRef = useRef(0);
@@ -44,13 +48,33 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [fetchCaptures]
   );
 
-  // Fetch all captures from capturesMap
-  const fetchAllCaptures = useCallback(async (): Promise<Capture[]> => {
-    const snapshot = await get(ref(db, "capturesMap"));
-    if (!snapshot.exists()) return [];
+  // Load all captures on mount (background fetch)
+  useEffect(() => {
+    let cancelled = false;
 
-    const capturesMap = snapshot.val() as Record<string, Capture>;
-    return Object.values(capturesMap);
+    const loadAllCaptures = async () => {
+      try {
+        const snapshot = await get(ref(db, "capturesMap"));
+        if (cancelled) return;
+
+        if (snapshot.exists()) {
+          const capturesMap = snapshot.val() as Record<string, Capture>;
+          setAllCaptures(Object.values(capturesMap));
+        }
+      } catch (error) {
+        console.error("Error loading all captures:", error);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingAllCaptures(false);
+        }
+      }
+    };
+
+    loadAllCaptures();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch captures by bandGroups using bandGroupToCaptureIdsMap, then fetch captures
@@ -189,7 +213,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         selectProgram,
         selectedProgram,
         fetchCapturesByBandId,
-        fetchAllCaptures,
+        allCaptures,
+        isLoadingAllCaptures,
       }}
     >
       {children}
