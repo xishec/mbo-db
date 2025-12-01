@@ -158,39 +158,45 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     return "";
   }, [formData.bandGroup, formData.bandLastTwoDigits]);
 
-  // Fetch existing captures when bandId is complete and auto-compute captureType
+  // Fetch existing captures when bandId is complete
   useEffect(() => {
-    if (!bandId || !formData.date) return;
+    if (!bandId) return;
 
     Promise.all([fetchCapturesByBandId(bandId), checkBandIdExists(bandId)]).then(([captures, exists]) => {
       setExistingCaptures(captures);
 
-      // Auto-compute captureType
-      let captureType = "None";
-      if (captures.length > 0) {
-        // Check if any capture was within 90 days
-        const currentDate = new Date(formData.date);
-        const hasRecentCapture = captures.some((capture) => {
-          const captureDate = new Date(capture.date);
-          const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
-          return daysDiff <= 90;
-        });
-        captureType = hasRecentCapture ? "Repeat" : "Return";
-      } else if (!exists) {
-        captureType = "Alien";
-      } else {
-        captureType = "Banded";
-      }
-
       setFormData((prev) => {
-        const updates: Partial<CaptureFormData> = { captureType };
+        const updates: Partial<CaptureFormData> = {};
+
+        // Auto-compute captureType if date is available
+        if (prev.date) {
+          let captureType = "None";
+          if (captures.length > 0) {
+            // Check if any capture was within 90 days
+            const currentDate = new Date(prev.date);
+            const hasRecentCapture = captures.some((capture) => {
+              const captureDate = new Date(capture.date);
+              const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
+              return daysDiff <= 90;
+            });
+            captureType = hasRecentCapture ? "Repeat" : "Return";
+          } else if (!exists) {
+            captureType = "Alien";
+          } else {
+            captureType = "Banded";
+          }
+          updates.captureType = captureType;
+        }
+
+        // Set species from first capture
         if (captures.length > 0 && captures[0].species) {
           updates.species = captures[0].species;
         }
+
         return { ...prev, ...updates };
       });
     });
-  }, [bandId, formData.date, fetchCapturesByBandId, checkBandIdExists]);
+  }, [bandId, fetchCapturesByBandId, checkBandIdExists]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);

@@ -126,7 +126,7 @@ const generateDB = async (captures: Capture[], database: Database) => {
   const bandIdToCaptureIdsMap: BandIdToCaptureIdsMap = {};
   const capturesMap: CapturesMap = {};
   const bandGroupToCaptureIdsMap: BandGroupToCaptureIdsMap = {};
-  const mboMagicTable: Record<string, SpeciesRange> = {}; // To implement later
+  const mboMagicTable: Record<string, SpeciesRange> = {};
 
   for (const capture of captures) {
     if (capture.captureType === CaptureType.None) {
@@ -138,11 +138,13 @@ const generateDB = async (captures: Capture[], database: Database) => {
 
     // year
     const year = capture.date.slice(0, 4);
-    if (!yearsToProgramMap[year]) {
-      yearsToProgramMap[year] = [];
-    }
-    if (!yearsToProgramMap[year].includes(capture.programId)) {
-      yearsToProgramMap[year].push(capture.programId);
+    if (year) {
+      if (!yearsToProgramMap[year]) {
+        yearsToProgramMap[year] = [];
+      }
+      if (!yearsToProgramMap[year].includes(capture.programId)) {
+        yearsToProgramMap[year].push(capture.programId);
+      }
     }
 
     // programsMap and bandGroupsMap
@@ -264,14 +266,14 @@ const generateDB = async (captures: Capture[], database: Database) => {
   }
 
   console.log("Uploading data to RTDB...");
-  
+
   await set(ref(database, "yearsToProgramMap"), yearsToProgramMap);
   await set(ref(database, "programsMap"), programsMap);
   await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
   await writeObjectToDB(database, "capturesMap", capturesMap);
   await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
   await set(ref(database, "magicTable/mbo"), mboMagicTable);
- 
+
   console.log("✅ All data uploaded successfully!");
 };
 
