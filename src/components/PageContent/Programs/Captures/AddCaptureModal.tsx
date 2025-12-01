@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../services/useData";
 import type { Capture } from "../../../../helper/helper";
 import CapturesTable from "./CapturesTable";
+import SpeciesRangeTable from "./SpeciesRangeTable";
 
 interface AddCaptureModalProps {
   isOpen: boolean;
@@ -90,7 +91,7 @@ const CAPTURE_COLUMNS: {
 ];
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const { selectedProgram, fetchCapturesByBandId } = useData();
+  const { selectedProgram, fetchCapturesByBandId, magicTable } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [lastOpenState, setLastOpenState] = useState(false);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -115,6 +116,17 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // Get species ranges from magic table when species is complete (4 chars)
+  const speciesRanges = useMemo(() => {
+    if (formData.species.length !== 4 || !magicTable) {
+      return { pyle: null, mbo: null };
+    }
+    return {
+      pyle: magicTable.pyle[formData.species] || null,
+      mbo: magicTable.mbo[formData.species] || null,
+    };
+  }, [formData.species, magicTable]);
 
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
@@ -326,6 +338,12 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
               Add Capture in <span className="font-bold">{selectedProgram}</span>
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
+              {formData.species.length === 4 && (speciesRanges.pyle || speciesRanges.mbo) && (
+                <div className="flex gap-4">
+                  <SpeciesRangeTable title="Pyle" speciesCode={formData.species} range={speciesRanges.pyle} />
+                  <SpeciesRangeTable title="MBO" speciesCode={formData.species} range={speciesRanges.mbo} />
+                </div>
+              )}
               <Table>
                 <TableHeader columns={CAPTURE_COLUMNS}>
                   {(column) => (
