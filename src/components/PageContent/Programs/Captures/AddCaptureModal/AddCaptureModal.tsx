@@ -98,11 +98,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     };
   }, [formData.wing, formData.weight, sexCode, pyleSpeciesRange, mboSpeciesRange]);
 
-  const wingColor =
-    rangeValidation.wing.pyle === false ? "danger" : rangeValidation.wing.mbo === false ? "warning" : null;
-  const weightColor =
-    rangeValidation.weight.pyle === false ? "danger" : rangeValidation.weight.mbo === false ? "warning" : null;
-
   // Generate warning messages
   const warningMessages = useMemo(() => {
     const messages: { text: string; color: "danger" | "warning" }[] = [];
@@ -133,6 +128,21 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       });
     }
 
+    // Check if sex matches existing captures logic
+    if (existingCaptures.length > 0 && formData.sex.length > 0) {
+      const capturesWithDefinedSex = existingCaptures.filter((capture) => ["4", "5"].includes(capture.sex));
+      if (capturesWithDefinedSex.length > 0) {
+        const allSexMatch = capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
+        if (!allSexMatch) {
+          const existingSexValues = [...new Set(capturesWithDefinedSex.map((c) => c.sex))].join(", ");
+          messages.push({
+            text: `Sex ${formData.sex} does not match existing captures (was ${existingSexValues})`,
+            color: "danger",
+          });
+        }
+      }
+    }
+
     for (const column of CAPTURE_COLUMNS) {
       const value = formData[column.key as keyof CaptureFormData];
       if (column.minLength && value.length > 0 && value.length < column.minLength) {
@@ -141,7 +151,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
 
     return messages;
-  }, [rangeValidation, formData, sexCode, pyleRange, mboRange]);
+  }, [rangeValidation, formData, sexCode, pyleRange, mboRange, existingCaptures]);
 
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
@@ -248,11 +258,33 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   }, [formData, handleClose]);
 
   const getInputColor = (columnKey: keyof CaptureFormData) => {
-    const rangeColor = columnKey === "wing" ? wingColor : columnKey === "weight" ? weightColor : null;
+    // Check wing range validation
+    if (columnKey === "wing") {
+      if (rangeValidation.wing.pyle === false) return "danger";
+      if (rangeValidation.wing.mbo === false) return "warning";
+    }
+
+    // Check weight range validation
+    if (columnKey === "weight") {
+      if (rangeValidation.weight.pyle === false) return "danger";
+      if (rangeValidation.weight.mbo === false) return "warning";
+    }
+
+    // Check if sex is valid based on existing captures
+    if (columnKey === "sex" && existingCaptures.length > 0 && formData.sex.length > 0) {
+      const capturesWithDefinedSex = existingCaptures.filter((capture) => ["4", "5"].includes(capture.sex));
+      if (capturesWithDefinedSex.length > 0) {
+        const allSexMatch = capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
+        if (!allSexMatch) {
+          return "danger";
+        }
+      }
+    }
+
     const column = CAPTURE_COLUMNS.find((col) => col.key === columnKey);
     const value = formData[columnKey];
     const isIncomplete = column?.minLength && value.length > 0 && value.length < column.minLength;
-    return rangeColor || (isIncomplete ? "warning" : null);
+    return isIncomplete ? "warning" : null;
   };
 
   const getBorderClass = (color: "danger" | "warning" | null) => {

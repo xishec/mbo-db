@@ -2,7 +2,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { ref, set, type Database } from "firebase/database";
 import { db } from "./firebase-node";
-import { MagicTable } from "../src/helper/helper";
+import { MagicTable } from "../src/types";
 
 /**
  * Parse the magic_table CSV into a structured object with pyle source

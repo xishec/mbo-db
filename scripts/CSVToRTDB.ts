@@ -68,7 +68,8 @@ export function parseCSV(csvContent: string): Capture[] {
   const headers = parseCSVLine(rows[0]);
   const captures: Capture[] = [];
 
-  const lastRows = rows.slice(-10000);
+  // const lastRows = rows.slice(-10000);
+  const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
     const row = lastRows[i].trim();
@@ -257,11 +258,11 @@ const generateDB = async (captures: Capture[], database: Database) => {
       }
     }
   }
-  // await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
-  // await writeObjectToDB(database, "programsMap", programsMap);
-  // await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
-  // await writeObjectToDB(database, "capturesMap", capturesMap);
-  // await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
+  await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
+  await writeObjectToDB(database, "programsMap", programsMap);
+  await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
+  await writeObjectToDB(database, "capturesMap", capturesMap);
+  await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
   await writeObjectToDB(database, "magicTable/mbo", mboMagicTable);
 };
 
