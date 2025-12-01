@@ -1,7 +1,7 @@
 import { Button, Spinner, Tab, Tabs, useDisclosure } from "@heroui/react";
 import { useState } from "react";
 import { useData } from "../../../../services/useData";
-import AddCaptureModal from "./AddCaptureModal";
+import AddCaptureModal from "./AddCaptureModal/AddCaptureModal";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
 
