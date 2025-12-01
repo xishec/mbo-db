@@ -69,6 +69,20 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               Programs
             </Link>
           </NavbarItem>
+          <NavbarItem isActive={activePage === "search"} className="w-24">
+            <Link
+              aria-current={activePage === "search" ? "page" : undefined}
+              color={activePage === "search" ? "primary" : "foreground"}
+              href="#"
+              className="inline-block w-full text-center"
+              onClick={(e) => {
+                e.preventDefault();
+                onPageChange("search");
+              }}
+            >
+              Search
+            </Link>
+          </NavbarItem>
           <NavbarItem isActive={activePage === "customers"} className="w-24">
             <Link
               aria-current={activePage === "customers" ? "page" : undefined}
