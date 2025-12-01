@@ -10,6 +10,7 @@ import {
   CaptureType,
   BandGroupToCaptureIdsMap,
 } from "../src/helper/helper";
+import { SpeciesRange } from "./importMagicTable";
 
 /**
  * Parse a single CSV line respecting quoted fields (handles commas inside quotes)
@@ -124,6 +125,7 @@ const generateDB = async (captures: Capture[], database: Database) => {
   const bandIdToCaptureIdsMap: BandIdToCaptureIdsMap = {};
   const capturesMap: CapturesMap = {};
   const bandGroupToCaptureIdsMap: BandGroupToCaptureIdsMap = {};
+  const mboMagicTable: Record<string, SpeciesRange> = {}; // To implement later
 
   for (const capture of captures) {
     // capturesMap
@@ -169,12 +171,52 @@ const generateDB = async (captures: Capture[], database: Database) => {
     if (!bandIdToCaptureIdsMap[capture.bandId].includes(capture.id)) {
       bandIdToCaptureIdsMap[capture.bandId].push(capture.id);
     }
+
+    if (mboMagicTable[capture.species] === undefined) {
+      mboMagicTable[capture.species] = {
+        fWeightLower: 1000000,
+        fWeightUpper: 0,
+        fWingLower: 1000000,
+        fWingUpper: 0,
+        mWeightLower: 1000000,
+        mWeightUpper: 0,
+        mWingLower: 1000000,
+        mWingUpper: 0,
+      };
+    }
+
+    if (capture.sex === "4") {
+      // male
+      mboMagicTable[capture.species].mWeightLower = Math.min(
+        mboMagicTable[capture.species].mWeightLower,
+        capture.weight
+      );
+      mboMagicTable[capture.species].mWeightUpper = Math.max(
+        mboMagicTable[capture.species].mWeightUpper,
+        capture.weight
+      );
+      mboMagicTable[capture.species].mWingLower = Math.min(mboMagicTable[capture.species].mWingLower, capture.wing);
+      mboMagicTable[capture.species].mWingUpper = Math.max(mboMagicTable[capture.species].mWingUpper, capture.wing);
+    } else if (capture.sex === "5") {
+      // female
+      mboMagicTable[capture.species].fWeightLower = Math.min(
+        mboMagicTable[capture.species].fWeightLower,
+        capture.weight
+      );
+      mboMagicTable[capture.species].fWeightUpper = Math.max(
+        mboMagicTable[capture.species].fWeightUpper,
+        capture.weight
+      );
+      mboMagicTable[capture.species].fWingLower = Math.min(mboMagicTable[capture.species].fWingLower, capture.wing);
+      mboMagicTable[capture.species].fWingUpper = Math.max(mboMagicTable[capture.species].fWingUpper, capture.wing);
+    }
   }
-  await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
-  await writeObjectToDB(database, "programsMap", programsMap);
-  await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
-  await writeObjectToDB(database, "capturesMap", capturesMap);
-  await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
+  // await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
+  // await writeObjectToDB(database, "programsMap", programsMap);
+  // await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
+  // await writeObjectToDB(database, "capturesMap", capturesMap);
+  // await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
+  // await writeObjectToDB(database, "magicTable/mbo", mboMagicTable);
 };
 
 const writeObjectToDB = async (database: Database, path: string, data: Record<string, unknown>) => {

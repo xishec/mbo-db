@@ -3,7 +3,7 @@ import { join } from "path";
 import { ref, set, type Database } from "firebase/database";
 import { db } from "./firebase-node";
 
-interface SpeciesRange {
+export interface SpeciesRange {
   fWeightLower: number;
   fWeightUpper: number;
   fWingLower: number;
@@ -14,12 +14,10 @@ interface SpeciesRange {
   mWingUpper: number;
 }
 
-interface SpeciesSources {
-  pyle: SpeciesRange;
-  mbo: SpeciesRange;
+export interface MagicTable {
+  pyle: Record<string, SpeciesRange>;
+  mbo: Record<string, SpeciesRange>;
 }
-
-type MagicTable = Record<string, SpeciesSources>;
 
 /**
  * Parse the magic_table CSV into a structured object with pyle source
@@ -30,18 +28,7 @@ function parseMagicTableCSV(csvContent: string): MagicTable {
 
   const lines = csvContent.trim().split("\n");
 
-  const magicTable: MagicTable = {};
-
-  const emptyRange: SpeciesRange = {
-    fWeightLower: 0,
-    fWeightUpper: 0,
-    fWingLower: 0,
-    fWingUpper: 0,
-    mWeightLower: 0,
-    mWeightUpper: 0,
-    mWingLower: 0,
-    mWingUpper: 0,
-  };
+  const magicTable: MagicTable = { pyle: {}, mbo: {} };
 
   for (let i = 1; i < lines.length; i++) {
     const values = lines[i].split(",");
@@ -50,18 +37,15 @@ function parseMagicTableCSV(csvContent: string): MagicTable {
     const speciesCode = values[8].trim();
     if (!speciesCode) continue;
 
-    magicTable[speciesCode] = {
-      pyle: {
-        fWeightLower: Number(values[0]) || 0,
-        fWeightUpper: Number(values[1]) || 0,
-        fWingLower: Number(values[2]) || 0,
-        fWingUpper: Number(values[3]) || 0,
-        mWeightLower: Number(values[4]) || 0,
-        mWeightUpper: Number(values[5]) || 0,
-        mWingLower: Number(values[6]) || 0,
-        mWingUpper: Number(values[7]) || 0,
-      },
-      mbo: { ...emptyRange }, // Empty MBO data, to be populated separately
+    magicTable.pyle[speciesCode] = {
+      fWeightLower: Number(values[0]) || 0,
+      fWeightUpper: Number(values[1]) || 0,
+      fWingLower: Number(values[2]) || 0,
+      fWingUpper: Number(values[3]) || 0,
+      mWeightLower: Number(values[4]) || 0,
+      mWeightUpper: Number(values[5]) || 0,
+      mWingLower: Number(values[6]) || 0,
+      mWingUpper: Number(values[7]) || 0,
     };
   }
 
