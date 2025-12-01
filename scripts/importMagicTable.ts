@@ -2,18 +2,18 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { ref, set, type Database } from "firebase/database";
 import { db } from "./firebase-node";
-import { MagicTable } from "../src/types";
+import { SpeciesRange } from "../src/types";
 
 /**
  * Parse the magic_table CSV into a structured object with pyle source
  */
-function parseMagicTableCSV(csvContent: string): MagicTable {
+function parseCSV(csvContent: string): Record<string, SpeciesRange> {
   // Remove BOM if present
   csvContent = csvContent.replace(/^\uFEFF/, "");
 
   const lines = csvContent.trim().split("\n");
 
-  const magicTable: MagicTable = { pyle: {}, mbo: {} };
+  const pyleMagicTable: Record<string, SpeciesRange> = {};
 
   for (let i = 1; i < lines.length; i++) {
     const values = lines[i].split(",");
@@ -31,7 +31,7 @@ function parseMagicTableCSV(csvContent: string): MagicTable {
     const mWingLower = Number(values[6]) || 0;
     const mWingUpper = Number(values[7]) || 0;
 
-    magicTable.pyle[speciesCode] = {
+    pyleMagicTable[speciesCode] = {
       fWeightLower,
       fWeightUpper,
       fWingLower,
@@ -47,16 +47,16 @@ function parseMagicTableCSV(csvContent: string): MagicTable {
     };
   }
 
-  return magicTable;
+  return pyleMagicTable;
 }
 
 /**
  * Import magic table to RTDB
  */
-async function importMagicTable(database: Database, magicTable: MagicTable): Promise<void> {
-  console.log(`Uploading ${Object.keys(magicTable.pyle).length} species records to 'magicTable'...`);
+async function importMagicTable(database: Database, pyleMagicTable: Record<string, SpeciesRange>): Promise<void> {
+  console.log(`Uploading ${Object.keys(pyleMagicTable).length} species records to 'magicTable'...`);
 
-  await set(ref(database, "magicTable"), magicTable);
+  await set(ref(database, "magicTable/pyle"), pyleMagicTable);
 
   console.log(`✅ Import to 'magicTable' complete!`);
 }
@@ -68,7 +68,7 @@ async function main() {
     const csvContent = readFileSync(csvPath, "utf-8");
 
     console.log("Parsing magic table...");
-    const magicTable = parseMagicTableCSV(csvContent);
+    const magicTable = parseCSV(csvContent);
     console.log(`Parsed ${Object.keys(magicTable.pyle).length} species entries`);
 
     console.log("Starting RTDB import...");
