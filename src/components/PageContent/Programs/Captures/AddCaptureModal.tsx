@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@heroui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useProgramData } from "../../../../services/useProgramData";
+import { useData } from "../../../../services/useData";
 import type { Capture } from "../../../../helper/helper";
 import CapturesTable from "./CapturesTable";
 
@@ -90,7 +90,7 @@ const CAPTURE_COLUMNS: {
 ];
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const { selectedProgram, fetchCapturesByBandId } = useProgramData();
+  const { selectedProgram, fetchCapturesByBandId } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [lastOpenState, setLastOpenState] = useState(false);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());

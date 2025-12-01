@@ -1,9 +1,9 @@
 import { Spinner } from "@heroui/react";
-import { useProgramData } from "../../../../services/useProgramData";
+import { useData } from "../../../../services/useData";
 import CapturesTable from "./CapturesTable";
 
 export default function ReCaptures() {
-  const { programData } = useProgramData();
+  const { programData } = useData();
   const { reCaptures, isLoadingReCaptures } = programData;
 
   if (isLoadingReCaptures) {

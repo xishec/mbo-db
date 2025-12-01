@@ -9,11 +9,12 @@ export interface ProgramData {
   isLoadingReCaptures: boolean;
 }
 
-export interface ProgramDataContextType {
+export interface DataContextType {
   programData: ProgramData;
   selectProgram: (programName: string | null) => void;
   selectedProgram: string | null;
   fetchCapturesByBandId: (bandId: string) => Promise<Capture[]>;
+  fetchAllCaptures: () => Promise<Capture[]>;
 }
 
 export const defaultProgramData: ProgramData = {
@@ -24,4 +25,4 @@ export const defaultProgramData: ProgramData = {
   isLoadingReCaptures: false,
 };
 
-export const ProgramDataContext = createContext<ProgramDataContextType | null>(null);
+export const DataContext = createContext<DataContextType | null>(null);

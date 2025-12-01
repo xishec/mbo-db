@@ -1,10 +1,10 @@
 import { Autocomplete, AutocompleteItem, Spinner, Switch } from "@heroui/react";
 import { useMemo, useState } from "react";
-import { useProgramData } from "../../../../services/useProgramData";
+import { useData } from "../../../../services/useData";
 import CapturesTable from "./CapturesTable";
 
 export default function NewCaptures() {
-  const { programData, selectedProgram } = useProgramData();
+  const { programData, selectedProgram } = useData();
   const { bandGroupToNewCaptures, isLoadingCaptures } = programData;
 
   // Convert bandGroupToNewCaptures keys to sorted array for autocomplete

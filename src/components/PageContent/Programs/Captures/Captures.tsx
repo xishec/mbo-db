@@ -1,6 +1,6 @@
 import { Button, Spinner, Tab, Tabs, useDisclosure } from "@heroui/react";
 import { useState } from "react";
-import { useProgramData } from "../../../../services/useProgramData";
+import { useData } from "../../../../services/useData";
 import AddCaptureModal from "./AddCaptureModal";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
@@ -14,7 +14,7 @@ type CaptureTabType = keyof typeof CAPTURE_TAB_OPTIONS;
 export default function Captures() {
   const [captureTabType, setCaptureTabType] = useState<CaptureTabType>("NEW_CAPTURES");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { programData, selectedProgram } = useProgramData();
+  const { programData, selectedProgram } = useData();
 
   if (!selectedProgram) {
     return null;

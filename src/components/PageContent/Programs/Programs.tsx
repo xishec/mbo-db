@@ -14,14 +14,14 @@ import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../../../firebase";
 import type { YearToProgramMap } from "../../../helper/helper";
-import { useProgramData } from "../../../services/useProgramData";
+import { useData } from "../../../services/useData";
 
 export default function Programs() {
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [yearsMap, setYearsMap] = useState<YearToProgramMap>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
-  const { selectProgram, selectedProgram } = useProgramData();
+  const { selectProgram, selectedProgram } = useData();
 
   // Fetch yearsMap from RTDB
   useEffect(() => {

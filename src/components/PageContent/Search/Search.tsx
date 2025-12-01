@@ -1,28 +1,49 @@
 import { Input, Spinner } from "@heroui/react";
 import { useEffect, useState } from "react";
-import { useProgramData } from "../../../services/useProgramData";
+import { useData } from "../../../services/useData";
 import type { Capture } from "../../../helper/helper";
 import CapturesTable from "../Programs/Captures/CapturesTable";
 
 export default function Search() {
-  const { fetchCapturesByBandId } = useProgramData();
+  const { fetchCapturesByBandId, fetchAllCaptures } = useData();
   const [bandId, setBandId] = useState("");
-  const [captures, setCaptures] = useState<Capture[]>([]);
-  const [searchedBandId, setSearchedBandId] = useState("");
+  const [allCaptures, setAllCaptures] = useState<Capture[]>([]);
+  const [filteredCaptures, setFilteredCaptures] = useState<Capture[]>([]);
+  const [isLoadingAll, setIsLoadingAll] = useState(true);
+  const [searchedBandId, setSearchedBandId] = useState<string | null>(null);
 
   // Check if bandId is complete (format: 2980-85665 = 4 digits + hyphen + 5 digits = 10 chars)
   const isComplete = bandId.length === 10;
-  const isLoading = isComplete && bandId !== searchedBandId;
+  const isSearching = isComplete && bandId !== searchedBandId;
+
+  // Fetch all captures on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchAllCaptures().then((result) => {
+      if (!cancelled) {
+        setAllCaptures(result);
+        setIsLoadingAll(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchAllCaptures]);
 
   // Fetch captures when bandId is complete
   useEffect(() => {
-    if (!isComplete) return;
+    if (!isComplete) {
+      setSearchedBandId(null);
+      return;
+    }
 
     let cancelled = false;
 
     fetchCapturesByBandId(bandId).then((result) => {
       if (!cancelled) {
-        setCaptures(result);
+        setFilteredCaptures(result);
         setSearchedBandId(bandId);
       }
     });
@@ -32,8 +53,9 @@ export default function Search() {
     };
   }, [bandId, isComplete, fetchCapturesByBandId]);
 
-  // Clear captures when bandId becomes incomplete
-  const displayCaptures = isComplete ? captures : [];
+  // Determine which captures to display
+  const displayCaptures = isComplete ? filteredCaptures : allCaptures;
+  const isLoading = isLoadingAll || isSearching;
 
   const handleBandIdChange = (value: string) => {
     // Remove all non-digits
@@ -62,14 +84,18 @@ export default function Search() {
 
         {isLoading && (
           <div className="p-4 flex items-center gap-4">
-            <Spinner size="sm" /> Searching...
+            <Spinner size="sm" /> {isLoadingAll ? "Loading captures..." : "Searching..."}
           </div>
         )}
 
-        {!isLoading && isComplete && displayCaptures.length > 0 && (
+        {!isLoading && displayCaptures.length > 0 && (
           <div className="w-full">
             <h3 className="text-lg font-normal mb-2">
-              Results for band <span className="font-bold">{bandId}</span>:
+              {isComplete ? (
+                <>Results for band <span className="font-bold">{bandId}</span>:</>
+              ) : (
+                <>All captures ({displayCaptures.length}):</>
+              )}
             </h3>
             <CapturesTable
               captures={displayCaptures}
@@ -82,10 +108,6 @@ export default function Search() {
 
         {!isLoading && isComplete && displayCaptures.length === 0 && (
           <div className="p-4 text-default-500">No captures found for band {bandId}</div>
-        )}
-
-        {!isComplete && (
-          <div className="p-4 text-default-500">Enter a complete 9-digit band ID to search</div>
         )}
       </div>
     </div>

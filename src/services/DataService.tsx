@@ -2,10 +2,10 @@ import { useState, useCallback, useRef } from "react";
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
 import type { Capture } from "../helper/helper";
-import { ProgramDataContext, defaultProgramData } from "./ProgramDataContext";
-import type { ProgramData } from "./ProgramDataContext";
+import { DataContext, defaultProgramData } from "./DataContext";
+import type { ProgramData } from "./DataContext";
 
-export function ProgramDataProvider({ children }: { children: React.ReactNode }) {
+export function DataProvider({ children }: { children: React.ReactNode }) {
   // Current program state
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [programData, setProgramData] = useState<ProgramData>(defaultProgramData);
@@ -43,6 +43,15 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
     },
     [fetchCaptures]
   );
+
+  // Fetch all captures from capturesMap
+  const fetchAllCaptures = useCallback(async (): Promise<Capture[]> => {
+    const snapshot = await get(ref(db, "capturesMap"));
+    if (!snapshot.exists()) return [];
+
+    const capturesMap = snapshot.val() as Record<string, Capture>;
+    return Object.values(capturesMap);
+  }, []);
 
   // Fetch captures by bandGroups using bandGroupToCaptureIdsMap, then fetch captures
   // Returns a Map of bandGroup -> Capture[]
@@ -174,15 +183,16 @@ export function ProgramDataProvider({ children }: { children: React.ReactNode })
   );
 
   return (
-    <ProgramDataContext.Provider
+    <DataContext.Provider
       value={{
         programData,
         selectProgram,
         selectedProgram,
         fetchCapturesByBandId,
+        fetchAllCaptures,
       }}
     >
       {children}
-    </ProgramDataContext.Provider>
+    </DataContext.Provider>
   );
 }
