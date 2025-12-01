@@ -94,3 +94,20 @@ export const HEADER_TO_CAPTURE_PROPERTY: Record<string, string> = {
   //   D20: "d20",
   //   D22: "d22",
 };
+
+export interface SpeciesRange {
+  fWeightLower: number;
+  fWeightUpper: number;
+  fWingLower: number;
+  fWingUpper: number;
+  mWeightLower: number;
+  mWeightUpper: number;
+  mWingLower: number;
+  mWingUpper: number;
+  counter?: number;
+}
+
+export interface MagicTable {
+  pyle: Record<string, SpeciesRange>;
+  mbo: Record<string, SpeciesRange>;
+}

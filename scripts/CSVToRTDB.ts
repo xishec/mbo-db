@@ -9,8 +9,8 @@ import {
   CapturesMap,
   CaptureType,
   BandGroupToCaptureIdsMap,
+  SpeciesRange,
 } from "../src/helper/helper";
-import { SpeciesRange } from "./importMagicTable";
 
 /**
  * Parse a single CSV line respecting quoted fields (handles commas inside quotes)
@@ -201,6 +201,9 @@ const generateDB = async (captures: Capture[], database: Database) => {
         mboMagicTable[capture.species].mWingLower = Math.min(mboMagicTable[capture.species].mWingLower, capture.wing);
         mboMagicTable[capture.species].mWingUpper = Math.max(mboMagicTable[capture.species].mWingUpper, capture.wing);
       }
+      if (capture.weight > 0 || capture.wing > 0) {
+        mboMagicTable[capture.species].counter = (mboMagicTable[capture.species].counter ?? 0) + 1;
+      }
     } else if (capture.sex === "5") {
       // female
       if (capture.weight > 0) {
@@ -216,6 +219,9 @@ const generateDB = async (captures: Capture[], database: Database) => {
       if (capture.wing > 0) {
         mboMagicTable[capture.species].fWingLower = Math.min(mboMagicTable[capture.species].fWingLower, capture.wing);
         mboMagicTable[capture.species].fWingUpper = Math.max(mboMagicTable[capture.species].fWingUpper, capture.wing);
+      }
+      if (capture.weight > 0 || capture.wing > 0) {
+        mboMagicTable[capture.species].counter = (mboMagicTable[capture.species].counter ?? 0) + 1;
       }
     }
   }

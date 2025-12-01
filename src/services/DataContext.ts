@@ -1,16 +1,5 @@
 import { createContext } from "react";
-import type { Capture } from "../helper/helper";
-
-export interface SpeciesRange {
-  fWeightLower: number;
-  fWeightUpper: number;
-  fWingLower: number;
-  fWingUpper: number;
-  mWeightLower: number;
-  mWeightUpper: number;
-  mWingLower: number;
-  mWingUpper: number;
-}
+import type { Capture, SpeciesRange } from "../helper/helper";
 
 export interface MagicTable {
   pyle: Record<string, SpeciesRange>;

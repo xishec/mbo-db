@@ -2,22 +2,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { ref, set, type Database } from "firebase/database";
 import { db } from "./firebase-node";
-
-export interface SpeciesRange {
-  fWeightLower: number;
-  fWeightUpper: number;
-  fWingLower: number;
-  fWingUpper: number;
-  mWeightLower: number;
-  mWeightUpper: number;
-  mWingLower: number;
-  mWingUpper: number;
-}
-
-export interface MagicTable {
-  pyle: Record<string, SpeciesRange>;
-  mbo: Record<string, SpeciesRange>;
-}
+import { MagicTable } from "../src/helper/helper";
 
 /**
  * Parse the magic_table CSV into a structured object with pyle source

@@ -117,15 +117,17 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
   }, [isOpen]);
 
-  // Get species ranges from magic table when species is complete (4 chars)
-  const speciesRanges = useMemo(() => {
+  const pyleSpeciesRange = useMemo(() => {
     if (formData.species.length !== 4 || !magicTable) {
-      return { pyle: null, mbo: null };
+      return null;
     }
-    return {
-      pyle: magicTable.pyle[formData.species] || null,
-      mbo: magicTable.mbo[formData.species] || null,
-    };
+    return magicTable.pyle[formData.species] || null;
+  }, [formData.species, magicTable]);
+  const mboSpeciesRange = useMemo(() => {
+    if (formData.species.length !== 4 || !magicTable) {
+      return null;
+    }
+    return magicTable.mbo[formData.species] || null;
   }, [formData.species, magicTable]);
 
   // Build bandId from bandGroup and bandLastTwoDigits
@@ -338,10 +340,10 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
               Add Capture in <span className="font-bold">{selectedProgram}</span>
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
-              {formData.species.length === 4 && (speciesRanges.pyle || speciesRanges.mbo) && (
+              {formData.species.length === 4 && (pyleSpeciesRange || mboSpeciesRange) && (
                 <div className="flex gap-4">
-                  <SpeciesRangeTable title="Pyle" speciesCode={formData.species} range={speciesRanges.pyle} />
-                  <SpeciesRangeTable title="MBO" speciesCode={formData.species} range={speciesRanges.mbo} />
+                  <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />
+                  <SpeciesRangeTable title="MBO" speciesCode={formData.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
               <Table>
