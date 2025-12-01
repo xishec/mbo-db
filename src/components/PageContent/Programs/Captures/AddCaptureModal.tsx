@@ -57,7 +57,7 @@ function getApplicableRange(
 // Check if a value is within range (returns null if no range, true if in range, false if out of range)
 function isInRange(value: number, lower: number, upper: number): boolean | null {
   if (lower === 0 && upper === 0) return null; // No valid range data
-  if (value === 0) return null; // No value to check
+  if (value === 0) return false
   return value >= lower && value <= upper;
 }
 
@@ -178,8 +178,8 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   // Calculate range validation for wing and weight
   const { rangeValidation, pyleRange, mboRange } = useMemo(() => {
-    const wingValue = formData.wing ? Number(formData.wing) : 0;
-    const weightValue = formData.weight ? Number(formData.weight) : 0;
+    const wingValue = formData.wing ? Number(formData.wing) : null;
+    const weightValue = formData.weight ? Number(formData.weight) : null;
 
     const pyleRange = getApplicableRange(pyleSpeciesRange, sexCode);
     const mboRange = getApplicableRange(mboSpeciesRange, sexCode);
@@ -187,12 +187,12 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     return {
       rangeValidation: {
         wing: {
-          pyle: pyleRange ? isInRange(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
-          mbo: mboRange ? isInRange(wingValue, mboRange.wingLower, mboRange.wingUpper) : null,
+          pyle: wingValue !== null && pyleRange ? isInRange(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
+          mbo: wingValue !== null && mboRange ? isInRange(wingValue, mboRange.wingLower, mboRange.wingUpper) : null,
         },
         weight: {
-          pyle: pyleRange ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper) : null,
-          mbo: mboRange ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper) : null,
+          pyle: weightValue !== null && pyleRange ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper) : null,
+          mbo: weightValue !== null && mboRange ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper) : null,
         },
       },
       pyleRange,
@@ -452,7 +452,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       isKeyboardDismissDisabled={true}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      className="!max-w-[calc(100%-4rem)]"
+      className={`!max-w-[calc(100%-4rem)] ${existingCaptures.length > 0 ? "!h-[calc(100%-4rem)]" : ""}`}
       scrollBehavior="inside"
     >
       <ModalContent>
@@ -544,7 +544,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                   </h3>
                   <CapturesTable
                     captures={existingCaptures}
-                    maxTableHeight={200}
+                    maxTableHeight={300}
                     sortColumn="date"
                     sortDirection="descending"
                   />
