@@ -6,6 +6,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Select,
+  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -16,6 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../../services/useData";
 import type { Capture, CaptureFormData } from "../../../../../types";
+import { CaptureType } from "../../../../../types";
 import { CAPTURE_COLUMNS } from "../helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
 import CapturesTable from "../CapturesTable";
@@ -297,24 +300,50 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                       const inputColor = getInputColor(column.key);
                       return (
                         <TableCell key={column.key} className="p-1">
-                          <Input
-                            ref={(el) => {
-                              if (el) inputRefs.current.set(column.key, el);
-                            }}
-                            variant="bordered"
-                            color={inputColor || "default"}
-                            aria-label={column.label}
-                            type={column.type || "text"}
-                            maxLength={column.maxLength}
-                            value={formData[column.key as keyof CaptureFormData]}
-                            onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
-                            onKeyDown={(e) => handleKeyDown(e, column.key)}
-                            classNames={{
-                              input:
-                                "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                              inputWrapper: getBorderClass(inputColor),
-                            }}
-                          />
+                          {column.key === "programId" ? (
+                            <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border">
+                              {selectedProgram}
+                            </div>
+                          ) : column.key === "captureType" ? (
+                            <Select
+                              variant="bordered"
+                              color={inputColor || "default"}
+                              aria-label={column.label}
+                              selectedKeys={formData[column.key as keyof CaptureFormData] ? [formData[column.key as keyof CaptureFormData]] : []}
+                              onSelectionChange={(keys) => {
+                                const selected = Array.from(keys)[0] as string;
+                                handleInputChange(column.key, selected || "");
+                              }}
+                              classNames={{
+                                trigger: getBorderClass(inputColor),
+                              }}
+                            >
+                              {Object.values(CaptureType).map((value) => (
+                                <SelectItem key={value}>
+                                  {value}
+                                </SelectItem>
+                              ))}
+                            </Select>
+                          ) : (
+                            <Input
+                              ref={(el) => {
+                                if (el) inputRefs.current.set(column.key, el);
+                              }}
+                              variant="bordered"
+                              color={inputColor || "default"}
+                              aria-label={column.label}
+                              type={column.type || "text"}
+                              maxLength={column.maxLength}
+                              value={formData[column.key as keyof CaptureFormData]}
+                              onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
+                              onKeyDown={(e) => handleKeyDown(e, column.key)}
+                              classNames={{
+                                input:
+                                  "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                inputWrapper: getBorderClass(inputColor),
+                              }}
+                            />
+                          )}
                         </TableCell>
                       );
                     })}
