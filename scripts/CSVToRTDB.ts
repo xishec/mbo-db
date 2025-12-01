@@ -124,6 +124,7 @@ const generateDB = async (captures: Capture[], database: Database) => {
   const bandIdToCaptureIdsMap: BandIdToCaptureIdsMap = new Map();
   const capturesMap: CapturesMap = new Map();
   const bandGroupToCaptureIdsMap: BandGroupToCaptureIdsMap = new Map();
+  const magicTable: MagicTable = {};
 
   for (const capture of captures) {
     // capturesMap
@@ -159,6 +160,9 @@ const generateDB = async (captures: Capture[], database: Database) => {
       bandIdToCaptureIdsMap.set(capture.bandId, new Set([]));
     }
     bandIdToCaptureIdsMap.get(capture.bandId)!.add(capture.id);
+
+    // MagicTable
+
   }
   await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
   await writeObjectToDB(database, "programsMap", programsMap);
