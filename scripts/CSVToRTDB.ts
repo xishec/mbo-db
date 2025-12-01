@@ -10,7 +10,7 @@ import {
   CaptureType,
   BandGroupToCaptureIdsMap,
   SpeciesRange,
-} from "../src/helper/helper";
+} from "../src/types";
 
 /**
  * Parse a single CSV line respecting quoted fields (handles commas inside quotes)

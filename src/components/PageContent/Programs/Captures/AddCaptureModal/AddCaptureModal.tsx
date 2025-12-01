@@ -16,8 +16,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../../services/useData";
 import type { Capture, CaptureFormData } from "../../../../../types";
-import { CAPTURE_COLUMNS } from "../../../../../constants/capture";
-import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../../../../../helpers/capture";
+import { CAPTURE_COLUMNS } from "../constants";
+import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
 import CapturesTable from "../CapturesTable";
 import SpeciesRangeTable from "../SpeciesRangeTable";
 
@@ -123,7 +123,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
 
     for (const column of CAPTURE_COLUMNS) {
-      const value = formData[column.key];
+      const value = formData[column.key as keyof CaptureFormData];
       if (column.minLength && value.length > 0 && value.length < column.minLength) {
         messages.push({ text: `${column.label} is incomplete`, color: "warning" });
       }
@@ -291,7 +291,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                             aria-label={column.label}
                             type={column.type || "text"}
                             maxLength={column.maxLength}
-                            value={formData[column.key]}
+                            value={formData[column.key as keyof CaptureFormData]}
                             onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
                             onKeyDown={(e) => handleKeyDown(e, column.key)}
                             classNames={{

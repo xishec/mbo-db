@@ -1,7 +1,7 @@
-import type { CaptureColumn } from "../types";
+import type { CaptureColumn } from "../../../../types";
 
 export const CAPTURE_COLUMNS: CaptureColumn[] = [
-  { key: "program", label: "Program", className: "min-w-[150px]" },
+  { key: "programId", label: "Program", className: "min-w-[150px]" },
   { key: "bandGroup", label: "Band Group", maxLength: 8, minLength: 8 },
   { key: "bandLastTwoDigits", label: "Band", maxLength: 2, minLength: 2 },
   { key: "species", label: "Species", maxLength: 4, minLength: 4 },
@@ -15,5 +15,6 @@ export const CAPTURE_COLUMNS: CaptureColumn[] = [
   { key: "bander", label: "Bander", maxLength: 3, minLength: 3 },
   { key: "scribe", label: "Scribe", maxLength: 3, minLength: 3 },
   { key: "net", label: "Net", maxLength: 2, minLength: 2 },
-  { key: "notes", label: "Notes", className: "min-w-[150px]" },
+  { key: "captureType", label: "Capture Type" },
+  { key: "notes", label: "Notes", className: "min-w-[200px]" },
 ];

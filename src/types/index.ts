@@ -45,6 +45,29 @@ export const CaptureType = {
   None: "None",
 };
 
+// CSV import constants
+export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
+
+export const HEADER_TO_CAPTURE_PROPERTY: Record<string, string> = {
+  Program: "programId",
+  BandPrefix: "bandPrefix",
+  BandSuffix: "bandSuffix",
+  Species: "species",
+  WingChord: "wing",
+  Age: "age",
+  HowAged: "howAged",
+  Sex: "sex",
+  HowSexed: "howSexed",
+  Fat: "fat",
+  Weight: "weight",
+  CaptureDate: "date",
+  Bander: "bander",
+  Scribe: "scribe",
+  Net: "net",
+  NotesForMBO: "notes",
+  D18: "captureType",
+};
+
 export interface SpeciesRange {
   fWeightLower: number;
   fWeightUpper: number;
@@ -89,7 +112,7 @@ export interface DataContextType {
 
 // Form types
 export interface CaptureFormData {
-  program: string;
+  programId: string;
   bandGroup: string;
   bandLastTwoDigits: string;
   species: string;
@@ -103,6 +126,7 @@ export interface CaptureFormData {
   bander: string;
   scribe: string;
   net: string;
+  captureType: string;
   notes: string;
 }
 

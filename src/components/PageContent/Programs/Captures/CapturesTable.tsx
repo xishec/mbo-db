@@ -1,25 +1,26 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
 import { useCallback, useMemo, useState } from "react";
 import type { Capture } from "../../../../types";
+import { CAPTURE_COLUMNS } from "./constants";
 
-const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[] = [
-  { key: "programId", label: "Program", className: "min-w-[150px]" },
-  { key: "bandGroup", label: "Band Group", className: "" },
-  { key: "bandLastTwoDigits", label: "Band", className: "" },
-  { key: "species", label: "Species", className: "" },
-  { key: "wing", label: "Wing", className: "" },
-  { key: "age", label: "Age", className: "" },
-  { key: "sex", label: "Sex", className: "" },
-  { key: "fat", label: "Fat", className: "" },
-  { key: "weight", label: "Weight", className: "" },
-  { key: "date", label: "Date", className: "" },
-  { key: "time", label: "Time", className: "" },
-  { key: "bander", label: "Bander", className: "" },
-  { key: "scribe", label: "Scribe", className: "" },
-  { key: "net", label: "Net", className: "" },
-  { key: "captureType", label: "Capture Type", className: "" },
-  { key: "notes", label: "Notes", className: "min-w-[300px]" },
-];
+// const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[] = [
+//   { key: "programId", label: "Program", className: "min-w-[150px]" },
+//   { key: "bandGroup", label: "Band Group", className: "" },
+//   { key: "bandLastTwoDigits", label: "Band", className: "" },
+//   { key: "species", label: "Species", className: "" },
+//   { key: "wing", label: "Wing", className: "" },
+//   { key: "age", label: "Age", className: "" },
+//   { key: "sex", label: "Sex", className: "" },
+//   { key: "fat", label: "Fat", className: "" },
+//   { key: "weight", label: "Weight", className: "" },
+//   { key: "date", label: "Date", className: "" },
+//   { key: "time", label: "Time", className: "" },
+//   { key: "bander", label: "Bander", className: "" },
+//   { key: "scribe", label: "Scribe", className: "" },
+//   { key: "net", label: "Net", className: "" },
+//   { key: "captureType", label: "Capture Type", className: "" },
+//   { key: "notes", label: "Notes", className: "min-w-[300px]" },
+// ];
 
 interface CapturesTableProps {
   programId?: string;

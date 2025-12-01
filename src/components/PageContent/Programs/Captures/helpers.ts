@@ -1,4 +1,4 @@
-import type { SpeciesRange, CaptureFormData } from "../types";
+import { type SpeciesRange, type CaptureFormData, CaptureType } from "../../../../types";
 
 export interface ApplicableRange {
   weightLower: number;
@@ -42,13 +42,13 @@ export function isInRange(value: number, lower: number, upper: number): boolean 
   return value >= lower && value <= upper;
 }
 
-export function getDefaultFormData(program: string): CaptureFormData {
+export function getDefaultFormData(programId: string): CaptureFormData {
   const now = new Date();
   const date = now.toISOString().split("T")[0];
   const time = now.toTimeString().slice(0, 5);
 
   return {
-    program,
+    programId: programId,
     bandGroup: "",
     bandLastTwoDigits: "",
     species: "",
@@ -62,6 +62,7 @@ export function getDefaultFormData(program: string): CaptureFormData {
     bander: "",
     scribe: "",
     net: "",
+    captureType: CaptureType.None,
     notes: "",
   };
 }
@@ -75,7 +76,10 @@ export function formatFieldValue(field: keyof CaptureFormData, value: string): s
     case "bandLastTwoDigits":
       return value.replace(/\D/g, "").slice(0, 2);
     case "species":
-      return value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4);
+      return value
+        .replace(/[^a-zA-Z]/g, "")
+        .toUpperCase()
+        .slice(0, 4);
     case "wing":
       return value.replace(/\D/g, "");
     case "age": {
@@ -83,7 +87,10 @@ export function formatFieldValue(field: keyof CaptureFormData, value: string): s
       return digits.length <= 1 ? digits : `${digits[0]} | ${digits[1]}`;
     }
     case "sex": {
-      const chars = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 2);
+      const chars = value
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase()
+        .slice(0, 2);
       return chars.length <= 1 ? chars : `${chars[0]} | ${chars[1]}`;
     }
     case "fat":
@@ -101,9 +108,15 @@ export function formatFieldValue(field: keyof CaptureFormData, value: string): s
     }
     case "bander":
     case "scribe":
-      return value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3);
+      return value
+        .replace(/[^a-zA-Z]/g, "")
+        .toUpperCase()
+        .slice(0, 3);
     case "net":
-      return value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 2);
+      return value
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase()
+        .slice(0, 2);
     default:
       return value;
   }
