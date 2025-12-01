@@ -50,6 +50,17 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
               {speciesRange.fWingLower} - {speciesRange.fWingUpper}
             </TableCell>
           </TableRow>
+          <TableRow key="unknown">
+            <TableCell>Unknown</TableCell>
+            <TableCell>
+              {Math.min(speciesRange.mWeightLower, speciesRange.fWeightLower)} -{" "}
+              {Math.max(speciesRange.mWeightUpper, speciesRange.fWeightUpper)}
+            </TableCell>
+            <TableCell>
+              {Math.min(speciesRange.mWingLower, speciesRange.fWingLower)} -{" "}
+              {Math.max(speciesRange.mWingUpper, speciesRange.fWingUpper)}
+            </TableCell>
+          </TableRow>
         </TableBody>
       </Table>
     </div>

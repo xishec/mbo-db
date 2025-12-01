@@ -15,9 +15,51 @@ import {
 } from "@heroui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../services/useData";
-import type { Capture } from "../../../../helper/helper";
+import type { Capture, SpeciesRange } from "../../../../helper/helper";
 import CapturesTable from "./CapturesTable";
 import SpeciesRangeTable from "./SpeciesRangeTable";
+
+// Get the applicable range bounds based on sex
+// sex "4" = male, sex "5" = female, otherwise use combined bounds
+function getApplicableRange(
+  speciesRange: SpeciesRange | null,
+  sex: string
+): { weightLower: number; weightUpper: number; wingLower: number; wingUpper: number } | null {
+  if (!speciesRange) return null;
+
+  if (sex === "4") {
+    // Male
+    return {
+      weightLower: speciesRange.mWeightLower,
+      weightUpper: speciesRange.mWeightUpper,
+      wingLower: speciesRange.mWingLower,
+      wingUpper: speciesRange.mWingUpper,
+    };
+  } else if (sex === "5") {
+    // Female
+    return {
+      weightLower: speciesRange.fWeightLower,
+      weightUpper: speciesRange.fWeightUpper,
+      wingLower: speciesRange.fWingLower,
+      wingUpper: speciesRange.fWingUpper,
+    };
+  } else {
+    // Unknown sex - use widest range (min of lowers, max of uppers)
+    return {
+      weightLower: Math.min(speciesRange.mWeightLower, speciesRange.fWeightLower),
+      weightUpper: Math.max(speciesRange.mWeightUpper, speciesRange.fWeightUpper),
+      wingLower: Math.min(speciesRange.mWingLower, speciesRange.fWingLower),
+      wingUpper: Math.max(speciesRange.mWingUpper, speciesRange.fWingUpper),
+    };
+  }
+}
+
+// Check if a value is within range (returns null if no range, true if in range, false if out of range)
+function isInRange(value: number, lower: number, upper: number): boolean | null {
+  if (lower === 0 && upper === 0) return null; // No valid range data
+  if (value === 0) return null; // No value to check
+  return value >= lower && value <= upper;
+}
 
 interface AddCaptureModalProps {
   isOpen: boolean;
@@ -129,6 +171,66 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
     return magicTable.mbo[formData.species] || null;
   }, [formData.species, magicTable]);
+
+  // Get the first character of sex field for range checking (e.g., "4 | P" -> "4")
+  const sexCode = formData.sex.charAt(0);
+
+  // Calculate range validation for wing and weight
+  const { rangeValidation, pyleRange, mboRange } = useMemo(() => {
+    const wingValue = formData.wing ? Number(formData.wing) : 0;
+    const weightValue = formData.weight ? Number(formData.weight) : 0;
+
+    const pyleRange = getApplicableRange(pyleSpeciesRange, sexCode);
+    const mboRange = getApplicableRange(mboSpeciesRange, sexCode);
+
+    return {
+      rangeValidation: {
+        wing: {
+          pyle: pyleRange ? isInRange(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
+          mbo: mboRange ? isInRange(wingValue, mboRange.wingLower, mboRange.wingUpper) : null,
+        },
+        weight: {
+          pyle: pyleRange ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper) : null,
+          mbo: mboRange ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper) : null,
+        },
+      },
+      pyleRange,
+      mboRange,
+    };
+  }, [formData.wing, formData.weight, sexCode, pyleSpeciesRange, mboSpeciesRange]);
+
+  // Determine if wing/weight inputs should show warning (out of range for at least one source)
+  const wingWarning = rangeValidation.wing.pyle === false || rangeValidation.wing.mbo === false;
+  const weightWarning = rangeValidation.weight.pyle === false || rangeValidation.weight.mbo === false;
+
+  // Generate warning messages
+  const warningMessages = useMemo(() => {
+    const messages: string[] = [];
+    const sexLabel = sexCode === "4" ? "male" : sexCode === "5" ? "female" : "unknown";
+
+    if (rangeValidation.wing.pyle === false && pyleRange) {
+      messages.push(
+        `Wing ${formData.wing} is outside of Pyle range for sex ${sexLabel}, wing should be ${pyleRange.wingLower}-${pyleRange.wingUpper}`
+      );
+    }
+    if (rangeValidation.wing.mbo === false && mboRange) {
+      messages.push(
+        `Wing ${formData.wing} is outside of MBO range for sex ${sexLabel}, wing should be ${mboRange.wingLower}-${mboRange.wingUpper}`
+      );
+    }
+    if (rangeValidation.weight.pyle === false && pyleRange) {
+      messages.push(
+        `Weight ${formData.weight} is outside of Pyle range for sex ${sexLabel}, weight should be ${pyleRange.weightLower}-${pyleRange.weightUpper}`
+      );
+    }
+    if (rangeValidation.weight.mbo === false && mboRange) {
+      messages.push(
+        `Weight ${formData.weight} is outside of MBO range for sex ${sexLabel}, weight should be ${mboRange.weightLower}-${mboRange.weightUpper}`
+      );
+    }
+
+    return messages;
+  }, [rangeValidation, formData.wing, formData.weight, sexCode, pyleRange, mboRange]);
 
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
@@ -356,30 +458,47 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 </TableHeader>
                 <TableBody>
                   <TableRow key="new-capture">
-                    {CAPTURE_COLUMNS.map((column) => (
-                      <TableCell key={column.key} className="p-1">
-                        <Input
-                          ref={(el) => {
-                            if (el) inputRefs.current.set(column.key, el);
-                          }}
-                          variant="bordered"
-                          aria-label={column.label}
-                          type={column.type || "text"}
-                          maxLength={column.maxLength}
-                          value={formData[column.key]}
-                          onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
-                          onKeyDown={(e) => handleKeyDown(e, column.key)}
-                          classNames={{
-                            input:
-                              "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                            inputWrapper: "min-h-unit-8 h-unit-8",
-                          }}
-                        />
-                      </TableCell>
-                    ))}
+                    {CAPTURE_COLUMNS.map((column) => {
+                      const isWingWarning = column.key === "wing" && wingWarning;
+                      const isWeightWarning = column.key === "weight" && weightWarning;
+                      const hasWarning = isWingWarning || isWeightWarning;
+
+                      return (
+                        <TableCell key={column.key} className="p-1">
+                          <Input
+                            ref={(el) => {
+                              if (el) inputRefs.current.set(column.key, el);
+                            }}
+                            variant="bordered"
+                            aria-label={column.label}
+                            type={column.type || "text"}
+                            maxLength={column.maxLength}
+                            value={formData[column.key]}
+                            onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
+                            onKeyDown={(e) => handleKeyDown(e, column.key)}
+                            classNames={{
+                              input:
+                                "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                              inputWrapper: `${hasWarning ? "!border-danger" : ""}`,
+                            }}
+                          />
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 </TableBody>
               </Table>
+
+              {warningMessages.length > 0 && (
+                <div className="text-danger text-sm">
+                  <ul className="list-disc list-inside">
+                    {warningMessages.map((msg, idx) => (
+                      <li key={idx}>{msg}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {existingCaptures.length > 0 && (
                 <div className="mt-4">
                   <h3 className="text-lg font-normal mb-2">
