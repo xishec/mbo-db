@@ -140,6 +140,8 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   }, [bandId, fetchCapturesByBandId]);
 
   const handleInputChange = (field: keyof CaptureFormData, value: string, maxLength?: number) => {
+    let shouldResetSpecies = false;
+
     // Limit bandGroup to format "4 digits - 3 digits" (e.g., "2801-123") - auto-insert -
     if (field === "bandGroup") {
       const digits = value.replace(/\D/g, "").slice(0, 7);
@@ -149,22 +151,20 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
         value = `${digits.slice(0, 4)}-${digits.slice(4)}`;
       }
       // Reset species and existing captures when bandGroup changes and bandId becomes invalid
-      const newBandId = value.length === 8 && formData.bandLastTwoDigits.length === 2;
-      if (!newBandId) {
+      const newBandIdValid = value.length === 8 && formData.bandLastTwoDigits.length === 2;
+      if (!newBandIdValid) {
         setExistingCaptures([]);
-        setFormData((prev) => ({ ...prev, [field]: value, species: "" }));
-        return;
+        shouldResetSpecies = true;
       }
     }
     // Limit bandLastTwoDigits to 2 digits only
     if (field === "bandLastTwoDigits") {
       value = value.replace(/\D/g, "").slice(0, 2);
       // Reset species and existing captures when bandLastTwoDigits changes and bandId becomes invalid
-      const newBandId = formData.bandGroup.length === 8 && value.length === 2;
-      if (!newBandId) {
+      const newBandIdValid = formData.bandGroup.length === 8 && value.length === 2;
+      if (!newBandIdValid) {
         setExistingCaptures([]);
-        setFormData((prev) => ({ ...prev, [field]: value, species: "" }));
-        return;
+        shouldResetSpecies = true;
       }
     }
     // Species: 4 letters only
@@ -244,7 +244,11 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
         .toUpperCase()
         .slice(0, 2);
     }
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+      ...(shouldResetSpecies ? { species: "" } : {}),
+    }));
 
     // Auto-focus next input when maxLength is reached
     if (maxLength && value.length >= maxLength) {
