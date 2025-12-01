@@ -178,10 +178,17 @@ const generateDB = async (captures: Capture[], database: Database) => {
         fWeightUpper: 0,
         fWingLower: 1000000,
         fWingUpper: 0,
+        fCounter: 0,
         mWeightLower: 1000000,
         mWeightUpper: 0,
         mWingLower: 1000000,
         mWingUpper: 0,
+        mCounter: 0,
+        unknownWeightLower: 1000000,
+        unknownWeightUpper: 0,
+        unknownWingLower: 1000000,
+        unknownWingUpper: 0,
+        unknownCounter: 0,
       };
     }
 
@@ -202,7 +209,7 @@ const generateDB = async (captures: Capture[], database: Database) => {
         mboMagicTable[capture.species].mWingUpper = Math.max(mboMagicTable[capture.species].mWingUpper, capture.wing);
       }
       if (capture.weight > 0 || capture.wing > 0) {
-        mboMagicTable[capture.species].counter = (mboMagicTable[capture.species].counter ?? 0) + 1;
+        mboMagicTable[capture.species].mCounter = (mboMagicTable[capture.species].mCounter ?? 0) + 1;
       }
     } else if (capture.sex === "5") {
       // female
@@ -221,7 +228,32 @@ const generateDB = async (captures: Capture[], database: Database) => {
         mboMagicTable[capture.species].fWingUpper = Math.max(mboMagicTable[capture.species].fWingUpper, capture.wing);
       }
       if (capture.weight > 0 || capture.wing > 0) {
-        mboMagicTable[capture.species].counter = (mboMagicTable[capture.species].counter ?? 0) + 1;
+        mboMagicTable[capture.species].fCounter = (mboMagicTable[capture.species].fCounter ?? 0) + 1;
+      }
+    } else {
+      // unknown
+      if (capture.weight > 0) {
+        mboMagicTable[capture.species].unknownWeightLower = Math.min(
+          mboMagicTable[capture.species].unknownWeightLower,
+          capture.weight
+        );
+        mboMagicTable[capture.species].unknownWeightUpper = Math.max(
+          mboMagicTable[capture.species].unknownWeightUpper,
+          capture.weight
+        );
+      }
+      if (capture.wing > 0) {
+        mboMagicTable[capture.species].unknownWingLower = Math.min(
+          mboMagicTable[capture.species].unknownWingLower,
+          capture.wing
+        );
+        mboMagicTable[capture.species].unknownWingUpper = Math.max(
+          mboMagicTable[capture.species].unknownWingUpper,
+          capture.wing
+        );
+      }
+      if (capture.weight > 0 || capture.wing > 0) {
+        mboMagicTable[capture.species].unknownCounter = (mboMagicTable[capture.species].unknownCounter ?? 0) + 1;
       }
     }
   }

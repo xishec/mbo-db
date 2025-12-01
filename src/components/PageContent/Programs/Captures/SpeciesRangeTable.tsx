@@ -23,7 +23,6 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
     <div className="flex-1">
       <h4 className="text-sm mb-2">
         {speciesCode} statistics - <span className="font-bold">{title}</span>
-        {speciesRange.counter ? ` (from ${speciesRange.counter} individuals)` : ""}
       </h4>
       <Table aria-label={`${title} species range`} classNames={{ th: "text-xs", td: "text-xs py-1" }}>
         <TableHeader>
@@ -33,7 +32,7 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
         </TableHeader>
         <TableBody>
           <TableRow key="male">
-            <TableCell>Male</TableCell>
+            <TableCell>Male {speciesRange.mCounter ? ` (${speciesRange.mCounter})` : ""}</TableCell>
             <TableCell>
               {speciesRange.mWeightLower} - {speciesRange.mWeightUpper}
             </TableCell>
@@ -42,7 +41,7 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
             </TableCell>
           </TableRow>
           <TableRow key="female">
-            <TableCell>Female</TableCell>
+            <TableCell>Female {speciesRange.fCounter ? ` (${speciesRange.fCounter})` : ""}</TableCell>
             <TableCell>
               {speciesRange.fWeightLower} - {speciesRange.fWeightUpper}
             </TableCell>
@@ -51,7 +50,9 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
             </TableCell>
           </TableRow>
           <TableRow key="unknown">
-            <TableCell>Unknown</TableCell>
+            <TableCell>
+              Unknown {speciesRange.unknownCounter ? ` (${speciesRange.unknownCounter})` : ""}
+            </TableCell>
             <TableCell>
               {Math.min(speciesRange.mWeightLower, speciesRange.fWeightLower)} -{" "}
               {Math.max(speciesRange.mWeightUpper, speciesRange.fWeightUpper)}

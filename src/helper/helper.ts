@@ -100,11 +100,19 @@ export interface SpeciesRange {
   fWeightUpper: number;
   fWingLower: number;
   fWingUpper: number;
+  fCounter?: number;
+
   mWeightLower: number;
   mWeightUpper: number;
   mWingLower: number;
   mWingUpper: number;
-  counter?: number;
+  mCounter?: number;
+
+  unknownWeightLower: number;
+  unknownWeightUpper: number;
+  unknownWingLower: number;
+  unknownWingUpper: number;
+  unknownCounter?: number;
 }
 
 export interface MagicTable {
