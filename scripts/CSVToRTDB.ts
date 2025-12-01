@@ -187,28 +187,36 @@ const generateDB = async (captures: Capture[], database: Database) => {
 
     if (capture.sex === "4") {
       // male
-      mboMagicTable[capture.species].mWeightLower = Math.min(
-        mboMagicTable[capture.species].mWeightLower,
-        capture.weight
-      );
-      mboMagicTable[capture.species].mWeightUpper = Math.max(
-        mboMagicTable[capture.species].mWeightUpper,
-        capture.weight
-      );
-      mboMagicTable[capture.species].mWingLower = Math.min(mboMagicTable[capture.species].mWingLower, capture.wing);
-      mboMagicTable[capture.species].mWingUpper = Math.max(mboMagicTable[capture.species].mWingUpper, capture.wing);
+      if (capture.weight > 0) {
+        mboMagicTable[capture.species].mWeightLower = Math.min(
+          mboMagicTable[capture.species].mWeightLower,
+          capture.weight
+        );
+        mboMagicTable[capture.species].mWeightUpper = Math.max(
+          mboMagicTable[capture.species].mWeightUpper,
+          capture.weight
+        );
+      }
+      if (capture.wing > 0) {
+        mboMagicTable[capture.species].mWingLower = Math.min(mboMagicTable[capture.species].mWingLower, capture.wing);
+        mboMagicTable[capture.species].mWingUpper = Math.max(mboMagicTable[capture.species].mWingUpper, capture.wing);
+      }
     } else if (capture.sex === "5") {
       // female
-      mboMagicTable[capture.species].fWeightLower = Math.min(
-        mboMagicTable[capture.species].fWeightLower,
-        capture.weight
-      );
-      mboMagicTable[capture.species].fWeightUpper = Math.max(
-        mboMagicTable[capture.species].fWeightUpper,
-        capture.weight
-      );
-      mboMagicTable[capture.species].fWingLower = Math.min(mboMagicTable[capture.species].fWingLower, capture.wing);
-      mboMagicTable[capture.species].fWingUpper = Math.max(mboMagicTable[capture.species].fWingUpper, capture.wing);
+      if (capture.weight > 0) {
+        mboMagicTable[capture.species].fWeightLower = Math.min(
+          mboMagicTable[capture.species].fWeightLower,
+          capture.weight
+        );
+        mboMagicTable[capture.species].fWeightUpper = Math.max(
+          mboMagicTable[capture.species].fWeightUpper,
+          capture.weight
+        );
+      }
+      if (capture.wing > 0) {
+        mboMagicTable[capture.species].fWingLower = Math.min(mboMagicTable[capture.species].fWingLower, capture.wing);
+        mboMagicTable[capture.species].fWingUpper = Math.max(mboMagicTable[capture.species].fWingUpper, capture.wing);
+      }
     }
   }
   // await writeObjectToDB(database, "yearsToProgramMap", yearsToProgramMap);
@@ -216,7 +224,7 @@ const generateDB = async (captures: Capture[], database: Database) => {
   // await writeObjectToDB(database, "bandIdToCaptureIdsMap", bandIdToCaptureIdsMap);
   // await writeObjectToDB(database, "capturesMap", capturesMap);
   // await writeObjectToDB(database, "bandGroupToCaptureIdsMap", bandGroupToCaptureIdsMap);
-  // await writeObjectToDB(database, "magicTable/mbo", mboMagicTable);
+  await writeObjectToDB(database, "magicTable/mbo", mboMagicTable);
 };
 
 const writeObjectToDB = async (database: Database, path: string, data: Record<string, unknown>) => {
