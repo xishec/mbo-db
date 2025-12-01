@@ -15,11 +15,11 @@ import {
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../../services/useData";
-import type { Capture } from "../../../../../helper/helper";
+import type { Capture, CaptureFormData } from "../../../../../types";
+import { CAPTURE_COLUMNS } from "../../../../../constants/capture";
+import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../../../../../helpers/capture";
 import CapturesTable from "../CapturesTable";
 import SpeciesRangeTable from "../SpeciesRangeTable";
-import { CAPTURE_COLUMNS, type CaptureFormData } from "./types";
-import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "./helpers";
 
 interface AddCaptureModalProps {
   isOpen: boolean;

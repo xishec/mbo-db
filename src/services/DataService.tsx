@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { get, ref } from "firebase/database";
 import { db } from "../firebase";
-import type { Capture } from "../helper/helper";
+import type { Capture, ProgramData, MagicTable } from "../types";
 import { DataContext, defaultProgramData } from "./DataContext";
-import type { ProgramData, MagicTable } from "./DataContext";
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   // Current program state

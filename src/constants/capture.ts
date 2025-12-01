@@ -1,29 +1,4 @@
-export interface CaptureFormData {
-  program: string;
-  bandGroup: string;
-  bandLastTwoDigits: string;
-  species: string;
-  wing: string;
-  age: string;
-  sex: string;
-  fat: string;
-  weight: string;
-  date: string;
-  time: string;
-  bander: string;
-  scribe: string;
-  net: string;
-  notes: string;
-}
-
-export interface CaptureColumn {
-  key: keyof CaptureFormData;
-  label: string;
-  type?: string;
-  className?: string;
-  maxLength?: number;
-  minLength?: number;
-}
+import type { CaptureColumn } from "../types";
 
 export const CAPTURE_COLUMNS: CaptureColumn[] = [
   { key: "program", label: "Program", className: "min-w-[150px]" },

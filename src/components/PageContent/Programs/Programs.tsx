@@ -13,7 +13,7 @@ import Captures from "./Captures/Captures";
 import { onValue, ref } from "firebase/database";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../../../firebase";
-import type { YearToProgramMap } from "../../../helper/helper";
+import type { YearToProgramMap } from "../../../types";
 import { useData } from "../../../services/useData";
 
 export default function Programs() {

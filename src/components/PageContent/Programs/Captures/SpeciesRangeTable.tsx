@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import type { SpeciesRange } from "../../../../helper/helper";
+import type { SpeciesRange } from "../../../../types";
 
 interface SpeciesRangeTableProps {
   title: string;

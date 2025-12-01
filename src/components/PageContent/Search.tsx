@@ -1,7 +1,7 @@
 import { Input, Progress, Select, SelectItem, Chip, Button } from "@heroui/react";
 import { useState, useMemo, useCallback } from "react";
 import { useData } from "../../services/useData";
-import type { Capture } from "../../helper/helper";
+import type { Capture } from "../../types";
 import CapturesTable from "./Programs/Captures/CapturesTable";
 
 // Capture properties available for filtering
