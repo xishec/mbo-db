@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../../services/useData";
 import type { Capture, CaptureFormData } from "../../../../../types";
-import { CAPTURE_COLUMNS } from "../constants";
+import { CAPTURE_COLUMNS } from "../helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
 import CapturesTable from "../CapturesTable";
 import SpeciesRangeTable from "../SpeciesRangeTable";
@@ -80,8 +80,14 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
           mbo: wingValue !== null && mboRange ? isInRange(wingValue, mboRange.wingLower, mboRange.wingUpper) : null,
         },
         weight: {
-          pyle: weightValue !== null && pyleRange ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper) : null,
-          mbo: weightValue !== null && mboRange ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper) : null,
+          pyle:
+            weightValue !== null && pyleRange
+              ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper)
+              : null,
+          mbo:
+            weightValue !== null && mboRange
+              ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper)
+              : null,
         },
       },
       pyleRange,
@@ -89,8 +95,10 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     };
   }, [formData.wing, formData.weight, sexCode, pyleSpeciesRange, mboSpeciesRange]);
 
-  const wingColor = rangeValidation.wing.pyle === false ? "danger" : rangeValidation.wing.mbo === false ? "warning" : null;
-  const weightColor = rangeValidation.weight.pyle === false ? "danger" : rangeValidation.weight.mbo === false ? "warning" : null;
+  const wingColor =
+    rangeValidation.wing.pyle === false ? "danger" : rangeValidation.wing.mbo === false ? "warning" : null;
+  const weightColor =
+    rangeValidation.weight.pyle === false ? "danger" : rangeValidation.weight.mbo === false ? "warning" : null;
 
   // Generate warning messages
   const warningMessages = useMemo(() => {
@@ -168,56 +176,63 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
   }, []);
 
-  const handleInputChange = useCallback((field: keyof CaptureFormData, value: string, maxLength?: number) => {
-    const formattedValue = formatFieldValue(field, value);
-    let shouldResetSpecies = false;
+  const handleInputChange = useCallback(
+    (field: keyof CaptureFormData, value: string, maxLength?: number) => {
+      const formattedValue = formatFieldValue(field, value);
+      let shouldResetSpecies = false;
 
-    // Reset species and existing captures when band fields change and bandId becomes invalid
-    if (field === "bandGroup" || field === "bandLastTwoDigits") {
-      setFormData((prev) => {
-        const isBandIdValid = field === "bandGroup"
-          ? formattedValue.length === 8 && prev.bandLastTwoDigits.length === 2
-          : prev.bandGroup.length === 8 && formattedValue.length === 2;
+      // Reset species and existing captures when band fields change and bandId becomes invalid
+      if (field === "bandGroup" || field === "bandLastTwoDigits") {
+        setFormData((prev) => {
+          const isBandIdValid =
+            field === "bandGroup"
+              ? formattedValue.length === 8 && prev.bandLastTwoDigits.length === 2
+              : prev.bandGroup.length === 8 && formattedValue.length === 2;
 
-        if (!isBandIdValid) {
-          setExistingCaptures([]);
-          shouldResetSpecies = true;
-        }
+          if (!isBandIdValid) {
+            setExistingCaptures([]);
+            shouldResetSpecies = true;
+          }
 
-        return {
-          ...prev,
-          [field]: formattedValue,
-          ...(shouldResetSpecies ? { species: "" } : {}),
-        };
-      });
-    } else {
-      setFormData((prev) => ({ ...prev, [field]: formattedValue }));
-    }
-
-    // Auto-focus next input when maxLength is reached
-    if (maxLength && formattedValue.length >= maxLength) {
-      focusNextInput(field);
-    }
-
-    // Auto-focus next input for weight after decimal digit is entered
-    if (field === "weight" && formattedValue.includes(".") && formattedValue.split(".")[1]?.length === 1) {
-      focusNextInput(field);
-    }
-  }, [focusNextInput]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent, field: keyof CaptureFormData) => {
-    if ((e.key === "Backspace" || e.key === "Delete") && formData[field] === "") {
-      e.preventDefault();
-      focusPrevInput(field);
-    } else if (e.key === "Tab") {
-      e.preventDefault();
-      if (e.shiftKey) {
-        focusPrevInput(field);
+          return {
+            ...prev,
+            [field]: formattedValue,
+            ...(shouldResetSpecies ? { species: "" } : {}),
+          };
+        });
       } else {
+        setFormData((prev) => ({ ...prev, [field]: formattedValue }));
+      }
+
+      // Auto-focus next input when maxLength is reached
+      if (maxLength && formattedValue.length >= maxLength) {
         focusNextInput(field);
       }
-    }
-  }, [formData, focusNextInput, focusPrevInput]);
+
+      // Auto-focus next input for weight after decimal digit is entered
+      if (field === "weight" && formattedValue.includes(".") && formattedValue.split(".")[1]?.length === 1) {
+        focusNextInput(field);
+      }
+    },
+    [focusNextInput]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, field: keyof CaptureFormData) => {
+      if ((e.key === "Backspace" || e.key === "Delete") && formData[field] === "") {
+        e.preventDefault();
+        focusPrevInput(field);
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          focusPrevInput(field);
+        } else {
+          focusNextInput(field);
+        }
+      }
+    },
+    [formData, focusNextInput, focusPrevInput]
+  );
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
@@ -295,7 +310,8 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                             onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
                             onKeyDown={(e) => handleKeyDown(e, column.key)}
                             classNames={{
-                              input: "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                              input:
+                                "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                               inputWrapper: getBorderClass(inputColor),
                             }}
                           />

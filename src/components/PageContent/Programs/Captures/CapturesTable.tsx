@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
 import { useCallback, useMemo, useState } from "react";
 import type { Capture } from "../../../../types";
-import { CAPTURE_COLUMNS } from "./constants";
+import { CAPTURE_COLUMNS } from "./helpers";
 
 // const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[] = [
 //   { key: "programId", label: "Program", className: "min-w-[150px]" },
