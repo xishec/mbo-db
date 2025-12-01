@@ -114,21 +114,22 @@ const CAPTURE_COLUMNS: {
   type?: string;
   className?: string;
   maxLength?: number;
+  minLength?: number;
 }[] = [
   { key: "program", label: "Program", className: "min-w-[150px]" },
-  { key: "bandGroup", label: "Band Group", className: "", maxLength: 8 },
-  { key: "bandLastTwoDigits", label: "Band", className: "", maxLength: 2 },
-  { key: "species", label: "Species", className: "", maxLength: 4 },
-  { key: "wing", label: "Wing", className: "min-w-[60px]" },
-  { key: "age", label: "Age", className: "min-w-[60px]", maxLength: 3 },
-  { key: "sex", label: "Sex", className: "min-w-[60px]", maxLength: 3 },
-  { key: "fat", label: "Fat", className: "", maxLength: 1 },
-  { key: "weight", label: "Weight", className: "" },
+  { key: "bandGroup", label: "Band Group", className: "", maxLength: 8, minLength: 8 },
+  { key: "bandLastTwoDigits", label: "Band", className: "", maxLength: 2, minLength: 2 },
+  { key: "species", label: "Species", className: "", maxLength: 4, minLength: 4 },
+  { key: "wing", label: "Wing", className: "min-w-[60px]", minLength: 1 },
+  { key: "age", label: "Age", className: "min-w-[60px]", maxLength: 3, minLength: 3 },
+  { key: "sex", label: "Sex", className: "min-w-[60px]", maxLength: 3, minLength: 3 },
+  { key: "fat", label: "Fat", className: "", maxLength: 1, minLength: 1 },
+  { key: "weight", label: "Weight", className: "", minLength: 1 },
   { key: "date", label: "Date", type: "date", className: "" },
   { key: "time", label: "Time", type: "time", className: "" },
-  { key: "bander", label: "Bander", className: "", maxLength: 3 },
-  { key: "scribe", label: "Scribe", className: "", maxLength: 3 },
-  { key: "net", label: "Net", className: "", maxLength: 2 },
+  { key: "bander", label: "Bander", className: "", maxLength: 3, minLength: 3 },
+  { key: "scribe", label: "Scribe", className: "", maxLength: 3, minLength: 3 },
+  { key: "net", label: "Net", className: "", maxLength: 2, minLength: 3 },
   { key: "notes", label: "Notes", className: "min-w-[150px]" },
 ];
 
@@ -200,33 +201,40 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   }, [formData.wing, formData.weight, sexCode, pyleSpeciesRange, mboSpeciesRange]);
 
   // Determine if wing/weight inputs should show warning (out of range for at least one source)
-  const wingWarning = rangeValidation.wing.pyle === false || rangeValidation.wing.mbo === false;
-  const weightWarning = rangeValidation.weight.pyle === false || rangeValidation.weight.mbo === false;
+  // Pyle = danger (red), MBO = warning (orange). Pyle takes priority.
+  const wingColor =
+    rangeValidation.wing.pyle === false ? "danger" : rangeValidation.wing.mbo === false ? "warning" : null;
+  const weightColor =
+    rangeValidation.weight.pyle === false ? "danger" : rangeValidation.weight.mbo === false ? "warning" : null;
 
   // Generate warning messages
   const warningMessages = useMemo(() => {
-    const messages: string[] = [];
+    const messages: { text: string; color: "danger" | "warning" }[] = [];
     const sexLabel = sexCode === "4" ? "male" : sexCode === "5" ? "female" : "unknown";
 
     if (rangeValidation.wing.pyle === false && pyleRange) {
-      messages.push(
-        `Wing ${formData.wing} is outside of Pyle range for sex ${sexLabel}, wing should be ${pyleRange.wingLower}-${pyleRange.wingUpper}`
-      );
+      messages.push({
+        text: `Wing ${formData.wing} is outside of Pyle range for sex ${sexLabel}, wing should be ${pyleRange.wingLower}-${pyleRange.wingUpper}`,
+        color: "danger",
+      });
     }
     if (rangeValidation.wing.mbo === false && mboRange) {
-      messages.push(
-        `Wing ${formData.wing} is outside of MBO range for sex ${sexLabel}, wing should be ${mboRange.wingLower}-${mboRange.wingUpper}`
-      );
+      messages.push({
+        text: `Wing ${formData.wing} is outside of MBO range for sex ${sexLabel}, wing should be ${mboRange.wingLower}-${mboRange.wingUpper}`,
+        color: "warning",
+      });
     }
     if (rangeValidation.weight.pyle === false && pyleRange) {
-      messages.push(
-        `Weight ${formData.weight} is outside of Pyle range for sex ${sexLabel}, weight should be ${pyleRange.weightLower}-${pyleRange.weightUpper}`
-      );
+      messages.push({
+        text: `Weight ${formData.weight} is outside of Pyle range for sex ${sexLabel}, weight should be ${pyleRange.weightLower}-${pyleRange.weightUpper}`,
+        color: "danger",
+      });
     }
     if (rangeValidation.weight.mbo === false && mboRange) {
-      messages.push(
-        `Weight ${formData.weight} is outside of MBO range for sex ${sexLabel}, weight should be ${mboRange.weightLower}-${mboRange.weightUpper}`
-      );
+      messages.push({
+        text: `Weight ${formData.weight} is outside of MBO range for sex ${sexLabel}, weight should be ${mboRange.weightLower}-${mboRange.weightUpper}`,
+        color: "warning",
+      });
     }
 
     return messages;
@@ -366,16 +374,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       ...(shouldResetSpecies ? { species: "" } : {}),
     }));
 
-    // Auto-focus previous input when field becomes empty
-    if (value === "" && formData[field] !== "") {
-      const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === field);
-      if (currentIndex > 0) {
-        const prevKey = CAPTURE_COLUMNS[currentIndex - 1].key;
-        const prevInput = inputRefs.current.get(prevKey);
-        prevInput?.focus();
-      }
-    }
-
     // Auto-focus next input when maxLength is reached
     if (maxLength && value.length >= maxLength) {
       const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === field);
@@ -398,6 +396,17 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, field: keyof CaptureFormData) => {
+    // Focus previous input when pressing backspace/delete on an empty field
+    if ((e.key === "Backspace" || e.key === "Delete") && formData[field] === "") {
+      const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === field);
+      if (currentIndex > 0) {
+        e.preventDefault();
+        const prevKey = CAPTURE_COLUMNS[currentIndex - 1].key;
+        const prevInput = inputRefs.current.get(prevKey);
+        prevInput?.focus();
+      }
+    }
+
     if (e.key === "Tab" && !e.shiftKey) {
       const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === field);
       if (currentIndex < CAPTURE_COLUMNS.length - 1) {
@@ -459,9 +468,24 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 <TableBody>
                   <TableRow key="new-capture">
                     {CAPTURE_COLUMNS.map((column) => {
-                      const isWingWarning = column.key === "wing" && wingWarning;
-                      const isWeightWarning = column.key === "weight" && weightWarning;
-                      const hasWarning = isWingWarning || isWeightWarning;
+                      // Check range validation for wing/weight
+                      const rangeColor =
+                        column.key === "wing" ? wingColor : column.key === "weight" ? weightColor : null;
+
+                      // Check minLength validation (only show warning if field has content but is incomplete)
+                      const value = formData[column.key];
+                      const isIncomplete = column.minLength && value.length > 0 && value.length < column.minLength;
+
+                      // Determine final input color: range errors take priority, then minLength
+                      const inputColor = rangeColor || (isIncomplete ? "warning" : null);
+
+                      // Build border classes that persist regardless of focus state
+                      const borderClass =
+                        inputColor === "danger"
+                          ? "!border-danger data-[hover=true]:!border-danger group-data-[focus=true]:!border-danger"
+                          : inputColor === "warning"
+                          ? "!border-warning data-[hover=true]:!border-warning group-data-[focus=true]:!border-warning"
+                          : "";
 
                       return (
                         <TableCell key={column.key} className="p-1">
@@ -470,6 +494,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                               if (el) inputRefs.current.set(column.key, el);
                             }}
                             variant="bordered"
+                            color={inputColor || "default"}
                             aria-label={column.label}
                             type={column.type || "text"}
                             maxLength={column.maxLength}
@@ -479,7 +504,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                             classNames={{
                               input:
                                 "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                              inputWrapper: `${hasWarning ? "!border-danger" : ""}`,
+                              inputWrapper: borderClass,
                             }}
                           />
                         </TableCell>
@@ -490,10 +515,12 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
               </Table>
 
               {warningMessages.length > 0 && (
-                <div className="text-danger text-sm">
+                <div className="text-sm">
                   <ul className="list-disc list-inside">
                     {warningMessages.map((msg, idx) => (
-                      <li key={idx}>{msg}</li>
+                      <li key={idx} className={msg.color === "danger" ? "text-danger" : "text-warning"}>
+                        {msg.text}
+                      </li>
                     ))}
                   </ul>
                 </div>
