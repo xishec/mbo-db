@@ -1,19 +1,13 @@
 import * as React from 'react';
-import { Document, Page, Text, View, StyleSheet, pdf, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, pdf, Image, Link } from '@react-pdf/renderer';
 import { Capture } from '../src/types';
-import { 
-  analyzeCaptures, 
-  generateCharts, 
-  generateExecutiveSummary,
-  generateSpeciesAnalysis,
-  generateDemographicsAnalysis,
-  generateTemporalAnalysis,
-  generateBiometricAnalysis,
+import {
+  analyzeCaptures,
+  generateCharts,
   analyzeMultiYearTrends,
   analyzeSpeciesDiversity,
   analyzeCaptureEffort,
   analyzeTopSpeciesTrends,
-  generateTrendsAnalysis,
   analyzeSexRatiosBySpecies,
   analyzeAgeRatiosBySpecies,
   analyzeCaptureTimingPatterns,
@@ -36,72 +30,304 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Define styles for the PDF
+// MBO Brand Colors
+const colors = {
+  primary: '#1a5f2a',      // Dark green
+  secondary: '#2e7d32',    // Medium green
+  accent: '#4caf50',       // Light green
+  text: '#333333',
+  lightGray: '#f5f5f5',
+  mediumGray: '#e0e0e0',
+  darkGray: '#666666',
+  white: '#ffffff',
+  highlight: '#fff9c4',    // Light yellow for highlighting
+};
+
+// Professional styles matching MBO report format
 const styles = StyleSheet.create({
+  // Page styles
   page: {
-    padding: 40,
-    fontSize: 9,
+    padding: 50,
+    fontSize: 10,
     fontFamily: 'Helvetica',
+    color: colors.text,
   },
-  title: {
-    fontSize: 20,
-    marginBottom: 20,
+  coverPage: {
+    padding: 0,
+    backgroundColor: colors.white,
+  },
+
+  // Cover page elements
+  coverContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 60,
+  },
+  coverTitle: {
+    fontSize: 32,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.primary,
     textAlign: 'center',
-    fontFamily: 'Helvetica-Bold',
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 20,
     marginBottom: 10,
+  },
+  coverSubtitle: {
+    fontSize: 24,
     fontFamily: 'Helvetica-Bold',
+    color: colors.secondary,
+    textAlign: 'center',
+    marginBottom: 40,
   },
-  section: {
-    marginBottom: 15,
+  coverYear: {
+    fontSize: 48,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 60,
   },
-  text: {
-    marginBottom: 4,
-    lineHeight: 1.35,
+  coverInfo: {
+    fontSize: 12,
+    color: colors.darkGray,
+    textAlign: 'center',
+    marginTop: 20,
   },
-  table: {
-    marginTop: 10,
+
+  // Headers and titles
+  pageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primary,
+    paddingBottom: 10,
     marginBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.primary,
+  },
+  headerYear: {
+    fontSize: 10,
+    color: colors.darkGray,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.primary,
+    marginBottom: 15,
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.mediumGray,
+  },
+  subsectionTitle: {
+    fontSize: 14,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.secondary,
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  subsubsectionTitle: {
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.text,
+    marginTop: 10,
+    marginBottom: 8,
+  },
+
+  // Content styles
+  paragraph: {
+    fontSize: 10,
+    lineHeight: 1.5,
+    marginBottom: 10,
+    textAlign: 'justify',
+  },
+  highlightBox: {
+    backgroundColor: colors.lightGray,
+    padding: 15,
+    marginVertical: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  highlightText: {
+    fontSize: 10,
+    lineHeight: 1.4,
+  },
+
+  // Statistics boxes
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 15,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: colors.lightGray,
+    padding: 12,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    borderRadius: 4,
+  },
+  statValue: {
+    fontSize: 24,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.primary,
+  },
+  statLabel: {
+    fontSize: 9,
+    color: colors.darkGray,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+
+  // Tables
+  table: {
+    marginVertical: 10,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  tableHeaderCell: {
+    color: colors.white,
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    flex: 1,
+    textAlign: 'center',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#cccccc',
-    paddingVertical: 8,
+    borderBottomColor: colors.mediumGray,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
-  tableHeader: {
+  tableRowAlt: {
     flexDirection: 'row',
-    borderBottomWidth: 2,
-    borderBottomColor: '#000000',
-    paddingVertical: 8,
-    backgroundColor: '#f0f0f0',
-    fontFamily: 'Helvetica-Bold',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.mediumGray,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    backgroundColor: colors.lightGray,
+  },
+  tableRowHighlight: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.mediumGray,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    backgroundColor: colors.highlight,
   },
   tableCell: {
     flex: 1,
-    paddingHorizontal: 5,
+    fontSize: 9,
+    textAlign: 'center',
+  },
+  tableCellLeft: {
+    flex: 2,
+    fontSize: 9,
+    textAlign: 'left',
+  },
+  tableCellBold: {
+    flex: 1,
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    textAlign: 'center',
+  },
+
+  // Charts
+  chartContainer: {
+    marginVertical: 15,
+    alignItems: 'center',
   },
   chart: {
-    marginVertical: 15,
     width: '100%',
-    height: 250,
+    height: 220,
   },
+  chartCaption: {
+    fontSize: 9,
+    color: colors.darkGray,
+    textAlign: 'center',
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+
+  // Footer
   footer: {
     position: 'absolute',
     bottom: 30,
-    left: 40,
-    right: 40,
-    textAlign: 'center',
-    fontSize: 9,
-    color: '#666666',
+    left: 50,
+    right: 50,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.mediumGray,
+    paddingTop: 10,
   },
-  smallText: {
+  footerText: {
+    fontSize: 8,
+    color: colors.darkGray,
+  },
+  pageNumber: {
+    fontSize: 8,
+    color: colors.darkGray,
+  },
+
+  // Two-column layout
+  twoColumn: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  column: {
+    flex: 1,
+  },
+
+  // Species account cards
+  speciesCard: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: colors.lightGray,
+    borderRadius: 4,
+  },
+  speciesName: {
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.primary,
+    marginBottom: 5,
+  },
+  speciesStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  speciesStat: {
     fontSize: 9,
-    marginBottom: 4,
-    lineHeight: 1.4,
+  },
+
+  // TOC styles
+  tocEntry: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+    borderBottomStyle: 'dotted',
+  },
+  tocTitle: {
+    fontSize: 11,
+  },
+  tocPage: {
+    fontSize: 11,
+    color: colors.darkGray,
+  },
+  tocSection: {
+    marginTop: 10,
+    marginBottom: 5,
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: colors.primary,
   },
 });
 
@@ -110,872 +336,867 @@ interface ReportData {
   captures: Capture[];
   program?: string;
   multiYearData?: any;
+  springCaptures?: Capture[];
+  fallCaptures?: Capture[];
+  mapsCaptures?: Capture[];
 }
+
+// Helper to format numbers with commas
+const formatNumber = (num: number) => num.toLocaleString();
+
+// Helper to get season from date
+const getSeason = (date: string): 'spring' | 'fall' | 'maps' | 'other' => {
+  const month = new Date(date).getMonth() + 1;
+  if (month >= 4 && month <= 5) return 'spring';
+  if (month >= 6 && month <= 7) return 'maps';
+  if (month >= 8 && month <= 11) return 'fall';
+  return 'other';
+};
+
+// Page Header Component
+const PageHeader: React.FC<{ title: string; year: number }> = ({ title, year }) => (
+  <View style={styles.pageHeader}>
+    <Text style={styles.headerTitle}>McGill Bird Observatory</Text>
+    <Text style={styles.headerYear}>{title} • {year}</Text>
+  </View>
+);
+
+// Page Footer Component
+const PageFooter: React.FC<{ pageNum: number }> = ({ pageNum }) => (
+  <View style={styles.footer}>
+    <Text style={styles.footerText}>McGill Bird Observatory Annual Report</Text>
+    <Text style={styles.pageNumber}>{pageNum}</Text>
+  </View>
+);
+
+// Statistics Box Row Component
+const StatsRow: React.FC<{ stats: Array<{ value: string | number; label: string }> }> = ({ stats }) => (
+  <View style={styles.statsRow}>
+    {stats.map((stat, idx) => (
+      <View key={idx} style={styles.statBox}>
+        <Text style={styles.statValue}>{typeof stat.value === 'number' ? formatNumber(stat.value) : stat.value}</Text>
+        <Text style={styles.statLabel}>{stat.label}</Text>
+      </View>
+    ))}
+  </View>
+);
 
 // Main PDF Document Component
 const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPaths: any }> = ({
   data,
   analysis,
   chartPaths,
-}) => (
-  <Document>
-    {/* Cover Page */}
-    <Page size="A4" style={styles.page}>
-      <View style={{ marginTop: 200, alignItems: 'center' }}>
-        <Text style={styles.title}>Monitoring Avian Productivity and Survivorship (MAPS)</Text>
-        <Text style={{ fontSize: 20, marginTop: 20 }}>Annual Report {data.year}</Text>
-        {data.program && <Text style={{ fontSize: 16, marginTop: 10 }}>{data.program}</Text>}
-        <Text style={{ fontSize: 12, marginTop: 40, color: '#666666' }}>
-          Generated: {new Date().toLocaleDateString()}
-        </Text>
-      </View>
-    </Page>
+}) => {
+  // Separate captures by season
+  const springCaptures = data.captures.filter(c => getSeason(c.date) === 'spring');
+  const fallCaptures = data.captures.filter(c => getSeason(c.date) === 'fall');
+  const mapsCaptures = data.captures.filter(c => getSeason(c.date) === 'maps');
 
-    {/* Summary Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Executive Summary</Text>
+  // Calculate season-specific stats
+  const springStats = springCaptures.length > 0 ? analyzeCaptures(springCaptures) : null;
+  const fallStats = fallCaptures.length > 0 ? analyzeCaptures(fallCaptures) : null;
+  const mapsStats = mapsCaptures.length > 0 ? analyzeCaptures(mapsCaptures) : null;
 
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Overview</Text>
-        <Text style={styles.text}>Total Captures: {analysis.totalCaptures}</Text>
-        <Text style={styles.text}>Unique Species: {analysis.uniqueSpecies}</Text>
-        <Text style={styles.text}>New Bands: {analysis.newBands}</Text>
-        <Text style={styles.text}>Recaptures: {analysis.recaptures}</Text>
-        <Text style={styles.text}>Returns: {analysis.returns}</Text>
-      </View>
+  let pageNum = 0;
 
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Seasonal Distribution</Text>
-        <Text style={styles.text}>Peak Capture Month: {analysis.peakMonth}</Text>
-        <Text style={styles.text}>Active Monitoring Days: {analysis.activeDays}</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Summary Analysis</Text>
-        <Text style={[styles.text, { textAlign: 'justify' }]}>{analysis.executiveSummaryText}</Text>
-      </View>
-    </Page>
-
-    {/* Species Analysis Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Species Analysis</Text>
-
-      <Text style={styles.subtitle}>Top 10 Species by Capture Frequency</Text>
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-          <Text style={styles.tableCell}>Count</Text>
-          <Text style={styles.tableCell}>Percentage</Text>
-          <Text style={styles.tableCell}>New</Text>
-          <Text style={styles.tableCell}>Recap</Text>
-        </View>
-        {analysis.topSpecies.slice(0, 10).map((species: any, index: number) => (
-          <View key={index} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2 }]}>{species.name}</Text>
-            <Text style={styles.tableCell}>{species.count}</Text>
-            <Text style={styles.tableCell}>{species.percentage.toFixed(1)}%</Text>
-            <Text style={styles.tableCell}>{species.new}</Text>
-            <Text style={styles.tableCell}>{species.recaptures}</Text>
-          </View>
-        ))}
-      </View>
-
-      {chartPaths.speciesChart && <Image style={styles.chart} src={chartPaths.speciesChart} />}
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Analysis</Text>
-        <Text style={[styles.text, { textAlign: 'justify' }]}>{analysis.speciesAnalysisText}</Text>
-      </View>
-    </Page>
-
-    {/* Demographics Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Age and Sex Demographics</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Age Distribution</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableCell}>Age Class</Text>
-            <Text style={styles.tableCell}>Count</Text>
-            <Text style={styles.tableCell}>Percentage</Text>
-          </View>
-          {Object.entries(analysis.ageDistribution).map(([age, count]: [string, any]) => (
-            <View key={age} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{age || 'Unknown'}</Text>
-              <Text style={styles.tableCell}>{count}</Text>
-              <Text style={styles.tableCell}>
-                {((count / analysis.totalCaptures) * 100).toFixed(1)}%
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Sex Distribution</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableCell}>Sex</Text>
-            <Text style={styles.tableCell}>Count</Text>
-            <Text style={styles.tableCell}>Percentage</Text>
-          </View>
-          {Object.entries(analysis.sexDistribution).map(([sex, count]: [string, any]) => (
-            <View key={sex} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{sex || 'Unknown'}</Text>
-              <Text style={styles.tableCell}>{count}</Text>
-              <Text style={styles.tableCell}>
-                {((count / analysis.totalCaptures) * 100).toFixed(1)}%
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {chartPaths.demographicsChart && <Image style={styles.chart} src={chartPaths.demographicsChart} />}
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Analysis</Text>
-        <Text style={[styles.text, { textAlign: 'justify' }]}>{analysis.demographicsAnalysisText}</Text>
-      </View>
-    </Page>
-
-    {/* Sex Ratios by Species Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Sex Ratios by Species</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Sex ratio analysis for species with adequate sample sizes (n≥10) reveals demographic patterns 
-          that may indicate breeding strategies, differential migration timing, or habitat preferences.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-          <Text style={styles.tableCell}>M</Text>
-          <Text style={styles.tableCell}>F</Text>
-          <Text style={styles.tableCell}>M:F</Text>
-          <Text style={styles.tableCell}>M%</Text>
-          <Text style={styles.tableCell}>n</Text>
-        </View>
-        {analysis.sexRatios.slice(0, 20).map((ratio: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{ratio.species}</Text>
-            <Text style={styles.tableCell}>{ratio.male}</Text>
-            <Text style={styles.tableCell}>{ratio.female}</Text>
-            <Text style={styles.tableCell}>{ratio.ratio}</Text>
-            <Text style={styles.tableCell}>{ratio.malePercent}%</Text>
-            <Text style={styles.tableCell}>{ratio.total}</Text>
-          </View>
-        ))}
-      </View>
-    </Page>
-
-    {/* Age Ratios by Species Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Age Ratios and Productivity by Species</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Young-to-adult ratios indicate breeding success and productivity. Higher ratios suggest successful 
-          local reproduction, while lower ratios may indicate predominantly non-breeding populations or poor breeding conditions.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-          <Text style={styles.tableCell}>Young</Text>
-          <Text style={styles.tableCell}>Adult</Text>
-          <Text style={styles.tableCell}>Y:A</Text>
-          <Text style={styles.tableCell}>Young%</Text>
-          <Text style={styles.tableCell}>n</Text>
-        </View>
-        {analysis.ageRatios.slice(0, 20).map((ratio: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{ratio.species}</Text>
-            <Text style={styles.tableCell}>{ratio.young}</Text>
-            <Text style={styles.tableCell}>{ratio.adult}</Text>
-            <Text style={styles.tableCell}>{ratio.ratio}</Text>
-            <Text style={styles.tableCell}>{ratio.youngPercent}%</Text>
-            <Text style={styles.tableCell}>{ratio.total}</Text>
-          </View>
-        ))}
-      </View>
-    </Page>
-
-    {/* Morphometric Analysis Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Morphometric Analysis with Variation</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Morphological measurements with standard deviations reveal population variation and can indicate 
-          sexual dimorphism, age classes, or geographic subspecies. Ranges show measurement extremes captured.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-          <Text style={styles.tableCell}>Weight (g)</Text>
-          <Text style={styles.tableCell}>SD</Text>
-          <Text style={styles.tableCell}>Wing (mm)</Text>
-          <Text style={styles.tableCell}>SD</Text>
-          <Text style={styles.tableCell}>n</Text>
-        </View>
-        {analysis.morphometrics.slice(0, 15).map((morph: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{morph.species}</Text>
-            <Text style={[styles.tableCell, { fontSize: 9 }]}>{morph.avgWeight}</Text>
-            <Text style={[styles.tableCell, { fontSize: 9 }]}>±{morph.weightSD}</Text>
-            <Text style={[styles.tableCell, { fontSize: 9 }]}>{morph.avgWing}</Text>
-            <Text style={[styles.tableCell, { fontSize: 9 }]}>±{morph.wingSD}</Text>
-            <Text style={styles.tableCell}>{morph.count}</Text>
-          </View>
-        ))}
-      </View>
-    </Page>
-
-    {/* Temporal Analysis Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Temporal Analysis</Text>
-
-      <Text style={styles.subtitle}>Monthly Capture Trends</Text>
-      {chartPaths.monthlyTrendChart && <Image style={styles.chart} src={chartPaths.monthlyTrendChart} />}
-
-      <View style={styles.section}>
-        <Text style={[styles.text, { textAlign: 'justify' }]}>{analysis.temporalAnalysisText}</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Monthly Summary</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableCell}>Month</Text>
-            <Text style={styles.tableCell}>Captures</Text>
-            <Text style={styles.tableCell}>Species</Text>
-            <Text style={styles.tableCell}>Days Active</Text>
-          </View>
-          {analysis.monthlyData.map((month: any) => (
-            <View key={month.month} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{month.month}</Text>
-              <Text style={styles.tableCell}>{month.captures}</Text>
-              <Text style={styles.tableCell}>{month.species}</Text>
-              <Text style={styles.tableCell}>{month.days}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </Page>
-
-    {/* Biometric Data Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Biometric Data Summary</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Average Measurements by Top Species</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-            <Text style={styles.tableCell}>Avg Weight (g)</Text>
-            <Text style={styles.tableCell}>Avg Wing (mm)</Text>
-            <Text style={styles.tableCell}>Avg Fat</Text>
-            <Text style={styles.tableCell}>n</Text>
-          </View>
-          {analysis.biometricData.slice(0, 15).map((species: any, index: number) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { flex: 2 }]}>{species.name}</Text>
-              <Text style={styles.tableCell}>{species.avgWeight?.toFixed(1) || 'N/A'}</Text>
-              <Text style={styles.tableCell}>{species.avgWing?.toFixed(1) || 'N/A'}</Text>
-              <Text style={styles.tableCell}>{species.avgFat?.toFixed(1) || 'N/A'}</Text>
-              <Text style={styles.tableCell}>{species.count}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Analysis</Text>
-        <Text style={[styles.text, { textAlign: 'justify' }]}>{analysis.biometricAnalysisText}</Text>
-      </View>
-    </Page>
-
-    {/* Multi-variable Demographic Cross-Tab Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Multi-Variable Demographic Analysis</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          This section combines age and sex information to highlight population structure within each species. Only
-          species with adequate sample sizes (n≥10) are shown.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-          <Text style={styles.tableCell}>M Ad</Text>
-          <Text style={styles.tableCell}>M Yng</Text>
-          <Text style={styles.tableCell}>F Ad</Text>
-          <Text style={styles.tableCell}>F Yng</Text>
-          <Text style={styles.tableCell}>Unk</Text>
-          <Text style={styles.tableCell}>n</Text>
-        </View>
-        {analysis.speciesAgeSex.slice(0, 18).map((row: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{row.species}</Text>
-            <Text style={styles.tableCell}>{row.maleAdult}</Text>
-            <Text style={styles.tableCell}>{row.maleYoung}</Text>
-            <Text style={styles.tableCell}>{row.femaleAdult}</Text>
-            <Text style={styles.tableCell}>{row.femaleYoung}</Text>
-            <Text style={styles.tableCell}>{row.unknownSex}</Text>
-            <Text style={styles.tableCell}>{row.total}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Body Condition (Fat Scores)</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-            <Text style={styles.tableCell}>Overall</Text>
-            <Text style={styles.tableCell}>M Ad</Text>
-            <Text style={styles.tableCell}>F Ad</Text>
-            <Text style={styles.tableCell}>M Yng</Text>
-            <Text style={styles.tableCell}>F Yng</Text>
-            <Text style={styles.tableCell}>n</Text>
-          </View>
-          {analysis.fatDemographics.slice(0, 12).map((row: any, idx: number) => (
-            <View key={idx} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{row.species}</Text>
-              <Text style={styles.tableCell}>{row.overall}</Text>
-              <Text style={styles.tableCell}>{row.maleAdult}</Text>
-              <Text style={styles.tableCell}>{row.femaleAdult}</Text>
-              <Text style={styles.tableCell}>{row.maleYoung}</Text>
-              <Text style={styles.tableCell}>{row.femaleYoung}</Text>
-              <Text style={styles.tableCell}>{row.n}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </Page>
-
-    {/* Body Condition and Weight Patterns Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Body Condition and Weight Patterns</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Weight patterns by age, sex, and season provide a multi-dimensional view of body condition and energy
-          reserves through the monitoring period.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-          <Text style={styles.tableCell}>M</Text>
-          <Text style={styles.tableCell}>F</Text>
-          <Text style={styles.tableCell}>Young</Text>
-          <Text style={styles.tableCell}>Adult</Text>
-          <Text style={styles.tableCell}>Early</Text>
-          <Text style={styles.tableCell}>Late</Text>
-        </View>
-        {analysis.weightPatterns.slice(0, 15).map((row: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{row.species}</Text>
-            <Text style={styles.tableCell}>{row.male}</Text>
-            <Text style={styles.tableCell}>{row.female}</Text>
-            <Text style={styles.tableCell}>{row.young}</Text>
-            <Text style={styles.tableCell}>{row.adult}</Text>
-            <Text style={styles.tableCell}>{row.early}</Text>
-            <Text style={styles.tableCell}>{row.late}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Body Condition Index</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-            <Text style={styles.tableCell}>Index</Text>
-            <Text style={styles.tableCell}>CV%</Text>
-            <Text style={styles.tableCell}>Wt</Text>
-            <Text style={styles.tableCell}>Wing</Text>
-            <Text style={styles.tableCell}>n</Text>
-          </View>
-          {analysis.bodyCondition.slice(0, 12).map((row: any, idx: number) => (
-            <View key={idx} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{row.species}</Text>
-              <Text style={styles.tableCell}>{row.avgRatio}</Text>
-              <Text style={styles.tableCell}>{row.cv}</Text>
-              <Text style={styles.tableCell}>{row.avgWeight}</Text>
-              <Text style={styles.tableCell}>{row.avgWing}</Text>
-              <Text style={styles.tableCell}>{row.n}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </Page>
-
-    {/* Weekly Capture Patterns Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Weekly Capture Patterns</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Weekly capture patterns reveal phenological timing of migration peaks, breeding periods, and seasonal movements. 
-          Peaks coincide with optimal conditions for capturing migrants and local breeding populations.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.tableCell}>Period</Text>
-          <Text style={styles.tableCell}>Captures</Text>
-          <Text style={styles.tableCell}>Species</Text>
-          <Text style={styles.tableCell}>Avg/Day</Text>
-        </View>
-        {analysis.weeklyPatterns.slice(0, 25).map((week: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={styles.tableCell}>{week.period}</Text>
-            <Text style={styles.tableCell}>{week.captures}</Text>
-            <Text style={styles.tableCell}>{week.species}</Text>
-            <Text style={styles.tableCell}>{(week.captures / 7).toFixed(1)}</Text>
-          </View>
-        ))}
-      </View>
-    </Page>
-
-    {/* Daily and Hourly Effort Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Daily and Hourly Capture Rates</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Combining daily totals with hourly patterns highlights when capture effort and bird activity peak during
-          the monitoring season.
-        </Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Daily Capture Summary</Text>
-        <Text style={styles.smallText}>
-          Avg/day: {analysis.dailyRates.summary.avgCaptures}, Max: {analysis.dailyRates.summary.maxCaptures}, Min:{' '}
-          {analysis.dailyRates.summary.minCaptures}, SD: {analysis.dailyRates.summary.stdDev} (n={
-            analysis.dailyRates.summary.totalDays
-          }
-          days)
-        </Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableCell}>Date</Text>
-            <Text style={styles.tableCell}>Captures</Text>
-            <Text style={styles.tableCell}>Species</Text>
-            <Text style={styles.tableCell}>New</Text>
-          </View>
-          {analysis.dailyRates.dailyRates.slice(0, 18).map((d: any, idx: number) => (
-            <View key={idx} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { fontSize: 9 }]}>{d.date}</Text>
-              <Text style={styles.tableCell}>{d.captures}</Text>
-              <Text style={styles.tableCell}>{d.species}</Text>
-              <Text style={styles.tableCell}>{d.newBands}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Hourly Capture Patterns</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, { flex: 2 }]}>Hour</Text>
-            <Text style={styles.tableCell}>Captures</Text>
-            <Text style={styles.tableCell}>Species</Text>
-            <Text style={styles.tableCell}>New</Text>
-            <Text style={styles.tableCell}>Recaps</Text>
-          </View>
-          {analysis.hourlyPatterns.slice(0, 16).map((h: any, idx: number) => (
-            <View key={idx} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { flex: 2 }]}>{h.timeRange}</Text>
-              <Text style={styles.tableCell}>{h.captures}</Text>
-              <Text style={styles.tableCell}>{h.species}</Text>
-              <Text style={styles.tableCell}>{h.newBands}</Text>
-              <Text style={styles.tableCell}>{h.recaptures}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </Page>
-
-    {/* Recapture Intervals Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Recapture Intervals and Longevity</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Recapture intervals provide minimum longevity estimates and insights into site fidelity. 
-          Maximum intervals represent the longest time between first capture and any subsequent recapture for each species.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-          <Text style={styles.tableCell}>Recaps</Text>
-          <Text style={styles.tableCell}>Min Days</Text>
-          <Text style={styles.tableCell}>Avg Days</Text>
-          <Text style={styles.tableCell}>Max Years</Text>
-        </View>
-        {analysis.recaptureIntervals.map((interval: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{interval.species}</Text>
-            <Text style={styles.tableCell}>{interval.count}</Text>
-            <Text style={styles.tableCell}>{interval.minDays}</Text>
-            <Text style={styles.tableCell}>{interval.avgDays}</Text>
-            <Text style={styles.tableCell}>{interval.maxYears}</Text>
-          </View>
-        ))}
-      </View>
-    </Page>
-
-    {/* Net Usage and Efficiency Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Net Location Analysis</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Net-specific data reveals habitat microsite preferences and capture efficiency across locations. 
-          Recapture rates indicate site fidelity and local movement patterns within the study area.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.tableCell}>Net</Text>
-          <Text style={styles.tableCell}>Captures</Text>
-          <Text style={styles.tableCell}>Species</Text>
-          <Text style={styles.tableCell}>New</Text>
-          <Text style={styles.tableCell}>Recaps</Text>
-          <Text style={styles.tableCell}>Rate%</Text>
-        </View>
-        {analysis.netUsage.map((net: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={styles.tableCell}>{net.net}</Text>
-            <Text style={styles.tableCell}>{net.captures}</Text>
-            <Text style={styles.tableCell}>{net.species}</Text>
-            <Text style={styles.tableCell}>{net.newBands}</Text>
-            <Text style={styles.tableCell}>{net.recaptures}</Text>
-            <Text style={styles.tableCell}>{net.recaptureRate}%</Text>
-          </View>
-        ))}
-      </View>
-    </Page>
-
-    {/* Net and Habitat Multi-Variable Analysis Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Net Performance by Month and Species</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          This page combines capture totals, species richness, and recapture rates by net and month to highlight
-          microsite productivity and habitat use.
-        </Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Net × Month Summary</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableCell}>Net</Text>
-            <Text style={styles.tableCell}>Month</Text>
-            <Text style={styles.tableCell}>Captures</Text>
-            <Text style={styles.tableCell}>Species</Text>
-            <Text style={styles.tableCell}>New</Text>
-          </View>
-          {analysis.netMonth.slice(0, 20).map((row: any, idx: number) => (
-            <View key={idx} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{row.net}</Text>
-              <Text style={styles.tableCell}>{row.month}</Text>
-              <Text style={styles.tableCell}>{row.captures}</Text>
-              <Text style={styles.tableCell}>{row.species}</Text>
-              <Text style={styles.tableCell}>{row.newBands}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.subtitle}>Recapture Rates by Net and Species</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, { flex: 2 }]}>Net</Text>
-            <Text style={[styles.tableCell, { flex: 2 }]}>Species</Text>
-            <Text style={styles.tableCell}>Total</Text>
-            <Text style={styles.tableCell}>Recaps</Text>
-            <Text style={styles.tableCell}>Rate%</Text>
-          </View>
-          {analysis.recaptureByNet.slice(0, 18).map((row: any, idx: number) => (
-            <View key={idx} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{row.net}</Text>
-              <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{row.species}</Text>
-              <Text style={styles.tableCell}>{row.total}</Text>
-              <Text style={styles.tableCell}>{row.recaptures}</Text>
-              <Text style={styles.tableCell}>{row.recaptureRate}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </Page>
-
-    {/* Bander Productivity Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Bander Performance and Productivity</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Bander-specific metrics document individual contributions and experience levels. 
-          Captures per day reflect efficiency and consistency across monitoring sessions.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Bander</Text>
-          <Text style={styles.tableCell}>Captures</Text>
-          <Text style={styles.tableCell}>Species</Text>
-          <Text style={styles.tableCell}>New</Text>
-          <Text style={styles.tableCell}>Days</Text>
-          <Text style={styles.tableCell}>Per Day</Text>
-        </View>
-        {analysis.banderProductivity.map((bander: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{bander.bander}</Text>
-            <Text style={styles.tableCell}>{bander.captures}</Text>
-            <Text style={styles.tableCell}>{bander.species}</Text>
-            <Text style={styles.tableCell}>{bander.newBands}</Text>
-            <Text style={styles.tableCell}>{bander.days}</Text>
-            <Text style={styles.tableCell}>{bander.capturesPerDay}</Text>
-          </View>
-        ))}
-      </View>
-    </Page>
-
-    {/* Bander Specialization Page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Bander Specialization and Diversity</Text>
-
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          Multi-variable bander metrics combine total captures, species diversity, and species composition to
-          characterize individual contributions and specializations.
-        </Text>
-      </View>
-
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableCell, { flex: 2 }]}>Bander</Text>
-          <Text style={styles.tableCell}>Captures</Text>
-          <Text style={styles.tableCell}>Species</Text>
-          <Text style={styles.tableCell}>Diversity</Text>
-          <Text style={[styles.tableCell, { flex: 3 }]}>Top Species</Text>
-        </View>
-        {analysis.banderSpecialization.slice(0, 15).map((row: any, idx: number) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>{row.bander}</Text>
-            <Text style={styles.tableCell}>{row.total}</Text>
-            <Text style={styles.tableCell}>{row.speciesCount}</Text>
-            <Text style={styles.tableCell}>{row.diversity}</Text>
-            <Text style={[styles.tableCell, { flex: 3, fontSize: 8 }]}>{row.topSpecies}</Text>
-          </View>
-        ))}
-      </View>
-    </Page>
-
-    {/* Multi-Year Trends Page */}
-    {data.multiYearData && (
-      <>
-        <Page size="A4" style={styles.page}>
-          <Text style={styles.title}>Long-Term Population Trends</Text>
-
-          <View style={styles.section}>
-            <Text style={[styles.text, { textAlign: 'justify' }]}>{analysis.trendsAnalysisText}</Text>
+  return (
+    <Document>
+      {/* Cover Page */}
+      <Page size="A4" style={styles.coverPage}>
+        <View style={styles.coverContainer}>
+          <Text style={styles.coverTitle}>McGill Bird Observatory</Text>
+          <Text style={styles.coverSubtitle}>Annual Report</Text>
+          <Text style={styles.coverYear}>{data.year}</Text>
+          
+          <View style={{ marginTop: 40 }}>
+            <Text style={styles.coverInfo}>Migration Monitoring &amp; MAPS Banding Station</Text>
+            <Text style={styles.coverInfo}>Ste-Anne-de-Bellevue, Quebec, Canada</Text>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.subtitle}>Annual Capture Summary (All Years)</Text>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={styles.tableCell}>Year</Text>
-                <Text style={styles.tableCell}>Total</Text>
-                <Text style={styles.tableCell}>Species</Text>
-                <Text style={styles.tableCell}>New Bands</Text>
-                <Text style={styles.tableCell}>Returns</Text>
-                <Text style={styles.tableCell}>Y:A Ratio</Text>
-              </View>
-              {data.multiYearData.yearlyMetrics.slice(-10).map((metric: any) => (
-                <View key={metric.year} style={[styles.tableRow, metric.year === data.year ? { backgroundColor: '#ffffcc' } : {}]}>
-                  <Text style={styles.tableCell}>{metric.year}</Text>
-                  <Text style={styles.tableCell}>{metric.totalCaptures}</Text>
-                  <Text style={styles.tableCell}>{metric.uniqueSpecies}</Text>
-                  <Text style={styles.tableCell}>{metric.newBands}</Text>
-                  <Text style={styles.tableCell}>{metric.returns}</Text>
-                  <Text style={styles.tableCell}>{metric.youngToAdultRatio.toFixed(2)}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </Page>
-
-        <Page size="A4" style={styles.page}>
-          <Text style={styles.title}>Species Diversity Trends</Text>
-
-          <View style={styles.section}>
-            <Text style={styles.subtitle}>Diversity Indices Over Time</Text>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={styles.tableCell}>Year</Text>
-                <Text style={styles.tableCell}>Richness</Text>
-                <Text style={styles.tableCell}>Shannon H'</Text>
-                <Text style={styles.tableCell}>Evenness</Text>
-                <Text style={styles.tableCell}>Captures</Text>
-              </View>
-              {data.multiYearData.diversity.slice(-10).map((div: any) => (
-                <View key={div.year} style={[styles.tableRow, div.year === data.year ? { backgroundColor: '#ffffcc' } : {}]}>
-                  <Text style={styles.tableCell}>{div.year}</Text>
-                  <Text style={styles.tableCell}>{div.richness}</Text>
-                  <Text style={styles.tableCell}>{div.shannon}</Text>
-                  <Text style={styles.tableCell}>{div.evenness}</Text>
-                  <Text style={styles.tableCell}>{div.totalCaptures}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.text}>
-              Species diversity indices provide quantitative measures of community structure. Richness represents the number of species, 
-              Shannon index (H') measures both abundance and evenness, and Evenness indicates how equally distributed species are. 
-              Higher values generally indicate more diverse and stable communities.
+          <View style={{ marginTop: 60 }}>
+            <Text style={[styles.coverInfo, { fontSize: 10 }]}>
+              A project of The Migration Research Foundation Inc.
             </Text>
           </View>
-        </Page>
 
-        <Page size="A4" style={styles.page}>
-          <Text style={styles.title}>Capture Effort Analysis</Text>
+          <View style={{ position: 'absolute', bottom: 60, width: '100%' }}>
+            <Text style={[styles.coverInfo, { fontSize: 9 }]}>
+              www.migrationresearch.org
+            </Text>
+          </View>
+        </View>
+      </Page>
 
-          <View style={styles.section}>
-            <Text style={styles.subtitle}>Monitoring Effort and Efficiency</Text>
+      {/* Table of Contents */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Table of Contents</Text>
+        
+        <View style={{ marginTop: 20 }}>
+          <Text style={styles.tocSection}>Overview</Text>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Season Summary</Text>
+            <Text style={styles.tocPage}>3</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Key Highlights</Text>
+            <Text style={styles.tocPage}>3</Text>
+          </View>
+
+          <Text style={styles.tocSection}>Seasonal Reports</Text>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Spring Migration (April–May)</Text>
+            <Text style={styles.tocPage}>4</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>MAPS Breeding Season (June–July)</Text>
+            <Text style={styles.tocPage}>5</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Fall Migration (August–November)</Text>
+            <Text style={styles.tocPage}>6</Text>
+          </View>
+
+          <Text style={styles.tocSection}>Detailed Analysis</Text>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Species Accounts</Text>
+            <Text style={styles.tocPage}>7</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Banding Totals by Species</Text>
+            <Text style={styles.tocPage}>8</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Age and Sex Demographics</Text>
+            <Text style={styles.tocPage}>9</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Recaptures and Returns</Text>
+            <Text style={styles.tocPage}>10</Text>
+          </View>
+
+          <Text style={styles.tocSection}>Long-term Trends</Text>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Multi-year Population Trends</Text>
+            <Text style={styles.tocPage}>11</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Species Diversity Analysis</Text>
+            <Text style={styles.tocPage}>12</Text>
+          </View>
+
+          <Text style={styles.tocSection}>Appendices</Text>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Complete Species List</Text>
+            <Text style={styles.tocPage}>13</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Acknowledgements</Text>
+            <Text style={styles.tocPage}>14</Text>
+          </View>
+        </View>
+        <PageFooter pageNum={2} />
+      </Page>
+
+      {/* Season Summary Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Season Summary" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>{data.year} Season Overview</Text>
+        
+        <Text style={styles.paragraph}>
+          The {data.year} banding season at McGill Bird Observatory was conducted from April through November,
+          encompassing spring migration, the MAPS breeding bird monitoring program, and fall migration monitoring.
+          This report summarizes the results of our standardized monitoring efforts.
+        </Text>
+
+        <StatsRow stats={[
+          { value: analysis.totalCaptures, label: 'Total Captures' },
+          { value: analysis.uniqueSpecies, label: 'Species Recorded' },
+          { value: analysis.newBands, label: 'New Bands' },
+          { value: analysis.activeDays, label: 'Active Days' },
+        ]} />
+
+        <Text style={styles.subsectionTitle}>Capture Summary</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Capture Type</Text>
+            <Text style={styles.tableHeaderCell}>Count</Text>
+            <Text style={styles.tableHeaderCell}>Percentage</Text>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableCellLeft}>New Bands</Text>
+            <Text style={styles.tableCell}>{formatNumber(analysis.newBands)}</Text>
+            <Text style={styles.tableCell}>{((analysis.newBands / analysis.totalCaptures) * 100).toFixed(1)}%</Text>
+          </View>
+          <View style={styles.tableRowAlt}>
+            <Text style={styles.tableCellLeft}>Recaptures (same season)</Text>
+            <Text style={styles.tableCell}>{formatNumber(analysis.recaptures)}</Text>
+            <Text style={styles.tableCell}>{((analysis.recaptures / analysis.totalCaptures) * 100).toFixed(1)}%</Text>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableCellLeft}>Returns (previous years)</Text>
+            <Text style={styles.tableCell}>{formatNumber(analysis.returns)}</Text>
+            <Text style={styles.tableCell}>{((analysis.returns / analysis.totalCaptures) * 100).toFixed(1)}%</Text>
+          </View>
+        </View>
+
+        <Text style={styles.subsectionTitle}>Seasonal Distribution</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Season</Text>
+            <Text style={styles.tableHeaderCell}>Captures</Text>
+            <Text style={styles.tableHeaderCell}>Species</Text>
+            <Text style={styles.tableHeaderCell}>Days</Text>
+          </View>
+          {springStats && (
+            <View style={styles.tableRow}>
+              <Text style={styles.tableCellLeft}>Spring Migration (Apr–May)</Text>
+              <Text style={styles.tableCell}>{formatNumber(springStats.totalCaptures)}</Text>
+              <Text style={styles.tableCell}>{springStats.uniqueSpecies}</Text>
+              <Text style={styles.tableCell}>{springStats.activeDays}</Text>
+            </View>
+          )}
+          {mapsStats && (
+            <View style={styles.tableRowAlt}>
+              <Text style={styles.tableCellLeft}>MAPS Season (Jun–Jul)</Text>
+              <Text style={styles.tableCell}>{formatNumber(mapsStats.totalCaptures)}</Text>
+              <Text style={styles.tableCell}>{mapsStats.uniqueSpecies}</Text>
+              <Text style={styles.tableCell}>{mapsStats.activeDays}</Text>
+            </View>
+          )}
+          {fallStats && (
+            <View style={styles.tableRow}>
+              <Text style={styles.tableCellLeft}>Fall Migration (Aug–Nov)</Text>
+              <Text style={styles.tableCell}>{formatNumber(fallStats.totalCaptures)}</Text>
+              <Text style={styles.tableCell}>{fallStats.uniqueSpecies}</Text>
+              <Text style={styles.tableCell}>{fallStats.activeDays}</Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={styles.subsectionTitle}>Key Highlights</Text>
+        
+        <View style={styles.highlightBox}>
+          <Text style={styles.highlightText}>
+            • Peak capture day: {analysis.peakMonth} with the highest daily totals{'\n'}
+            • Most abundant species: {analysis.topSpecies[0]?.name} ({formatNumber(analysis.topSpecies[0]?.count)} captures){'\n'}
+            • Species diversity: {analysis.uniqueSpecies} species recorded across all seasons{'\n'}
+            • Return rate: {((analysis.returns / analysis.totalCaptures) * 100).toFixed(1)}% of captures were returning birds
+          </Text>
+        </View>
+
+        <PageFooter pageNum={3} />
+      </Page>
+
+      {/* Spring Migration Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Spring Migration" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Spring Migration (April–May)</Text>
+        
+        {springStats ? (
+          <>
+            <Text style={styles.paragraph}>
+              Spring migration monitoring captured the northward movement of neotropical migrants and 
+              short-distance migrants returning to breeding grounds. The spring season recorded 
+              {formatNumber(springStats.totalCaptures)} captures of {springStats.uniqueSpecies} species 
+              over {springStats.activeDays} monitoring days.
+            </Text>
+
+            <StatsRow stats={[
+              { value: springStats.totalCaptures, label: 'Spring Captures' },
+              { value: springStats.uniqueSpecies, label: 'Species' },
+              { value: springStats.newBands, label: 'New Bands' },
+            ]} />
+
+            <Text style={styles.subsectionTitle}>Top Spring Migrants</Text>
+            
             <View style={styles.table}>
               <View style={styles.tableHeader}>
-                <Text style={styles.tableCell}>Year</Text>
-                <Text style={styles.tableCell}>Days</Text>
-                <Text style={styles.tableCell}>Total</Text>
-                <Text style={styles.tableCell}>Per Day</Text>
-                <Text style={styles.tableCell}>Species</Text>
-                <Text style={styles.tableCell}>Spp/Day</Text>
+                <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+                <Text style={styles.tableHeaderCell}>Count</Text>
+                <Text style={styles.tableHeaderCell}>% Total</Text>
+                <Text style={styles.tableHeaderCell}>New</Text>
+                <Text style={styles.tableHeaderCell}>Recap</Text>
               </View>
-              {data.multiYearData.effort.slice(-10).map((eff: any) => (
-                <View key={eff.year} style={[styles.tableRow, eff.year === data.year ? { backgroundColor: '#ffffcc' } : {}]}>
-                  <Text style={styles.tableCell}>{eff.year}</Text>
+              {springStats.topSpecies.slice(0, 15).map((species: any, idx: number) => (
+                <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.tableCellLeft}>{species.name}</Text>
+                  <Text style={styles.tableCell}>{species.count}</Text>
+                  <Text style={styles.tableCell}>{species.percentage.toFixed(1)}%</Text>
+                  <Text style={styles.tableCell}>{species.new}</Text>
+                  <Text style={styles.tableCell}>{species.recaptures}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <Text style={styles.paragraph}>No spring migration data available for {data.year}.</Text>
+        )}
+
+        <PageFooter pageNum={4} />
+      </Page>
+
+      {/* MAPS Season Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="MAPS Program" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>MAPS Breeding Season (June–July)</Text>
+        
+        {mapsStats ? (
+          <>
+            <Text style={styles.paragraph}>
+              The Monitoring Avian Productivity and Survivorship (MAPS) program operates during the breeding 
+              season to assess local breeding bird populations, productivity (young:adult ratios), and 
+              survivorship through standardized mist-netting protocols.
+            </Text>
+
+            <StatsRow stats={[
+              { value: mapsStats.totalCaptures, label: 'MAPS Captures' },
+              { value: mapsStats.uniqueSpecies, label: 'Species' },
+              { value: mapsStats.newBands, label: 'New Bands' },
+            ]} />
+
+            <Text style={styles.subsectionTitle}>Age Distribution (Breeding Season)</Text>
+            
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Age Class</Text>
+                <Text style={styles.tableHeaderCell}>Count</Text>
+                <Text style={styles.tableHeaderCell}>Percentage</Text>
+              </View>
+              {Object.entries(mapsStats.ageDistribution).map(([age, count]: [string, any], idx: number) => (
+                <View key={age} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.tableCellLeft}>{age || 'Unknown'}</Text>
+                  <Text style={styles.tableCell}>{count}</Text>
+                  <Text style={styles.tableCell}>{((count / mapsStats.totalCaptures) * 100).toFixed(1)}%</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={styles.subsectionTitle}>Top Breeding Species</Text>
+            
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+                <Text style={styles.tableHeaderCell}>Count</Text>
+                <Text style={styles.tableHeaderCell}>New</Text>
+                <Text style={styles.tableHeaderCell}>Returns</Text>
+              </View>
+              {mapsStats.topSpecies.slice(0, 12).map((species: any, idx: number) => (
+                <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.tableCellLeft}>{species.name}</Text>
+                  <Text style={styles.tableCell}>{species.count}</Text>
+                  <Text style={styles.tableCell}>{species.new}</Text>
+                  <Text style={styles.tableCell}>{species.returns || 0}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <Text style={styles.paragraph}>No MAPS data available for {data.year}.</Text>
+        )}
+
+        <PageFooter pageNum={5} />
+      </Page>
+
+      {/* Fall Migration Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Fall Migration" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Fall Migration (August–November)</Text>
+        
+        {fallStats ? (
+          <>
+            <Text style={styles.paragraph}>
+              Fall migration monitoring tracked the southward passage of breeding adults and hatching-year 
+              birds. The fall season is typically the busiest period, with larger numbers of young birds 
+              captured as they make their first migratory journey.
+            </Text>
+
+            <StatsRow stats={[
+              { value: fallStats.totalCaptures, label: 'Fall Captures' },
+              { value: fallStats.uniqueSpecies, label: 'Species' },
+              { value: fallStats.newBands, label: 'New Bands' },
+            ]} />
+
+            {chartPaths.monthlyTrendChart && (
+              <View style={styles.chartContainer}>
+                <Image style={styles.chart} src={chartPaths.monthlyTrendChart} />
+                <Text style={styles.chartCaption}>Figure 1. Monthly capture totals for {data.year}</Text>
+              </View>
+            )}
+
+            <Text style={styles.subsectionTitle}>Top Fall Migrants</Text>
+            
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+                <Text style={styles.tableHeaderCell}>Count</Text>
+                <Text style={styles.tableHeaderCell}>% Total</Text>
+                <Text style={styles.tableHeaderCell}>New</Text>
+              </View>
+              {fallStats.topSpecies.slice(0, 12).map((species: any, idx: number) => (
+                <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.tableCellLeft}>{species.name}</Text>
+                  <Text style={styles.tableCell}>{species.count}</Text>
+                  <Text style={styles.tableCell}>{species.percentage.toFixed(1)}%</Text>
+                  <Text style={styles.tableCell}>{species.new}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <Text style={styles.paragraph}>No fall migration data available for {data.year}.</Text>
+        )}
+
+        <PageFooter pageNum={6} />
+      </Page>
+
+      {/* Species Accounts Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Species Accounts" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Notable Species Accounts</Text>
+        
+        <Text style={styles.paragraph}>
+          The following accounts highlight species of particular interest based on capture numbers, 
+          population trends, or conservation significance.
+        </Text>
+
+        {analysis.topSpecies.slice(0, 6).map((species: any, idx: number) => (
+          <View key={idx} style={styles.speciesCard}>
+            <Text style={styles.speciesName}>{species.name}</Text>
+            <View style={styles.speciesStats}>
+              <Text style={styles.speciesStat}>Total: {species.count}</Text>
+              <Text style={styles.speciesStat}>New bands: {species.new}</Text>
+              <Text style={styles.speciesStat}>Recaptures: {species.recaptures}</Text>
+              <Text style={styles.speciesStat}>{species.percentage.toFixed(1)}% of total</Text>
+            </View>
+            <Text style={[styles.paragraph, { marginBottom: 0, fontSize: 9 }]}>
+              {species.name} was {idx === 0 ? 'the most abundant species' : `the #${idx + 1} most captured species`} 
+              {' '}during the {data.year} season, representing {species.percentage.toFixed(1)}% of all captures.
+              {species.recaptures > 0 ? ` The recapture rate of ${((species.recaptures / species.count) * 100).toFixed(1)}% indicates site fidelity during the monitoring period.` : ''}
+            </Text>
+          </View>
+        ))}
+
+        <PageFooter pageNum={7} />
+      </Page>
+
+      {/* Complete Banding Totals Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Banding Totals" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Complete Banding Totals by Species</Text>
+        
+        {chartPaths.speciesChart && (
+          <View style={styles.chartContainer}>
+            <Image style={styles.chart} src={chartPaths.speciesChart} />
+            <Text style={styles.chartCaption}>Figure 2. Top species by capture count in {data.year}</Text>
+          </View>
+        )}
+
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+            <Text style={styles.tableHeaderCell}>Total</Text>
+            <Text style={styles.tableHeaderCell}>New</Text>
+            <Text style={styles.tableHeaderCell}>Recap</Text>
+            <Text style={styles.tableHeaderCell}>Return</Text>
+          </View>
+          {analysis.topSpecies.slice(0, 25).map((species: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={styles.tableCellLeft}>{species.name}</Text>
+              <Text style={styles.tableCellBold}>{species.count}</Text>
+              <Text style={styles.tableCell}>{species.new}</Text>
+              <Text style={styles.tableCell}>{species.recaptures}</Text>
+              <Text style={styles.tableCell}>{species.returns || 0}</Text>
+            </View>
+          ))}
+        </View>
+
+        <PageFooter pageNum={8} />
+      </Page>
+
+      {/* Demographics Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Demographics" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Age and Sex Demographics</Text>
+
+        <View style={styles.twoColumn}>
+          <View style={styles.column}>
+            <Text style={styles.subsectionTitle}>Age Distribution</Text>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Age</Text>
+                <Text style={styles.tableHeaderCell}>Count</Text>
+                <Text style={styles.tableHeaderCell}>%</Text>
+              </View>
+              {Object.entries(analysis.ageDistribution).map(([age, count]: [string, any], idx: number) => (
+                <View key={age} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.tableCellLeft}>{age || 'Unknown'}</Text>
+                  <Text style={styles.tableCell}>{count}</Text>
+                  <Text style={styles.tableCell}>{((count / analysis.totalCaptures) * 100).toFixed(1)}%</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.column}>
+            <Text style={styles.subsectionTitle}>Sex Distribution</Text>
+            {chartPaths.demographicsChart && (
+              <Image style={{ width: '100%', height: 150 }} src={chartPaths.demographicsChart} />
+            )}
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Sex</Text>
+                <Text style={styles.tableHeaderCell}>Count</Text>
+                <Text style={styles.tableHeaderCell}>%</Text>
+              </View>
+              {Object.entries(analysis.sexDistribution).map(([sex, count]: [string, any], idx: number) => (
+                <View key={sex} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.tableCellLeft}>{sex || 'Unknown'}</Text>
+                  <Text style={styles.tableCell}>{count}</Text>
+                  <Text style={styles.tableCell}>{((count / analysis.totalCaptures) * 100).toFixed(1)}%</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.subsectionTitle}>Age Ratios by Species (n≥10)</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+            <Text style={styles.tableHeaderCell}>Young</Text>
+            <Text style={styles.tableHeaderCell}>Adult</Text>
+            <Text style={styles.tableHeaderCell}>Y:A Ratio</Text>
+            <Text style={styles.tableHeaderCell}>n</Text>
+          </View>
+          {analysis.ageRatios?.slice(0, 15).map((ratio: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={styles.tableCellLeft}>{ratio.species}</Text>
+              <Text style={styles.tableCell}>{ratio.young}</Text>
+              <Text style={styles.tableCell}>{ratio.adult}</Text>
+              <Text style={styles.tableCell}>{ratio.ratio}</Text>
+              <Text style={styles.tableCell}>{ratio.total}</Text>
+            </View>
+          ))}
+        </View>
+
+        <PageFooter pageNum={9} />
+      </Page>
+
+      {/* Recaptures and Returns Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Recaptures & Returns" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Recaptures and Returns</Text>
+        
+        <Text style={styles.paragraph}>
+          Recapture data provides valuable information on site fidelity, local movements, and minimum 
+          longevity. Returns represent birds banded in previous years and recaptured in {data.year}.
+        </Text>
+
+        <Text style={styles.subsectionTitle}>Longevity Records</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+            <Text style={styles.tableHeaderCell}>Recaps</Text>
+            <Text style={styles.tableHeaderCell}>Avg Days</Text>
+            <Text style={styles.tableHeaderCell}>Max Years</Text>
+          </View>
+          {analysis.recaptureIntervals?.slice(0, 15).map((interval: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={styles.tableCellLeft}>{interval.species}</Text>
+              <Text style={styles.tableCell}>{interval.count}</Text>
+              <Text style={styles.tableCell}>{interval.avgDays}</Text>
+              <Text style={styles.tableCell}>{interval.maxYears}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.subsectionTitle}>Net Location Efficiency</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'left' }]}>Net</Text>
+            <Text style={styles.tableHeaderCell}>Captures</Text>
+            <Text style={styles.tableHeaderCell}>Species</Text>
+            <Text style={styles.tableHeaderCell}>New</Text>
+            <Text style={styles.tableHeaderCell}>Recap Rate</Text>
+          </View>
+          {analysis.netUsage?.slice(0, 12).map((net: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={[styles.tableCell, { textAlign: 'left' }]}>{net.net}</Text>
+              <Text style={styles.tableCell}>{net.captures}</Text>
+              <Text style={styles.tableCell}>{net.species}</Text>
+              <Text style={styles.tableCell}>{net.newBands}</Text>
+              <Text style={styles.tableCell}>{net.recaptureRate}%</Text>
+            </View>
+          ))}
+        </View>
+
+        <PageFooter pageNum={10} />
+      </Page>
+
+      {/* Multi-Year Trends Page */}
+      {data.multiYearData && (
+        <>
+          <Page size="A4" style={styles.page}>
+            <PageHeader title="Long-term Trends" year={data.year} />
+            
+            <Text style={styles.sectionTitle}>Long-term Population Trends</Text>
+            
+            <Text style={styles.paragraph}>
+              Multi-year data allows assessment of population trends and changes in species composition 
+              over time. The following tables summarize key metrics across recent years of monitoring.
+            </Text>
+
+            <Text style={styles.subsectionTitle}>Annual Summary (Last 10 Years)</Text>
+            
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Year</Text>
+                <Text style={styles.tableHeaderCell}>Total</Text>
+                <Text style={styles.tableHeaderCell}>Species</Text>
+                <Text style={styles.tableHeaderCell}>New</Text>
+                <Text style={styles.tableHeaderCell}>Returns</Text>
+                <Text style={styles.tableHeaderCell}>Y:A</Text>
+              </View>
+              {data.multiYearData.yearlyMetrics?.slice(-10).map((metric: any, idx: number) => (
+                <View 
+                  key={metric.year} 
+                  style={metric.year === data.year ? styles.tableRowHighlight : (idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt)}
+                >
+                  <Text style={styles.tableCellBold}>{metric.year}</Text>
+                  <Text style={styles.tableCell}>{formatNumber(metric.totalCaptures)}</Text>
+                  <Text style={styles.tableCell}>{metric.uniqueSpecies}</Text>
+                  <Text style={styles.tableCell}>{formatNumber(metric.newBands)}</Text>
+                  <Text style={styles.tableCell}>{metric.returns}</Text>
+                  <Text style={styles.tableCell}>{metric.youngToAdultRatio?.toFixed(2) || '-'}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={styles.subsectionTitle}>Capture Effort Analysis</Text>
+            
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Year</Text>
+                <Text style={styles.tableHeaderCell}>Days</Text>
+                <Text style={styles.tableHeaderCell}>Total</Text>
+                <Text style={styles.tableHeaderCell}>Per Day</Text>
+                <Text style={styles.tableHeaderCell}>Spp/Day</Text>
+              </View>
+              {data.multiYearData.effort?.slice(-10).map((eff: any, idx: number) => (
+                <View 
+                  key={eff.year} 
+                  style={eff.year === data.year ? styles.tableRowHighlight : (idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt)}
+                >
+                  <Text style={styles.tableCellBold}>{eff.year}</Text>
                   <Text style={styles.tableCell}>{eff.activeDays}</Text>
-                  <Text style={styles.tableCell}>{eff.totalCaptures}</Text>
+                  <Text style={styles.tableCell}>{formatNumber(eff.totalCaptures)}</Text>
                   <Text style={styles.tableCell}>{eff.capturesPerDay}</Text>
-                  <Text style={styles.tableCell}>{eff.uniqueSpecies}</Text>
                   <Text style={styles.tableCell}>{eff.speciesPerDay}</Text>
                 </View>
               ))}
             </View>
-          </View>
 
-          <View style={styles.section}>
-            <Text style={styles.text}>
-              Capture efficiency metrics help standardize comparisons across years by accounting for sampling effort. 
-              Captures per day reflects both bird abundance and site quality, while species per day indicates diversity 
-              relative to effort. Consistent effort across years improves trend reliability.
+            <PageFooter pageNum={11} />
+          </Page>
+
+          <Page size="A4" style={styles.page}>
+            <PageHeader title="Diversity Trends" year={data.year} />
+            
+            <Text style={styles.sectionTitle}>Species Diversity Analysis</Text>
+            
+            <Text style={styles.paragraph}>
+              Species diversity indices provide quantitative measures of community structure. The Shannon 
+              diversity index (H') accounts for both species richness and evenness, with higher values 
+              indicating more diverse and stable communities.
             </Text>
-          </View>
-        </Page>
 
-        <Page size="A4" style={styles.page}>
-          <Text style={styles.title}>Top Species Population Trends</Text>
+            <Text style={styles.subsectionTitle}>Diversity Indices Over Time</Text>
+            
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Year</Text>
+                <Text style={styles.tableHeaderCell}>Richness</Text>
+                <Text style={styles.tableHeaderCell}>Shannon H'</Text>
+                <Text style={styles.tableHeaderCell}>Evenness</Text>
+                <Text style={styles.tableHeaderCell}>Captures</Text>
+              </View>
+              {data.multiYearData.diversity?.slice(-10).map((div: any, idx: number) => (
+                <View 
+                  key={div.year} 
+                  style={div.year === data.year ? styles.tableRowHighlight : (idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt)}
+                >
+                  <Text style={styles.tableCellBold}>{div.year}</Text>
+                  <Text style={styles.tableCell}>{div.richness}</Text>
+                  <Text style={styles.tableCell}>{div.shannon}</Text>
+                  <Text style={styles.tableCell}>{div.evenness}</Text>
+                  <Text style={styles.tableCell}>{formatNumber(div.totalCaptures)}</Text>
+                </View>
+              ))}
+            </View>
 
-          {data.multiYearData.speciesTrends.topSpecies.slice(0, 5).map((species: string, idx: number) => {
-            const trendData = data.multiYearData.speciesTrends.speciesTrends.find((t: any) => t.species === species);
-            if (!trendData) return null;
+            <Text style={styles.subsectionTitle}>Top Species Trends</Text>
+            
+            {data.multiYearData.speciesTrends?.topSpecies?.slice(0, 3).map((species: string, idx: number) => {
+              const trendData = data.multiYearData.speciesTrends.speciesTrends?.find((t: any) => t.species === species);
+              if (!trendData) return null;
 
-            return (
-              <View key={species} style={styles.section}>
-                <Text style={styles.subtitle}>{idx + 1}. {species}</Text>
-                <View style={styles.table}>
-                  <View style={styles.tableHeader}>
-                    {trendData.yearlyData.slice(-8).map((yd: any) => (
-                      <Text key={yd.year} style={styles.tableCell}>{yd.year}</Text>
-                    ))}
-                  </View>
-                  <View style={styles.tableRow}>
-                    {trendData.yearlyData.slice(-8).map((yd: any) => (
-                      <Text key={`${yd.year}-count`} style={styles.tableCell}>{yd.count}</Text>
-                    ))}
-                  </View>
-                  <View style={styles.tableRow}>
-                    {trendData.yearlyData.slice(-8).map((yd: any) => (
-                      <Text key={`${yd.year}-pct`} style={[styles.tableCell, { fontSize: 9 }]}>{yd.percentage}%</Text>
-                    ))}
+              return (
+                <View key={species} style={{ marginBottom: 10 }}>
+                  <Text style={styles.subsubsectionTitle}>{idx + 1}. {species}</Text>
+                  <View style={styles.table}>
+                    <View style={styles.tableHeader}>
+                      {trendData.yearlyData?.slice(-8).map((yd: any) => (
+                        <Text key={yd.year} style={styles.tableHeaderCell}>{yd.year}</Text>
+                      ))}
+                    </View>
+                    <View style={styles.tableRow}>
+                      {trendData.yearlyData?.slice(-8).map((yd: any) => (
+                        <Text key={`${yd.year}-count`} style={styles.tableCell}>{yd.count}</Text>
+                      ))}
+                    </View>
                   </View>
                 </View>
+              );
+            })}
+
+            <PageFooter pageNum={12} />
+          </Page>
+        </>
+      )}
+
+      {/* Complete Species List Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Species List" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Complete Species List ({data.year})</Text>
+        
+        <Text style={styles.paragraph}>
+          A total of {analysis.uniqueSpecies} species were recorded during the {data.year} monitoring 
+          season. The following table lists all species in order of abundance.
+        </Text>
+
+        <View style={styles.twoColumn}>
+          <View style={styles.column}>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+                <Text style={styles.tableHeaderCell}>n</Text>
               </View>
-            );
-          })}
-
-          <View style={styles.section}>
-            <Text style={styles.text}>
-              Individual species trends reveal population dynamics and potential conservation concerns. 
-              Stable or increasing trends suggest healthy populations, while declining trends may warrant 
-              further investigation into habitat changes, climate effects, or regional population shifts.
-            </Text>
+              {analysis.topSpecies.slice(0, Math.ceil(analysis.topSpecies.length / 2)).map((species: any, idx: number) => (
+                <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={[styles.tableCell, { flex: 3, textAlign: 'left', fontSize: 8 }]}>{species.name}</Text>
+                  <Text style={[styles.tableCell, { fontSize: 8 }]}>{species.count}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </Page>
-      </>
-    )}
 
-    {/* Footer on last page */}
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.title}>Notes and Methodology</Text>
+          <View style={styles.column}>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+                <Text style={styles.tableHeaderCell}>n</Text>
+              </View>
+              {analysis.topSpecies.slice(Math.ceil(analysis.topSpecies.length / 2)).map((species: any, idx: number) => (
+                <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={[styles.tableCell, { flex: 3, textAlign: 'left', fontSize: 8 }]}>{species.name}</Text>
+                  <Text style={[styles.tableCell, { fontSize: 8 }]}>{species.count}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.text}>
-          This report was automatically generated from capture data collected during the {data.year} monitoring
-          season. Data follows MAPS (Monitoring Avian Productivity and Survivorship) protocols established by
-          The Institute for Bird Populations.
-        </Text>
-        <Text style={styles.text}>
-          {'\n'}Bird banding activities were conducted under federal and state permits. All measurements and
-          observations were recorded by trained and certified bird banders.
-        </Text>
-        <Text style={styles.text}>
-          {'\n'}For questions or more information about this report, please contact your local monitoring station.
-        </Text>
-      </View>
+        <PageFooter pageNum={13} />
+      </Page>
 
-      <Text style={styles.footer}>
-        Generated by MBO Database System • {new Date().toLocaleDateString()}
-      </Text>
-    </Page>
-  </Document>
-);
+      {/* Acknowledgements Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Acknowledgements" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Acknowledgements</Text>
+        
+        <Text style={styles.paragraph}>
+          The McGill Bird Observatory's {data.year} banding operations were made possible through the 
+          dedication of our staff, volunteers, and supporters. We extend our sincere gratitude to everyone 
+          who contributed to this season's success.
+        </Text>
+
+        <Text style={styles.subsectionTitle}>Banding Staff</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Bander</Text>
+            <Text style={styles.tableHeaderCell}>Captures</Text>
+            <Text style={styles.tableHeaderCell}>Days</Text>
+            <Text style={styles.tableHeaderCell}>Species</Text>
+          </View>
+          {analysis.banderProductivity?.slice(0, 10).map((bander: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={styles.tableCellLeft}>{bander.bander}</Text>
+              <Text style={styles.tableCell}>{bander.captures}</Text>
+              <Text style={styles.tableCell}>{bander.days}</Text>
+              <Text style={styles.tableCell}>{bander.species}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.subsectionTitle}>About the Observatory</Text>
+        
+        <Text style={styles.paragraph}>
+          The McGill Bird Observatory is a project of The Migration Research Foundation Inc., a registered 
+          charitable organization dedicated to the study and conservation of migratory birds. Located at 
+          the western tip of the Island of Montreal, the observatory has been conducting standardized 
+          migration monitoring since 2004.
+        </Text>
+
+        <View style={styles.highlightBox}>
+          <Text style={styles.highlightText}>
+            McGill Bird Observatory{'\n'}
+            A project of The Migration Research Foundation Inc.{'\n'}
+            PO Box 10005{'\n'}
+            Ste-Anne-de-Bellevue, QC H9X 0A6{'\n'}
+            {'\n'}
+            www.migrationresearch.org{'\n'}
+            Registered Charity: 899163505RR0001
+          </Text>
+        </View>
+
+        <Text style={styles.subsectionTitle}>Permits and Protocols</Text>
+        
+        <Text style={styles.paragraph}>
+          Bird banding activities were conducted under federal and provincial scientific collection permits. 
+          All operations followed standardized protocols established by the Canadian Wildlife Service and 
+          The Institute for Bird Populations (MAPS program).
+        </Text>
+
+        <View style={{ position: 'absolute', bottom: 80, left: 50, right: 50, textAlign: 'center' }}>
+          <Text style={{ fontSize: 10, color: colors.darkGray }}>
+            Report generated: {new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </Text>
+        </View>
+
+        <PageFooter pageNum={14} />
+      </Page>
+    </Document>
+  );
+};
 
 /**
  * Generate an annual report PDF from capture data
- * @param year - The year to generate the report for
- * @param captures - Array of capture records (all years for trend analysis)
- * @param outputPath - Path to save the PDF (default: reports/annual-report-{year}.pdf)
- * @param program - Optional program name to filter by
  */
 export async function generateAnnualReport(
   year: number,
@@ -1002,15 +1223,8 @@ export async function generateAnnualReport(
 
   // Analyze the data
   const analysis = analyzeCaptures(yearCaptures);
-  
-  // Generate explanatory text for each section
-  analysis.executiveSummaryText = generateExecutiveSummary(analysis, year);
-  analysis.speciesAnalysisText = generateSpeciesAnalysis(analysis);
-  analysis.demographicsAnalysisText = generateDemographicsAnalysis(analysis);
-  analysis.temporalAnalysisText = generateTemporalAnalysis(analysis, year);
-  analysis.biometricAnalysisText = generateBiometricAnalysis(analysis);
 
-  // Multi-variable analyses on current-year captures
+  // Add detailed analyses
   analysis.sexRatios = analyzeSexRatiosBySpecies(yearCaptures);
   analysis.ageRatios = analyzeAgeRatiosBySpecies(yearCaptures);
   analysis.morphometrics = analyzeMorphometricCorrelations(yearCaptures);
@@ -1018,8 +1232,6 @@ export async function generateAnnualReport(
   analysis.recaptureIntervals = analyzeRecaptureIntervals(allCaptures, year);
   analysis.netUsage = analyzeNetUsage(yearCaptures);
   analysis.banderProductivity = analyzeBanderProductivity(yearCaptures);
-
-  // New multi-variable data sets
   analysis.speciesAgeSex = analyzeSpeciesByAgeSex(yearCaptures);
   analysis.fatDemographics = analyzeFatScoresByDemographics(yearCaptures);
   analysis.weightPatterns = analyzeWeightPatterns(yearCaptures);
@@ -1031,15 +1243,13 @@ export async function generateAnnualReport(
   analysis.dailyRates = analyzeDailyCaptureRates(yearCaptures);
   analysis.speciesAccumulation = analyzeSpeciesAccumulation(yearCaptures);
   analysis.banderSpecialization = analyzeBanderSpecialization(yearCaptures);
-  
+
   // Multi-year trend analysis
   const multiYearTrends = analyzeMultiYearTrends(allCaptures, year);
   const diversity = analyzeSpeciesDiversity(allCaptures, year);
   const effort = analyzeCaptureEffort(allCaptures, year);
   const speciesTrends = analyzeTopSpeciesTrends(allCaptures, 5);
-  
-  analysis.trendsAnalysisText = generateTrendsAnalysis(multiYearTrends, year);
-  
+
   const multiYearData = {
     yearlyMetrics: multiYearTrends.yearlyMetrics,
     trends: multiYearTrends.trends,
@@ -1047,7 +1257,7 @@ export async function generateAnnualReport(
     effort,
     speciesTrends,
   };
-  
+
   console.log('Data analysis complete');
 
   // Generate charts
@@ -1055,7 +1265,13 @@ export async function generateAnnualReport(
   console.log('Charts generated');
 
   // Create the PDF document
-  const doc = <AnnualReportDocument data={{ year, captures: yearCaptures, program, multiYearData }} analysis={analysis} chartPaths={chartPaths} />;
+  const doc = (
+    <AnnualReportDocument
+      data={{ year, captures: yearCaptures, program, multiYearData }}
+      analysis={analysis}
+      chartPaths={chartPaths}
+    />
+  );
 
   // Generate PDF
   const asPdf = pdf(doc);
