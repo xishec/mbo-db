@@ -102,3 +102,40 @@ Best when you have cell service. Any admin can use their own laptop—connect it
 
 **Q: Can two admins work at the same time if they both have internet?**
 > A: Yes! When everyone is online, multiple people can work at the same time with no issues.
+
+---
+
+## Data Safety & Completeness
+
+### How We Keep Your Data Safe
+
+Your bird banding data is protected through a **dual-storage approach**:
+
+**1. Cloud Storage (Primary)**
+- All data is stored in Firebase (Google's cloud database)
+- Automatically backed up and replicated across multiple data centers
+- Protected by enterprise-grade security
+- Accessible from anywhere with internet
+
+**2. Local Copy (Backup)**
+- Each admin's laptop maintains a complete copy of the database
+- Acts as a backup if cloud access is temporarily unavailable
+- Ensures you can always work, even without internet
+- Data persists on your device until you explicitly clear it
+
+### Why This Matters
+
+With this approach, you get the best of both worlds:
+
+- **Reliability**: If the cloud service has an outage (rare), your local copy keeps you working
+- **Completeness**: Your laptop always has a full, up-to-date copy of all bird records
+- **Peace of mind**: Data exists in multiple places—never just one
+- **Recovery**: If something happens to your laptop, the cloud has everything
+- **Accessibility**: Team members can access the latest data from any device when online
+
+### Data Lifecycle
+
+1. **When online**: Your app automatically syncs with the cloud every few seconds
+2. **When offline**: New entries are stored locally on your laptop
+3. **When reconnecting**: Local changes upload to the cloud, ensuring nothing is lost
+4. **Always**: Both copies stay in sync, giving you redundancy and reliability
