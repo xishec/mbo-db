@@ -51,11 +51,11 @@ We use a **physical USB key** that acts as an "offline permission token":
 - No sensitive data on the key—it's just a permission token
 
 **Benefits of this approach:**
-- ✅ **No internet required** — Works even when completely offline
-- ✅ **Physical enforcement** — Can't have two people offline simultaneously (only one key exists)
-- ✅ **Easy to understand** — "I have the key, I can enter data offline"
-- ✅ **No lock conflicts** — No software synchronization issues
-- ✅ **Transferable** — Hand the key to the next person when your shift ends
+- **No internet required** — Works even when completely offline
+- **Physical enforcement** — Can't have two people offline simultaneously (only one key exists)
+- **Easy to understand** — "I have the key, I can enter data offline"
+- **No lock conflicts** — No software synchronization issues
+- **Transferable** — Hand the key to the next person when your shift ends
 
 ### Why Not Full Offline for Everyone?
 
