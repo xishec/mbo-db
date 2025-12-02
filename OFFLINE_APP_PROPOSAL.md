@@ -34,6 +34,29 @@ We chose a simple sync model to avoid complex conflict resolution:
 - **Our approach:** By limiting offline mode to one admin at a time, we guarantee no conflicts. The offline admin "owns" all new data until they sync.
 - **The trade-off:** Less flexibility, but 100% data integrity. For a small team doing sequential fieldwork, this is usually fine.
 
+### How We Enforce "One Admin Offline at a Time"
+
+We use a **physical USB key** that acts as an "offline permission token":
+
+- **The key stays at the field shelter** — Where you typically work without internet
+- **To work offline** — Plug the USB key into your laptop at the shelter
+- **The app checks** — "Is the offline key present?" If yes → Offline mode enabled
+- **Only one person at a time** — Only one person can be at the shelter working offline
+- **Simple and foolproof** — No complex software locks, no network checks needed
+- **Key stays behind** — Leave the USB key at the shelter when you leave
+
+**What's on the USB key?**
+- A simple verification file (e.g., `mbo-offline-key.json`)
+- The app detects this file and enables offline data entry
+- No sensitive data on the key—it's just a permission token
+
+**Benefits of this approach:**
+- ✅ **No internet required** — Works even when completely offline
+- ✅ **Physical enforcement** — Can't have two people offline simultaneously (only one key exists)
+- ✅ **Easy to understand** — "I have the key, I can enter data offline"
+- ✅ **No lock conflicts** — No software synchronization issues
+- ✅ **Transferable** — Hand the key to the next person when your shift ends
+
 ### Why Not Full Offline for Everyone?
 
 Building robust multi-user offline sync (like Google Docs) requires complex conflict resolution, version tracking, and merge strategies. For our use case—a small team where fieldwork is typically done by one person at a time—the simpler approach is more reliable and much faster to build.
@@ -44,13 +67,20 @@ Building robust multi-user offline sync (like Google Docs) requires complex conf
 
 ### Option 1: Offline Mode (No Cell Service)
 
-Best for locations with no cell coverage. Any admin can use their own laptop.
+Best for locations with no cell coverage. Requires the **offline USB key** (which stays at the field shelter).
 
-1. **Before fieldwork** (with internet): App downloads latest data to your laptop
-2. **During fieldwork** (no internet): Add new bird captures to local storage
-3. **After fieldwork** (with internet): App uploads your new data to the cloud
+1. **Before fieldwork** (with internet at home/office): 
+   - Open app and let it download latest data to your laptop
+2. **At the field shelter** (no internet): 
+   - Plug in the offline USB key (kept at the shelter)
+   - App detects the key and enables offline data entry
+   - Add new bird captures to local storage
+   - Unplug USB key when done (leave it at the shelter for next person)
+3. **After fieldwork** (back online at home/office): 
+   - Open app with internet connection
+   - App uploads your new data to the cloud
 
-**⚠️ Only ONE admin can use offline mode at a time!** If two admins work offline simultaneously, their changes will conflict when syncing.
+**⚠️ Only ONE admin can use offline mode at a time!** The physical USB key stays at the shelter—whoever is at the shelter can work offline.
 
 ### Option 2: Online Mode (Mobile Hotspot)
 
@@ -79,29 +109,40 @@ Best when you have cell service. Any admin can use their own laptop—connect it
 
 | Situation | What to Do |
 |-----------|------------|
-| Going to field (no wifi)? | Open app with internet first, let it sync, then go |
+| Going to field (no wifi)? | Open app with internet first, let it sync, then go to shelter |
+| At the shelter? | Plug in the USB key (kept there), start entering data |
 | Back from field? | Connect to internet, open app, wait for "Synced" |
-| Someone else needs offline access? | Upload YOUR data first, then they can download |
-| Have mobile hotspot? | Use online mode—no syncing worries |
+| Someone else needs offline access? | Sync YOUR data first, they use the key at the shelter |
+| Have mobile hotspot? | Use online mode—no USB key needed |
+| Lost the USB key? | Take a new USB key and upload the verification file |
 
 ---
 
 ## Frequently Asked Questions
 
 **Q: What if I forget to sync after fieldwork?**
-> A: Your data is safe on your laptop! Just sync next time you have internet. BUT make sure no one else goes offline before you upload.
+> A: Your data is safe on your laptop! Just sync next time you have internet. The USB key stays at the shelter, so the next person working there will be able to add new data once you sync.
+
+**Q: What if I lose the USB key?**
+> A: Contact your system admin. They can create a new key with the verification file. Only one key should exist at a time.
+
+**Q: Can I work offline without the USB key?**
+> A: No. The app requires the physical key to enable offline mode. This prevents accidental conflicts.
+
+**Q: Do I need to keep the USB key plugged in the whole time?**
+> A: Yes, while at the shelter entering data. The app periodically checks for the key's presence. Unplug it when you leave—it stays at the shelter.
 
 **Q: Can I see who made changes?**
 > A: Yes! All entries are tagged with who added them and when.
 
 **Q: What if the app crashes in the field?**
-> A: Data is saved after each entry. Reopen the app and continue - nothing is lost.
+> A: Data is saved after each entry. Reopen the app (with USB key still plugged in) and continue - nothing is lost.
 
 **Q: What if I don't have internet for several days?**
-> A: No problem! Data stays on your laptop until you can sync. Just remember: only one admin should be working offline during that time.
+> A: No problem! Data stays on your laptop until you can sync. The USB key stays at the shelter, so coordinate with your team to avoid conflicts.
 
 **Q: Can two admins work at the same time if they both have internet?**
-> A: Yes! When everyone is online, multiple people can work at the same time with no issues.
+> A: Yes! When everyone is online, multiple people can work at the same time with no issues. No USB key needed for online mode.
 
 ---
 
