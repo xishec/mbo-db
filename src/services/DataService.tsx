@@ -24,8 +24,31 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Magic table cache (loaded on mount)
   const [magicTable, setMagicTable] = useState<MagicTable | null>(null);
 
+  // Track online status for re-syncing when coming back online
+  const [, setIsOnline] = useState(navigator.onLine);
+
   // Track current fetch to cancel stale requests
   const fetchIdRef = useRef(0);
+
+  // Listen for online/offline changes and trigger re-sync
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log("🌐 Back online - will sync on next navigation");
+      setIsOnline(true);
+    };
+    const handleOffline = () => {
+      console.log("📴 Gone offline - using cached data");
+      setIsOnline(false);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   // Fetch captures by their IDs from capturesMap
   const fetchCaptures = useCallback(async (captureIds: string[]): Promise<Capture[]> => {
@@ -78,16 +101,42 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const loadAllCaptures = async () => {
       try {
-        // 1. Check IndexedDB cache and timestamp
+        // 1. Always check IndexedDB cache first
         const [cachedCaptures, cachedTimestamp] = await Promise.all([
           getAllCapturesFromIndexedDB(),
           getLastUpdatedFromIndexedDB(),
         ]);
 
-        // 2. Get RTDB timestamp
-        const rtdbTimestampSnapshot = await get(ref(db, "metadata/lastUpdated"));
-        const rtdbTimestamp = rtdbTimestampSnapshot.exists() ? (rtdbTimestampSnapshot.val() as number) : null;
-        initialTimestamp = rtdbTimestamp;
+        // 2. If offline, use cached data immediately
+        if (!navigator.onLine) {
+          console.log("📴 Offline: Loading captures from IndexedDB cache");
+          if (!cancelled) {
+            if (cachedCaptures.length > 0) {
+              setAllCaptures(cachedCaptures);
+            } else {
+              console.warn("⚠️ Offline with no cached data available");
+            }
+            setIsLoadingAllCaptures(false);
+          }
+          return;
+        }
+
+        // 3. Online: Get RTDB timestamp
+        let rtdbTimestamp: number | null = null;
+        try {
+          const rtdbTimestampSnapshot = await get(ref(db, "metadata/lastUpdated"));
+          rtdbTimestamp = rtdbTimestampSnapshot.exists() ? (rtdbTimestampSnapshot.val() as number) : null;
+          initialTimestamp = rtdbTimestamp;
+        } catch (error) {
+          console.warn("⚠️ Could not reach Firebase, using cached data:", error);
+          if (!cancelled) {
+            if (cachedCaptures.length > 0) {
+              setAllCaptures(cachedCaptures);
+            }
+            setIsLoadingAllCaptures(false);
+          }
+          return;
+        }
 
         console.log("📊 Cache check:", {
           cachedCount: cachedCaptures.length,
@@ -166,7 +215,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error("Error loading all captures:", error);
+        // Try to load from cache on any error
         if (!cancelled) {
+          try {
+            const cachedCaptures = await getAllCapturesFromIndexedDB();
+            if (cachedCaptures.length > 0) {
+              console.log("⚠️ Error occurred, falling back to cached captures");
+              setAllCaptures(cachedCaptures);
+            }
+          } catch (cacheError) {
+            console.error("Failed to load from cache:", cacheError);
+          }
           setIsLoadingAllCaptures(false);
         }
       }
@@ -190,16 +249,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const loadMagicTable = async () => {
       try {
-        // 1. Check IndexedDB cache and timestamp
+        // 1. Always check IndexedDB cache first
         const [cachedMagicTable, cachedTimestamp] = await Promise.all([
           getMagicTableFromIndexedDB(),
           getLastUpdatedFromIndexedDB(),
         ]);
 
-        // 2. Get RTDB timestamp
-        const rtdbTimestampSnapshot = await get(ref(db, "metadata/lastUpdated"));
-        const rtdbTimestamp = rtdbTimestampSnapshot.exists() ? (rtdbTimestampSnapshot.val() as number) : null;
-        initialTimestamp = rtdbTimestamp;
+        // 2. If offline, use cached data immediately
+        if (!navigator.onLine) {
+          console.log("📴 Offline: Loading magic table from IndexedDB cache");
+          if (!cancelled && cachedMagicTable) {
+            setMagicTable(cachedMagicTable);
+          }
+          return;
+        }
+
+        // 3. Online: Get RTDB timestamp
+        let rtdbTimestamp: number | null = null;
+        try {
+          const rtdbTimestampSnapshot = await get(ref(db, "metadata/lastUpdated"));
+          rtdbTimestamp = rtdbTimestampSnapshot.exists() ? (rtdbTimestampSnapshot.val() as number) : null;
+          initialTimestamp = rtdbTimestamp;
+        } catch (error) {
+          console.warn("⚠️ Could not reach Firebase for magic table, using cached data:", error);
+          if (!cancelled && cachedMagicTable) {
+            setMagicTable(cachedMagicTable);
+          }
+          return;
+        }
 
         console.log("📊 Magic table cache check:", {
           hasCachedTable: cachedMagicTable !== null,
@@ -280,6 +357,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error("Error loading magic table:", error);
+        // Try to load from cache on any error
+        if (!cancelled) {
+          try {
+            const cachedMagicTable = await getMagicTableFromIndexedDB();
+            if (cachedMagicTable) {
+              console.log("⚠️ Error occurred, falling back to cached magic table");
+              setMagicTable(cachedMagicTable);
+            }
+          } catch (cacheError) {
+            console.error("Failed to load magic table from cache:", cacheError);
+          }
+        }
       }
     };
 
