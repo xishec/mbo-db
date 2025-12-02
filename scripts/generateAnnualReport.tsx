@@ -29,6 +29,9 @@ import {
   analyzeDetailedReturns,
   analyzeNetUsageDetailed,
   analyzeReturnsBySeason,
+  analyzeSpeciesTotalsDetailed,
+  analyzeEffortByMonth,
+  analyzeNotableCaptures,
 } from './reportUtils';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -50,8 +53,8 @@ const colors = {
 const styles = StyleSheet.create({
   // Page styles
   page: {
-    padding: 50,
-    fontSize: 10,
+    padding: 40,
+    fontSize: 8,
     fontFamily: 'Helvetica',
     color: colors.text,
   },
@@ -115,166 +118,166 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontFamily: 'Helvetica-Bold',
     color: colors.primary,
-    marginBottom: 15,
-    paddingBottom: 5,
+    marginBottom: 10,
+    paddingBottom: 3,
     borderBottomWidth: 1,
     borderBottomColor: colors.mediumGray,
   },
   subsectionTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: 'Helvetica-Bold',
     color: colors.secondary,
-    marginTop: 15,
-    marginBottom: 10,
+    marginTop: 10,
+    marginBottom: 6,
   },
   subsubsectionTitle: {
-    fontSize: 12,
+    fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     color: colors.text,
-    marginTop: 10,
-    marginBottom: 8,
+    marginTop: 6,
+    marginBottom: 4,
   },
 
   // Content styles
   paragraph: {
-    fontSize: 10,
-    lineHeight: 1.5,
-    marginBottom: 10,
+    fontSize: 8,
+    lineHeight: 1.4,
+    marginBottom: 6,
     textAlign: 'justify',
   },
   highlightBox: {
     backgroundColor: colors.lightGray,
-    padding: 15,
-    marginVertical: 10,
-    borderLeftWidth: 4,
+    padding: 10,
+    marginVertical: 6,
+    borderLeftWidth: 3,
     borderLeftColor: colors.primary,
   },
   highlightText: {
-    fontSize: 10,
-    lineHeight: 1.4,
+    fontSize: 7,
+    lineHeight: 1.3,
   },
 
   // Statistics boxes
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 15,
+    marginVertical: 8,
   },
   statBox: {
     flex: 1,
     backgroundColor: colors.lightGray,
-    padding: 12,
-    marginHorizontal: 5,
+    padding: 8,
+    marginHorizontal: 3,
     alignItems: 'center',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 16,
     fontFamily: 'Helvetica-Bold',
     color: colors.primary,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: 7,
     color: colors.darkGray,
-    marginTop: 4,
+    marginTop: 2,
     textAlign: 'center',
   },
 
   // Tables
   table: {
-    marginVertical: 10,
+    marginVertical: 6,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
   },
   tableHeaderCell: {
     color: colors.white,
-    fontSize: 9,
+    fontSize: 7,
     fontFamily: 'Helvetica-Bold',
     flex: 1,
     textAlign: 'center',
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: colors.mediumGray,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 2,
   },
   tableRowAlt: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: colors.mediumGray,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 2,
     backgroundColor: colors.lightGray,
   },
   tableRowHighlight: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: colors.mediumGray,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 2,
     backgroundColor: colors.highlight,
   },
   tableCell: {
     flex: 1,
-    fontSize: 9,
+    fontSize: 7,
     textAlign: 'center',
   },
   tableCellLeft: {
     flex: 2,
-    fontSize: 9,
+    fontSize: 7,
     textAlign: 'left',
   },
   tableCellBold: {
     flex: 1,
-    fontSize: 9,
+    fontSize: 7,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
   },
 
   // Charts
   chartContainer: {
-    marginVertical: 15,
+    marginVertical: 8,
     alignItems: 'center',
   },
   chart: {
     width: '100%',
-    height: 220,
+    height: 160,
   },
   chartCaption: {
-    fontSize: 9,
+    fontSize: 7,
     color: colors.darkGray,
     textAlign: 'center',
-    marginTop: 5,
+    marginTop: 3,
     fontStyle: 'italic',
   },
 
   // Footer
   footer: {
     position: 'absolute',
-    bottom: 30,
-    left: 50,
-    right: 50,
+    bottom: 20,
+    left: 40,
+    right: 40,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     borderTopColor: colors.mediumGray,
-    paddingTop: 10,
+    paddingTop: 6,
   },
   footerText: {
-    fontSize: 8,
+    fontSize: 6,
     color: colors.darkGray,
   },
   pageNumber: {
-    fontSize: 8,
+    fontSize: 6,
     color: colors.darkGray,
   },
 
@@ -289,48 +292,74 @@ const styles = StyleSheet.create({
 
   // Species account cards
   speciesCard: {
-    marginBottom: 15,
-    padding: 10,
+    marginBottom: 8,
+    padding: 6,
     backgroundColor: colors.lightGray,
-    borderRadius: 4,
+    borderRadius: 3,
   },
   speciesName: {
-    fontSize: 12,
+    fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     color: colors.primary,
-    marginBottom: 5,
+    marginBottom: 3,
   },
   speciesStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 5,
+    marginBottom: 3,
   },
   speciesStat: {
-    fontSize: 9,
+    fontSize: 7,
   },
 
   // TOC styles
   tocEntry: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
-    borderBottomWidth: 1,
+    paddingVertical: 2,
+    borderBottomWidth: 0.5,
     borderBottomColor: colors.lightGray,
     borderBottomStyle: 'dotted',
   },
   tocTitle: {
-    fontSize: 11,
+    fontSize: 8,
   },
   tocPage: {
-    fontSize: 11,
+    fontSize: 8,
     color: colors.darkGray,
   },
   tocSection: {
-    marginTop: 10,
-    marginBottom: 5,
-    fontSize: 12,
+    marginTop: 6,
+    marginBottom: 3,
+    fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     color: colors.primary,
+  },
+  // Table note style
+  tableNote: {
+    fontSize: 6,
+    color: colors.darkGray,
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  // Compact table styles
+  tableHeaderSmall: {
+    flexDirection: 'row',
+    backgroundColor: colors.primary,
+    paddingVertical: 3,
+    paddingHorizontal: 1,
+  },
+  tableHeaderCellSmall: {
+    color: colors.white,
+    fontSize: 6,
+    fontFamily: 'Helvetica-Bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  tableCellSmall: {
+    flex: 1,
+    fontSize: 6,
+    textAlign: 'center',
   },
 });
 
@@ -797,40 +826,108 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
         <PageFooter pageNum={7} />
       </Page>
 
-      {/* Complete Banding Totals Page */}
+      {/* Complete Banding Totals Page - Full species breakdown */}
       <Page size="A4" style={styles.page}>
         <PageHeader title="Banding Totals" year={data.year} />
         
         <Text style={styles.sectionTitle}>Complete Banding Totals by Species</Text>
         
-        {chartPaths.speciesChart && (
-          <View style={styles.chartContainer}>
-            <Image style={styles.chart} src={chartPaths.speciesChart} />
-            <Text style={styles.chartCaption}>Figure 2. Top species by capture count in {data.year}</Text>
-          </View>
-        )}
+        <Text style={styles.paragraph}>
+          Complete capture totals for all species banded during the {data.year} season, including 
+          breakdown by capture type and demographics.
+        </Text>
 
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
             <Text style={styles.tableHeaderCell}>Total</Text>
-            <Text style={styles.tableHeaderCell}>New</Text>
-            <Text style={styles.tableHeaderCell}>Recap</Text>
-            <Text style={styles.tableHeaderCell}>Return</Text>
+            <Text style={styles.tableHeaderCell}>Banded</Text>
+            <Text style={styles.tableHeaderCell}>Returns</Text>
+            <Text style={styles.tableHeaderCell}>Repeats</Text>
+            <Text style={styles.tableHeaderCell}>M</Text>
+            <Text style={styles.tableHeaderCell}>F</Text>
+            <Text style={styles.tableHeaderCell}>U</Text>
+            <Text style={styles.tableHeaderCell}>HY</Text>
+            <Text style={styles.tableHeaderCell}>AHY+</Text>
           </View>
-          {analysis.topSpecies.slice(0, 25).map((species: any, idx: number) => (
+          {analysis.speciesTotals?.slice(0, 35).map((species: any, idx: number) => (
             <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-              <Text style={styles.tableCellLeft}>{species.name}</Text>
-              <Text style={styles.tableCellBold}>{species.count}</Text>
-              <Text style={styles.tableCell}>{species.new}</Text>
-              <Text style={styles.tableCell}>{species.recaptures}</Text>
-              <Text style={styles.tableCell}>{species.returns || 0}</Text>
+              <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 6 }]}>{species.species}</Text>
+              <Text style={[styles.tableCellBold, { fontSize: 6 }]}>{species.total}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.banded}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.returns}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.repeats}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.male}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.female}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.unknown}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.hy}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.ahy}</Text>
             </View>
           ))}
         </View>
 
+        <Text style={styles.tableNote}>
+          M = Male, F = Female, U = Unknown sex, HY = Hatch Year, AHY+ = After Hatch Year and older
+        </Text>
+
         <PageFooter pageNum={8} />
       </Page>
+
+      {/* Additional Species Totals (Continued) */}
+      {analysis.speciesTotals && analysis.speciesTotals.length > 35 && (
+        <Page size="A4" style={styles.page}>
+          <PageHeader title="Banding Totals (cont.)" year={data.year} />
+          
+          <Text style={styles.sectionTitle}>Complete Banding Totals by Species (continued)</Text>
+
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
+              <Text style={styles.tableHeaderCell}>Total</Text>
+              <Text style={styles.tableHeaderCell}>Banded</Text>
+              <Text style={styles.tableHeaderCell}>Returns</Text>
+              <Text style={styles.tableHeaderCell}>Repeats</Text>
+              <Text style={styles.tableHeaderCell}>M</Text>
+              <Text style={styles.tableHeaderCell}>F</Text>
+              <Text style={styles.tableHeaderCell}>U</Text>
+              <Text style={styles.tableHeaderCell}>HY</Text>
+              <Text style={styles.tableHeaderCell}>AHY+</Text>
+            </View>
+            {analysis.speciesTotals?.slice(35, 70).map((species: any, idx: number) => (
+              <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 6 }]}>{species.species}</Text>
+                <Text style={[styles.tableCellBold, { fontSize: 6 }]}>{species.total}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.banded}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.returns}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.repeats}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.male}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.female}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.unknown}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.hy}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6 }]}>{species.ahy}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Totals Row */}
+          <View style={[styles.table, { marginTop: 6 }]}>
+            <View style={styles.tableRowHighlight}>
+              <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>TOTALS</Text>
+              <Text style={[styles.tableCellBold, { fontSize: 6 }]}>{analysis.totalCaptures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.newBands}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.returns}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.recaptures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.sexDistribution?.['M'] || 0}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.sexDistribution?.['F'] || 0}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.sexDistribution?.['U'] || 0}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>-</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>-</Text>
+            </View>
+          </View>
+
+          <PageFooter pageNum={9} />
+        </Page>
+      )}
 
       {/* Demographics Page */}
       <Page size="A4" style={styles.page}>
@@ -860,7 +957,7 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
           <View style={styles.column}>
             <Text style={styles.subsectionTitle}>Sex Distribution</Text>
             {chartPaths.demographicsChart && (
-              <Image style={{ width: '100%', height: 150 }} src={chartPaths.demographicsChart} />
+              <Image style={{ width: '100%', height: 100 }} src={chartPaths.demographicsChart} />
             )}
             <View style={styles.table}>
               <View style={styles.tableHeader}>
@@ -883,24 +980,93 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
         
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
-            <Text style={styles.tableHeaderCell}>Young</Text>
-            <Text style={styles.tableHeaderCell}>Adult</Text>
-            <Text style={styles.tableHeaderCell}>Y:A Ratio</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 2.5, textAlign: 'left' }]}>Species</Text>
+            <Text style={styles.tableHeaderCell}>HY</Text>
+            <Text style={styles.tableHeaderCell}>AHY+</Text>
+            <Text style={styles.tableHeaderCell}>Y:A</Text>
             <Text style={styles.tableHeaderCell}>n</Text>
           </View>
-          {analysis.ageRatios?.slice(0, 15).map((ratio: any, idx: number) => (
+          {analysis.ageRatios?.slice(0, 12).map((ratio: any, idx: number) => (
             <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-              <Text style={styles.tableCellLeft}>{ratio.species}</Text>
-              <Text style={styles.tableCell}>{ratio.young}</Text>
-              <Text style={styles.tableCell}>{ratio.adult}</Text>
-              <Text style={styles.tableCell}>{ratio.ratio}</Text>
-              <Text style={styles.tableCell}>{ratio.total}</Text>
+              <Text style={[styles.tableCell, { flex: 2.5, textAlign: 'left', fontSize: 6 }]}>{ratio.species}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.young}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.adult}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.ratio}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.total}</Text>
             </View>
           ))}
         </View>
 
         <PageFooter pageNum={9} />
+      </Page>
+
+      {/* Monthly Effort Summary Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Effort Summary" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Monthly Effort and Capture Summary</Text>
+        
+        <Text style={styles.paragraph}>
+          Summary of banding effort and captures by month. Net-hours are estimated based on active 
+          days and standard net operation (12 nets × 6 hours/day).
+        </Text>
+
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 0.8, textAlign: 'left' }]}>Month</Text>
+            <Text style={styles.tableHeaderCell}>Days</Text>
+            <Text style={styles.tableHeaderCell}>Net-Hours</Text>
+            <Text style={styles.tableHeaderCell}>Total Cap</Text>
+            <Text style={styles.tableHeaderCell}>Banded</Text>
+            <Text style={styles.tableHeaderCell}>Recaps</Text>
+            <Text style={styles.tableHeaderCell}>Species</Text>
+            <Text style={styles.tableHeaderCell}>B/100h</Text>
+          </View>
+          {analysis.effortByMonth?.map((m: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={[styles.tableCell, { flex: 0.8, textAlign: 'left', fontSize: 6 }]}>{m.month}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.days}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.netHours}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.captures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.newBands}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.recaps}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.species}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.capturesPerHour}</Text>
+            </View>
+          ))}
+        </View>
+
+        {chartPaths.monthlyTrendChart && (
+          <View style={styles.chartContainer}>
+            <Image style={styles.chart} src={chartPaths.monthlyTrendChart} />
+            <Text style={styles.chartCaption}>Figure 1. Monthly capture totals for {data.year}</Text>
+          </View>
+        )}
+
+        <Text style={styles.subsectionTitle}>Sex Ratios by Species (n≥10)</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
+            <Text style={styles.tableHeaderCell}>Male</Text>
+            <Text style={styles.tableHeaderCell}>Female</Text>
+            <Text style={styles.tableHeaderCell}>Unknown</Text>
+            <Text style={styles.tableHeaderCell}>M:F</Text>
+            <Text style={styles.tableHeaderCell}>n</Text>
+          </View>
+          {analysis.sexRatios?.slice(0, 10).map((ratio: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 6 }]}>{ratio.species}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.male}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.female}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.unknown}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.ratio}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{ratio.total}</Text>
+            </View>
+          ))}
+        </View>
+
+        <PageFooter pageNum={10} />
       </Page>
 
       {/* Recaptures and Returns Page */}
@@ -918,17 +1084,21 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
         
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, { flex: 3, textAlign: 'left' }]}>Species</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 2.5, textAlign: 'left' }]}>Species</Text>
             <Text style={styles.tableHeaderCell}>Recaps</Text>
+            <Text style={styles.tableHeaderCell}>Min Days</Text>
             <Text style={styles.tableHeaderCell}>Avg Days</Text>
+            <Text style={styles.tableHeaderCell}>Max Days</Text>
             <Text style={styles.tableHeaderCell}>Max Years</Text>
           </View>
-          {analysis.recaptureIntervals?.slice(0, 15).map((interval: any, idx: number) => (
+          {analysis.recaptureIntervals?.slice(0, 12).map((interval: any, idx: number) => (
             <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-              <Text style={styles.tableCellLeft}>{interval.species}</Text>
-              <Text style={styles.tableCell}>{interval.count}</Text>
-              <Text style={styles.tableCell}>{interval.avgDays}</Text>
-              <Text style={styles.tableCell}>{interval.maxYears}</Text>
+              <Text style={[styles.tableCell, { flex: 2.5, textAlign: 'left', fontSize: 6 }]}>{interval.species}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{interval.count}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{interval.minDays}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{interval.avgDays}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{interval.maxDays}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{interval.maxYears}</Text>
             </View>
           ))}
         </View>
@@ -937,27 +1107,29 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
         
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'left' }]}>Net</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 0.8, textAlign: 'left' }]}>Net</Text>
             <Text style={styles.tableHeaderCell}>Captures</Text>
             <Text style={styles.tableHeaderCell}>Species</Text>
             <Text style={styles.tableHeaderCell}>New</Text>
-            <Text style={styles.tableHeaderCell}>Recap Rate</Text>
+            <Text style={styles.tableHeaderCell}>Recaps</Text>
+            <Text style={styles.tableHeaderCell}>Recap %</Text>
           </View>
-          {analysis.netUsage?.slice(0, 12).map((net: any, idx: number) => (
+          {analysis.netUsage?.slice(0, 10).map((net: any, idx: number) => (
             <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-              <Text style={[styles.tableCell, { textAlign: 'left' }]}>{net.net}</Text>
-              <Text style={styles.tableCell}>{net.captures}</Text>
-              <Text style={styles.tableCell}>{net.species}</Text>
-              <Text style={styles.tableCell}>{net.newBands}</Text>
-              <Text style={styles.tableCell}>{net.recaptureRate}%</Text>
+              <Text style={[styles.tableCell, { flex: 0.8, textAlign: 'left', fontSize: 6 }]}>{net.net}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{net.captures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{net.species}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{net.newBands}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{net.recaptures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{net.recaptureRate}%</Text>
             </View>
           ))}
         </View>
 
-        <PageFooter pageNum={10} />
+        <PageFooter pageNum={11} />
       </Page>
 
-      {/* Detailed Returns by Season */}
+      {/* Detailed Returns by Season - MBO Table 6.5 format */}
       {analysis.returnsBySeason && Object.keys(analysis.returnsBySeason).length > 0 && (
         <>
           {/* Spring Migration Returns */}
@@ -969,37 +1141,38 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
               
               <Text style={styles.paragraph}>
                 List of returns captured during the {data.year} spring migration monitoring, 
-                sorted by time elapsed since original banding. Returns are birds banded in previous years 
-                and recaptured during the current season.
+                sorted by time elapsed since original banding.
               </Text>
 
               <View style={styles.table}>
                 <View style={styles.tableHeader}>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'left' }]}>Band #</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Banding Date</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Return Date</Text>
-                  <Text style={styles.tableHeaderCell}>Time Elapsed</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.2, textAlign: 'left' }]}>Band #</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'left' }]}>Species</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.7 }]}>Age/Sex {data.year}</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.7 }]}>Age/Sex Band</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.9 }]}>Banding</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.9 }]}>Prev. Cap</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.6 }]}>{data.year}</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Time Elapsed</Text>
                 </View>
-                {analysis.returnsBySeason['Spring Migration'].slice(0, 25).map((ret: any, idx: number) => (
+                {analysis.returnsBySeason['Spring Migration'].slice(0, 35).map((ret: any, idx: number) => (
                   <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                    <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'left', fontSize: 8 }]}>{ret.bandId}</Text>
-                    <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 8 }]}>{ret.species}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.bandingDate}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.returnDate}</Text>
-                    <Text style={[styles.tableCell, { fontSize: 7 }]}>{ret.timeElapsedText}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.2, textAlign: 'left', fontSize: 6 }]}>{ret.bandId}</Text>
+                    <Text style={[styles.tableCell, { flex: 1, textAlign: 'left', fontSize: 6 }]}>{ret.species}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.7, fontSize: 6 }]}>{ret.ageSexNow}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.7, fontSize: 6 }]}>{ret.ageSexBanding}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.9, fontSize: 6 }]}>{ret.bandingDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.9, fontSize: 6 }]}>{ret.previousCapture}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.6, fontSize: 6 }]}>{ret.returnDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.2, fontSize: 5 }]}>{ret.yearsElapsed > 0 ? `${ret.yearsElapsed}y` : ''}{ret.monthsElapsed > 0 ? ` ${ret.monthsElapsed}m` : ''}{ret.daysElapsed > 0 ? ` ${ret.daysElapsed}d` : ''}</Text>
                   </View>
                 ))}
               </View>
 
-              <View style={{ marginTop: 15 }}>
-                <Text style={styles.paragraph}>
-                  Total spring returns: {analysis.returnsBySeason['Spring Migration'].length} birds
-                  {analysis.returnsBySeason['Spring Migration'].length > 0 && (
-                    `. Longest return: ${analysis.returnsBySeason['Spring Migration'][0]?.timeElapsedText}`
-                  )}
-                </Text>
-              </View>
+              <Text style={styles.tableNote}>
+                Total spring returns: {analysis.returnsBySeason['Spring Migration'].length} birds. 
+                Longest return: {analysis.returnsBySeason['Spring Migration'][0]?.timeElapsedText || 'N/A'}
+              </Text>
 
               <PageFooter pageNum={11} />
             </Page>
@@ -1013,37 +1186,38 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
               <Text style={styles.sectionTitle}>Returns – MAPS/Breeding Season</Text>
               
               <Text style={styles.paragraph}>
-                List of returns captured during the {data.year} MAPS (Monitoring Avian Productivity 
-                and Survivorship) breeding season, sorted by time elapsed since original banding.
+                List of returns captured during the {data.year} MAPS breeding season, sorted by time elapsed.
               </Text>
 
               <View style={styles.table}>
                 <View style={styles.tableHeader}>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'left' }]}>Band #</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Banding Date</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Return Date</Text>
-                  <Text style={styles.tableHeaderCell}>Time Elapsed</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.2, textAlign: 'left' }]}>Band #</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'left' }]}>Species</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.7 }]}>Age/Sex {data.year}</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.7 }]}>Age/Sex Band</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.9 }]}>Banding</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.9 }]}>Prev. Cap</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.6 }]}>{data.year}</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Time Elapsed</Text>
                 </View>
-                {analysis.returnsBySeason['MAPS/Breeding'].slice(0, 25).map((ret: any, idx: number) => (
+                {analysis.returnsBySeason['MAPS/Breeding'].slice(0, 35).map((ret: any, idx: number) => (
                   <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                    <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'left', fontSize: 8 }]}>{ret.bandId}</Text>
-                    <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 8 }]}>{ret.species}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.bandingDate}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.returnDate}</Text>
-                    <Text style={[styles.tableCell, { fontSize: 7 }]}>{ret.timeElapsedText}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.2, textAlign: 'left', fontSize: 6 }]}>{ret.bandId}</Text>
+                    <Text style={[styles.tableCell, { flex: 1, textAlign: 'left', fontSize: 6 }]}>{ret.species}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.7, fontSize: 6 }]}>{ret.ageSexNow}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.7, fontSize: 6 }]}>{ret.ageSexBanding}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.9, fontSize: 6 }]}>{ret.bandingDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.9, fontSize: 6 }]}>{ret.previousCapture}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.6, fontSize: 6 }]}>{ret.returnDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.2, fontSize: 5 }]}>{ret.yearsElapsed > 0 ? `${ret.yearsElapsed}y` : ''}{ret.monthsElapsed > 0 ? ` ${ret.monthsElapsed}m` : ''}{ret.daysElapsed > 0 ? ` ${ret.daysElapsed}d` : ''}</Text>
                   </View>
                 ))}
               </View>
 
-              <View style={{ marginTop: 15 }}>
-                <Text style={styles.paragraph}>
-                  Total MAPS returns: {analysis.returnsBySeason['MAPS/Breeding'].length} birds
-                  {analysis.returnsBySeason['MAPS/Breeding'].length > 0 && (
-                    `. Longest return: ${analysis.returnsBySeason['MAPS/Breeding'][0]?.timeElapsedText}`
-                  )}
-                </Text>
-              </View>
+              <Text style={styles.tableNote}>
+                Total MAPS returns: {analysis.returnsBySeason['MAPS/Breeding'].length} birds. 
+                Longest return: {analysis.returnsBySeason['MAPS/Breeding'][0]?.timeElapsedText || 'N/A'}
+              </Text>
 
               <PageFooter pageNum={12} />
             </Page>
@@ -1057,37 +1231,38 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
               <Text style={styles.sectionTitle}>Returns – Fall Migration</Text>
               
               <Text style={styles.paragraph}>
-                List of returns captured during the {data.year} fall migration monitoring, 
-                sorted by time elapsed since original banding.
+                List of returns captured during the {data.year} fall migration monitoring, sorted by time elapsed.
               </Text>
 
               <View style={styles.table}>
                 <View style={styles.tableHeader}>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'left' }]}>Band #</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Banding Date</Text>
-                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Return Date</Text>
-                  <Text style={styles.tableHeaderCell}>Time Elapsed</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.2, textAlign: 'left' }]}>Band #</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'left' }]}>Species</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.7 }]}>Age/Sex {data.year}</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.7 }]}>Age/Sex Band</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.9 }]}>Banding</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.9 }]}>Prev. Cap</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.6 }]}>{data.year}</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Time Elapsed</Text>
                 </View>
-                {analysis.returnsBySeason['Fall Migration'].slice(0, 25).map((ret: any, idx: number) => (
+                {analysis.returnsBySeason['Fall Migration'].slice(0, 35).map((ret: any, idx: number) => (
                   <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                    <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'left', fontSize: 8 }]}>{ret.bandId}</Text>
-                    <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 8 }]}>{ret.species}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.bandingDate}</Text>
-                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.returnDate}</Text>
-                    <Text style={[styles.tableCell, { fontSize: 7 }]}>{ret.timeElapsedText}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.2, textAlign: 'left', fontSize: 6 }]}>{ret.bandId}</Text>
+                    <Text style={[styles.tableCell, { flex: 1, textAlign: 'left', fontSize: 6 }]}>{ret.species}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.7, fontSize: 6 }]}>{ret.ageSexNow}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.7, fontSize: 6 }]}>{ret.ageSexBanding}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.9, fontSize: 6 }]}>{ret.bandingDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.9, fontSize: 6 }]}>{ret.previousCapture}</Text>
+                    <Text style={[styles.tableCell, { flex: 0.6, fontSize: 6 }]}>{ret.returnDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.2, fontSize: 5 }]}>{ret.yearsElapsed > 0 ? `${ret.yearsElapsed}y` : ''}{ret.monthsElapsed > 0 ? ` ${ret.monthsElapsed}m` : ''}{ret.daysElapsed > 0 ? ` ${ret.daysElapsed}d` : ''}</Text>
                   </View>
                 ))}
               </View>
 
-              <View style={{ marginTop: 15 }}>
-                <Text style={styles.paragraph}>
-                  Total fall returns: {analysis.returnsBySeason['Fall Migration'].length} birds
-                  {analysis.returnsBySeason['Fall Migration'].length > 0 && (
-                    `. Longest return: ${analysis.returnsBySeason['Fall Migration'][0]?.timeElapsedText}`
-                  )}
-                </Text>
-              </View>
+              <Text style={styles.tableNote}>
+                Total fall returns: {analysis.returnsBySeason['Fall Migration'].length} birds. 
+                Longest return: {analysis.returnsBySeason['Fall Migration'][0]?.timeElapsedText || 'N/A'}
+              </Text>
 
               <PageFooter pageNum={13} />
             </Page>
@@ -1095,7 +1270,7 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
         </>
       )}
 
-      {/* Net Usage and Capture Rates */}
+      {/* Net Usage and Capture Rates - MBO Table 4.7 format */}
       {analysis.netUsageDetailed && (
         <Page size="A4" style={styles.page}>
           <PageHeader title="Net Usage" year={data.year} />
@@ -1103,52 +1278,141 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
           <Text style={styles.sectionTitle}>Net Usage and Capture Rates</Text>
           
           <Text style={styles.paragraph}>
-            Analysis of net efficiency and capture rates. This data helps optimize net placement 
-            and understand habitat use patterns. Capture rates are expressed per 100 net-hours.
+            Analysis of net efficiency and capture rates by net location. Capture rates are expressed 
+            as birds per 100 net-hours. Shaded rows indicate subtotals for grouped net locations.
           </Text>
 
           <View style={styles.table}>
             <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderCell, { flex: 0.8, textAlign: 'left' }]}>Net</Text>
-              <Text style={styles.tableHeaderCell}>Hrs Open</Text>
-              <Text style={styles.tableHeaderCell}>New</Text>
-              <Text style={styles.tableHeaderCell}>Ret/Rep</Text>
-              <Text style={styles.tableHeaderCell}>Total</Text>
-              <Text style={styles.tableHeaderCell}>B/100h (New)</Text>
-              <Text style={styles.tableHeaderCell}>B/100h (Tot)</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 0.6, textAlign: 'left' }]}>Net</Text>
+              <Text style={styles.tableHeaderCell}>Hours Open</Text>
+              <Text style={styles.tableHeaderCell}>New Captures</Text>
+              <Text style={styles.tableHeaderCell}>Returns + Repeats</Text>
+              <Text style={styles.tableHeaderCell}>Total Captures</Text>
+              <Text style={styles.tableHeaderCell}>Birds/100h New</Text>
+              <Text style={styles.tableHeaderCell}>Birds/100h Total</Text>
             </View>
-            {analysis.netUsageDetailed.nets?.slice(0, 20).map((net: any, idx: number) => (
+            {analysis.netUsageDetailed.nets?.map((net: any, idx: number) => (
               <View key={idx} style={net.isSubtotal ? styles.tableRowHighlight : (idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt)}>
-                <Text style={[styles.tableCell, { flex: 0.8, textAlign: 'left', fontSize: 8, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.net}</Text>
-                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.hoursOpen}</Text>
-                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.newCaptures}</Text>
-                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.returnsRepeats}</Text>
-                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.totalCaptures}</Text>
-                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.birdsPerHourNew}</Text>
-                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.birdsPerHourTotal}</Text>
+                <Text style={[styles.tableCell, { flex: 0.6, textAlign: 'left', fontSize: 6, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.net}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.hoursOpen}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.newCaptures}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.returnsRepeats}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.totalCaptures}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.birdsPerHourNew}</Text>
+                <Text style={[styles.tableCell, { fontSize: 6, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.birdsPerHourTotal}</Text>
               </View>
             ))}
             
             {/* Grand Total */}
             <View style={styles.tableRowHighlight}>
-              <Text style={[styles.tableCell, { flex: 0.8, textAlign: 'left', fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.net}</Text>
-              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.hoursOpen}</Text>
-              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.newCaptures}</Text>
-              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.returnsRepeats}</Text>
-              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.totalCaptures}</Text>
-              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.birdsPerHourNew}</Text>
-              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.birdsPerHourTotal}</Text>
+              <Text style={[styles.tableCell, { flex: 0.6, textAlign: 'left', fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.net}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.hoursOpen}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.newCaptures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.returnsRepeats}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.totalCaptures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.birdsPerHourNew}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.birdsPerHourTotal}</Text>
             </View>
           </View>
 
-          <Text style={[styles.paragraph, { marginTop: 15, fontSize: 9, fontStyle: 'italic' }]}>
-            Note: "B/100h" = Birds per 100 net-hours. "Ret/Rep" = Returns and Repeats combined.
-            Net hours estimated at 6 hours per active day.
+          <Text style={styles.tableNote}>
+            ¹ – Total captures include new captures, returns, repeats, and foreign recaptures.
+            Net hours estimated at 6 hours per active day per net.
           </Text>
 
           <PageFooter pageNum={14} />
         </Page>
       )}
+
+      {/* Biometrics and Morphometrics Page */}
+      <Page size="A4" style={styles.page}>
+        <PageHeader title="Biometrics" year={data.year} />
+        
+        <Text style={styles.sectionTitle}>Morphometric Measurements</Text>
+        
+        <Text style={styles.paragraph}>
+          Average weight and wing chord measurements for species with adequate sample sizes (n≥10). 
+          Standard deviation (SD) indicates variation within each species.
+        </Text>
+
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
+            <Text style={styles.tableHeaderCell}>Avg Wt (g)</Text>
+            <Text style={styles.tableHeaderCell}>Wt SD</Text>
+            <Text style={styles.tableHeaderCell}>Wt Range</Text>
+            <Text style={styles.tableHeaderCell}>Avg Wing</Text>
+            <Text style={styles.tableHeaderCell}>Wing SD</Text>
+            <Text style={styles.tableHeaderCell}>Wing Range</Text>
+            <Text style={styles.tableHeaderCell}>n</Text>
+          </View>
+          {analysis.morphometrics?.slice(0, 20).map((m: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 6 }]}>{m.species}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.avgWeight}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.weightSD}</Text>
+              <Text style={[styles.tableCell, { fontSize: 5 }]}>{m.weightRange}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.avgWing}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.wingSD}</Text>
+              <Text style={[styles.tableCell, { fontSize: 5 }]}>{m.wingRange}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{m.count}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.subsectionTitle}>Weight by Age and Sex (n≥20)</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
+            <Text style={styles.tableHeaderCell}>Male</Text>
+            <Text style={styles.tableHeaderCell}>Female</Text>
+            <Text style={styles.tableHeaderCell}>HY</Text>
+            <Text style={styles.tableHeaderCell}>AHY+</Text>
+            <Text style={styles.tableHeaderCell}>n</Text>
+          </View>
+          {analysis.weightPatterns?.slice(0, 12).map((w: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 6 }]}>{w.species}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{w.male}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{w.female}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{w.young}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{w.adult}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{w.n}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.subsectionTitle}>Body Condition Index (Weight/Wing)</Text>
+        
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
+            <Text style={styles.tableHeaderCell}>Avg BCI</Text>
+            <Text style={styles.tableHeaderCell}>CV (%)</Text>
+            <Text style={styles.tableHeaderCell}>Avg Wt</Text>
+            <Text style={styles.tableHeaderCell}>Avg Wing</Text>
+            <Text style={styles.tableHeaderCell}>n</Text>
+          </View>
+          {analysis.bodyCondition?.slice(0, 10).map((b: any, idx: number) => (
+            <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+              <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 6 }]}>{b.species}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{b.avgRatio}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{b.cv}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{b.avgWeight}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{b.avgWing}</Text>
+              <Text style={[styles.tableCell, { fontSize: 6 }]}>{b.n}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.tableNote}>
+          BCI = Body Condition Index (weight/wing × 100). CV = Coefficient of Variation.
+        </Text>
+
+        <PageFooter pageNum={15} />
+      </Page>
 
       {/* Multi-Year Trends Page */}
       {data.multiYearData && (
@@ -1452,6 +1716,11 @@ export async function generateAnnualReport(
   analysis.detailedReturns = analyzeDetailedReturns(allCaptures, yearCaptures, year);
   analysis.returnsBySeason = analyzeReturnsBySeason(allCaptures, yearCaptures, year);
   analysis.netUsageDetailed = analyzeNetUsageDetailed(yearCaptures);
+  
+  // Detailed species totals with full breakdown
+  analysis.speciesTotals = analyzeSpeciesTotalsDetailed(yearCaptures);
+  analysis.effortByMonth = analyzeEffortByMonth(yearCaptures);
+  analysis.notableCaptures = analyzeNotableCaptures(allCaptures, yearCaptures, year);
 
   // Multi-year trend analysis
   const multiYearTrends = analyzeMultiYearTrends(allCaptures, year);

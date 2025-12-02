@@ -1494,6 +1494,7 @@ export function analyzeDetailedReturns(allCaptures: Capture[], yearCaptures: Cap
 /**
  * Analyze net usage with capture rates per 100 net hours (like MBO Table 4.7)
  * Requires net hours data - will estimate based on active days if not available
+ * Groups nets by letter prefix and includes subtotals
  */
 export function analyzeNetUsageDetailed(captures: Capture[], netHoursPerDay: number = 6) {
   // Group by net
@@ -1532,12 +1533,27 @@ export function analyzeNetUsageDetailed(captures: Capture[], netHoursPerDay: num
     netGroups.get(prefix)!.push(net);
   });
 
-  // Calculate individual nets
-  const netStats = Object.values(netData)
-    .filter((n: any) => n.net !== 'Unknown' && n.net !== '')
-    .map((n: any) => {
+  // Sort each group
+  netGroups.forEach((nets, prefix) => {
+    nets.sort((a, b) => {
+      const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
+      const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
+      return numA - numB;
+    });
+  });
+
+  // Build combined list with nets and subtotals
+  const combinedList: any[] = [];
+  const sortedPrefixes = Array.from(netGroups.keys()).sort();
+
+  sortedPrefixes.forEach(prefix => {
+    const nets = netGroups.get(prefix)!;
+    
+    // Add individual nets
+    nets.forEach(netName => {
+      const n = netData[netName];
       const hoursOpen = n.days.size * netHoursPerDay;
-      return {
+      combinedList.push({
         net: n.net,
         hoursOpen: hoursOpen.toFixed(1),
         newCaptures: n.newCaptures,
@@ -1547,51 +1563,48 @@ export function analyzeNetUsageDetailed(captures: Capture[], netHoursPerDay: num
         birdsPerHourTotal: hoursOpen > 0 ? ((n.totalCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
         species: n.species.size,
         isSubtotal: false,
-      };
-    })
-    .sort((a, b) => a.net.localeCompare(b.net));
-
-  // Calculate subtotals by net group
-  const subtotals: any[] = [];
-  netGroups.forEach((nets, prefix) => {
-    if (nets.length <= 1) return;
-    
-    const groupData = nets.reduce((acc, netName) => {
-      const net = netData[netName];
-      if (!net) return acc;
-      acc.newCaptures += net.newCaptures;
-      acc.returnsRepeats += net.returnsRepeats;
-      acc.totalCaptures += net.totalCaptures;
-      acc.days = new Set([...acc.days, ...net.days]);
-      return acc;
-    }, { newCaptures: 0, returnsRepeats: 0, totalCaptures: 0, days: new Set<string>() });
-
-    const hoursOpen = groupData.days.size * netHoursPerDay * nets.length;
-    subtotals.push({
-      net: `${prefix} - TOTAL`,
-      hoursOpen: hoursOpen.toFixed(1),
-      newCaptures: groupData.newCaptures,
-      returnsRepeats: groupData.returnsRepeats,
-      totalCaptures: groupData.totalCaptures,
-      birdsPerHourNew: hoursOpen > 0 ? ((groupData.newCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
-      birdsPerHourTotal: hoursOpen > 0 ? ((groupData.totalCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
-      species: 0,
-      isSubtotal: true,
+      });
     });
+
+    // Add subtotal if more than 1 net in group
+    if (nets.length > 1) {
+      const groupData = nets.reduce((acc, netName) => {
+        const net = netData[netName];
+        if (!net) return acc;
+        acc.newCaptures += net.newCaptures;
+        acc.returnsRepeats += net.returnsRepeats;
+        acc.totalCaptures += net.totalCaptures;
+        acc.days = new Set([...acc.days, ...net.days]);
+        return acc;
+      }, { newCaptures: 0, returnsRepeats: 0, totalCaptures: 0, days: new Set<string>() });
+
+      const hoursOpen = groupData.days.size * netHoursPerDay * nets.length;
+      combinedList.push({
+        net: `${prefix} - TOTAL`,
+        hoursOpen: hoursOpen.toFixed(1),
+        newCaptures: groupData.newCaptures,
+        returnsRepeats: groupData.returnsRepeats,
+        totalCaptures: groupData.totalCaptures,
+        birdsPerHourNew: hoursOpen > 0 ? ((groupData.newCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
+        birdsPerHourTotal: hoursOpen > 0 ? ((groupData.totalCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
+        species: 0,
+        isSubtotal: true,
+      });
+    }
   });
 
   // Calculate grand total
-  const grandTotal = netStats.reduce((acc, n) => {
+  const allNets = Object.values(netData).filter((n: any) => n.net !== 'Unknown' && n.net !== '');
+  const grandTotal = allNets.reduce((acc: any, n: any) => {
     acc.newCaptures += n.newCaptures;
     acc.returnsRepeats += n.returnsRepeats;
     acc.totalCaptures += n.totalCaptures;
-    acc.hoursOpen += parseFloat(n.hoursOpen);
+    acc.hoursOpen += n.days.size * netHoursPerDay;
     return acc;
   }, { newCaptures: 0, returnsRepeats: 0, totalCaptures: 0, hoursOpen: 0 });
 
   return {
-    nets: netStats,
-    subtotals,
+    nets: combinedList,
     grandTotal: {
       net: 'GRAND TOTAL',
       hoursOpen: grandTotal.hoursOpen.toFixed(1),
