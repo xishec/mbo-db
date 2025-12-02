@@ -26,6 +26,9 @@ import {
   analyzeDailyCaptureRates,
   analyzeSpeciesAccumulation,
   analyzeBanderSpecialization,
+  analyzeDetailedReturns,
+  analyzeNetUsageDetailed,
+  analyzeReturnsBySeason,
 } from './reportUtils';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -473,25 +476,33 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
             <Text style={styles.tocTitle}>Recaptures and Returns</Text>
             <Text style={styles.tocPage}>10</Text>
           </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Detailed Returns by Season</Text>
+            <Text style={styles.tocPage}>11-13</Text>
+          </View>
+          <View style={styles.tocEntry}>
+            <Text style={styles.tocTitle}>Net Usage and Capture Rates</Text>
+            <Text style={styles.tocPage}>14</Text>
+          </View>
 
           <Text style={styles.tocSection}>Long-term Trends</Text>
           <View style={styles.tocEntry}>
             <Text style={styles.tocTitle}>Multi-year Population Trends</Text>
-            <Text style={styles.tocPage}>11</Text>
+            <Text style={styles.tocPage}>15</Text>
           </View>
           <View style={styles.tocEntry}>
             <Text style={styles.tocTitle}>Species Diversity Analysis</Text>
-            <Text style={styles.tocPage}>12</Text>
+            <Text style={styles.tocPage}>16</Text>
           </View>
 
           <Text style={styles.tocSection}>Appendices</Text>
           <View style={styles.tocEntry}>
             <Text style={styles.tocTitle}>Complete Species List</Text>
-            <Text style={styles.tocPage}>13</Text>
+            <Text style={styles.tocPage}>17</Text>
           </View>
           <View style={styles.tocEntry}>
             <Text style={styles.tocTitle}>Acknowledgements</Text>
-            <Text style={styles.tocPage}>14</Text>
+            <Text style={styles.tocPage}>18</Text>
           </View>
         </View>
         <PageFooter pageNum={2} />
@@ -946,6 +957,199 @@ const AnnualReportDocument: React.FC<{ data: ReportData; analysis: any; chartPat
         <PageFooter pageNum={10} />
       </Page>
 
+      {/* Detailed Returns by Season */}
+      {analysis.returnsBySeason && Object.keys(analysis.returnsBySeason).length > 0 && (
+        <>
+          {/* Spring Migration Returns */}
+          {analysis.returnsBySeason['Spring Migration'] && analysis.returnsBySeason['Spring Migration'].length > 0 && (
+            <Page size="A4" style={styles.page}>
+              <PageHeader title="Spring Returns" year={data.year} />
+              
+              <Text style={styles.sectionTitle}>Returns – Spring Migration</Text>
+              
+              <Text style={styles.paragraph}>
+                List of returns captured during the {data.year} spring migration monitoring, 
+                sorted by time elapsed since original banding. Returns are birds banded in previous years 
+                and recaptured during the current season.
+              </Text>
+
+              <View style={styles.table}>
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'left' }]}>Band #</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Banding Date</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Return Date</Text>
+                  <Text style={styles.tableHeaderCell}>Time Elapsed</Text>
+                </View>
+                {analysis.returnsBySeason['Spring Migration'].slice(0, 25).map((ret: any, idx: number) => (
+                  <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                    <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'left', fontSize: 8 }]}>{ret.bandId}</Text>
+                    <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 8 }]}>{ret.species}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.bandingDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.returnDate}</Text>
+                    <Text style={[styles.tableCell, { fontSize: 7 }]}>{ret.timeElapsedText}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={{ marginTop: 15 }}>
+                <Text style={styles.paragraph}>
+                  Total spring returns: {analysis.returnsBySeason['Spring Migration'].length} birds
+                  {analysis.returnsBySeason['Spring Migration'].length > 0 && (
+                    `. Longest return: ${analysis.returnsBySeason['Spring Migration'][0]?.timeElapsedText}`
+                  )}
+                </Text>
+              </View>
+
+              <PageFooter pageNum={11} />
+            </Page>
+          )}
+
+          {/* MAPS/Breeding Season Returns */}
+          {analysis.returnsBySeason['MAPS/Breeding'] && analysis.returnsBySeason['MAPS/Breeding'].length > 0 && (
+            <Page size="A4" style={styles.page}>
+              <PageHeader title="MAPS Returns" year={data.year} />
+              
+              <Text style={styles.sectionTitle}>Returns – MAPS/Breeding Season</Text>
+              
+              <Text style={styles.paragraph}>
+                List of returns captured during the {data.year} MAPS (Monitoring Avian Productivity 
+                and Survivorship) breeding season, sorted by time elapsed since original banding.
+              </Text>
+
+              <View style={styles.table}>
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'left' }]}>Band #</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Banding Date</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Return Date</Text>
+                  <Text style={styles.tableHeaderCell}>Time Elapsed</Text>
+                </View>
+                {analysis.returnsBySeason['MAPS/Breeding'].slice(0, 25).map((ret: any, idx: number) => (
+                  <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                    <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'left', fontSize: 8 }]}>{ret.bandId}</Text>
+                    <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 8 }]}>{ret.species}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.bandingDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.returnDate}</Text>
+                    <Text style={[styles.tableCell, { fontSize: 7 }]}>{ret.timeElapsedText}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={{ marginTop: 15 }}>
+                <Text style={styles.paragraph}>
+                  Total MAPS returns: {analysis.returnsBySeason['MAPS/Breeding'].length} birds
+                  {analysis.returnsBySeason['MAPS/Breeding'].length > 0 && (
+                    `. Longest return: ${analysis.returnsBySeason['MAPS/Breeding'][0]?.timeElapsedText}`
+                  )}
+                </Text>
+              </View>
+
+              <PageFooter pageNum={12} />
+            </Page>
+          )}
+
+          {/* Fall Migration Returns */}
+          {analysis.returnsBySeason['Fall Migration'] && analysis.returnsBySeason['Fall Migration'].length > 0 && (
+            <Page size="A4" style={styles.page}>
+              <PageHeader title="Fall Returns" year={data.year} />
+              
+              <Text style={styles.sectionTitle}>Returns – Fall Migration</Text>
+              
+              <Text style={styles.paragraph}>
+                List of returns captured during the {data.year} fall migration monitoring, 
+                sorted by time elapsed since original banding.
+              </Text>
+
+              <View style={styles.table}>
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'left' }]}>Band #</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'left' }]}>Species</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Banding Date</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Return Date</Text>
+                  <Text style={styles.tableHeaderCell}>Time Elapsed</Text>
+                </View>
+                {analysis.returnsBySeason['Fall Migration'].slice(0, 25).map((ret: any, idx: number) => (
+                  <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                    <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'left', fontSize: 8 }]}>{ret.bandId}</Text>
+                    <Text style={[styles.tableCell, { flex: 2, textAlign: 'left', fontSize: 8 }]}>{ret.species}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.bandingDate}</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5, fontSize: 8 }]}>{ret.returnDate}</Text>
+                    <Text style={[styles.tableCell, { fontSize: 7 }]}>{ret.timeElapsedText}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={{ marginTop: 15 }}>
+                <Text style={styles.paragraph}>
+                  Total fall returns: {analysis.returnsBySeason['Fall Migration'].length} birds
+                  {analysis.returnsBySeason['Fall Migration'].length > 0 && (
+                    `. Longest return: ${analysis.returnsBySeason['Fall Migration'][0]?.timeElapsedText}`
+                  )}
+                </Text>
+              </View>
+
+              <PageFooter pageNum={13} />
+            </Page>
+          )}
+        </>
+      )}
+
+      {/* Net Usage and Capture Rates */}
+      {analysis.netUsageDetailed && (
+        <Page size="A4" style={styles.page}>
+          <PageHeader title="Net Usage" year={data.year} />
+          
+          <Text style={styles.sectionTitle}>Net Usage and Capture Rates</Text>
+          
+          <Text style={styles.paragraph}>
+            Analysis of net efficiency and capture rates. This data helps optimize net placement 
+            and understand habitat use patterns. Capture rates are expressed per 100 net-hours.
+          </Text>
+
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, { flex: 0.8, textAlign: 'left' }]}>Net</Text>
+              <Text style={styles.tableHeaderCell}>Hrs Open</Text>
+              <Text style={styles.tableHeaderCell}>New</Text>
+              <Text style={styles.tableHeaderCell}>Ret/Rep</Text>
+              <Text style={styles.tableHeaderCell}>Total</Text>
+              <Text style={styles.tableHeaderCell}>B/100h (New)</Text>
+              <Text style={styles.tableHeaderCell}>B/100h (Tot)</Text>
+            </View>
+            {analysis.netUsageDetailed.nets?.slice(0, 20).map((net: any, idx: number) => (
+              <View key={idx} style={net.isSubtotal ? styles.tableRowHighlight : (idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt)}>
+                <Text style={[styles.tableCell, { flex: 0.8, textAlign: 'left', fontSize: 8, fontFamily: net.isSubtotal ? 'Helvetica-Bold' : 'Helvetica' }]}>{net.net}</Text>
+                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.hoursOpen}</Text>
+                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.newCaptures}</Text>
+                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.returnsRepeats}</Text>
+                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.totalCaptures}</Text>
+                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.birdsPerHourNew}</Text>
+                <Text style={[styles.tableCell, { fontSize: 8 }]}>{net.birdsPerHourTotal}</Text>
+              </View>
+            ))}
+            
+            {/* Grand Total */}
+            <View style={styles.tableRowHighlight}>
+              <Text style={[styles.tableCell, { flex: 0.8, textAlign: 'left', fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.net}</Text>
+              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.hoursOpen}</Text>
+              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.newCaptures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.returnsRepeats}</Text>
+              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.totalCaptures}</Text>
+              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.birdsPerHourNew}</Text>
+              <Text style={[styles.tableCell, { fontSize: 8, fontFamily: 'Helvetica-Bold' }]}>{analysis.netUsageDetailed.grandTotal?.birdsPerHourTotal}</Text>
+            </View>
+          </View>
+
+          <Text style={[styles.paragraph, { marginTop: 15, fontSize: 9, fontStyle: 'italic' }]}>
+            Note: "B/100h" = Birds per 100 net-hours. "Ret/Rep" = Returns and Repeats combined.
+            Net hours estimated at 6 hours per active day.
+          </Text>
+
+          <PageFooter pageNum={14} />
+        </Page>
+      )}
+
       {/* Multi-Year Trends Page */}
       {data.multiYearData && (
         <>
@@ -1243,6 +1447,11 @@ export async function generateAnnualReport(
   analysis.dailyRates = analyzeDailyCaptureRates(yearCaptures);
   analysis.speciesAccumulation = analyzeSpeciesAccumulation(yearCaptures);
   analysis.banderSpecialization = analyzeBanderSpecialization(yearCaptures);
+
+  // Detailed returns by program
+  analysis.detailedReturns = analyzeDetailedReturns(allCaptures, yearCaptures, year);
+  analysis.returnsBySeason = analyzeReturnsBySeason(allCaptures, yearCaptures, year);
+  analysis.netUsageDetailed = analyzeNetUsageDetailed(yearCaptures);
 
   // Multi-year trend analysis
   const multiYearTrends = analyzeMultiYearTrends(allCaptures, year);

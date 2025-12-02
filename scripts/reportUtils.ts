@@ -1406,3 +1406,379 @@ export function analyzeBanderSpecialization(captures: Capture[]) {
     .sort((a, b) => b.total - a.total)
     .slice(0, 15);
 }
+
+/**
+ * Analyze detailed returns list with time elapsed (like MBO Table 6.5)
+ * Returns birds that were banded in previous years and recaptured in the current year
+ */
+export function analyzeDetailedReturns(allCaptures: Capture[], yearCaptures: Capture[], year: number) {
+  // Get all returns from current year
+  const returns = yearCaptures.filter(c => c.captureType === 'Return');
+  
+  // Build a map of first capture (banding) for each band
+  const bandingInfo = new Map<string, { date: Date; age: string; sex: string; species: string }>();
+  
+  // Sort all captures by date to find original banding
+  const sortedAll = [...allCaptures].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  sortedAll.forEach(c => {
+    if (c.captureType === 'Banded' && !bandingInfo.has(c.bandId)) {
+      bandingInfo.set(c.bandId, {
+        date: new Date(c.date),
+        age: c.age,
+        sex: c.sex,
+        species: c.species,
+      });
+    }
+  });
+
+  // Find previous capture before current year return
+  const previousCaptures = new Map<string, Date>();
+  sortedAll.forEach(c => {
+    const captureDate = new Date(c.date);
+    if (captureDate.getFullYear() < year) {
+      previousCaptures.set(c.bandId, captureDate);
+    }
+  });
+
+  const returnDetails = returns
+    .map(r => {
+      const banding = bandingInfo.get(r.bandId);
+      const prevCapture = previousCaptures.get(r.bandId);
+      
+      if (!banding) return null;
+
+      const returnDate = new Date(r.date);
+      const bandingDate = banding.date;
+      const totalDays = Math.floor((returnDate.getTime() - bandingDate.getTime()) / (1000 * 60 * 60 * 24));
+      const totalYears = Math.floor(totalDays / 365);
+      const remainingMonths = Math.floor((totalDays % 365) / 30);
+      const remainingDays = totalDays % 30;
+
+      return {
+        bandId: r.bandId,
+        species: r.species,
+        ageSexNow: `${r.age}-${r.sex}`,
+        ageSexBanding: `${banding.age}-${banding.sex}`,
+        bandingDate: bandingDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        previousCapture: prevCapture 
+          ? prevCapture.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+          : bandingDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        returnDate: returnDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+        yearsElapsed: totalYears,
+        monthsElapsed: remainingMonths,
+        daysElapsed: remainingDays,
+        totalDays,
+        timeElapsedText: `${totalYears > 0 ? totalYears + ' year' + (totalYears > 1 ? 's' : '') : ''}${remainingMonths > 0 ? ' ' + remainingMonths + ' month' + (remainingMonths > 1 ? 's' : '') : ''}${remainingDays > 0 ? ' ' + remainingDays + ' day' + (remainingDays > 1 ? 's' : '') : ''}`.trim(),
+      };
+    })
+    .filter(r => r !== null)
+    .sort((a, b) => b!.totalDays - a!.totalDays);
+
+  return returnDetails as Array<{
+    bandId: string;
+    species: string;
+    ageSexNow: string;
+    ageSexBanding: string;
+    bandingDate: string;
+    previousCapture: string;
+    returnDate: string;
+    yearsElapsed: number;
+    monthsElapsed: number;
+    daysElapsed: number;
+    totalDays: number;
+    timeElapsedText: string;
+  }>;
+}
+
+/**
+ * Analyze net usage with capture rates per 100 net hours (like MBO Table 4.7)
+ * Requires net hours data - will estimate based on active days if not available
+ */
+export function analyzeNetUsageDetailed(captures: Capture[], netHoursPerDay: number = 6) {
+  // Group by net
+  const netData = captures.reduce((acc, c) => {
+    const net = c.net || 'Unknown';
+    if (!acc[net]) {
+      acc[net] = {
+        net,
+        newCaptures: 0,
+        returnsRepeats: 0,
+        totalCaptures: 0,
+        species: new Set<string>(),
+        days: new Set<string>(),
+      };
+    }
+    acc[net].totalCaptures++;
+    acc[net].species.add(c.species);
+    acc[net].days.add(c.date);
+    
+    if (c.captureType === 'Banded') {
+      acc[net].newCaptures++;
+    } else if (c.captureType === 'Return' || c.captureType === 'Repeat' || c.captureType === 'Alien') {
+      acc[net].returnsRepeats++;
+    }
+    return acc;
+  }, {} as Record<string, any>);
+
+  // Group nets by letter prefix for subtotals
+  const netGroups = new Map<string, string[]>();
+  Object.keys(netData).forEach(net => {
+    if (net === 'Unknown') return;
+    const prefix = net.replace(/[0-9]/g, '');
+    if (!netGroups.has(prefix)) {
+      netGroups.set(prefix, []);
+    }
+    netGroups.get(prefix)!.push(net);
+  });
+
+  // Calculate individual nets
+  const netStats = Object.values(netData)
+    .filter((n: any) => n.net !== 'Unknown' && n.net !== '')
+    .map((n: any) => {
+      const hoursOpen = n.days.size * netHoursPerDay;
+      return {
+        net: n.net,
+        hoursOpen: hoursOpen.toFixed(1),
+        newCaptures: n.newCaptures,
+        returnsRepeats: n.returnsRepeats,
+        totalCaptures: n.totalCaptures,
+        birdsPerHourNew: hoursOpen > 0 ? ((n.newCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
+        birdsPerHourTotal: hoursOpen > 0 ? ((n.totalCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
+        species: n.species.size,
+        isSubtotal: false,
+      };
+    })
+    .sort((a, b) => a.net.localeCompare(b.net));
+
+  // Calculate subtotals by net group
+  const subtotals: any[] = [];
+  netGroups.forEach((nets, prefix) => {
+    if (nets.length <= 1) return;
+    
+    const groupData = nets.reduce((acc, netName) => {
+      const net = netData[netName];
+      if (!net) return acc;
+      acc.newCaptures += net.newCaptures;
+      acc.returnsRepeats += net.returnsRepeats;
+      acc.totalCaptures += net.totalCaptures;
+      acc.days = new Set([...acc.days, ...net.days]);
+      return acc;
+    }, { newCaptures: 0, returnsRepeats: 0, totalCaptures: 0, days: new Set<string>() });
+
+    const hoursOpen = groupData.days.size * netHoursPerDay * nets.length;
+    subtotals.push({
+      net: `${prefix} - TOTAL`,
+      hoursOpen: hoursOpen.toFixed(1),
+      newCaptures: groupData.newCaptures,
+      returnsRepeats: groupData.returnsRepeats,
+      totalCaptures: groupData.totalCaptures,
+      birdsPerHourNew: hoursOpen > 0 ? ((groupData.newCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
+      birdsPerHourTotal: hoursOpen > 0 ? ((groupData.totalCaptures / hoursOpen) * 100).toFixed(1) : '0.0',
+      species: 0,
+      isSubtotal: true,
+    });
+  });
+
+  // Calculate grand total
+  const grandTotal = netStats.reduce((acc, n) => {
+    acc.newCaptures += n.newCaptures;
+    acc.returnsRepeats += n.returnsRepeats;
+    acc.totalCaptures += n.totalCaptures;
+    acc.hoursOpen += parseFloat(n.hoursOpen);
+    return acc;
+  }, { newCaptures: 0, returnsRepeats: 0, totalCaptures: 0, hoursOpen: 0 });
+
+  return {
+    nets: netStats,
+    subtotals,
+    grandTotal: {
+      net: 'GRAND TOTAL',
+      hoursOpen: grandTotal.hoursOpen.toFixed(1),
+      newCaptures: grandTotal.newCaptures,
+      returnsRepeats: grandTotal.returnsRepeats,
+      totalCaptures: grandTotal.totalCaptures,
+      birdsPerHourNew: grandTotal.hoursOpen > 0 ? ((grandTotal.newCaptures / grandTotal.hoursOpen) * 100).toFixed(1) : '0.0',
+      birdsPerHourTotal: grandTotal.hoursOpen > 0 ? ((grandTotal.totalCaptures / grandTotal.hoursOpen) * 100).toFixed(1) : '0.0',
+      isSubtotal: true,
+    },
+  };
+}
+
+/**
+ * Analyze returns by season/program (Spring, MAPS, Fall, Winter)
+ */
+export function analyzeReturnsBySeason(allCaptures: Capture[], yearCaptures: Capture[], year: number) {
+  const getSeason = (date: string): string => {
+    const month = new Date(date).getMonth() + 1;
+    if (month >= 4 && month <= 5) return 'Spring Migration';
+    if (month >= 6 && month <= 7) return 'MAPS/Breeding';
+    if (month >= 8 && month <= 11) return 'Fall Migration';
+    return 'Winter';
+  };
+
+  // Get returns grouped by season
+  const returnsBySeason: Record<string, any[]> = {};
+  
+  const detailedReturns = analyzeDetailedReturns(allCaptures, yearCaptures, year);
+  
+  yearCaptures.filter(c => c.captureType === 'Return').forEach(r => {
+    const season = getSeason(r.date);
+    if (!returnsBySeason[season]) {
+      returnsBySeason[season] = [];
+    }
+    
+    const details = detailedReturns.find(d => d.bandId === r.bandId);
+    if (details) {
+      returnsBySeason[season].push(details);
+    }
+  });
+
+  // Sort each season by time elapsed
+  Object.keys(returnsBySeason).forEach(season => {
+    returnsBySeason[season].sort((a, b) => b.totalDays - a.totalDays);
+  });
+
+  return returnsBySeason;
+}
+
+/**
+ * Analyze capture totals by species with detailed breakdown (like MBO comprehensive tables)
+ */
+export function analyzeSpeciesTotalsDetailed(captures: Capture[]) {
+  const speciesData = captures.reduce((acc, c) => {
+    if (!acc[c.species]) {
+      acc[c.species] = {
+        species: c.species,
+        banded: 0,
+        returns: 0,
+        repeats: 0,
+        aliens: 0,
+        total: 0,
+        male: 0,
+        female: 0,
+        unknown: 0,
+        hy: 0,
+        ahy: 0,
+        ageUnknown: 0,
+      };
+    }
+    
+    acc[c.species].total++;
+    
+    // Capture type
+    if (c.captureType === 'Banded') acc[c.species].banded++;
+    else if (c.captureType === 'Return') acc[c.species].returns++;
+    else if (c.captureType === 'Repeat') acc[c.species].repeats++;
+    else if (c.captureType === 'Alien') acc[c.species].aliens++;
+    
+    // Sex
+    if (c.sex === 'M') acc[c.species].male++;
+    else if (c.sex === 'F') acc[c.species].female++;
+    else acc[c.species].unknown++;
+    
+    // Age
+    if (c.age.includes('HY') && !c.age.includes('AHY')) acc[c.species].hy++;
+    else if (c.age.includes('AHY') || c.age.includes('ASY') || c.age.includes('ATY')) acc[c.species].ahy++;
+    else acc[c.species].ageUnknown++;
+    
+    return acc;
+  }, {} as Record<string, any>);
+
+  return Object.values(speciesData)
+    .sort((a: any, b: any) => b.total - a.total);
+}
+
+/**
+ * Analyze effort summary by month (hours, nets, captures per effort)
+ */
+export function analyzeEffortByMonth(captures: Capture[], netCount: number = 12, hoursPerDay: number = 6) {
+  const monthlyData = captures.reduce((acc, c) => {
+    const date = new Date(c.date);
+    const monthKey = date.toLocaleString('default', { month: 'short' });
+    
+    if (!acc[monthKey]) {
+      acc[monthKey] = {
+        month: monthKey,
+        monthNum: date.getMonth(),
+        captures: 0,
+        newBands: 0,
+        recaps: 0,
+        species: new Set<string>(),
+        days: new Set<string>(),
+      };
+    }
+    
+    acc[monthKey].captures++;
+    acc[monthKey].species.add(c.species);
+    acc[monthKey].days.add(c.date);
+    
+    if (c.captureType === 'Banded') acc[monthKey].newBands++;
+    else acc[monthKey].recaps++;
+    
+    return acc;
+  }, {} as Record<string, any>);
+
+  return Object.values(monthlyData)
+    .map((m: any) => {
+      const netHours = m.days.size * netCount * hoursPerDay;
+      return {
+        month: m.month,
+        days: m.days.size,
+        netHours: netHours.toFixed(1),
+        captures: m.captures,
+        newBands: m.newBands,
+        recaps: m.recaps,
+        species: m.species.size,
+        capturesPerHour: netHours > 0 ? ((m.captures / netHours) * 100).toFixed(1) : '0.0',
+      };
+    })
+    .sort((a: any, b: any) => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return months.indexOf(a.month) - months.indexOf(b.month);
+    });
+}
+
+/**
+ * Analyze notable captures (rare species, longevity records, etc.)
+ */
+export function analyzeNotableCaptures(allCaptures: Capture[], yearCaptures: Capture[], year: number) {
+  // Find oldest returns
+  const detailedReturns = analyzeDetailedReturns(allCaptures, yearCaptures, year);
+  const oldestReturns = detailedReturns
+    .filter(r => r.yearsElapsed >= 3)
+    .slice(0, 10);
+
+  // Find rare species (only 1-2 captures total in database)
+  const speciesCounts = allCaptures.reduce((acc, c) => {
+    acc[c.species] = (acc[c.species] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const rareSpecies = yearCaptures
+    .filter(c => speciesCounts[c.species] <= 5)
+    .map(c => ({
+      species: c.species,
+      date: c.date,
+      totalRecords: speciesCounts[c.species],
+      captureType: c.captureType,
+    }));
+
+  // Find high capture days
+  const dailyCounts = yearCaptures.reduce((acc, c) => {
+    acc[c.date] = (acc[c.date] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const highCaptureDays = Object.entries(dailyCounts)
+    .filter(([, count]) => count >= 50)
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  return {
+    oldestReturns,
+    rareSpecies,
+    highCaptureDays,
+  };
+}
