@@ -1,152 +1,88 @@
 # MBO Database - Offline Desktop App Proposal
 
-## What We're Building
+## Overview
 
 A desktop app that lets you record bird data in the field **without internet**, then sync it back when you're online.
 
----
-
-## How It Works
-
-There are two ways to use the app:
-
-### Mode 1: Offline Mode (No Internet in the Field)
-
-The cloud database serves as the "master copy" of all data. When using offline mode:
-
-1. **Before fieldwork** (with internet): The app downloads the latest data from the cloud to your laptop.
-2. **During fieldwork** (no internet): You work offline, adding new bird captures to your laptop's local storage.
-3. **After fieldwork** (with internet): The app syncs and uploads all your new data back to the cloud.
-
-**⚠️ WARNING: Only ONE admin can use offline mode at a time!**
+**Key Points:**
+- Available for Mac and Windows
+- Admins can work offline; regular users need internet to view data
+- Only ONE admin can use offline mode at a time (to prevent sync conflicts)
+- Best practice: use mobile hotspot when possible for real-time syncing
 
 ---
 
-### Mode 2: Always Online Mode (Using Mobile Hotspot)
+## Why We Need This
 
-Each admin connects their laptop to the internet via their phone's mobile hotspot. All laptops connect directly to the cloud database.
+### The Problem
+
+Bird banding fieldwork often happens in remote locations with no cell service or WiFi. Currently, data must be recorded on paper and manually entered into the database later—a process that's slow, error-prone, and creates delays in data availability.
+
+### Our Solution
+
+Build an app that works offline, storing data locally on the laptop, then syncs to the cloud when internet is available. This gives us:
+
+- **Immediate digital entry** — No paper forms, no transcription errors
+- **Data validation in the field** — App can check for invalid entries on the spot
+- **Faster data availability** — Sync as soon as you're back online
+
+### Why "One Admin Offline at a Time"?
+
+We chose a simple sync model to avoid complex conflict resolution:
+
+- **The challenge:** If Alice and Bob both work offline and both create "Bird #50", whose record is correct when they sync? Automatic merging is error-prone for scientific data where accuracy matters.
+- **Our approach:** By limiting offline mode to one admin at a time, we guarantee no conflicts. The offline admin "owns" all new data until they sync.
+- **The trade-off:** Less flexibility, but 100% data integrity. For a small team doing sequential fieldwork, this is usually fine.
+
+### Why Not Full Offline for Everyone?
+
+Building robust multi-user offline sync (like Google Docs) requires complex conflict resolution, version tracking, and merge strategies. For our use case—a small team where fieldwork is typically done by one person at a time—the simpler approach is more reliable and much faster to build.
+
+---
+
+## Two Ways to Use the App
+
+### Option 1: Offline Mode (No Cell Service)
+
+Best for locations with no cell coverage. Any admin can use their own laptop.
+
+1. **Before fieldwork** (with internet): App downloads latest data to your laptop
+2. **During fieldwork** (no internet): Add new bird captures to local storage
+3. **After fieldwork** (with internet): App uploads your new data to the cloud
+
+**⚠️ Only ONE admin can use offline mode at a time!** If two admins work offline simultaneously, their changes will conflict when syncing.
+
+### Option 2: Online Mode (Mobile Hotspot)
+
+Best when you have cell service. Any admin can use their own laptop—connect it to your phone's hotspot, and all changes save instantly to the cloud.
 
 **Benefits:**
-- Multiple admins can work at the same time
-- Changes save instantly to the cloud
-- No syncing needed - always up to date
-- Everyone sees each other's changes immediately
+- No syncing needed—always up to date
+- If needed, multiple admins can work at the same time without conflicts
+
+**Trade-off:** Uses phone battery and data
 
 ---
 
-### Which Mode Should I Use?
+## Installation
 
-| Mode | Best For | Limitations |
-|------|----------|-------------|
-| **Offline** | No cell service at all | Only ONE admin at a time |
-| **Online (hotspot)** | Has cell service | Uses phone battery & data |
+| Computer | Instructions |
+|----------|--------------|
+| **Mac** | Download `.dmg` file → Drag app to Applications folder |
+| **Windows** | Download `.exe` file → Run installer |
 
----
-
-## User Roles
-
-| Role | What They Can Do | Offline Access? |
-|------|------------------|-----------------|
-| **Admin** | View, add, edit, delete data | Yes |
-| **Regular User** | View data only | No (online only) |
+**First launch requires internet.** Sign in, and the app will download all data from the cloud.
 
 ---
 
-## The Daily Workflow
-
-### A Typical Field Day
-
-**Before fieldwork** (somewhere with internet):
-1. Admin opens the app
-2. App downloads latest data from cloud
-3. App displays "Ready for offline use!"
-
-**During fieldwork** (no internet):
-4. Admin records new bird captures
-5. Data saves locally on laptop
-6. App shows "Offline Mode" indicator
-
-**After fieldwork** (somewhere with internet):
-7. Admin opens app (auto-connects)
-8. App uploads all new data to cloud
-9. App displays "All changes synced!"
-
----
-
-## The Golden Rule
-
-### Only ONE offline admin at a time!
-
-**Correct approach:** On Day 1, Alice goes offline to do fieldwork. She returns and uploads her data. Everything works perfectly.
-
-**Wrong approach:** On Day 1, both Alice and Bob go offline at the same time. They both add a bird with ID #50. When they try to sync, there's a conflict—whose Bird #50 is correct?
-
-**Why this matters:** If two people edit data offline at the same time, the system can't know whose changes are correct.
-
----
-
-## Alternative: Use Mobile Hotspot
-
-If possible, admins can use their phone's mobile hotspot for internet access in the field. Your phone provides cellular internet via WiFi to your laptop, keeping the app online.
-
-**Benefits:**
-- No syncing needed
-- Multiple people can work simultaneously
-- Changes save instantly
-
----
-
-## How to Get the App
-
-### Download
-
-Visit our website and download the app for your computer:
-
-| Computer Type | Download |
-|---------------|----------|
-| **Mac** | Download the `.dmg` file |
-| **Windows** | Download the `.exe` file |
-
-### Install
-
-**Mac:**
-1. Open the downloaded `.dmg` file
-2. Drag the app to your Applications folder
-3. Done!
-
-**Windows:**
-1. Run the downloaded `.exe` file
-2. Follow the installation wizard
-3. Done!
-
-### First Launch (requires internet!)
-
-When you first open the app, you'll see a login screen where you enter your username and password. After signing in, the app downloads all data from the cloud. Once complete, you're ready to use the app!
-
----
-
-## Quick Reference Card
+## Quick Reference
 
 | Situation | What to Do |
 |-----------|------------|
-| **Going to field (no wifi)?** | Open app with internet first, let it sync, then close. You're ready! |
-| **Back from field?** | Connect to internet, open app, wait for "Synced", done! |
-| **Someone else needs offline access?** | Make sure YOU upload first, then they can download |
-| **Have mobile hotspot?** | Use online mode - no syncing worries! |
-| **Just want to look at data?** | Any user can view anytime (needs internet) |
-
----
-
-## Summary
-
-| Feature | Details |
-|---------|---------|
-| **Available for** | Mac and Windows |
-| **Who can use offline?** | Admins only |
-| **How many offline at once?** | ONE admin at a time |
-| **Who syncs?** | The admin who worked offline |
-| **What can regular users do?** | View data (online only) |
-| **Best practice** | Use mobile hotspot when possible |
+| Going to field (no wifi)? | Open app with internet first, let it sync, then go |
+| Back from field? | Connect to internet, open app, wait for "Synced" |
+| Someone else needs offline access? | Upload YOUR data first, then they can download |
+| Have mobile hotspot? | Use online mode—no syncing worries |
 
 ---
 
@@ -166,9 +102,3 @@ When you first open the app, you'll see a login screen where you enter your user
 
 **Q: Can two admins work at the same time if they both have internet?**
 > A: Yes! When everyone is online, multiple people can work at the same time with no issues.
-
----
-
-## Summary
-
-The MBO Database app allows admins to work offline and sync data later. Regular users can view data online only. The key rule is that only one admin should work offline at a time to avoid sync conflicts. When possible, using a mobile hotspot is the best approach since it allows multiple admins to work simultaneously without any syncing concerns.
