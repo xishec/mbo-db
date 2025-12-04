@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   Input,
   Modal,
   ModalBody,
@@ -12,9 +13,12 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
+  Tooltip,
 } from "@heroui/react";
+import { MicrophoneIcon } from "@heroicons/react/24/solid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../../services/useData";
+import { useVoiceRecognition } from "../../../../../hooks/useVoiceRecognition";
 import type { Capture, CaptureFormData } from "../../../../../types";
 import { CAPTURE_COLUMNS } from "../helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
@@ -24,33 +28,86 @@ import SpeciesRangeTable from "../SpeciesRangeTable";
 interface AddCaptureModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  initialVoiceMode?: boolean;
 }
 
-export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
+export default function AddCaptureModal({ isOpen, onOpenChange, initialVoiceMode = false }: AddCaptureModalProps) {
   const { selectedProgram, fetchCapturesByBandId, magicTable } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [lastOpenState, setLastOpenState] = useState(false);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [existingCaptures, setExistingCaptures] = useState<Capture[]>([]);
+  const [shouldAutoStartVoice, setShouldAutoStartVoice] = useState(false);
+  
+  // Voice recognition
+  const { 
+    isListening, 
+    isSupported: isVoiceSupported, 
+    transcript, 
+    error: voiceError, 
+    startListening, 
+    stopListening, 
+    lastResult 
+  } = useVoiceRecognition();
+
+  // Store ref to handleInputChange for voice recognition effect
+  const handleInputChangeRef = useRef<(field: keyof CaptureFormData, value: string, maxLength?: number) => void>();
+
+  // Apply voice recognition results to form
+  useEffect(() => {
+    if (lastResult && lastResult.field && lastResult.value && handleInputChangeRef.current) {
+      // Apply the primary field
+      handleInputChangeRef.current(lastResult.field, lastResult.value);
+      
+      // Apply any additional fields (e.g., when a full band number is spoken)
+      if (lastResult.additionalFields) {
+        for (const { field, value } of lastResult.additionalFields) {
+          handleInputChangeRef.current(field, value);
+        }
+      }
+      
+      // Focus the last field that was updated
+      const lastField = lastResult.additionalFields?.length 
+        ? lastResult.additionalFields[lastResult.additionalFields.length - 1].field 
+        : lastResult.field;
+      inputRefs.current.get(lastField)?.focus();
+    }
+  }, [lastResult]);
 
   // Reset form data when modal opens
   if (isOpen && !lastOpenState) {
     setFormData(getDefaultFormData(selectedProgram || ""));
     setExistingCaptures([]);
+    // Mark that we should auto-start voice if opened via voice command
+    if (initialVoiceMode && isVoiceSupported) {
+      setShouldAutoStartVoice(true);
+    }
+  }
+  // Reset voice mode when modal closes
+  if (!isOpen && lastOpenState) {
+    if (isListening) {
+      stopListening();
+    }
+    setShouldAutoStartVoice(false);
   }
   if (isOpen !== lastOpenState) {
     setLastOpenState(isOpen);
   }
 
-  // Focus on bandGroup input when modal opens
+  // Focus on bandGroup input when modal opens, and auto-start voice if needed
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
         inputRefs.current.get("bandGroup")?.focus();
+        // Auto-start voice listening if opened via voice command
+        if (shouldAutoStartVoice && !isListening) {
+          startListening();
+          setShouldAutoStartVoice(false);
+        }
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, shouldAutoStartVoice, isListening, startListening]);
 
   // Species range lookups
   const pyleSpeciesRange = useMemo(() => {
@@ -251,6 +308,11 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     [focusNextInput]
   );
 
+  // Keep ref updated for voice recognition
+  useEffect(() => {
+    handleInputChangeRef.current = handleInputChange;
+  }, [handleInputChange]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, field: keyof CaptureFormData) => {
       if ((e.key === "Backspace" || e.key === "Delete") && formData[field] === "") {
@@ -329,10 +391,70 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-row items-center gap-1 p-8 pb-0 font-normal">
-              Add Capture in <span className="font-bold">{selectedProgram}</span>
+            <ModalHeader className="flex flex-row items-center justify-between gap-1 p-8 pb-0 font-normal">
+              <div className="flex items-center gap-1">
+                Add Capture in <span className="font-bold">{selectedProgram}</span>
+              </div>
+              {isVoiceSupported && (
+                <div className="flex items-center gap-2">
+                  <Tooltip
+                    content={
+                      isListening 
+                        ? "Click to stop voice input" 
+                        : "Click to start voice input. Say field name followed by value (e.g., 'wing 72' or 'species alpha bravo charlie delta')"
+                    }
+                  >
+                    <Button
+                      isIconOnly
+                      variant={isListening ? "solid" : "bordered"}
+                      color={isListening ? "danger" : "default"}
+                      onPress={isListening ? stopListening : startListening}
+                      className={isListening ? "animate-pulse" : ""}
+                    >
+                      <MicrophoneIcon className={`w-5 h-5 ${!isListening ? "opacity-50" : ""}`} />
+                    </Button>
+                  </Tooltip>
+                  {isListening && (
+                    <Chip color="danger" variant="dot" size="sm">
+                      Listening...
+                    </Chip>
+                  )}
+                </div>
+              )}
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
+              {/* Voice recognition feedback */}
+              {(transcript || voiceError || lastResult) && (
+                <div className="p-3 rounded-lg bg-default-100 text-sm space-y-1">
+                  {transcript && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-default-500">Heard:</span>
+                      <span className="font-mono">{transcript}</span>
+                    </div>
+                  )}
+                  {lastResult && lastResult.field && (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-success">
+                        <span>✓ Set</span>
+                        <span className="font-bold">{lastResult.field}</span>
+                        <span>to</span>
+                        <span className="font-mono font-bold">{lastResult.value}</span>
+                      </div>
+                      {lastResult.additionalFields?.map(({ field, value }) => (
+                        <div key={field} className="flex items-center gap-2 text-success">
+                          <span>✓ Set</span>
+                          <span className="font-bold">{field}</span>
+                          <span>to</span>
+                          <span className="font-mono font-bold">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {voiceError && (
+                    <div className="text-danger">{voiceError}</div>
+                  )}
+                </div>
+              )}
               {formData.species.length === 4 && (pyleSpeciesRange || mboSpeciesRange) && (
                 <div className="flex gap-4">
                   <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />

@@ -4,8 +4,8 @@ import type { CaptureColumn } from "../../../../types";
 
 export const CAPTURE_COLUMNS: CaptureColumn[] = [
   { key: "programId", label: "Program", className: "min-w-[150px]" },
-  { key: "bandGroup", label: "Band Group", maxLength: 8, minLength: 8 },
-  { key: "bandLastTwoDigits", label: "Band", maxLength: 2, minLength: 2 },
+  { key: "bandGroup", label: "Band", maxLength: 8, minLength: 8 },
+  { key: "bandLastTwoDigits", label: "", maxLength: 2, minLength: 2 },
   { key: "species", label: "Species", maxLength: 4, minLength: 4 },
   { key: "wing", label: "Wing", className: "min-w-[60px]", maxLength: 4, minLength: 2 },
   { key: "age", label: "Age", className: "", maxLength: 1, minLength: 1 },
