@@ -6,8 +6,6 @@ import { DataProvider } from "./services/DataService";
 
 function App() {
   const [activePage, setActivePage] = useState("programs");
-  console.log("hi");
-
   return (
     <DataProvider>
       <Navigation activePage={activePage} onPageChange={setActivePage} />

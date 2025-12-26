@@ -1,12 +1,20 @@
 import { Spinner } from "@heroui/react";
+import { useMemo } from "react";
 import { useData } from "../../../../services/useData";
 import CapturesTable from "./CapturesTable";
 
 export default function ReCaptures() {
-  const { programData } = useData();
-  const { reCaptures, isLoadingReCaptures } = programData;
+  const { selectedProgram, programsMap, birdEventsMap, isLoading } = useData();
 
-  if (isLoadingReCaptures) {
+  // Get recaptures for the selected program
+  const reCaptures = useMemo(() => {
+    if (!selectedProgram) return [];
+    const program = programsMap[selectedProgram];
+    const recaptureIds = program?.recaptureIds ?? [];
+    return recaptureIds.map((id) => birdEventsMap[id]).filter(Boolean);
+  }, [selectedProgram, programsMap, birdEventsMap]);
+
+  if (isLoading) {
     return (
       <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading recaptures...

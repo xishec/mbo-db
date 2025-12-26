@@ -119,6 +119,10 @@ export interface DataContextType {
   isLoading: boolean;
   error: string | null;
 
+  // Selected program
+  selectedProgram: string | null;
+  selectProgram: (programId: string | null) => void;
+
   // All data from alpha/
   yearsToProgramMap: YearToProgramMap;
   programsMap: ProgramsMap;

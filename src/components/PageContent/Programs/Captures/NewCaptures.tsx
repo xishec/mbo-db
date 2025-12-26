@@ -4,8 +4,28 @@ import { useData } from "../../../../services/useData";
 import CapturesTable from "./CapturesTable";
 
 export default function NewCaptures() {
-  const { programData, selectedProgram } = useData();
-  const { bandGroupToNewCaptures, isLoadingCaptures } = programData;
+  const { selectedProgram, programsMap, bandGroupsMap, birdEventsMap, isLoading } = useData();
+
+  // Get band group IDs for the selected program
+  const bandGroupIds = useMemo(() => {
+    if (!selectedProgram) return [];
+    const program = programsMap[selectedProgram];
+    return program?.bandGroupIds ?? [];
+  }, [selectedProgram, programsMap]);
+
+  // Build bandGroupToNewCaptures from the data
+  const bandGroupToNewCaptures = useMemo(() => {
+    const result: Record<string, typeof birdEventsMap[string][]> = {};
+    for (const bandGroupId of bandGroupIds) {
+      const bandGroup = bandGroupsMap[bandGroupId];
+      if (bandGroup) {
+        result[bandGroupId] = bandGroup.captureIds
+          .map((id) => birdEventsMap[id])
+          .filter(Boolean);
+      }
+    }
+    return result;
+  }, [bandGroupIds, bandGroupsMap, birdEventsMap]);
 
   // Convert bandGroupToNewCaptures keys to sorted array for autocomplete
   const bandGroupOptions = useMemo(() => {
@@ -29,7 +49,7 @@ export default function NewCaptures() {
     return bandGroupToNewCaptures[effectiveBandGroupId] ?? [];
   }, [effectiveBandGroupId, bandGroupToNewCaptures]);
 
-  if (isLoadingCaptures && Object.keys(bandGroupToNewCaptures).length === 0) {
+  if (isLoading && Object.keys(bandGroupToNewCaptures).length === 0) {
     return (
       <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading captures...

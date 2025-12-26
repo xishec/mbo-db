@@ -14,13 +14,13 @@ type CaptureTabType = keyof typeof CAPTURE_TAB_OPTIONS;
 export default function Captures() {
   const [captureTabType, setCaptureTabType] = useState<CaptureTabType>("NEW_CAPTURES");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { programData, selectedProgram } = useData();
+  const { selectedProgram, isLoading } = useData();
 
   if (!selectedProgram) {
     return null;
   }
 
-  if (programData.isLoadingProgram) {
+  if (isLoading) {
     return (
       <div className="p-4 flex items-center gap-4">
         <Spinner size="sm" /> Loading program...

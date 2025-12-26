@@ -15,6 +15,7 @@ import { DataContext } from "./DataContext";
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
 
   // All data from alpha/
   const [yearsToProgramMap, setYearsToProgramMap] = useState<YearToProgramMap>({});
@@ -81,6 +82,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoading,
         error,
+        selectedProgram,
+        selectProgram: setSelectedProgram,
         yearsToProgramMap,
         programsMap,
         bandIdToBirdEventIdsMap,

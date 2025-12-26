@@ -10,48 +10,26 @@ import {
   TableRow,
 } from "@heroui/react";
 import Captures from "./Captures/Captures";
-import { onValue, ref } from "firebase/database";
-import { useEffect, useMemo, useState } from "react";
-import { db } from "../../../firebase";
-import type { YearToProgramMap } from "../../../types";
+import { useMemo, useState } from "react";
 import { useData } from "../../../services/useData";
 
 export default function Programs() {
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [yearsMap, setYearsMap] = useState<YearToProgramMap>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const { selectProgram, selectedProgram, yearsToProgramMap, isLoading } = useData();
 
-  const { selectProgram, selectedProgram } = useData();
-
-  // Fetch yearsMap from RTDB
-  useEffect(() => {
-    const yearsRef = ref(db, "alpha/yearsToProgramMap");
-    const unsubscribe = onValue(yearsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val() as YearToProgramMap;
-        setYearsMap(data);
-
-        // Select the most recent year by default
-        const years = Object.keys(data).sort((a, b) => Number(b) - Number(a));
-        if (years.length > 0 && !selectedYear) {
-          setSelectedYear(years[0]);
-        }
-      }
-      setIsLoading(false);
-    });
-    return unsubscribe;
-  }, [selectedYear]);
-
-  // Year rows for the table
+  // Year rows for the table (sorted descending)
   const yearRows = useMemo(() => {
-    return Object.keys(yearsMap).sort((a, b) => Number(b) - Number(a));
-  }, [yearsMap]);
+    return Object.keys(yearsToProgramMap).sort((a, b) => Number(b) - Number(a));
+  }, [yearsToProgramMap]);
+
+  // Default to the most recent year
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  const effectiveYear = selectedYear || yearRows[0] || "";
 
   // Get programs for selected year
   const programs = useMemo(() => {
-    if (!selectedYear || Object.keys(yearsMap).length === 0) return [];
-    return yearsMap[selectedYear] ?? [];
-  }, [yearsMap, selectedYear]);
+    if (!effectiveYear || Object.keys(yearsToProgramMap).length === 0) return [];
+    return yearsToProgramMap[effectiveYear] ?? [];
+  }, [yearsToProgramMap, effectiveYear]);
 
   const handleYearChange = (keys: "all" | Set<React.Key>) => {
     const newYear = keys === "all" ? "" : String(Array.from(keys)[0]);
@@ -72,7 +50,7 @@ export default function Programs() {
     );
   }
 
-  if (Object.keys(yearsMap).length === 0) {
+  if (Object.keys(yearsToProgramMap).length === 0) {
     return <div className="p-4">No programs available.</div>;
   }
 
@@ -88,7 +66,7 @@ export default function Programs() {
           >
             Years
           </BreadcrumbItem>
-          {selectedYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{selectedYear}</BreadcrumbItem>}
+          {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
           {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
         </Breadcrumbs>
       </div>
@@ -99,7 +77,7 @@ export default function Programs() {
             isHeaderSticky
             aria-label="Years table"
             selectionMode="single"
-            selectedKeys={selectedYear ? new Set([selectedYear]) : new Set()}
+            selectedKeys={effectiveYear ? new Set([effectiveYear]) : new Set()}
             onSelectionChange={handleYearChange}
             isVirtualized
             maxTableHeight={600}
