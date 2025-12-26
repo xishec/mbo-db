@@ -103,24 +103,29 @@ export interface MagicTable {
   mbo: Record<string, SpeciesRange>;
 }
 
-// Service types
-export interface ProgramData {
-  bandGroupIds: Record<string, BirdEvent[]>;
-  recaptures: BirdEvent[];
-  isLoadingProgram: boolean;
-  isLoadingCaptures: boolean;
-  isLoadingReCaptures: boolean;
+// Database root type (loaded from alpha/)
+export interface AlphaData {
+  yearsToProgramMap: YearToProgramMap;
+  programsMap: ProgramsMap;
+  bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
+  birdEventsMap: BirdEventsMap;
+  bandGroupsMap: BandGroupsMap;
+  magicTable: MagicTable;
 }
 
+// Service types
 export interface DataContextType {
-  programData: ProgramData;
-  selectProgram: (programName: string | null) => void;
-  selectedProgram: string | null;
-  fetchBirdEventsByBandId: (bandId: string) => Promise<BirdEvent[]>;
-  checkBandIdExists: (bandId: string) => Promise<boolean>;
-  allBirdEvents: BirdEvent[];
-  isLoadingAllCaptures: boolean;
-  magicTable: MagicTable | null;
+  // Loading state
+  isLoading: boolean;
+  error: string | null;
+
+  // All data from alpha/
+  yearsToProgramMap: YearToProgramMap;
+  programsMap: ProgramsMap;
+  bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
+  birdEventsMap: BirdEventsMap;
+  bandGroupsMap: BandGroupsMap;
+  magicTable: MagicTable;
 }
 
 // Form types
