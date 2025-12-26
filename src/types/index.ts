@@ -1,25 +1,37 @@
 // Database structure types
 export type YearToProgramMap = Record<string, string[]>;
 export type ProgramsMap = Record<string, Program>;
-export type BandGroupToCaptureIdsMap = Record<string, string[]>;
-export type BandIdToCaptureIdsMap = Record<string, string[]>;
-export type CapturesMap = Record<string, Capture>;
+export type BandGroupsMap = Record<string, BandGroup>;
+export type BirdEventsMap = Record<string, BirdEvent>;
+export type BandIdToBirdEventIdsMap = Record<string, string[]>;
 
-// Domain models
 export interface Program {
-  name: string;
-  usedBandGroupIds: string[];
-  reCaptureIds: string[];
+  id: string;
+  bandGroupIds: string[];
+  recaptureEventIds: string[];
 }
 
-export interface Capture {
+export class Band {
   id: string;
-  bandGroup: string;
-  bandLastTwoDigits: string;
-  bandId: string;
+  bandGroupId: string;
+  last2digits: string;
+
+  constructor(bandPrefix: string, bandSuffix: string) {
+    this.id = crypto.randomUUID();
+    this.bandGroupId = `${bandPrefix}-${bandSuffix.slice(0, -2)}`;
+    this.last2digits = bandSuffix.slice(-2);
+  }
+}
+
+export interface BandGroup {
+  id: string;
+  captureEventIds: string[];
+}
+
+export interface BirdEvent {
+  id: string;
   programId: string;
-  bandPrefix: string;
-  bandSuffix: string;
+  band: Band;
   species: string;
   wing: number;
   age: string;
@@ -34,39 +46,39 @@ export interface Capture {
   scribe: string;
   net: string;
   notes: string;
-  captureType: keyof typeof CaptureType;
+
+  previousEventId: string | null;
+  modifiedEventId: string | null;
+  birdEventType: BirdEventType;
 }
 
-export const CaptureType = {
-  Banded: "Banded",
-  Alien: "Alien",
-  Repeat: "Repeat",
-  Return: "Return",
-  None: "None",
-};
+export const enum BirdEventType {
+  Banded,
+  None,
+  Alien,
+  Repeat,
+  Return,
+}
 
-// CSV import constants
-export const NUMERIC_FIELDS = new Set(["WingChord", "Weight", "Fat"]);
-
-export const HEADER_TO_CAPTURE_PROPERTY: Record<string, string> = {
-  Program: "programId",
-  BandPrefix: "bandPrefix",
-  BandSuffix: "bandSuffix",
-  Species: "species",
-  WingChord: "wing",
-  Age: "age",
-  HowAged: "howAged",
-  Sex: "sex",
-  HowSexed: "howSexed",
-  Fat: "fat",
-  Weight: "weight",
-  CaptureDate: "date",
-  Bander: "bander",
-  Scribe: "scribe",
-  Net: "net",
-  NotesForMBO: "notes",
-  D18: "captureType",
-};
+export const enum HEADERS {
+  Program,
+  BandPrefix,
+  BandSuffix,
+  Species,
+  WingChord,
+  Age,
+  HowAged,
+  Sex,
+  HowSexed,
+  Fat,
+  Weight,
+  CaptureDate,
+  Bander,
+  Scribe,
+  Net,
+  NotesForMBO,
+  D18,
+}
 
 export interface SpeciesRange {
   fWeightLower: number;
