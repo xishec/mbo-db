@@ -18,12 +18,18 @@ import {
 
 async function main() {
   try {
+    await set(ref(db, "alpha"), {});
+
     console.log("Reading CSV file...");
     const csvPath = join(process.cwd(), "public", "data", "tblCaptures.csv");
     const csvContent = readFileSync(csvPath, "utf-8");
 
     console.log("Starting RTDB import...");
     await CSVToRTDB(csvContent, db);
+
+    console.log("Importing magic table...");
+    const { importMagicTable } = await import("./importMagicTable");
+    await importMagicTable();
 
     console.log("✅ Import completed successfully!");
     process.exit(0);
@@ -91,7 +97,7 @@ export function parseCSV(csvContent: string): BirdEvent[] {
   const headers = parseCSVLine(rows[0]);
   const birdEvents: BirdEvent[] = [];
 
-  const lastRows = rows.slice(-5000);
+  const lastRows = rows.slice(-2000);
   // const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
@@ -121,55 +127,55 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
   headers.forEach((header, index) => {
     const value = values[index];
     switch (header) {
-      case String(HEADERS.Program):
+      case HEADERS.Program:
         birdEvent.programId = value;
         break;
-      case String(HEADERS.BandPrefix):
+      case HEADERS.BandPrefix:
         bandPrefix = value;
         break;
-      case String(HEADERS.BandSuffix):
+      case HEADERS.BandSuffix:
         bandSuffix = value;
         break;
-      case String(HEADERS.Species):
+      case HEADERS.Species:
         birdEvent.species = value;
         break;
-      case String(HEADERS.WingChord):
+      case HEADERS.WingChord:
         birdEvent.wing = Number(value);
         break;
-      case String(HEADERS.Age):
+      case HEADERS.Age:
         birdEvent.age = value;
         break;
-      case String(HEADERS.HowAged):
+      case HEADERS.HowAged:
         birdEvent.howAged = value;
         break;
-      case String(HEADERS.Sex):
+      case HEADERS.Sex:
         birdEvent.sex = value;
         break;
-      case String(HEADERS.HowSexed):
+      case HEADERS.HowSexed:
         birdEvent.howSexed = value;
         break;
-      case String(HEADERS.Fat):
+      case HEADERS.Fat:
         birdEvent.fat = Number(value);
         break;
-      case String(HEADERS.Weight):
+      case HEADERS.Weight:
         birdEvent.weight = Number(value);
         break;
-      case String(HEADERS.CaptureDate):
+      case HEADERS.CaptureDate:
         birdEvent.date = value;
         break;
-      case String(HEADERS.Bander):
+      case HEADERS.Bander:
         birdEvent.bander = value;
         break;
-      case String(HEADERS.Scribe):
+      case HEADERS.Scribe:
         birdEvent.scribe = value;
         break;
-      case String(HEADERS.Net):
+      case HEADERS.Net:
         birdEvent.net = value;
         break;
-      case String(HEADERS.NotesForMBO):
+      case HEADERS.NotesForMBO:
         birdEvent.notes = value;
         break;
-      case String(HEADERS.D18):
+      case HEADERS.D18:
         birdEvent.birdEventType = value as unknown as BirdEventType;
         break;
       default:
@@ -186,15 +192,15 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
 /**
  * Import CSV file to RTDB
  */
-export async function CSVToRTDB(csvContent: string, database: Database): Promise<void> {
+export async function CSVToRTDB(csvContent: string, db: Database): Promise<void> {
   console.log("Parsing CSV...");
   const birdEvents = parseCSV(csvContent);
   console.log(`Parsed ${birdEvents.length} band events`);
 
-  await generateDB(birdEvents, database);
+  await generateDB(birdEvents, db);
 }
 
-const generateDB = async (birdEvents: BirdEvent[], database: Database) => {
+async function generateDB(birdEvents: BirdEvent[], db: Database) {
   const birdEventsMap: BirdEventsMap = {};
   const yearsToProgramMap: YearToProgramMap = {};
   const bandGroupsMap: BandGroupsMap = {};
@@ -208,7 +214,7 @@ const generateDB = async (birdEvents: BirdEvent[], database: Database) => {
     birdEventsMap[birdEventId] = birdEvent;
 
     // yearsToProgramMap
-    const year = birdEvent.date.slice(0, 4);
+    const year = birdEvent.date?.slice(0, 4);
     if (year) {
       if (!yearsToProgramMap[year]) {
         yearsToProgramMap[year] = [];
@@ -225,10 +231,10 @@ const generateDB = async (birdEvents: BirdEvent[], database: Database) => {
       if (!bandGroupsMap[bandGroupId]) {
         bandGroupsMap[bandGroupId] = {
           id: bandGroupId,
-          captureEventIds: [],
+          captureIds: [],
         } as BandGroup;
       }
-      bandGroupsMap[bandGroupId].captureEventIds.push(birdEventId);
+      bandGroupsMap[bandGroupId].captureIds.push(birdEventId);
     }
 
     // programsMap
@@ -238,13 +244,13 @@ const generateDB = async (birdEvents: BirdEvent[], database: Database) => {
         programsMap[programId] = {
           id: programId,
           bandGroupIds: [],
-          recaptureEventIds: [],
+          recaptureIds: [],
         };
       }
       if (birdEventType === BirdEventType.Banded) {
         programsMap[programId].bandGroupIds.push(bandGroupId);
       } else {
-        programsMap[programId].recaptureEventIds.push(birdEventId);
+        programsMap[programId].recaptureIds.push(birdEventId);
       }
     }
 
@@ -352,22 +358,22 @@ const generateDB = async (birdEvents: BirdEvent[], database: Database) => {
 
   console.log("Uploading data to RTDB...");
 
-  await set(ref(database, "yearsToProgramMap"), yearsToProgramMap);
-  await set(ref(database, "programsMap"), programsMap);
-  await writeObjectToDB(database, "bandIdToBirdEventIdsMap", bandIdToBirdEventIdsMap);
-  await writeObjectToDB(database, "birdEventsMap", birdEventsMap);
-  await writeObjectToDB(database, "bandGroupsMap", bandGroupsMap);
-  await set(ref(database, "magicTable/mbo"), mboMagicTable);
+  await set(ref(db, "alpha/yearsToProgramMap"), yearsToProgramMap);
+  await set(ref(db, "alpha/programsMap"), programsMap);
+  await writeObjectToDB(db, "alpha/bandIdToBirdEventIdsMap", bandIdToBirdEventIdsMap);
+  await writeObjectToDB(db, "alpha/birdEventsMap", birdEventsMap);
+  await writeObjectToDB(db, "alpha/bandGroupsMap", bandGroupsMap);
+  await set(ref(db, "alpha/magicTable/mbo"), mboMagicTable);
 
   // Update lastUpdated timestamp
   const lastUpdated = Date.now();
-  await set(ref(database, "metadata/lastUpdated"), lastUpdated);
+  await set(ref(db, "alpha/metadata/lastUpdated"), lastUpdated);
   console.log(`Set lastUpdated timestamp: ${lastUpdated}`);
 
   console.log("✅ All data uploaded successfully!");
-};
+}
 
-const writeObjectToDB = async (database: Database, path: string, data: Record<string, unknown>) => {
+const writeObjectToDB = async (db: Database, path: string, data: Record<string, unknown>) => {
   const entries = Object.entries(data);
   const BATCH_SIZE = 1000;
   let uploadedCount = 0;
@@ -376,7 +382,7 @@ const writeObjectToDB = async (database: Database, path: string, data: Record<st
 
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
-    const promises = batch.map(([key, value]) => set(ref(database, `${path}/${key}`), value));
+    const promises = batch.map(([key, value]) => set(ref(db, `${path}/${key}`), value));
     await Promise.all(promises);
     uploadedCount += batch.length;
     console.log(`Uploaded ${uploadedCount}/${entries.length} to '${path}'...`);

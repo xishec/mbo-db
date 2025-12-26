@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { ref, set, type Database } from "firebase/database";
-import { db } from "./firebase-node";
+import { db as database } from "./firebase-node";
 import { SpeciesRange } from "../src/types";
 
 /**
@@ -53,33 +53,17 @@ function parseCSV(csvContent: string): Record<string, SpeciesRange> {
 /**
  * Import magic table to RTDB
  */
-async function importMagicTable(database: Database, pyleMagicTable: Record<string, SpeciesRange>): Promise<void> {
-  console.log(`Uploading ${Object.keys(pyleMagicTable).length} species records to 'magicTable'...`);
+export async function importMagicTable(): Promise<void> {
+  console.log("Reading magic_table CSV file...");
+  const csvPath = join(process.cwd(), "public", "data", "magic_table.csv");
+  const csvContent = readFileSync(csvPath, "utf-8");
 
-  await set(ref(database, "magicTable/pyle"), pyleMagicTable);
+  console.log("Parsing magic table...");
+  const pyleMagicTable = parseCSV(csvContent);
+  console.log(`Parsed ${Object.keys(pyleMagicTable).length} species entries`);
+
+  console.log(`Uploading ${Object.keys(pyleMagicTable).length} species records to 'magicTable'...`);
+  await set(ref(database, "alpha/magicTable/pyle"), pyleMagicTable);
 
   console.log(`✅ Import to 'magicTable' complete!`);
 }
-
-async function main() {
-  try {
-    console.log("Reading magic_table CSV file...");
-    const csvPath = join(process.cwd(), "public", "data", "magic_table.csv");
-    const csvContent = readFileSync(csvPath, "utf-8");
-
-    console.log("Parsing magic table...");
-    const pyleMagicTable = parseCSV(csvContent);
-    console.log(`Parsed ${Object.keys(pyleMagicTable).length} species entries`);
-
-    console.log("Starting RTDB import...");
-    await importMagicTable(db, pyleMagicTable);
-
-    console.log("✅ Magic table import completed successfully!");
-    process.exit(0);
-  } catch (error) {
-    console.error("❌ Import failed:", error);
-    process.exit(1);
-  }
-}
-
-main();

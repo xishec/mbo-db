@@ -8,7 +8,7 @@ export type BandIdToBirdEventIdsMap = Record<string, string[]>;
 export interface Program {
   id: string;
   bandGroupIds: string[];
-  recaptureEventIds: string[];
+  recaptureIds: string[];
 }
 
 export class Band {
@@ -17,15 +17,15 @@ export class Band {
   last2digits: string;
 
   constructor(bandPrefix: string, bandSuffix: string) {
-    this.id = crypto.randomUUID();
     this.bandGroupId = `${bandPrefix}-${bandSuffix.slice(0, -2)}`;
     this.last2digits = bandSuffix.slice(-2);
+    this.id = `${this.bandGroupId}-${this.last2digits}`;
   }
 }
 
 export interface BandGroup {
   id: string;
-  captureEventIds: string[];
+  captureIds: string[];
 }
 
 export interface BirdEvent {
@@ -53,31 +53,31 @@ export interface BirdEvent {
 }
 
 export const enum BirdEventType {
-  Banded,
-  None,
-  Alien,
-  Repeat,
-  Return,
+  Banded = "Banded",
+  None = "None",
+  Alien = "Alien",
+  Repeat = "Repeat",
+  Return = "Return",
 }
 
 export const enum HEADERS {
-  Program,
-  BandPrefix,
-  BandSuffix,
-  Species,
-  WingChord,
-  Age,
-  HowAged,
-  Sex,
-  HowSexed,
-  Fat,
-  Weight,
-  CaptureDate,
-  Bander,
-  Scribe,
-  Net,
-  NotesForMBO,
-  D18,
+  Program = "Program",
+  BandPrefix = "BandPrefix",
+  BandSuffix = "BandSuffix",
+  Species = "Species",
+  WingChord = "WingChord",
+  Age = "Age",
+  HowAged = "HowAged",
+  Sex = "Sex",
+  HowSexed = "HowSexed",
+  Fat = "Fat",
+  Weight = "Weight",
+  CaptureDate = "CaptureDate",
+  Bander = "Bander",
+  Scribe = "Scribe",
+  Net = "Net",
+  NotesForMBO = "NotesForMBO",
+  D18 = "D18",
 }
 
 export interface SpeciesRange {
@@ -105,8 +105,8 @@ export interface MagicTable {
 
 // Service types
 export interface ProgramData {
-  bandGroupToNewCaptures: Record<string, Capture[]>;
-  reCaptures: Capture[];
+  bandGroupIds: Record<string, BirdEvent[]>;
+  recaptures: BirdEvent[];
   isLoadingProgram: boolean;
   isLoadingCaptures: boolean;
   isLoadingReCaptures: boolean;
@@ -116,9 +116,9 @@ export interface DataContextType {
   programData: ProgramData;
   selectProgram: (programName: string | null) => void;
   selectedProgram: string | null;
-  fetchCapturesByBandId: (bandId: string) => Promise<Capture[]>;
+  fetchBirdEventsByBandId: (bandId: string) => Promise<BirdEvent[]>;
   checkBandIdExists: (bandId: string) => Promise<boolean>;
-  allCaptures: Capture[];
+  allBirdEvents: BirdEvent[];
   isLoadingAllCaptures: boolean;
   magicTable: MagicTable | null;
 }
