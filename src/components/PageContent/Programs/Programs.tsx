@@ -25,7 +25,7 @@ export default function Programs() {
 
   // Fetch yearsMap from RTDB
   useEffect(() => {
-    const yearsRef = ref(db, "yearsToProgramMap");
+    const yearsRef = ref(db, "alpha/yearsToProgramMap");
     const unsubscribe = onValue(yearsRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val() as YearToProgramMap;

@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { ref, set, type Database } from "firebase/database";
+import { ref, set } from "firebase/database";
 import { db as database } from "./firebase-node";
 import { SpeciesRange } from "../src/types";
 

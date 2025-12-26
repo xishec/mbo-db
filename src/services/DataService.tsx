@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { get, ref, onValue } from "firebase/database";
 import { db } from "../firebase";
-import type { Capture, ProgramData, MagicTable } from "../types";
+import type { ProgramData, MagicTable } from "../types";
 import { DataContext, defaultProgramData } from "./DataContext";
 import {
   getAllCapturesFromIndexedDB,
@@ -54,7 +54,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const fetchCaptures = useCallback(async (captureIds: string[]): Promise<Capture[]> => {
     if (captureIds.length === 0) return [];
 
-    const capturePromises = captureIds.map((captureId) => get(ref(db, `capturesMap/${captureId}`)));
+    const capturePromises = captureIds.map((captureId) => get(ref(db, `alpha/capturesMap/${captureId}`)));
     const snapshots = await Promise.all(capturePromises);
     const captures: Capture[] = [];
 
@@ -73,7 +73,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (!bandId) return [];
 
       try {
-        const snapshot = await get(ref(db, `bandIdToCaptureIdsMap/${bandId}`));
+        const snapshot = await get(ref(db, `alpha/bandIdToCaptureIdsMap/${bandId}`));
         if (!snapshot.exists()) return [];
 
         const captureIds = snapshot.val() as string[];
@@ -89,7 +89,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Check if bandId exists in bandIdToCaptureIdsMap
   const checkBandIdExists = useCallback(async (bandId: string): Promise<boolean> => {
     if (!bandId) return false;
-    const snapshot = await get(ref(db, `bandIdToCaptureIdsMap/${bandId}`));
+    const snapshot = await get(ref(db, `alpha/bandIdToCaptureIdsMap/${bandId}`));
     return snapshot.exists();
   }, []);
 
@@ -146,7 +146,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // 3. Decide whether to use cache or fetch from RTDB
         const shouldUseCache =
-          cachedCaptures.length > 0 && cachedTimestamp !== null && rtdbTimestamp !== null && cachedTimestamp >= rtdbTimestamp;
+          cachedCaptures.length > 0 &&
+          cachedTimestamp !== null &&
+          rtdbTimestamp !== null &&
+          cachedTimestamp >= rtdbTimestamp;
 
         if (shouldUseCache) {
           console.log("✅ Loading captures from IndexedDB cache");
@@ -186,7 +189,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           unsubscribe = onValue(ref(db, "metadata/lastUpdated"), async (snapshot) => {
             if (snapshot.exists()) {
               const newTimestamp = snapshot.val() as number;
-              
+
               // Skip the initial callback (listener fires immediately with current value)
               if (initialTimestamp !== null && newTimestamp === initialTimestamp) {
                 initialTimestamp = null; // Clear flag after first callback
@@ -286,7 +289,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // 3. Decide whether to use cache or fetch from RTDB
         const shouldUseCache =
-          cachedMagicTable !== null && cachedTimestamp !== null && rtdbTimestamp !== null && cachedTimestamp >= rtdbTimestamp;
+          cachedMagicTable !== null &&
+          cachedTimestamp !== null &&
+          rtdbTimestamp !== null &&
+          cachedTimestamp >= rtdbTimestamp;
 
         if (shouldUseCache) {
           console.log("✅ Loading magic table from IndexedDB cache");
@@ -329,7 +335,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           unsubscribe = onValue(ref(db, "metadata/lastUpdated"), async (snapshot) => {
             if (snapshot.exists()) {
               const newTimestamp = snapshot.val() as number;
-              
+
               // Skip the initial callback (listener fires immediately with current value)
               if (initialTimestamp !== null && newTimestamp === initialTimestamp) {
                 initialTimestamp = null; // Clear flag after first callback
@@ -389,7 +395,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (bandGroups.length === 0) return {};
 
       // 1. Fetch all captureIds for each bandGroup from bandGroupToCaptureIdsMap
-      const bandGroupPromises = bandGroups.map((bandGroup) => get(ref(db, `bandGroupToCaptureIdsMap/${bandGroup}`)));
+      const bandGroupPromises = bandGroups.map((bandGroup) =>
+        get(ref(db, `alpha/bandGroupToCaptureIdsMap/${bandGroup}`))
+      );
       const bandGroupSnapshots = await Promise.all(bandGroupPromises);
 
       // Build a record of bandGroup -> captureIds
@@ -458,7 +466,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       try {
         // 1. Fetch program data from programsMap (contains usedBandGroupIds and reCaptureIds)
-        const programSnapshot = await get(ref(db, `programsMap/${programName}`));
+        const programSnapshot = await get(ref(db, `alpha/programsMap/${programName}`));
 
         if (currentFetchId !== fetchIdRef.current) return; // Cancelled
 

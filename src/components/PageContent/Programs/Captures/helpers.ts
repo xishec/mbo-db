@@ -1,4 +1,4 @@
-import { type SpeciesRange, type CaptureFormData, CaptureType } from "../../../../types";
+import { type SpeciesRange, type CaptureFormData, BirdEventType } from "../../../../types";
 
 import type { CaptureColumn } from "../../../../types";
 
@@ -87,7 +87,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     bander: "",
     scribe: "",
     net: "",
-    captureType: CaptureType.None,
+    captureType: BirdEventType.None,
     notes: "",
   };
 }
