@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
-import Captures from "./Captures/Captures";
+import BirdEvents from "./Captures/BirdEvents";
 import { useMemo, useState } from "react";
 import { useData } from "../../../services/useData";
 
@@ -124,7 +124,7 @@ export default function Programs() {
         </div>
       )}
 
-      {selectedProgram && <Captures />}
+      {selectedProgram && <BirdEvents />}
     </div>
   );
 }

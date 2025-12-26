@@ -5,14 +5,15 @@ import AddCaptureModal from "./AddCaptureModal/AddCaptureModal";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
 
-const CAPTURE_TAB_OPTIONS = {
+const BIRD_EVENT_TAB_OPTIONS = {
   NEW_CAPTURES: "New Captures",
   RE_CAPTURES: "Re-Captures",
-};
-type CaptureTabType = keyof typeof CAPTURE_TAB_OPTIONS;
+} as const;
 
-export default function Captures() {
-  const [captureTabType, setCaptureTabType] = useState<CaptureTabType>("NEW_CAPTURES");
+type BirdEventTabType = keyof typeof BIRD_EVENT_TAB_OPTIONS;
+
+export default function BirdEvents() {
+  const [birdEventTabType, setBirdEventTabType] = useState<BirdEventTabType>("NEW_CAPTURES");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { selectedProgram, isLoading } = useData();
 
@@ -36,14 +37,14 @@ export default function Captures() {
         <Tabs
           color="secondary"
           size="md"
-          selectedKey={captureTabType}
-          onSelectionChange={(key) => setCaptureTabType(key as CaptureTabType)}
+          selectedKey={birdEventTabType}
+          onSelectionChange={(key) => setBirdEventTabType(key as BirdEventTabType)}
           classNames={{
             tabContent: "text-gray-700",
           }}
         >
-          {(Object.keys(CAPTURE_TAB_OPTIONS) as CaptureTabType[]).map((key) => (
-            <Tab key={key} title={CAPTURE_TAB_OPTIONS[key]} />
+          {(Object.keys(BIRD_EVENT_TAB_OPTIONS) as BirdEventTabType[]).map((key) => (
+            <Tab key={key} title={BIRD_EVENT_TAB_OPTIONS[key]} />
           ))}
         </Tabs>
         <Button color="secondary" onPress={onOpen}>
@@ -51,7 +52,7 @@ export default function Captures() {
         </Button>
       </div>
 
-      {captureTabType === "NEW_CAPTURES" ? <NewCaptures /> : <ReCaptures />}
+      {birdEventTabType === "NEW_CAPTURES" ? <NewCaptures /> : <ReCaptures />}
     </div>
   );
 }

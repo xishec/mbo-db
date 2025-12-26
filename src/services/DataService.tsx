@@ -10,6 +10,7 @@ import type {
   BandGroupsMap,
   MagicTable,
 } from "../types";
+import { Band } from "../types";
 import { DataContext } from "./DataContext";
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
@@ -42,16 +43,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setYearsToProgramMap(data.yearsToProgramMap ?? {});
           setProgramsMap(data.programsMap ?? {});
           setBandIdToBirdEventIdsMap(data.bandIdToBirdEventIdsMap ?? {});
-          setBirdEventsMap(data.birdEventsMap ?? {});
+          setBirdEventsMap(
+            Object.fromEntries(
+              Object.entries(data.birdEventsMap ?? {}).map(([id, event]) => [
+                id,
+                { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix) },
+              ])
+            )
+          );
           setBandGroupsMap(data.bandGroupsMap ?? {});
           setMagicTable(data.magicTable ?? null);
 
           console.log("✅ Loaded alpha/ data:", {
-            years: Object.keys(data.yearsToProgramMap ?? {}).length,
-            programs: Object.keys(data.programsMap ?? {}).length,
-            bandIds: Object.keys(data.bandIdToBirdEventIdsMap ?? {}).length,
-            birdEvents: Object.keys(data.birdEventsMap ?? {}).length,
-            bandGroups: Object.keys(data.bandGroupsMap ?? {}).length,
+            yearsToProgramMap: Object.keys(data.yearsToProgramMap ?? {}).length,
+            programsMap: Object.keys(data.programsMap ?? {}).length,
+            bandIdToBirdEventIdsMap: Object.keys(data.bandIdToBirdEventIdsMap ?? {}).length,
+            birdEventsMap: Object.keys(data.birdEventsMap ?? {}).length,
+            bandGroupsMap: Object.keys(data.bandGroupsMap ?? {}).length,
             hasMagicTable: !!data.magicTable,
           });
         } else {

@@ -15,11 +15,27 @@ export class Band {
   id: string;
   bandGroupId: string;
   last2digits: string;
+  bandPrefix: string;
+  bandSuffix: string;
 
   constructor(bandPrefix: string, bandSuffix: string) {
-    this.bandGroupId = `${bandPrefix}-${bandSuffix.slice(0, -2)}`;
     this.last2digits = bandSuffix.slice(-2);
+    let bandGroupIdNumber = parseInt(bandPrefix + bandSuffix.slice(0, -2), 10);
+    if (this.last2digits === "00") {
+      bandGroupIdNumber -= 1;
+    }
+    this.bandGroupId = bandGroupIdNumber.toString();
+    this.bandPrefix = bandPrefix;
+    this.bandSuffix = bandSuffix;
     this.id = `${this.bandGroupId}-${this.last2digits}`;
+  }
+
+  // 1462068-00 should be the same Band Group as 1462067-99
+  get displayBandGroupId(): string {
+    if (this.last2digits === "00") {
+      return (parseInt(this.bandGroupId, 10) + 1).toString();
+    }
+    return this.bandGroupId;
   }
 }
 

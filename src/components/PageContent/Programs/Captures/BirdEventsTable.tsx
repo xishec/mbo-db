@@ -8,7 +8,7 @@ function birdEventToRow(event: BirdEvent): CaptureFormData & { id: string } {
   return {
     id: event.id,
     programId: event.programId,
-    bandGroup: event.band?.bandGroupId ?? "",
+    bandGroup: event.band?.displayBandGroupId ?? "",
     bandLastTwoDigits: event.band?.last2digits ?? "",
     species: event.species,
     wing: String(event.wing || ""),
