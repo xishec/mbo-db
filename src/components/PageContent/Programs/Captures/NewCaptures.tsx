@@ -1,7 +1,7 @@
 import { Autocomplete, AutocompleteItem, Spinner, Switch } from "@heroui/react";
 import { useMemo, useState } from "react";
 import { useData } from "../../../../services/useData";
-import CapturesTable from "./CapturesTable";
+import BirdEventsTable from "./BirdEventsTable";
 
 export default function NewCaptures() {
   const { selectedProgram, programsMap, bandGroupsMap, birdEventsMap, isLoading } = useData();
@@ -85,7 +85,7 @@ export default function NewCaptures() {
       </div>
 
       {effectiveBandGroupId ? (
-        <CapturesTable
+        <BirdEventsTable
           programId={selectedProgram ?? undefined}
           captures={captures}
           maxTableHeight={800}

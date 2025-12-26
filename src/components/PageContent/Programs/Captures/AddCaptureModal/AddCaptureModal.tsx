@@ -18,7 +18,7 @@ import { useData } from "../../../../../services/useData";
 import type { Capture, CaptureFormData } from "../../../../../types";
 import { CAPTURE_COLUMNS } from "../helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
-import CapturesTable from "../CapturesTable";
+import BirdEventsTable from "../BirdEventsTable";
 import SpeciesRangeTable from "../SpeciesRangeTable";
 
 interface AddCaptureModalProps {
@@ -407,7 +407,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                   <h3 className="text-lg font-normal mb-2">
                     Existing data for band <span className="font-bold">{bandId}</span> :
                   </h3>
-                  <CapturesTable
+                  <BirdEventsTable
                     captures={existingCaptures}
                     maxTableHeight={300}
                     sortColumn="date"

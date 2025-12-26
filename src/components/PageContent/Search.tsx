@@ -2,7 +2,7 @@ import { Input, Progress, Select, SelectItem, Chip, Button } from "@heroui/react
 import { useState, useMemo, useCallback } from "react";
 import { useData } from "../../services/useData";
 import type { Capture } from "../../types";
-import CapturesTable from "./Programs/Captures/CapturesTable";
+import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import { CAPTURE_COLUMNS } from "./Programs/Captures/helpers";
 
 // // Capture properties available for filtering
@@ -281,7 +281,7 @@ export default function Search() {
             <h3 className="text-lg font-normal mb-2">
               Filtered results ({filteredCaptures.length} of {allCaptures.length}):
             </h3>
-            <CapturesTable
+            <BirdEventsTable
               captures={filteredCaptures}
               maxTableHeight={600}
               sortColumn="date"

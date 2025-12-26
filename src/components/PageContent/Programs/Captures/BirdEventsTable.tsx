@@ -1,67 +1,78 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
 import { useCallback, useMemo, useState } from "react";
-import type { Capture } from "../../../../types";
+import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { CAPTURE_COLUMNS } from "./helpers";
 
-// const CAPTURE_COLUMNS: { key: keyof Capture; label: string; className: string }[] = [
-//   { key: "programId", label: "Program", className: "min-w-[150px]" },
-//   { key: "bandGroup", label: "Band Group", className: "" },
-//   { key: "bandLastTwoDigits", label: "Band", className: "" },
-//   { key: "species", label: "Species", className: "" },
-//   { key: "wing", label: "Wing", className: "" },
-//   { key: "age", label: "Age", className: "" },
-//   { key: "sex", label: "Sex", className: "" },
-//   { key: "fat", label: "Fat", className: "" },
-//   { key: "weight", label: "Weight", className: "" },
-//   { key: "date", label: "Date", className: "" },
-//   { key: "time", label: "Time", className: "" },
-//   { key: "bander", label: "Bander", className: "" },
-//   { key: "scribe", label: "Scribe", className: "" },
-//   { key: "net", label: "Net", className: "" },
-//   { key: "captureType", label: "Capture Type", className: "" },
-//   { key: "notes", label: "Notes", className: "min-w-[300px]" },
-// ];
+// Helper to convert BirdEvent to table row format
+function birdEventToRow(event: BirdEvent): CaptureFormData & { id: string } {
+  return {
+    id: event.id,
+    programId: event.programId,
+    bandGroup: event.band?.bandGroupId ?? "",
+    bandLastTwoDigits: event.band?.last2digits ?? "",
+    species: event.species,
+    wing: String(event.wing || ""),
+    age: event.age,
+    howAged: event.howAged,
+    sex: event.sex,
+    howSexed: event.howSexed,
+    fat: String(event.fat || ""),
+    weight: String(event.weight || ""),
+    date: event.date,
+    time: event.time,
+    bander: event.bander,
+    scribe: event.scribe,
+    net: event.net,
+    captureType: event.birdEventType,
+    notes: event.notes,
+  };
+}
 
-interface CapturesTableProps {
+type TableRow = CaptureFormData & { id: string };
+
+interface BirdEventsTableProps {
   programId?: string;
   showOtherPrograms?: boolean;
-  captures: Capture[];
+  captures: BirdEvent[];
   maxTableHeight: number;
-  sortColumn: keyof Capture;
+  sortColumn: keyof CaptureFormData;
   sortDirection: "ascending" | "descending";
 }
 
-export default function CapturesTable({
+export default function BirdEventsTable({
   programId,
   captures,
   maxTableHeight,
   sortColumn,
   sortDirection,
   showOtherPrograms,
-}: CapturesTableProps) {
+}: BirdEventsTableProps) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([
     { column: sortColumn, direction: sortDirection },
   ]);
 
+  // Convert BirdEvents to table rows
+  const rows = useMemo(() => captures.map(birdEventToRow), [captures]);
+
   // Filter captures based on showOtherPrograms
-  const filteredCaptures = useMemo(() => {
+  const filteredRows = useMemo(() => {
     if (programId === undefined || showOtherPrograms === undefined) {
-      return captures;
+      return rows;
     }
     if (showOtherPrograms) {
-      return captures;
+      return rows;
     } else {
-      return captures.filter((capture) => capture.programId === programId);
+      return rows.filter((row) => row.programId === programId);
     }
-  }, [captures, showOtherPrograms, programId]);
+  }, [rows, showOtherPrograms, programId]);
 
   // Sort captures based on multiple sortDescriptors (cascading sort)
-  const sortedCaptures = useMemo(() => {
-    if (sortDescriptors.length === 0) return filteredCaptures;
+  const sortedRows = useMemo(() => {
+    if (sortDescriptors.length === 0) return filteredRows;
 
-    return [...filteredCaptures].sort((a, b) => {
+    return [...filteredRows].sort((a, b) => {
       for (const descriptor of sortDescriptors) {
-        const column = descriptor.column as keyof Capture;
+        const column = descriptor.column as keyof TableRow;
         const first = a[column];
         const second = b[column];
 
@@ -86,7 +97,7 @@ export default function CapturesTable({
       }
       return 0;
     });
-  }, [filteredCaptures, sortDescriptors]);
+  }, [filteredRows, sortDescriptors]);
 
   const handleSortChange = useCallback((descriptor: SortDescriptor) => {
     setSortDescriptors((prev) => {
@@ -110,7 +121,7 @@ export default function CapturesTable({
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="text-sm">
-        {filteredCaptures.length} of {captures.length} {captures.length === 1 ? "capture" : "captures"}
+        {filteredRows.length} of {rows.length} {rows.length === 1 ? "capture" : "captures"}
       </div>
       <Table
         isHeaderSticky
@@ -122,16 +133,16 @@ export default function CapturesTable({
       >
         <TableHeader columns={CAPTURE_COLUMNS}>
           {(column) => (
-            <TableColumn key={column.key} allowsSorting className={`whitespace-nowrap ${column.className}`}>
+            <TableColumn key={column.key} allowsSorting className={`whitespace-nowrap ${column.className ?? ""}`}>
               {column.label}
             </TableColumn>
           )}
         </TableHeader>
-        <TableBody items={sortedCaptures} emptyContent="No captures found">
+        <TableBody items={sortedRows} emptyContent="No captures found">
           {(item) => (
             <TableRow key={item.id} className={programId && item.programId !== programId ? "opacity-20" : ""}>
               {(columnKey) => {
-                const value: string | number = item[columnKey as keyof Capture];
+                const value = item[columnKey as keyof TableRow];
                 return <TableCell className="whitespace-nowrap">{value}</TableCell>;
               }}
             </TableRow>

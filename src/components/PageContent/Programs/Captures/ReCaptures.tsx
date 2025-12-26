@@ -1,7 +1,7 @@
 import { Spinner } from "@heroui/react";
 import { useMemo } from "react";
 import { useData } from "../../../../services/useData";
-import CapturesTable from "./CapturesTable";
+import BirdEventsTable from "./BirdEventsTable";
 
 export default function ReCaptures() {
   const { selectedProgram, programsMap, birdEventsMap, isLoading } = useData();
@@ -22,5 +22,5 @@ export default function ReCaptures() {
     );
   }
 
-  return <CapturesTable captures={reCaptures} maxTableHeight={800} sortColumn="date" sortDirection="descending" />;
+  return <BirdEventsTable captures={reCaptures} maxTableHeight={800} sortColumn="date" sortDirection="descending" />;
 }
