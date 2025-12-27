@@ -21,7 +21,28 @@ function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      
+      // Verify all required stores exist
+      const hasAllStores = 
+        db.objectStoreNames.contains(METADATA_STORE) &&
+        db.objectStoreNames.contains(DATA_STORE) &&
+        db.objectStoreNames.contains(QUEUE_STORE);
+      
+      if (!hasAllStores) {
+        // Close and delete the database, then recreate
+        db.close();
+        const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+        deleteRequest.onsuccess = () => {
+          // Retry opening with upgrade
+          openDB().then(resolve).catch(reject);
+        };
+        deleteRequest.onerror = () => reject(deleteRequest.error);
+      } else {
+        resolve(db);
+      }
+    };
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;

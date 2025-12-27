@@ -1,6 +1,7 @@
 import {
   Breadcrumbs,
   BreadcrumbItem,
+  Button,
   Spinner,
   Table,
   TableBody,
@@ -12,9 +13,11 @@ import {
 import BirdEvents from "./Captures/BirdEvents";
 import { useMemo, useState } from "react";
 import { useData } from "../../../services/useData";
+import AddProgramModal from "../../Modals/AddProgramModal";
 
 export default function Programs() {
   const { selectProgram, selectedProgram, yearsToProgramMap, isLoading } = useData();
+  const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
 
   // Year rows for the table (sorted descending)
   const yearRows = useMemo(() => {
@@ -56,7 +59,7 @@ export default function Programs() {
 
   return (
     <div className="h-full w-full flex flex-col items-center pt-4 p-8 gap-4">
-      <div className="w-full">
+      <div className="w-full flex justify-between items-center">
         <Breadcrumbs>
           <BreadcrumbItem
             onPress={() => {
@@ -69,6 +72,9 @@ export default function Programs() {
           {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
           {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
         </Breadcrumbs>
+        <Button color="primary" onPress={() => setIsAddProgramModalOpen(true)}>
+          Add Program
+        </Button>
       </div>
 
       {!selectedProgram && (
@@ -125,6 +131,11 @@ export default function Programs() {
       )}
 
       {selectedProgram && <BirdEvents />}
+      
+      <AddProgramModal
+        isOpen={isAddProgramModalOpen}
+        onOpenChange={setIsAddProgramModalOpen}
+      />
     </div>
   );
 }
