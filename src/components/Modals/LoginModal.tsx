@@ -8,7 +8,8 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
-import { app } from "../firebase";
+import { app } from "../../firebase";
+
 
 interface LoginModalProps {
   isOpen: boolean;

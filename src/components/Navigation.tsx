@@ -17,7 +17,7 @@ import { useState, useEffect } from "react";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import type { User as FirebaseUser } from "firebase/auth";
 import { app } from "../firebase";
-import LoginModal from "./LoginModal";
+import LoginModal from "./Modals/LoginModal";
 
 interface NavigationProps {
   activePage: string;

@@ -144,7 +144,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       for (const pending of pendingEvents) {
         const { birdEvent, environment } = pending;
-        const { band, id: birdEventId, birdEventType, programId, date } = birdEvent;
+        const { band, id: birdEventId, birdEventType } = birdEvent;
 
         try {
           // Update birdEventsMap

@@ -318,7 +318,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 </div>
               )}
               <Table aria-label="New capture form">
-                <TableHeader columns={CAPTURE_COLUMNS}>
+                <TableHeader columns={CAPTURE_COLUMNS.filter((column) => column.key !== "actions")}>
                   {(column) => (
                     <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
                       {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
