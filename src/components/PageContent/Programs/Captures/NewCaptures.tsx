@@ -19,7 +19,7 @@ export default function NewCaptures() {
     for (const bandGroupId of bandGroupIds) {
       const bandGroup = bandGroupsMap[bandGroupId];
       if (bandGroup) {
-        result[bandGroupId] = bandGroup.captureIds
+        result[bandGroupId] = bandGroup.newCaptureIds
           .map((id) => birdEventsMap[id])
           .filter(Boolean);
       }

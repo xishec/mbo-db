@@ -159,6 +159,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             // This is a BirdEvent
             const birdEvent = pendingEvent as BirdEvent;
             const { band, id: birdEventId, birdEventType } = birdEvent;
+            const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
 
             // Update birdEventsMap
             await set(ref(db, `${environment}/birdEventsMap/${birdEventId}`), birdEvent);
@@ -171,15 +172,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Update bandGroupsMap
-            if (birdEventType === BirdEventType.Banded) {
+            if (isNewCapture) {
               if (!bandGroupsMap[band.bandGroupId]) {
                 await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}`), {
                   id: band.bandGroupId,
-                  captureIds: [birdEventId],
+                  newCaptureIds: [birdEventId],
                 });
+              } else {
+                const updatedCaptureIds = [...bandGroupsMap[band.bandGroupId].newCaptureIds, birdEventId];
+                await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}/newCaptureIds`), updatedCaptureIds);
               }
-              const updatedCaptureIds = [...bandGroupsMap[band.bandGroupId].captureIds, birdEventId];
-              await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}/captureIds`), updatedCaptureIds);
             }
 
             console.log(`✅ Synced bird event: ${birdEventId} to ${environment}`);
@@ -294,32 +296,51 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // Update local state immediately
         const year = captureData.date.substring(0, 4);
         const updatedBandEventIds = [...(bandIdToBirdEventIdsMap[band.id] || []), newBirdEvent.id];
+        const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
 
         setBirdEventsMap((prev) => ({ ...prev, [newBirdEvent.id]: newBirdEvent }));
         setBandIdToBirdEventIdsMap((prev) => ({ ...prev, [band.id]: updatedBandEventIds }));
-        setBandGroupsMap((prev) => ({
-          ...prev,
-          [band.bandGroupId]: {
-            id: band.bandGroupId,
-            captureIds: prev[band.bandGroupId] ? [...prev[band.bandGroupId].captureIds, newBirdEvent.id] : [newBirdEvent.id],
-          },
-        }));
-        setProgramsMap((prev) => ({
-          ...prev,
-          [captureData.programId]: {
-            id: captureData.programId,
-            bandGroupIds: prev[captureData.programId]
-              ? Array.from(new Set([...prev[captureData.programId].bandGroupIds, band.bandGroupId]))
-              : [band.bandGroupId],
-            recaptureIds: prev[captureData.programId]
-              ? birdEventType !== BirdEventType.Banded
-                ? [...prev[captureData.programId].recaptureIds, newBirdEvent.id]
-                : prev[captureData.programId].recaptureIds
-              : birdEventType !== BirdEventType.Banded
-              ? [newBirdEvent.id]
-              : [],
-          },
-        }));
+        
+        // Only update bandGroupsMap if this is a Banded or None event
+        if (isNewCapture) {
+          setBandGroupsMap((prev) => ({
+            ...prev,
+            [band.bandGroupId]: {
+              id: band.bandGroupId,
+              newCaptureIds: prev[band.bandGroupId] ? [...prev[band.bandGroupId].newCaptureIds, newBirdEvent.id] : [newBirdEvent.id],
+            },
+          }));
+        }
+        
+        setProgramsMap((prev) => {
+          const existingProgram = prev[captureData.programId];
+          const isRecapture = !isNewCapture;
+          
+          // Update bandGroupIds - only add if not already present
+          const existingBandGroupIds = existingProgram?.bandGroupIds || [];
+          const updatedBandGroupIds = existingBandGroupIds.includes(band.bandGroupId)
+            ? existingBandGroupIds
+            : [...existingBandGroupIds, band.bandGroupId];
+          
+          // Update recaptureIds - only add if this is a recapture
+          let updatedRecaptureIds: string[] = [];
+          if (isRecapture) {
+            updatedRecaptureIds = existingProgram?.recaptureIds
+              ? [...existingProgram.recaptureIds, newBirdEvent.id]
+              : [newBirdEvent.id];
+          } else {
+            updatedRecaptureIds = existingProgram?.recaptureIds || [];
+          }
+          
+          return {
+            ...prev,
+            [captureData.programId]: {
+              id: captureData.programId,
+              bandGroupIds: updatedBandGroupIds,
+              recaptureIds: updatedRecaptureIds,
+            },
+          };
+        });
         setYearsToProgramMap((prev) => ({
           ...prev,
           [year]: prev[year] ? Array.from(new Set([...prev[year], captureData.programId])) : [captureData.programId],

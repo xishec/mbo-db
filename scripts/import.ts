@@ -237,10 +237,10 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
       if (!bandGroupsMap[bandGroupId]) {
         bandGroupsMap[bandGroupId] = {
           id: bandGroupId,
-          captureIds: [],
+          newCaptureIds: [],
         } as BandGroup;
       }
-      bandGroupsMap[bandGroupId].captureIds.push(birdEventId);
+      bandGroupsMap[bandGroupId].newCaptureIds.push(birdEventId);
     }
 
     // programsMap

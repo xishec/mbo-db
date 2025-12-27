@@ -41,7 +41,7 @@ export class Band {
 
 export interface BandGroup {
   id: string;
-  captureIds: string[];
+  newCaptureIds: string[];
 }
 
 export interface BirdEvent {

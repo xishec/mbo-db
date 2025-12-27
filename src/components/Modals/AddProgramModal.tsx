@@ -1,12 +1,4 @@
-import {
-  Button,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-} from "@heroui/react";
+import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
 import { useState } from "react";
 import { useData } from "../../services/useData";
 
@@ -46,21 +38,6 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
         </ModalHeader>
         <ModalBody className="gap-4 px-8 py-4">
           <Input
-            label="Program Name"
-            placeholder="Enter program name"
-            variant="bordered"
-            value={programName}
-            labelPlacement="outside"
-            onChange={(e) => setProgramName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && programName.trim() && year.trim()) {
-                handleSubmit();
-              }
-            }}
-            isRequired
-            autoFocus
-          />
-          <Input
             label="Year"
             placeholder="Enter year"
             variant="bordered"
@@ -75,9 +52,30 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
             isRequired
             type="number"
           />
+          <Input
+            label="Program Name"
+            placeholder="Enter program name"
+            variant="bordered"
+            value={programName}
+            labelPlacement="outside"
+            onChange={(e) => setProgramName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && programName.trim() && year.trim()) {
+                handleSubmit();
+              }
+            }}
+            isRequired
+            autoFocus
+          />
         </ModalBody>
         <ModalFooter className="gap-4 p-8 pt-0">
-          <Button color="danger" variant="light" onPress={() => onOpenChange(false)} className="flex-1" isDisabled={isLoading}>
+          <Button
+            color="danger"
+            variant="light"
+            onPress={() => onOpenChange(false)}
+            className="flex-1"
+            isDisabled={isLoading}
+          >
             Cancel
           </Button>
           <Button
