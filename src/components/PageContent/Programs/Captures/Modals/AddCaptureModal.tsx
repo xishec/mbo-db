@@ -387,6 +387,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                     maxTableHeight={300}
                     sortColumn="date"
                     sortDirection="descending"
+                    disableActions
                   />
                 </div>
               )}

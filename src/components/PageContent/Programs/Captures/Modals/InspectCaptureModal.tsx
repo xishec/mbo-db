@@ -31,6 +31,7 @@ export default function InspectCaptureModal({ isOpen, onOpenChange, bandId }: In
                   maxTableHeight={500}
                   sortColumn="bandGroup"
                   sortDirection="descending"
+                  disableActions
                 />
               ) : (
                 <p>No captures found for this band.</p>
