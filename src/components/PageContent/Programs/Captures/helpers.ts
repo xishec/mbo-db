@@ -8,6 +8,9 @@ export const CAPTURE_COLUMNS: CaptureColumn[] = [
   { key: "bandGroup", label: "Band Group", maxLength: 7, minLength: 7 },
   { key: "bandLastTwoDigits", label: "Band", maxLength: 2, minLength: 2 },
   { key: "species", label: "Species", maxLength: 4, minLength: 4 },
+  { key: "captureType", label: "Capture Type" },
+  { key: "date", label: "Date", type: "date" },
+  { key: "time", label: "Time", type: "time" },
   { key: "wing", label: "Wing", className: "min-w-[60px]", maxLength: 4, minLength: 2 },
   { key: "age", label: "Age", className: "", maxLength: 1, minLength: 1 },
   { key: "howAged", label: "How Aged", className: "", maxLength: 1, minLength: 1 },
@@ -15,12 +18,9 @@ export const CAPTURE_COLUMNS: CaptureColumn[] = [
   { key: "howSexed", label: "How Sexed", className: "", maxLength: 1, minLength: 1 },
   { key: "fat", label: "Fat", maxLength: 1, minLength: 1 },
   { key: "weight", label: "Weight", maxLength: 5, minLength: 2 },
-  { key: "date", label: "Date", type: "date" },
-  { key: "time", label: "Time", type: "time" },
   { key: "bander", label: "Bander", maxLength: 3, minLength: 3 },
   { key: "scribe", label: "Scribe", maxLength: 3, minLength: 3 },
   { key: "net", label: "Net", maxLength: 2, minLength: 2 },
-  { key: "captureType", label: "Capture Type" },
   { key: "notes", label: "Notes", className: "min-w-[200px]" },
 ];
 

@@ -82,7 +82,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   const pastBirdEvents = useMemo(() => {
     if (!bandId) return [];
     const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
-    console.log(bandIdToBirdEventIdsMap, bandId);
     return birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
 
@@ -195,7 +194,11 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
     if (currentIndex < CAPTURE_COLUMNS.length - 1) {
-      const nextKey = CAPTURE_COLUMNS[currentIndex + 1].key;
+      const nextKey = CAPTURE_COLUMNS.slice(currentIndex + 1).find(
+        (col) => !["captureType", "date", "time"].includes(col.key)
+      )?.key;
+      if (!nextKey) return;
+
       inputRefs.current.get(nextKey)?.focus();
     }
   }, []);
@@ -203,7 +206,11 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   const focusPrevInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
     if (currentIndex > 0) {
-      const prevKey = CAPTURE_COLUMNS[currentIndex - 1].key;
+      const prevKey = CAPTURE_COLUMNS.slice(0, currentIndex).reverse().find(
+        (col) => !["captureType", "date", "time"].includes(col.key)
+      )?.key;
+      if (!prevKey) return;
+
       inputRefs.current.get(prevKey)?.focus();
     }
   }, []);
