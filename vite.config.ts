@@ -1,11 +1,26 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import electron from "vite-plugin-electron";
+import renderer from "vite-plugin-electron-renderer";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    electron([
+      {
+        entry: "electron/main.ts",
+      },
+      {
+        entry: "electron/preload.ts",
+        onstart(options) {
+          // Notify the Renderer process to reload the page when the Preload scripts build is complete
+          options.reload();
+        },
+      },
+    ]),
+    renderer(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["mbo-favicon.svg", "mbo-logo.svg"],

@@ -4,6 +4,10 @@ import { getAnalytics } from "firebase/analytics";
 import { getDatabase } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
+// Environment configuration
+export type Environment = "alpha" | "beta" | "prod";
+export const CURRENT_ENVIRONMENT: Environment = (import.meta.env.VITE_ENVIRONMENT as Environment) || "alpha";
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,

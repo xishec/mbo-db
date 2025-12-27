@@ -365,11 +365,6 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   await writeObjectToDB(db, "alpha/bandGroupsMap", bandGroupsMap);
   await set(ref(db, "alpha/magicTable/mbo"), mboMagicTable);
 
-  // Update lastUpdated timestamp
-  const lastUpdated = Date.now();
-  await set(ref(db, "alpha/metadata/lastUpdated"), lastUpdated);
-  console.log(`Set lastUpdated timestamp: ${lastUpdated}`);
-
   console.log("✅ All data uploaded successfully!");
 }
 
