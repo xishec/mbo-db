@@ -19,25 +19,33 @@ export default function InspectCaptureModal({ isOpen, onOpenChange, bandId }: In
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
+    <Modal
+      isKeyboardDismissDisabled
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      className={`!max-w-[calc(100%-4rem)]`}
+      scrollBehavior="inside"
+    >
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">Inspect Band {bandId}</ModalHeader>
-            <ModalBody>
+            <ModalHeader className="flex flex-row items-center gap-1 p-8 pb-0 font-normal">
+              Inspect Band <span className="font-bold">{bandId}</span>
+            </ModalHeader>
+            <ModalBody className="gap-4 px-8 py-4">
               {birdEvents.length > 0 ? (
                 <BirdEventsTable
                   captures={birdEvents}
                   maxTableHeight={500}
                   sortColumn="bandGroup"
                   sortDirection="descending"
-                  disableActions
+                  disableInspect
                 />
               ) : (
                 <p>No captures found for this band.</p>
               )}
             </ModalBody>
-            <ModalFooter>
+            <ModalFooter className="gap-4 p-8 pt-0">
               <Button color="primary" onPress={onClose}>
                 Close
               </Button>

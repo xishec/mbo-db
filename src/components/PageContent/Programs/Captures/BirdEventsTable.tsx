@@ -40,7 +40,7 @@ interface BirdEventsTableProps {
   maxTableHeight: number;
   sortColumn: keyof CaptureFormData;
   sortDirection: "ascending" | "descending";
-  disableActions?: boolean;
+  disableInspect?: boolean;
 }
 
 export default function BirdEventsTable({
@@ -50,7 +50,7 @@ export default function BirdEventsTable({
   sortColumn,
   sortDirection,
   showOtherPrograms,
-  disableActions = false,
+  disableInspect = false,
 }: BirdEventsTableProps) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([
     { column: sortColumn, direction: sortDirection },
@@ -145,12 +145,14 @@ export default function BirdEventsTable({
     if (columnKey === "actions") {
       return (
         <div className="relative flex items-center gap-2">
-          <span 
-            className="text-lg text-default-600 cursor-pointer active:opacity-50"
-            onClick={() => handleInspect(item.id)}
-          >
-            <EyeIcon className="w-5 h-5" />
-          </span>
+          {!disableInspect && (
+            <span 
+              className="text-lg text-default-600 cursor-pointer active:opacity-50"
+              onClick={() => handleInspect(item.id)}
+            >
+              <EyeIcon className="w-5 h-5" />
+            </span>
+          )}
           <span 
             className="text-lg text-default-600 cursor-pointer active:opacity-50"
             onClick={() => handleEdit(item.id)}
@@ -163,14 +165,12 @@ export default function BirdEventsTable({
 
     const cellValue = item[columnKey as keyof TableRow];
     return cellValue;
-  }, [handleInspect, handleEdit]);
+  }, [handleInspect, handleEdit, disableInspect]);
 
   const primarySortDescriptor = sortDescriptors[0];
 
-  // Filter columns based on disableActions prop
-  const displayColumns = useMemo(() => {
-    return disableActions ? CAPTURE_COLUMNS.filter((col) => col.key !== "actions") : CAPTURE_COLUMNS;
-  }, [disableActions]);
+  // Always show all columns including actions
+  const displayColumns = CAPTURE_COLUMNS;
 
   return (
     <>
@@ -211,19 +211,17 @@ export default function BirdEventsTable({
         </Table>
       </div>
       
-      {!disableActions && (
-        <>
-          <EditCaptureModal 
-            isOpen={isEditModalOpen} 
-            onOpenChange={setIsEditModalOpen}
-            birdEvent={selectedBirdEvent}
-          />
-          <InspectCaptureModal 
-            isOpen={isInspectModalOpen} 
-            onOpenChange={setIsInspectModalOpen}
-            bandId={selectedBandId}
-          />
-        </>
+      <EditCaptureModal 
+        isOpen={isEditModalOpen} 
+        onOpenChange={setIsEditModalOpen}
+        birdEvent={selectedBirdEvent}
+      />
+      {!disableInspect && (
+        <InspectCaptureModal 
+          isOpen={isInspectModalOpen} 
+          onOpenChange={setIsInspectModalOpen}
+          bandId={selectedBandId}
+        />
       )}
     </>
   );
