@@ -97,8 +97,8 @@ export function parseCSV(csvContent: string): BirdEvent[] {
   const headers = parseCSVLine(rows[0]);
   const birdEvents: BirdEvent[] = [];
 
-  const lastRows = rows.slice(-10000);
-  // const lastRows = rows;
+  // const lastRows = rows.slice(-10000);
+  const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
     const row = lastRows[i].trim();
