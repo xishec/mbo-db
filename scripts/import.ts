@@ -14,12 +14,11 @@ import {
   BandGroupsMap,
   BandGroup,
   SpeciesRange,
+  generateBirdEventId,
 } from "../src/types";
 
 async function main() {
   try {
-    await set(ref(db, "alpha"), {});
-
     console.log("Reading CSV file...");
     const csvPath = join(process.cwd(), "public", "data", "tblCaptures.csv");
     const csvContent = readFileSync(csvPath, "utf-8");
@@ -97,8 +96,8 @@ export function parseCSV(csvContent: string): BirdEvent[] {
   const headers = parseCSVLine(rows[0]);
   const birdEvents: BirdEvent[] = [];
 
-  // const lastRows = rows.slice(-10000);
-  const lastRows = rows;
+  const lastRows = rows.slice(-5000);
+  // const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
     const row = lastRows[i].trim();
@@ -183,8 +182,15 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
     }
   });
 
-  birdEvent.id = crypto.randomUUID();
   birdEvent.band = new Band(bandPrefix, bandSuffix);
+  birdEvent.id = generateBirdEventId(
+    birdEvent.band.id,
+    birdEvent.date,
+    birdEvent.bander,
+    birdEvent.scribe,
+    birdEvent.net,
+    birdEvent.weight.toString()
+  );
   birdEvent.time = "10:00";
   return birdEvent;
 }

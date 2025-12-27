@@ -68,6 +68,17 @@ export interface BirdEvent {
   birdEventType: BirdEventType;
 }
 
+export function generateBirdEventId(
+  bandId: string,
+  date: string,
+  bander: string,
+  scribe: string,
+  net: string,
+  weight: string
+): string {
+  return `${bandId}${date}${bander}${scribe}${net}${weight}`.replace(".", "");
+}
+
 export const enum BirdEventType {
   Banded = "Banded",
   None = "None",

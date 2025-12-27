@@ -14,7 +14,7 @@ import type {
   PendingEvent,
   ProgramEvent,
 } from "../types";
-import { Band, BirdEventType, ProgramEventType } from "../types";
+import { Band, BirdEventType, generateBirdEventId, ProgramEventType } from "../types";
 import { DataContext } from "./DataContext";
 import {
   saveDataToIndexedDB,
@@ -58,6 +58,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // Get the lastModified timestamp from Firebase
         const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`));
         const firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
+
+        // Log timestamps for debugging
+        console.log("📅 Cache timestamp:", cachedTimestamp ? new Date(cachedTimestamp).toLocaleString() : "None");
+        console.log(
+          "📅 Firebase timestamp:",
+          firebaseTimestamp ? new Date(firebaseTimestamp).toLocaleString() : "None"
+        );
 
         // Determine if we need to fetch fresh data
         const needsFetch = !cachedData || !cachedTimestamp || !firebaseTimestamp || firebaseTimestamp > cachedTimestamp;
@@ -237,9 +244,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addCapture = useCallback(
     async (captureData: CaptureFormData, birdEventType: BirdEventType) => {
       try {
-        // Generate unique ID for the new bird event
-        const birdEventId = crypto.randomUUID();
-
         // Build Band object
         const bandPrefix = captureData.bandGroup.substring(0, 4);
         const bandSuffix = captureData.bandGroup.substring(4) + captureData.bandLastTwoDigits;
@@ -247,7 +251,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Create BirdEvent object
         const newBirdEvent: BirdEvent = {
-          id: birdEventId,
+          id: generateBirdEventId(
+            band.id,
+            captureData.date,
+            captureData.bander,
+            captureData.scribe,
+            captureData.net,
+            captureData.weight
+          ),
           programId: captureData.programId,
           band,
           species: captureData.species,
@@ -282,15 +293,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Update local state immediately
         const year = captureData.date.substring(0, 4);
-        const updatedBandEventIds = [...(bandIdToBirdEventIdsMap[band.id] || []), birdEventId];
+        const updatedBandEventIds = [...(bandIdToBirdEventIdsMap[band.id] || []), newBirdEvent.id];
 
-        setBirdEventsMap((prev) => ({ ...prev, [birdEventId]: newBirdEvent }));
+        setBirdEventsMap((prev) => ({ ...prev, [newBirdEvent.id]: newBirdEvent }));
         setBandIdToBirdEventIdsMap((prev) => ({ ...prev, [band.id]: updatedBandEventIds }));
         setBandGroupsMap((prev) => ({
           ...prev,
           [band.bandGroupId]: {
             id: band.bandGroupId,
-            captureIds: prev[band.bandGroupId] ? [...prev[band.bandGroupId].captureIds, birdEventId] : [birdEventId],
+            captureIds: prev[band.bandGroupId] ? [...prev[band.bandGroupId].captureIds, newBirdEvent.id] : [newBirdEvent.id],
           },
         }));
         setProgramsMap((prev) => ({
@@ -302,10 +313,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               : [band.bandGroupId],
             recaptureIds: prev[captureData.programId]
               ? birdEventType !== BirdEventType.Banded
-                ? [...prev[captureData.programId].recaptureIds, birdEventId]
+                ? [...prev[captureData.programId].recaptureIds, newBirdEvent.id]
                 : prev[captureData.programId].recaptureIds
               : birdEventType !== BirdEventType.Banded
-              ? [birdEventId]
+              ? [newBirdEvent.id]
               : [],
           },
         }));
@@ -322,10 +333,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (isOnline) {
           await syncQueue();
         } else {
-          console.log("📴 Offline - event queued for later sync:", birdEventId);
+          console.log("📴 Offline - event queued for later sync:", newBirdEvent.id);
         }
 
-        console.log("✅ Capture added:", birdEventId);
+        console.log("✅ Capture added:", newBirdEvent.id);
       } catch (err) {
         console.error("Error adding capture:", err);
         throw err;
