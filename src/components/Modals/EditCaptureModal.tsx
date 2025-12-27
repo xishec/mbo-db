@@ -6,7 +6,7 @@ import {
   ModalHeader,
   Button,
 } from "@heroui/react";
-import type { BirdEvent } from "../../../../../types";
+import type { BirdEvent } from "../../types";
 
 interface EditCaptureModalProps {
   isOpen: boolean;

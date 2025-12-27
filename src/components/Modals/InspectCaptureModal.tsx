@@ -1,7 +1,7 @@
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Button } from "@heroui/react";
 import { useMemo } from "react";
-import { useData } from "../../../../../services/useData";
-import BirdEventsTable from "../BirdEventsTable";
+import { useData } from "../../services/useData";
+import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 
 interface InspectCaptureModalProps {
   isOpen: boolean;

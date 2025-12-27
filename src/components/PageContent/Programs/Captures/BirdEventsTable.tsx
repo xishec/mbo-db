@@ -2,8 +2,8 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type S
 import { useCallback, useMemo, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { CAPTURE_COLUMNS } from "./helpers";
-import EditCaptureModal from "./Modals/EditCaptureModal";
-import InspectCaptureModal from "./Modals/InspectCaptureModal";
+import EditCaptureModal from "../../../Modals/EditCaptureModal";
+import InspectCaptureModal from "../../../Modals/InspectCaptureModal";
 import { EyeIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 
 // Helper to convert BirdEvent to table row format

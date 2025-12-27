@@ -14,12 +14,12 @@ import {
   TableRow,
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useData } from "../../../../../services/useData";
-import { BirdEventType, type CaptureFormData } from "../../../../../types";
-import { CAPTURE_COLUMNS } from "../helpers";
-import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
-import BirdEventsTable from "../BirdEventsTable";
-import SpeciesRangeTable from "../SpeciesRangeTable";
+import { useData } from "../../services/useData";
+import { BirdEventType, type CaptureFormData } from "../../types";
+import { CAPTURE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
+import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../PageContent/Programs/Captures/helpers";
+import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
+import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 
 interface AddCaptureModalProps {
   isOpen: boolean;
