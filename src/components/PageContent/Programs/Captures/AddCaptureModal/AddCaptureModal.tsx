@@ -30,11 +30,13 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [lastOpenState, setLastOpenState] = useState(false);
+  const [lastAutoFilledBandId, setLastAutoFilledBandId] = useState("");
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   // Reset form data when modal opens
   if (isOpen && !lastOpenState) {
     setFormData(getDefaultFormData(selectedProgram || ""));
+    setLastAutoFilledBandId("");
   }
   if (isOpen !== lastOpenState) {
     setLastOpenState(isOpen);
@@ -66,7 +68,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
     if (formData.bandGroup.length === 7 && formData.bandLastTwoDigits.length === 2) {
-      return `${formData.bandGroup}${formData.bandLastTwoDigits}`;
+      return `${formData.bandGroup}-${formData.bandLastTwoDigits}`;
     }
     return "";
   }, [formData.bandGroup, formData.bandLastTwoDigits]);
@@ -78,6 +80,15 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     console.log(bandIdToBirdEventIdsMap, bandId);
     return birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
+
+  // Auto-fill species from past bird events only when bandId changes
+  if (pastBirdEvents.length > 0 && bandId && lastAutoFilledBandId !== bandId) {
+    const existingSpecies = pastBirdEvents[0]?.species;
+    if (existingSpecies) {
+      setLastAutoFilledBandId(bandId);
+      setFormData((prev) => ({ ...prev, species: existingSpecies }));
+    }
+  }
 
   // Calculate range validation for wing and weight
   const { rangeValidation, pyleRange, mboRange } = useMemo(() => {
@@ -175,10 +186,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     });
     return hasRecentCapture ? "Repeat" : "Return";
   }, [formData.date, pastBirdEvents]);
-
-  const displaySpecies = useMemo(() => {
-    return formData.species || (pastBirdEvents.length > 0 ? pastBirdEvents[0]?.species || "" : "");
-  }, [formData.species, pastBirdEvents]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
@@ -328,27 +335,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                             <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border">
                               {displayCaptureType}
                             </div>
-                          ) : column.key === "species" ? (
-                            <Input
-                              ref={(el) => {
-                                if (el) inputRefs.current.set(column.key, el);
-                              }}
-                              variant="bordered"
-                              color={inputColor || "default"}
-                              aria-label={column.label}
-                              type={column.type || "text"}
-                              maxLength={column.maxLength}
-                              validationBehavior="aria"
-                              value={displaySpecies}
-                              onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
-                              onKeyDown={(e) => handleKeyDown(e, column.key)}
-                              style={column.maxLength ? { width: `${10 * column.maxLength}px` } : undefined}
-                              classNames={{
-                                input:
-                                  "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                inputWrapper: getBorderClass(inputColor),
-                              }}
-                            />
                           ) : (
                             <Input
                               ref={(el) => {
