@@ -8,6 +8,7 @@ import {
   ModalHeader,
 } from "@heroui/react";
 import { useState } from "react";
+import { useData } from "../../services/useData";
 
 interface AddProgramModalProps {
   isOpen: boolean;
@@ -15,14 +16,24 @@ interface AddProgramModalProps {
 }
 
 export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModalProps) {
+  const { addProgram } = useData();
   const [programName, setProgramName] = useState("");
+  const [year, setYear] = useState(() => new Date().getFullYear().toString());
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
-    if (programName.trim()) {
-      // TODO: Implement program creation logic
-      console.log("Adding program:", programName.trim());
-      setProgramName("");
-      onOpenChange(false);
+  const handleSubmit = async () => {
+    if (programName.trim() && year.trim()) {
+      setIsLoading(true);
+      try {
+        await addProgram(programName.trim(), year.trim());
+        setProgramName("");
+        setYear(new Date().getFullYear().toString());
+        onOpenChange(false);
+      } catch (err) {
+        console.error("Failed to add program:", err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -31,28 +42,51 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
           <h2 className="text-2xl font-bold">Add New Program</h2>
+          <p className="text-sm font-normal">Enter a name and year for the new program</p>
         </ModalHeader>
         <ModalBody className="gap-4 px-8 py-4">
           <Input
             label="Program Name"
+            placeholder="Enter program name"
             variant="bordered"
             value={programName}
             labelPlacement="outside"
             onChange={(e) => setProgramName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && programName.trim()) {
+              if (e.key === "Enter" && programName.trim() && year.trim()) {
                 handleSubmit();
               }
             }}
             isRequired
             autoFocus
           />
+          <Input
+            label="Year"
+            placeholder="Enter year"
+            variant="bordered"
+            value={year}
+            labelPlacement="outside"
+            onChange={(e) => setYear(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && programName.trim() && year.trim()) {
+                handleSubmit();
+              }
+            }}
+            isRequired
+            type="number"
+          />
         </ModalBody>
         <ModalFooter className="gap-4 p-8 pt-0">
-          <Button color="danger" variant="light" onPress={() => onOpenChange(false)} className="flex-1">
+          <Button color="danger" variant="light" onPress={() => onOpenChange(false)} className="flex-1" isDisabled={isLoading}>
             Cancel
           </Button>
-          <Button color="primary" onPress={handleSubmit} isDisabled={!programName.trim()} className="flex-1">
+          <Button
+            color="primary"
+            onPress={handleSubmit}
+            isDisabled={!programName.trim() || !year.trim()}
+            isLoading={isLoading}
+            className="flex-1"
+          >
             Add Program
           </Button>
         </ModalFooter>

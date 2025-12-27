@@ -72,9 +72,11 @@ export default function Programs() {
           {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
           {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
         </Breadcrumbs>
-        <Button color="primary" onPress={() => setIsAddProgramModalOpen(true)}>
-          Add Program
-        </Button>
+        {!selectedProgram && (
+          <Button color="primary" onPress={() => setIsAddProgramModalOpen(true)}>
+            Add Program
+          </Button>
+        )}
       </div>
 
       {!selectedProgram && (
@@ -131,11 +133,8 @@ export default function Programs() {
       )}
 
       {selectedProgram && <BirdEvents />}
-      
-      <AddProgramModal
-        isOpen={isAddProgramModalOpen}
-        onOpenChange={setIsAddProgramModalOpen}
-      />
+
+      <AddProgramModal isOpen={isAddProgramModalOpen} onOpenChange={setIsAddProgramModalOpen} />
     </div>
   );
 }

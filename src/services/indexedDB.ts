@@ -1,4 +1,4 @@
-import type { AlphaData, PendingBirdEvent } from "../types";
+import type { AlphaData, PendingEvent } from "../types";
 
 const DB_NAME = "mbo-db";
 const DB_VERSION = 3; // Increment for queue store
@@ -185,9 +185,9 @@ export async function getLastUpdated(environment: string): Promise<number | null
 }
 
 /**
- * Add a pending bird event to the queue
+ * Add a pending event to the queue
  */
-export async function addToQueue(pendingEvent: PendingBirdEvent): Promise<void> {
+export async function addToQueue(pendingEvent: PendingEvent): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction([QUEUE_STORE], "readwrite");
   const store = transaction.objectStore(QUEUE_STORE);
@@ -208,9 +208,9 @@ export async function addToQueue(pendingEvent: PendingBirdEvent): Promise<void> 
 }
 
 /**
- * Get all pending bird events from the queue
+ * Get all pending events from the queue
  */
-export async function getQueuedEvents(): Promise<PendingBirdEvent[]> {
+export async function getQueuedEvents(): Promise<PendingEvent[]> {
   const db = await openDB();
   const transaction = db.transaction([QUEUE_STORE], "readonly");
   const store = transaction.objectStore(QUEUE_STORE);
@@ -219,7 +219,7 @@ export async function getQueuedEvents(): Promise<PendingBirdEvent[]> {
     const request = store.getAll();
     request.onsuccess = () => {
       db.close();
-      resolve(request.result as PendingBirdEvent[]);
+      resolve(request.result as PendingEvent[]);
     };
     request.onerror = () => {
       db.close();

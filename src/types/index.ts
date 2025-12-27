@@ -153,6 +153,7 @@ export interface DataContextType {
 
   // Actions
   addCapture: (captureData: CaptureFormData, birdEventType: BirdEventType) => Promise<void>;
+  addProgram: (programName: string, year: string) => Promise<void>;
 }
 
 // Form types
@@ -186,10 +187,23 @@ export interface CaptureColumn {
   minLength?: number;
 }
 
+// Program Event types
+export const enum ProgramEventType {
+  Created = "Created",
+  Modified = "Modified",
+}
+
+export interface ProgramEvent {
+  id: string; // program ID
+  name: string;
+  year: string;
+  programEventType: ProgramEventType;
+}
+
 // Queue types for offline support
-export interface PendingBirdEvent {
+export interface PendingEvent {
   id: string;
-  birdEvent: BirdEvent;
+  pendingEvent: BirdEvent | ProgramEvent;
   timestamp: number;
   environment: string;
 }
