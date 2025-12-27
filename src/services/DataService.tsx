@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { get, ref } from "firebase/database";
+import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT } from "../firebase";
 import type {
   AlphaData,
@@ -46,7 +46,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Get the lastModified timestamp from Firebase
         const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`));
-        const firebaseTimestamp = lastModifiedSnapshot.exists() ? lastModifiedSnapshot.val() as number : null;
+        const firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
 
         // Determine if we need to fetch fresh data
         const needsFetch = !cachedData || !cachedTimestamp || !firebaseTimestamp || firebaseTimestamp > cachedTimestamp;

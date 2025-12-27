@@ -365,6 +365,9 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   await writeObjectToDB(db, "alpha/bandGroupsMap", bandGroupsMap);
   await set(ref(db, "alpha/magicTable/mbo"), mboMagicTable);
 
+  // Set lastModified timestamp to signal clients that data has been updated
+  await set(ref(db, "alpha/lastModified"), Date.now());
+
   console.log("✅ All data uploaded successfully!");
 }
 
