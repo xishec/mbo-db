@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT } from "../firebase";
 import type {
@@ -9,8 +9,10 @@ import type {
   BirdEventsMap,
   BandGroupsMap,
   MagicTable,
+  CaptureFormData,
+  BirdEvent,
 } from "../types";
-import { Band } from "../types";
+import { Band, BirdEventType } from "../types";
 import { DataContext } from "./DataContext";
 import {
   saveAlphaDataToIndexedDB,
@@ -122,6 +124,141 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const addCapture = useCallback(
+    async (captureData: CaptureFormData, birdEventType: BirdEventType) => {
+      try {
+        // Generate unique ID for the new bird event
+        const birdEventId = crypto.randomUUID();
+
+        // Build Band object
+        const bandPrefix = captureData.bandGroup.substring(0, 4);
+        const bandSuffix = captureData.bandGroup.substring(4) + captureData.bandLastTwoDigits;
+        const band = new Band(bandPrefix, bandSuffix);
+
+        // Create BirdEvent object
+        const newBirdEvent: BirdEvent = {
+          id: birdEventId,
+          programId: captureData.programId,
+          band,
+          species: captureData.species,
+          wing: captureData.wing ? Number(captureData.wing) : 0,
+          age: captureData.age,
+          howAged: captureData.howAged,
+          sex: captureData.sex,
+          howSexed: captureData.howSexed,
+          fat: captureData.fat ? Number(captureData.fat) : 0,
+          weight: captureData.weight ? Number(captureData.weight) : 0,
+          date: captureData.date,
+          time: captureData.time,
+          bander: captureData.bander,
+          scribe: captureData.scribe,
+          net: captureData.net,
+          notes: captureData.notes,
+          previousEventId: null,
+          modifiedEventId: null,
+          birdEventType,
+        };
+
+        // Save to Firebase
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap/${birdEventId}`), newBirdEvent);
+
+        // Update bandIdToBirdEventIdsMap
+        const updatedBandEventIds = [...(bandIdToBirdEventIdsMap[band.id] || []), birdEventId];
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandIdToBirdEventIdsMap/${band.id}`), updatedBandEventIds);
+
+        // Update bandGroupsMap if needed
+        if (!bandGroupsMap[band.bandGroupId]) {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap/${band.bandGroupId}`), {
+            id: band.bandGroupId,
+            captureIds: [birdEventId],
+          });
+        } else if (!bandGroupsMap[band.bandGroupId].captureIds.includes(birdEventId)) {
+          const updatedCaptureIds = [...bandGroupsMap[band.bandGroupId].captureIds, birdEventId];
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap/${band.bandGroupId}/captureIds`), updatedCaptureIds);
+        }
+
+        // Update programsMap if needed
+        const year = captureData.date.substring(0, 4);
+        if (!programsMap[captureData.programId]) {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}`), {
+            id: captureData.programId,
+            bandGroupIds: [band.bandGroupId],
+            recaptureIds: birdEventType !== BirdEventType.Banded ? [birdEventId] : [],
+          });
+        } else {
+          if (!programsMap[captureData.programId].bandGroupIds.includes(band.bandGroupId)) {
+            const updatedBandGroupIds = [...programsMap[captureData.programId].bandGroupIds, band.bandGroupId];
+            await set(
+              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/bandGroupIds`),
+              updatedBandGroupIds
+            );
+          }
+          if (
+            birdEventType !== BirdEventType.Banded &&
+            !programsMap[captureData.programId].recaptureIds.includes(birdEventId)
+          ) {
+            const updatedRecaptureIds = [...programsMap[captureData.programId].recaptureIds, birdEventId];
+            await set(
+              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/recaptureIds`),
+              updatedRecaptureIds
+            );
+          }
+        }
+
+        // Update yearsToProgramMap if needed
+        if (!yearsToProgramMap[year]) {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), [captureData.programId]);
+        } else if (!yearsToProgramMap[year].includes(captureData.programId)) {
+          const updatedPrograms = [...yearsToProgramMap[year], captureData.programId];
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), updatedPrograms);
+        }
+
+        // Update lastModified timestamp
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`), Date.now());
+
+        // Update local state
+        setBirdEventsMap((prev) => ({ ...prev, [birdEventId]: newBirdEvent }));
+        setBandIdToBirdEventIdsMap((prev) => ({ ...prev, [band.id]: updatedBandEventIds }));
+        setBandGroupsMap((prev) => ({
+          ...prev,
+          [band.bandGroupId]: {
+            id: band.bandGroupId,
+            captureIds: prev[band.bandGroupId] ? [...prev[band.bandGroupId].captureIds, birdEventId] : [birdEventId],
+          },
+        }));
+        setProgramsMap((prev) => ({
+          ...prev,
+          [captureData.programId]: {
+            id: captureData.programId,
+            bandGroupIds: prev[captureData.programId]
+              ? Array.from(new Set([...prev[captureData.programId].bandGroupIds, band.bandGroupId]))
+              : [band.bandGroupId],
+            recaptureIds: prev[captureData.programId]
+              ? birdEventType !== BirdEventType.Banded
+                ? [...prev[captureData.programId].recaptureIds, birdEventId]
+                : prev[captureData.programId].recaptureIds
+              : birdEventType !== BirdEventType.Banded
+              ? [birdEventId]
+              : [],
+          },
+        }));
+        setYearsToProgramMap((prev) => ({
+          ...prev,
+          [year]: prev[year] ? Array.from(new Set([...prev[year], captureData.programId])) : [captureData.programId],
+        }));
+
+        // Clear IndexedDB cache to force refresh on next load
+        await saveEnvironmentLastUpdated(CURRENT_ENVIRONMENT, 0);
+
+        console.log("✅ Capture added successfully:", birdEventId);
+      } catch (err) {
+        console.error("Error adding capture:", err);
+        throw err;
+      }
+    },
+    [bandIdToBirdEventIdsMap, bandGroupsMap, programsMap, yearsToProgramMap]
+  );
+
   return (
     <DataContext.Provider
       value={{
@@ -135,6 +272,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         birdEventsMap,
         bandGroupsMap,
         magicTable,
+        addCapture,
       }}
     >
       {children}

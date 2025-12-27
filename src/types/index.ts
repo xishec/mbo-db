@@ -146,6 +146,9 @@ export interface DataContextType {
   birdEventsMap: BirdEventsMap;
   bandGroupsMap: BandGroupsMap;
   magicTable: MagicTable;
+
+  // Actions
+  addCapture: (captureData: CaptureFormData, birdEventType: BirdEventType) => Promise<void>;
 }
 
 // Form types

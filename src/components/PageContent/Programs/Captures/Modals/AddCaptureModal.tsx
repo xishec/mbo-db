@@ -15,7 +15,7 @@ import {
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../../services/useData";
-import type { CaptureFormData } from "../../../../../types";
+import { BirdEventType, type CaptureFormData } from "../../../../../types";
 import { CAPTURE_COLUMNS } from "../helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
 import BirdEventsTable from "../BirdEventsTable";
@@ -27,7 +27,7 @@ interface AddCaptureModalProps {
 }
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap } = useData();
+  const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [lastOpenState, setLastOpenState] = useState(false);
   const [lastAutoFilledBandId, setLastAutoFilledBandId] = useState("");
@@ -177,14 +177,14 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   // Compute auto values (without setState)
   const displayCaptureType = useMemo(() => {
-    if (!formData.date || pastBirdEvents.length === 0) return "Banded";
+    if (!formData.date || pastBirdEvents.length === 0) return BirdEventType.Banded;
     const currentDate = new Date(formData.date);
     const hasRecentCapture = pastBirdEvents.some((capture) => {
       const captureDate = new Date(capture.date);
       const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
       return daysDiff <= 90;
     });
-    return hasRecentCapture ? "Repeat" : "Return";
+    return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
   }, [formData.date, pastBirdEvents]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
@@ -246,11 +246,15 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     onOpenChange(false);
   }, [onOpenChange]);
 
-  const handleSave = useCallback(() => {
-    // TODO: Implement save logic
-    console.log("Saving capture:", formData);
-    handleClose();
-  }, [formData, handleClose]);
+  const handleSave = useCallback(async () => {
+    try {
+      await addCapture(formData, displayCaptureType);
+      handleClose();
+    } catch (err) {
+      console.error("Failed to save capture:", err);
+      alert("Failed to save capture. Please try again.");
+    }
+  }, [formData, handleClose, addCapture, displayCaptureType]);
 
   const getInputColor = (columnKey: keyof CaptureFormData) => {
     // Check wing range validation
