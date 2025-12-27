@@ -4,7 +4,7 @@ import type { CaptureColumn } from "../../../../types";
 
 export const CAPTURE_COLUMNS: CaptureColumn[] = [
   { key: "programId", label: "Program", className: "min-w-[150px]" },
-  { key: "bandGroup", label: "Band Group", maxLength: 8, minLength: 8 },
+  { key: "bandGroup", label: "Band Group", maxLength: 7, minLength: 7 },
   { key: "bandLastTwoDigits", label: "Band", maxLength: 2, minLength: 2 },
   { key: "species", label: "Species", maxLength: 4, minLength: 4 },
   { key: "wing", label: "Wing", className: "min-w-[60px]", maxLength: 4, minLength: 2 },
@@ -95,8 +95,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
 export function formatFieldValue(field: keyof CaptureFormData, value: string): string {
   switch (field) {
     case "bandGroup": {
-      const digits = value.replace(/\D/g, "").slice(0, 7);
-      return digits.length <= 4 ? digits : `${digits.slice(0, 4)}-${digits.slice(4)}`;
+      return value.replace(/\D/g, "").slice(0, 8);
     }
     case "bandLastTwoDigits":
       return value.replace(/\D/g, "").slice(0, 2);

@@ -15,7 +15,7 @@ import {
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../../../../services/useData";
-import type { Capture, CaptureFormData } from "../../../../../types";
+import type { CaptureFormData } from "../../../../../types";
 import { CAPTURE_COLUMNS } from "../helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../helpers";
 import BirdEventsTable from "../BirdEventsTable";
@@ -27,16 +27,14 @@ interface AddCaptureModalProps {
 }
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const { selectedProgram, fetchCapturesByBandId, magicTable } = useData();
+  const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [lastOpenState, setLastOpenState] = useState(false);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
-  const [existingCaptures, setExistingCaptures] = useState<Capture[]>([]);
 
   // Reset form data when modal opens
   if (isOpen && !lastOpenState) {
     setFormData(getDefaultFormData(selectedProgram || ""));
-    setExistingCaptures([]);
   }
   if (isOpen !== lastOpenState) {
     setLastOpenState(isOpen);
@@ -64,6 +62,22 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   }, [formData.species, magicTable]);
 
   const sexCode = formData.sex.charAt(0);
+
+  // Build bandId from bandGroup and bandLastTwoDigits
+  const bandId = useMemo(() => {
+    if (formData.bandGroup.length === 7 && formData.bandLastTwoDigits.length === 2) {
+      return `${formData.bandGroup}${formData.bandLastTwoDigits}`;
+    }
+    return "";
+  }, [formData.bandGroup, formData.bandLastTwoDigits]);
+
+  // Derive past bird events from bandId (no state needed!)
+  const pastBirdEvents = useMemo(() => {
+    if (!bandId) return [];
+    const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
+    console.log(bandIdToBirdEventIdsMap, bandId);
+    return birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
+  }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
 
   // Calculate range validation for wing and weight
   const { rangeValidation, pyleRange, mboRange } = useMemo(() => {
@@ -126,8 +140,8 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
 
     // Check if sex matches existing captures logic
-    if (existingCaptures.length > 0 && formData.sex.length > 0) {
-      const capturesWithDefinedSex = existingCaptures.filter((capture) => ["4", "5"].includes(capture.sex));
+    if (pastBirdEvents.length > 0 && formData.sex.length > 0) {
+      const capturesWithDefinedSex = pastBirdEvents.filter((capture) => ["4", "5"].includes(capture.sex));
       if (capturesWithDefinedSex.length > 0) {
         const allSexMatch = capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
         if (!allSexMatch) {
@@ -148,51 +162,23 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
 
     return messages;
-  }, [rangeValidation, formData, sexCode, pyleRange, mboRange, existingCaptures]);
+  }, [rangeValidation, formData, sexCode, pyleRange, mboRange, pastBirdEvents]);
 
-  // Build bandId from bandGroup and bandLastTwoDigits
-  const bandId = useMemo(() => {
-    if (formData.bandGroup.length === 8 && formData.bandLastTwoDigits.length === 2) {
-      return `${formData.bandGroup}${formData.bandLastTwoDigits}`;
-    }
-    return "";
-  }, [formData.bandGroup, formData.bandLastTwoDigits]);
-
-  // Fetch existing captures when bandId is complete
-  useEffect(() => {
-    if (!bandId) return;
-
-    fetchCapturesByBandId(bandId).then((captures) => {
-      setExistingCaptures(captures);
-
-      setFormData((prev) => {
-        const updates: Partial<CaptureFormData> = {};
-
-        // Auto-compute captureType if date is available
-        if (prev.date) {
-          let captureType = "Banded";
-          if (captures.length > 0) {
-            // Check if any capture was within 90 days
-            const currentDate = new Date(prev.date);
-            const hasRecentCapture = captures.some((capture) => {
-              const captureDate = new Date(capture.date);
-              const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
-              return daysDiff <= 90;
-            });
-            captureType = hasRecentCapture ? "Repeat" : "Return";
-          }
-          updates.captureType = captureType;
-        }
-
-        // Set species from first capture
-        if (captures.length > 0 && captures[0].species) {
-          updates.species = captures[0].species;
-        }
-
-        return { ...prev, ...updates };
-      });
+  // Compute auto values (without setState)
+  const displayCaptureType = useMemo(() => {
+    if (!formData.date || pastBirdEvents.length === 0) return "Banded";
+    const currentDate = new Date(formData.date);
+    const hasRecentCapture = pastBirdEvents.some((capture) => {
+      const captureDate = new Date(capture.date);
+      const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysDiff <= 90;
     });
-  }, [bandId, formData.date, fetchCapturesByBandId]);
+    return hasRecentCapture ? "Repeat" : "Return";
+  }, [formData.date, pastBirdEvents]);
+
+  const displaySpecies = useMemo(() => {
+    return formData.species || (pastBirdEvents.length > 0 ? pastBirdEvents[0]?.species || "" : "");
+  }, [formData.species, pastBirdEvents]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
@@ -213,30 +199,11 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   const handleInputChange = useCallback(
     (field: keyof CaptureFormData, value: string, maxLength?: number) => {
       const formattedValue = formatFieldValue(field, value);
-      let shouldResetSpecies = false;
 
-      // Reset species and existing captures when band fields change and bandId becomes invalid
-      if (field === "bandGroup" || field === "bandLastTwoDigits") {
-        setFormData((prev) => {
-          const isBandIdValid =
-            field === "bandGroup"
-              ? formattedValue.length === 8 && prev.bandLastTwoDigits.length === 2
-              : prev.bandGroup.length === 8 && formattedValue.length === 2;
-
-          if (!isBandIdValid) {
-            setExistingCaptures([]);
-            shouldResetSpecies = true;
-          }
-
-          return {
-            ...prev,
-            [field]: formattedValue,
-            ...(shouldResetSpecies ? { species: "" } : {}),
-          };
-        });
-      } else {
-        setFormData((prev) => ({ ...prev, [field]: formattedValue }));
-      }
+      setFormData((prev) => ({
+        ...prev,
+        [field]: formattedValue,
+      }));
 
       // Auto-focus next input when maxLength is reached
       if (maxLength && formattedValue.length >= maxLength) {
@@ -292,8 +259,8 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     }
 
     // Check if sex is valid based on existing captures
-    if (columnKey === "sex" && existingCaptures.length > 0 && formData.sex.length > 0) {
-      const capturesWithDefinedSex = existingCaptures.filter((capture) => ["4", "5"].includes(capture.sex));
+    if (columnKey === "sex" && pastBirdEvents.length > 0 && formData.sex.length > 0) {
+      const capturesWithDefinedSex = pastBirdEvents.filter((capture) => ["4", "5"].includes(capture.sex));
       if (capturesWithDefinedSex.length > 0) {
         const allSexMatch = capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
         if (!allSexMatch) {
@@ -323,7 +290,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       isKeyboardDismissDisabled
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      className={`!max-w-[calc(100%-4rem)] ${existingCaptures.length > 0 ? "!h-[calc(100%-4rem)]" : ""}`}
+      className={`!max-w-[calc(100%-4rem)] ${pastBirdEvents.length > 0 ? "!h-[calc(100%-4rem)]" : ""}`}
       scrollBehavior="inside"
     >
       <ModalContent>
@@ -339,7 +306,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                   <SpeciesRangeTable title="MBO" speciesCode={formData.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
-              <Table>
+              <Table aria-label="New capture form">
                 <TableHeader columns={CAPTURE_COLUMNS}>
                   {(column) => (
                     <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
@@ -359,8 +326,29 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                             </div>
                           ) : column.key === "captureType" ? (
                             <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border">
-                              {formData.captureType}
+                              {displayCaptureType}
                             </div>
+                          ) : column.key === "species" ? (
+                            <Input
+                              ref={(el) => {
+                                if (el) inputRefs.current.set(column.key, el);
+                              }}
+                              variant="bordered"
+                              color={inputColor || "default"}
+                              aria-label={column.label}
+                              type={column.type || "text"}
+                              maxLength={column.maxLength}
+                              validationBehavior="aria"
+                              value={displaySpecies}
+                              onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
+                              onKeyDown={(e) => handleKeyDown(e, column.key)}
+                              style={column.maxLength ? { width: `${10 * column.maxLength}px` } : undefined}
+                              classNames={{
+                                input:
+                                  "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                inputWrapper: getBorderClass(inputColor),
+                              }}
+                            />
                           ) : (
                             <Input
                               ref={(el) => {
@@ -402,13 +390,13 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 </div>
               )}
 
-              {existingCaptures.length > 0 && (
+              {pastBirdEvents.length > 0 && (
                 <div className="mt-4">
                   <h3 className="text-lg font-normal mb-2">
                     Existing data for band <span className="font-bold">{bandId}</span> :
                   </h3>
                   <BirdEventsTable
-                    captures={existingCaptures}
+                    captures={pastBirdEvents}
                     maxTableHeight={300}
                     sortColumn="date"
                     sortDirection="descending"
