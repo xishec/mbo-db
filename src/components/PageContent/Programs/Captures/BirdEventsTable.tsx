@@ -38,8 +38,7 @@ interface BirdEventsTableProps {
   showOtherPrograms?: boolean;
   captures: BirdEvent[];
   maxTableHeight: number;
-  sortColumn: keyof CaptureFormData;
-  sortDirection: "ascending" | "descending";
+  sortDescriptors?: SortDescriptor[];
   disableInspect?: boolean;
 }
 
@@ -47,14 +46,13 @@ export default function BirdEventsTable({
   programId,
   captures,
   maxTableHeight,
-  sortColumn,
-  sortDirection,
+  sortDescriptors: initialSortDescriptors,
   showOtherPrograms,
   disableInspect = false,
 }: BirdEventsTableProps) {
-  const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([
-    { column: sortColumn, direction: sortDirection },
-  ]);
+  const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>(
+    initialSortDescriptors ?? [{ column: "date", direction: "descending" }]
+  );
   const [selectedBirdEvent, setSelectedBirdEvent] = useState<BirdEvent | null>(null);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

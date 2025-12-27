@@ -284,8 +284,7 @@ export default function Search() {
             <BirdEventsTable
               captures={filteredCaptures}
               maxTableHeight={600}
-              sortColumn="date"
-              sortDirection="descending"
+              sortDescriptors={[{ column: "date", direction: "descending" }]}
             />
           </div>
         )}

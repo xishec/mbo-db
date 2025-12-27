@@ -22,5 +22,5 @@ export default function ReCaptures() {
     );
   }
 
-  return <BirdEventsTable captures={reCaptures} maxTableHeight={800} sortColumn="date" sortDirection="descending" />;
+  return <BirdEventsTable captures={reCaptures} maxTableHeight={800} sortDescriptors={[{ column: "date", direction: "descending" }]} />;
 }

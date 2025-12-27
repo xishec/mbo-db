@@ -34,7 +34,7 @@ function findSexConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, bird
       if (
         (previousSex === "4" && currentSex === "5") ||
         (previousSex === "5" && currentSex === "4") ||
-        (currentSpecies !== previousSpecies)
+        currentSpecies !== previousSpecies
       ) {
         conflicts.push(currentEvent);
       }
@@ -55,12 +55,13 @@ export default function Errors() {
   return (
     <div className="text-center p-4">
       <h2 className="text-3xl font-bold mb-4">Errors</h2>
-      <p className="mb-4">Conflicting Bird Events: Sex changed (4↔5) or Species changed ({conflictingBirdEvents.length} found)</p>
+      <p className="mb-4">
+        Conflicting Bird Events: Sex changed (4↔5) or Species changed ({conflictingBirdEvents.length} found)
+      </p>
       <BirdEventsTable
         captures={conflictingBirdEvents}
         maxTableHeight={600}
-        sortColumn="bandGroup"
-        sortDirection="descending"
+        sortDescriptors={[{ column: "date", direction: "descending" }]}
       />
     </div>
   );

@@ -37,8 +37,7 @@ export default function InspectCaptureModal({ isOpen, onOpenChange, bandId }: In
                 <BirdEventsTable
                   captures={birdEvents}
                   maxTableHeight={500}
-                  sortColumn="bandGroup"
-                  sortDirection="descending"
+                  sortDescriptors={[{ column: "date", direction: "ascending" }]}
                   disableInspect
                 />
               ) : (

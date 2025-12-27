@@ -89,8 +89,7 @@ export default function NewCaptures() {
           programId={selectedProgram ?? undefined}
           captures={captures}
           maxTableHeight={800}
-          sortColumn="bandLastTwoDigits"
-          sortDirection="ascending"
+          sortDescriptors={[{ column: "bandLastTwoDigits", direction: "ascending" }]}
           showOtherPrograms={showOtherPrograms}
         />
       ) : (

@@ -17,7 +17,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BirdEventType, type CaptureFormData } from "../../types";
 import { CAPTURE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
-import { formatFieldValue, getApplicableRange, getDefaultFormData, isInRange } from "../PageContent/Programs/Captures/helpers";
+import {
+  formatFieldValue,
+  getApplicableRange,
+  getDefaultFormData,
+  isInRange,
+} from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 
@@ -389,8 +394,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                   <BirdEventsTable
                     captures={pastBirdEvents}
                     maxTableHeight={300}
-                    sortColumn="date"
-                    sortDirection="descending"
+                    sortDescriptors={[{ column: "date", direction: "ascending" }]}
                     disableInspect
                   />
                 </div>
