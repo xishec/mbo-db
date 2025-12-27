@@ -11,20 +11,28 @@ import type {
   MagicTable,
   CaptureFormData,
   BirdEvent,
+  PendingBirdEvent,
 } from "../types";
 import { Band, BirdEventType } from "../types";
 import { DataContext } from "./DataContext";
 import {
-  saveAlphaDataToIndexedDB,
-  getAlphaDataFromIndexedDB,
-  saveEnvironmentLastUpdated,
-  getEnvironmentLastUpdated,
+  saveDataToIndexedDB,
+  getDataFromIndexedDB,
+  saveLastUpdated,
+  getLastUpdated,
+  addToQueue,
+  getQueuedEvents,
+  removeFromQueue,
+  getQueueCount,
 } from "./indexedDB";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+  const isOnline = useOnlineStatus();
 
   // All data from alpha/
   const [yearsToProgramMap, setYearsToProgramMap] = useState<YearToProgramMap>({});
@@ -43,8 +51,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         console.log(`Checking for ${CURRENT_ENVIRONMENT}/ data updates...`);
 
         // Check if we have cached data
-        const cachedData = await getAlphaDataFromIndexedDB(CURRENT_ENVIRONMENT);
-        const cachedTimestamp = await getEnvironmentLastUpdated(CURRENT_ENVIRONMENT);
+        const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
+        const cachedTimestamp = await getLastUpdated(CURRENT_ENVIRONMENT);
 
         // Get the lastModified timestamp from Firebase
         const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`));
@@ -70,9 +78,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           const data = snapshot.val() as AlphaData;
 
           // Save to IndexedDB
-          await saveAlphaDataToIndexedDB(CURRENT_ENVIRONMENT, data);
+          await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
           if (firebaseTimestamp) {
-            await saveEnvironmentLastUpdated(CURRENT_ENVIRONMENT, firebaseTimestamp);
+            await saveLastUpdated(CURRENT_ENVIRONMENT, firebaseTimestamp);
           }
 
           populateStateFromData(data);
@@ -124,6 +132,104 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Sync pending events to Firebase
+  const syncQueue = useCallback(async () => {
+    if (!isOnline) return;
+
+    try {
+      const pendingEvents = await getQueuedEvents();
+      if (pendingEvents.length === 0) return;
+
+      console.log(`🔄 Syncing ${pendingEvents.length} pending events...`);
+
+      for (const pending of pendingEvents) {
+        const { birdEvent, environment } = pending;
+        const { band, id: birdEventId, birdEventType, programId, date } = birdEvent;
+
+        try {
+          // Update birdEventsMap
+          await set(ref(db, `${environment}/birdEventsMap/${birdEventId}`), birdEvent);
+
+          // Update bandIdToBirdEventIdsMap
+          const birdEventIds = bandIdToBirdEventIdsMap[band.id] || [];
+          if (!birdEventIds.includes(birdEventId)) {
+            const newBirdEventIds = [...birdEventIds, birdEventId];
+            await set(ref(db, `${environment}/bandIdToBirdEventIdsMap/${band.id}`), newBirdEventIds);
+          }
+
+          // Update bandGroupsMap
+          if (birdEventType === BirdEventType.Banded) {
+            if (!bandGroupsMap[band.bandGroupId]) {
+              await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}`), {
+                id: band.bandGroupId,
+                captureIds: [birdEventId],
+              });
+            }
+            const updatedCaptureIds = [...bandGroupsMap[band.bandGroupId].captureIds, birdEventId];
+            await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}/captureIds`), updatedCaptureIds);
+          }
+
+          // // Update programsMap
+          // const year = date.substring(0, 4);
+          // if (!programsMap[programId]) {
+          //   await set(ref(db, `${environment}/programsMap/${programId}`), {
+          //     id: programId,
+          //     bandGroupIds: [band.bandGroupId],
+          //     recaptureIds: birdEventType !== BirdEventType.Banded ? [birdEventId] : [],
+          //   });
+          // } else {
+          //   if (!programsMap[programId].bandGroupIds.includes(band.bandGroupId)) {
+          //     const updatedBandGroupIds = [...programsMap[programId].bandGroupIds, band.bandGroupId];
+          //     await set(ref(db, `${environment}/programsMap/${programId}/bandGroupIds`), updatedBandGroupIds);
+          //   }
+          //   if (birdEventType !== BirdEventType.Banded && !programsMap[programId].recaptureIds.includes(birdEventId)) {
+          //     const updatedRecaptureIds = [...programsMap[programId].recaptureIds, birdEventId];
+          //     await set(ref(db, `${environment}/programsMap/${programId}/recaptureIds`), updatedRecaptureIds);
+          //   }
+          // }
+
+          // // Update yearsToProgramMap
+          // if (!yearsToProgramMap[year]) {
+          //   await set(ref(db, `${environment}/yearsToProgramMap/${year}`), [programId]);
+          // } else if (!yearsToProgramMap[year].includes(programId)) {
+          //   const updatedPrograms = [...yearsToProgramMap[year], programId];
+          //   await set(ref(db, `${environment}/yearsToProgramMap/${year}`), updatedPrograms);
+          // }
+
+          // Remove from queue after successful sync
+          await removeFromQueue(pending.id);
+          console.log(`✅ Synced event: ${birdEventId} to ${environment}`);
+        } catch (err) {
+          console.error(`❌ Failed to sync event ${birdEventId}:`, err);
+          // Leave in queue to retry later
+        }
+      }
+
+      // Update lastModified timestamp after all syncs (use CURRENT_ENVIRONMENT for this)
+      await set(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`), Date.now());
+
+      // Update pending count
+      const count = await getQueueCount();
+      setPendingCount(count);
+
+      console.log("✅ Queue sync completed");
+    } catch (err) {
+      console.error("Error syncing queue:", err);
+    }
+  }, [isOnline, bandIdToBirdEventIdsMap, bandGroupsMap, programsMap, yearsToProgramMap]);
+
+  // Sync queue when coming online or when dependencies change
+  useEffect(() => {
+    if (isOnline && !isLoading) {
+      syncQueue();
+    }
+  }, [isOnline, isLoading, syncQueue]);
+
+  // Update pending count on mount
+  useEffect(() => {
+    getQueueCount().then(setPendingCount).catch(console.error);
+  }, []);
+
   const addCapture = useCallback(
     async (captureData: CaptureFormData, birdEventType: BirdEventType) => {
       try {
@@ -159,64 +265,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           birdEventType,
         };
 
-        // Save to Firebase
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap/${birdEventId}`), newBirdEvent);
+        // Create pending event for queue
+        const pendingEvent: PendingBirdEvent = {
+          id: birdEventId,
+          birdEvent: newBirdEvent,
+          timestamp: Date.now(),
+          environment: CURRENT_ENVIRONMENT,
+        };
 
-        // Update bandIdToBirdEventIdsMap
-        const updatedBandEventIds = [...(bandIdToBirdEventIdsMap[band.id] || []), birdEventId];
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandIdToBirdEventIdsMap/${band.id}`), updatedBandEventIds);
+        // Add to queue
+        await addToQueue(pendingEvent);
 
-        // Update bandGroupsMap if needed
-        if (!bandGroupsMap[band.bandGroupId]) {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap/${band.bandGroupId}`), {
-            id: band.bandGroupId,
-            captureIds: [birdEventId],
-          });
-        } else if (!bandGroupsMap[band.bandGroupId].captureIds.includes(birdEventId)) {
-          const updatedCaptureIds = [...bandGroupsMap[band.bandGroupId].captureIds, birdEventId];
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap/${band.bandGroupId}/captureIds`), updatedCaptureIds);
-        }
-
-        // Update programsMap if needed
+        // Update local state immediately
         const year = captureData.date.substring(0, 4);
-        if (!programsMap[captureData.programId]) {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}`), {
-            id: captureData.programId,
-            bandGroupIds: [band.bandGroupId],
-            recaptureIds: birdEventType !== BirdEventType.Banded ? [birdEventId] : [],
-          });
-        } else {
-          if (!programsMap[captureData.programId].bandGroupIds.includes(band.bandGroupId)) {
-            const updatedBandGroupIds = [...programsMap[captureData.programId].bandGroupIds, band.bandGroupId];
-            await set(
-              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/bandGroupIds`),
-              updatedBandGroupIds
-            );
-          }
-          if (
-            birdEventType !== BirdEventType.Banded &&
-            !programsMap[captureData.programId].recaptureIds.includes(birdEventId)
-          ) {
-            const updatedRecaptureIds = [...programsMap[captureData.programId].recaptureIds, birdEventId];
-            await set(
-              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/recaptureIds`),
-              updatedRecaptureIds
-            );
-          }
-        }
+        const updatedBandEventIds = [...(bandIdToBirdEventIdsMap[band.id] || []), birdEventId];
 
-        // Update yearsToProgramMap if needed
-        if (!yearsToProgramMap[year]) {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), [captureData.programId]);
-        } else if (!yearsToProgramMap[year].includes(captureData.programId)) {
-          const updatedPrograms = [...yearsToProgramMap[year], captureData.programId];
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), updatedPrograms);
-        }
-
-        // Update lastModified timestamp
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`), Date.now());
-
-        // Update local state
         setBirdEventsMap((prev) => ({ ...prev, [birdEventId]: newBirdEvent }));
         setBandIdToBirdEventIdsMap((prev) => ({ ...prev, [band.id]: updatedBandEventIds }));
         setBandGroupsMap((prev) => ({
@@ -247,16 +310,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           [year]: prev[year] ? Array.from(new Set([...prev[year], captureData.programId])) : [captureData.programId],
         }));
 
-        // Clear IndexedDB cache to force refresh on next load
-        await saveEnvironmentLastUpdated(CURRENT_ENVIRONMENT, 0);
+        // Update pending count
+        const count = await getQueueCount();
+        setPendingCount(count);
 
-        console.log("✅ Capture added successfully:", birdEventId);
+        // If online, sync immediately
+        if (isOnline) {
+          await syncQueue();
+        } else {
+          console.log("📴 Offline - event queued for later sync:", birdEventId);
+        }
+
+        console.log("✅ Capture added:", birdEventId);
       } catch (err) {
         console.error("Error adding capture:", err);
         throw err;
       }
     },
-    [bandIdToBirdEventIdsMap, bandGroupsMap, programsMap, yearsToProgramMap]
+    [bandIdToBirdEventIdsMap, bandGroupsMap, programsMap, yearsToProgramMap, isOnline, syncQueue]
   );
 
   return (
@@ -272,6 +343,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         birdEventsMap,
         bandGroupsMap,
         magicTable,
+        isOnline,
+        pendingCount,
         addCapture,
       }}
     >

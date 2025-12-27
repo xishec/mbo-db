@@ -147,6 +147,10 @@ export interface DataContextType {
   bandGroupsMap: BandGroupsMap;
   magicTable: MagicTable;
 
+  // Offline support
+  isOnline: boolean;
+  pendingCount: number;
+
   // Actions
   addCapture: (captureData: CaptureFormData, birdEventType: BirdEventType) => Promise<void>;
 }
@@ -180,4 +184,12 @@ export interface CaptureColumn {
   className?: string;
   maxLength?: number;
   minLength?: number;
+}
+
+// Queue types for offline support
+export interface PendingBirdEvent {
+  id: string;
+  birdEvent: BirdEvent;
+  timestamp: number;
+  environment: string;
 }

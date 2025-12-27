@@ -1,11 +1,12 @@
-import type { AlphaData } from "../types";
+import type { AlphaData, PendingBirdEvent } from "../types";
 
 const DB_NAME = "mbo-db";
-const DB_VERSION = 2;
+const DB_VERSION = 3; // Increment for queue store
 
 // Store names
 const METADATA_STORE = "metadata";
-const ALPHA_DATA_STORE = "alphaData";
+const DATA_STORE = "data";
+const QUEUE_STORE = "queue";
 
 interface MetadataEntry {
   key: string;
@@ -30,9 +31,14 @@ function openDB(): Promise<IDBDatabase> {
         db.createObjectStore(METADATA_STORE, { keyPath: "key" });
       }
 
-      // Create alpha data store (for complete environment data cache)
-      if (!db.objectStoreNames.contains(ALPHA_DATA_STORE)) {
-        db.createObjectStore(ALPHA_DATA_STORE);
+      // Create data store (for complete environment data cache)
+      if (!db.objectStoreNames.contains(DATA_STORE)) {
+        db.createObjectStore(DATA_STORE);
+      }
+
+      // Create queue store (for offline sync)
+      if (!db.objectStoreNames.contains(QUEUE_STORE)) {
+        db.createObjectStore(QUEUE_STORE, { keyPath: "id" });
       }
     };
   });
@@ -43,10 +49,11 @@ function openDB(): Promise<IDBDatabase> {
  */
 export async function clearAllIndexedDB(): Promise<void> {
   const db = await openDB();
-  const transaction = db.transaction([METADATA_STORE, ALPHA_DATA_STORE], "readwrite");
+  const transaction = db.transaction([METADATA_STORE, DATA_STORE, QUEUE_STORE], "readwrite");
 
   transaction.objectStore(METADATA_STORE).clear();
-  transaction.objectStore(ALPHA_DATA_STORE).clear();
+  transaction.objectStore(DATA_STORE).clear();
+  transaction.objectStore(QUEUE_STORE).clear();
 
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
@@ -61,12 +68,12 @@ export async function clearAllIndexedDB(): Promise<void> {
 }
 
 /**
- * Save complete alpha data to IndexedDB
+ * Save complete environment data to IndexedDB
  */
-export async function saveAlphaDataToIndexedDB(environment: string, data: AlphaData): Promise<void> {
+export async function saveDataToIndexedDB(environment: string, data: AlphaData): Promise<void> {
   const db = await openDB();
-  const transaction = db.transaction([ALPHA_DATA_STORE], "readwrite");
-  const store = transaction.objectStore(ALPHA_DATA_STORE);
+  const transaction = db.transaction([DATA_STORE], "readwrite");
+  const store = transaction.objectStore(DATA_STORE);
 
   store.put(data, environment);
 
@@ -84,12 +91,12 @@ export async function saveAlphaDataToIndexedDB(environment: string, data: AlphaD
 }
 
 /**
- * Get complete alpha data from IndexedDB
+ * Get complete environment data from IndexedDB
  */
-export async function getAlphaDataFromIndexedDB(environment: string): Promise<AlphaData | null> {
+export async function getDataFromIndexedDB(environment: string): Promise<AlphaData | null> {
   const db = await openDB();
-  const transaction = db.transaction([ALPHA_DATA_STORE], "readonly");
-  const store = transaction.objectStore(ALPHA_DATA_STORE);
+  const transaction = db.transaction([DATA_STORE], "readonly");
+  const store = transaction.objectStore(DATA_STORE);
 
   return new Promise((resolve, reject) => {
     const request = store.get(environment);
@@ -107,7 +114,7 @@ export async function getAlphaDataFromIndexedDB(environment: string): Promise<Al
 /**
  * Save environment-specific lastUpdated timestamp to IndexedDB
  */
-export async function saveEnvironmentLastUpdated(environment: string, timestamp: number): Promise<void> {
+export async function saveLastUpdated(environment: string, timestamp: number): Promise<void> {
   try {
     const db = await openDB();
     const transaction = db.transaction([METADATA_STORE], "readwrite");
@@ -137,7 +144,7 @@ export async function saveEnvironmentLastUpdated(environment: string, timestamp:
 /**
  * Get environment-specific lastUpdated timestamp from IndexedDB
  */
-export async function getEnvironmentLastUpdated(environment: string): Promise<number | null> {
+export async function getLastUpdated(environment: string): Promise<number | null> {
   const db = await openDB();
   const transaction = db.transaction([METADATA_STORE], "readonly");
   const store = transaction.objectStore(METADATA_STORE);
@@ -148,6 +155,94 @@ export async function getEnvironmentLastUpdated(environment: string): Promise<nu
       db.close();
       const result = request.result as MetadataEntry | undefined;
       resolve(result ? (result.value as number) : null);
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
+/**
+ * Add a pending bird event to the queue
+ */
+export async function addToQueue(pendingEvent: PendingBirdEvent): Promise<void> {
+  const db = await openDB();
+  const transaction = db.transaction([QUEUE_STORE], "readwrite");
+  const store = transaction.objectStore(QUEUE_STORE);
+
+  store.put(pendingEvent);
+
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => {
+      db.close();
+      console.log(`✅ Added to queue: ${pendingEvent.id}`);
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
+}
+
+/**
+ * Get all pending bird events from the queue
+ */
+export async function getQueuedEvents(): Promise<PendingBirdEvent[]> {
+  const db = await openDB();
+  const transaction = db.transaction([QUEUE_STORE], "readonly");
+  const store = transaction.objectStore(QUEUE_STORE);
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result as PendingBirdEvent[]);
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
+/**
+ * Remove a pending bird event from the queue
+ */
+export async function removeFromQueue(eventId: string): Promise<void> {
+  const db = await openDB();
+  const transaction = db.transaction([QUEUE_STORE], "readwrite");
+  const store = transaction.objectStore(QUEUE_STORE);
+
+  store.delete(eventId);
+
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => {
+      db.close();
+      console.log(`✅ Removed from queue: ${eventId}`);
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
+}
+
+/**
+ * Get count of pending events in queue
+ */
+export async function getQueueCount(): Promise<number> {
+  const db = await openDB();
+  const transaction = db.transaction([QUEUE_STORE], "readonly");
+  const store = transaction.objectStore(QUEUE_STORE);
+
+  return new Promise((resolve, reject) => {
+    const request = store.count();
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result);
     };
     request.onerror = () => {
       db.close();
