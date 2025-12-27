@@ -1,39 +1,39 @@
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Button,
-} from "@heroui/react";
-import type { BirdEvent } from "../../../../../types";
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Button } from "@heroui/react";
+import { useMemo } from "react";
+import { useData } from "../../../../../services/useData";
+import BirdEventsTable from "../BirdEventsTable";
 
 interface InspectCaptureModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  birdEvent: BirdEvent | null;
+  bandId: string | null;
 }
 
-export default function InspectCaptureModal({ isOpen, onOpenChange, birdEvent }: InspectCaptureModalProps) {
+export default function InspectCaptureModal({ isOpen, onOpenChange, bandId }: InspectCaptureModalProps) {
+  const { bandIdToBirdEventIdsMap, birdEventsMap } = useData();
+
+  const birdEvents = useMemo(() => {
+    if (!bandId) return [];
+    const eventIds = bandIdToBirdEventIdsMap[bandId] || [];
+    return eventIds.map((id) => birdEventsMap[id]).filter(Boolean);
+  }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl">
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">
-              Inspect Capture {birdEvent?.id}
-            </ModalHeader>
+            <ModalHeader className="flex flex-col gap-1">Inspect Band {bandId}</ModalHeader>
             <ModalBody>
-              <p>Inspect capture functionality coming soon...</p>
-              {birdEvent && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div><strong>Band:</strong> {birdEvent.band?.displayBandGroupId}-{birdEvent.band?.last2digits}</div>
-                  <div><strong>Species:</strong> {birdEvent.species}</div>
-                  <div><strong>Date:</strong> {birdEvent.date}</div>
-                  <div><strong>Time:</strong> {birdEvent.time}</div>
-                  <div><strong>Sex:</strong> {birdEvent.sex}</div>
-                  <div><strong>Age:</strong> {birdEvent.age}</div>
-                </div>
+              {birdEvents.length > 0 ? (
+                <BirdEventsTable
+                  captures={birdEvents}
+                  maxTableHeight={500}
+                  sortColumn="bandGroup"
+                  sortDirection="descending"
+                />
+              ) : (
+                <p>No captures found for this band.</p>
               )}
             </ModalBody>
             <ModalFooter>

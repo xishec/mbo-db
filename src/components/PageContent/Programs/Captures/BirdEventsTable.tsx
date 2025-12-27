@@ -118,6 +118,7 @@ export default function BirdEventsTable({
     { column: sortColumn, direction: sortDirection },
   ]);
   const [selectedBirdEvent, setSelectedBirdEvent] = useState<BirdEvent | null>(null);
+  const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isInspectModalOpen, setIsInspectModalOpen] = useState(false);
 
@@ -188,8 +189,8 @@ export default function BirdEventsTable({
 
   const handleInspect = useCallback((eventId: string) => {
     const event = captures.find((e) => e.id === eventId);
-    if (event) {
-      setSelectedBirdEvent(event);
+    if (event && event.band) {
+      setSelectedBandId(event.band.id);
       setIsInspectModalOpen(true);
     }
   }, [captures]);
@@ -203,8 +204,6 @@ export default function BirdEventsTable({
   }, [captures]);
 
   const renderCell = useCallback((item: TableRow, columnKey: React.Key) => {
-    const cellValue = item[columnKey as keyof TableRow];
-
     if (columnKey === "actions") {
       return (
         <div className="relative flex items-center gap-2">
@@ -228,6 +227,7 @@ export default function BirdEventsTable({
       );
     }
 
+    const cellValue = item[columnKey as keyof TableRow];
     return cellValue;
   }, [handleInspect, handleEdit]);
 
@@ -280,7 +280,7 @@ export default function BirdEventsTable({
       <InspectCaptureModal 
         isOpen={isInspectModalOpen} 
         onOpenChange={setIsInspectModalOpen}
-        birdEvent={selectedBirdEvent}
+        bandId={selectedBandId}
       />
     </>
   );

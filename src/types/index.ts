@@ -171,7 +171,7 @@ export interface CaptureFormData {
 }
 
 export interface CaptureColumn {
-  key: keyof CaptureFormData;
+  key: keyof CaptureFormData | "actions";
   label: string;
   type?: string;
   className?: string;

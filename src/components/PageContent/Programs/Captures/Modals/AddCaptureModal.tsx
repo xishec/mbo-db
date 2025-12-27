@@ -323,8 +323,9 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                 </TableHeader>
                 <TableBody>
                   <TableRow key="new-capture">
-                    {CAPTURE_COLUMNS.map((column) => {
-                      const inputColor = getInputColor(column.key);
+                    {CAPTURE_COLUMNS.filter((column) => column.key !== "actions").map((column) => {
+                      const columnKey = column.key as keyof CaptureFormData;
+                      const inputColor = getInputColor(columnKey);
                       return (
                         <TableCell key={column.key} className="p-1">
                           {column.key === "programId" ? (
@@ -338,7 +339,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                           ) : (
                             <Input
                               ref={(el) => {
-                                if (el) inputRefs.current.set(column.key, el);
+                                if (el) inputRefs.current.set(columnKey, el);
                               }}
                               variant="bordered"
                               color={inputColor || "default"}
@@ -346,9 +347,9 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                               type={column.type || "text"}
                               maxLength={column.maxLength}
                               validationBehavior="aria"
-                              value={formData[column.key as keyof CaptureFormData]}
-                              onChange={(e) => handleInputChange(column.key, e.target.value, column.maxLength)}
-                              onKeyDown={(e) => handleKeyDown(e, column.key)}
+                              value={formData[columnKey]}
+                              onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
+                              onKeyDown={(e) => handleKeyDown(e, columnKey)}
                               style={column.maxLength ? { width: `${10 * column.maxLength}px` } : undefined}
                               classNames={{
                                 input:
