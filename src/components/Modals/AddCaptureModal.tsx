@@ -34,17 +34,17 @@ interface AddCaptureModalProps {
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
   const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
-  const [lastOpenState, setLastOpenState] = useState(false);
-  const [lastAutoFilledBandId, setLastAutoFilledBandId] = useState("");
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const [lastBandId, setLastBandId] = useState("");
 
   // Reset form data when modal opens
-  if (isOpen && !lastOpenState) {
+  if (isOpen && !prevIsOpen) {
     setFormData(getDefaultFormData(selectedProgram || ""));
-    setLastAutoFilledBandId("");
+    setLastBandId("");
   }
-  if (isOpen !== lastOpenState) {
-    setLastOpenState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
   }
 
   // Focus on bandGroup input when modal opens
@@ -85,13 +85,19 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
     return birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
 
-  // Auto-fill species from past bird events only when bandId changes
-  if (pastBirdEvents.length > 0 && bandId && lastAutoFilledBandId !== bandId) {
-    const existingSpecies = pastBirdEvents[0]?.species;
-    if (existingSpecies) {
-      setLastAutoFilledBandId(bandId);
-      setFormData((prev) => ({ ...prev, species: existingSpecies }));
+  // Auto-fill species from past bird events whenever bandId changes
+   if (bandId && bandId !== lastBandId) {
+    const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
+    const events = birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
+    if (events.length > 0) {
+      const existingSpecies = events[0]?.species;
+      if (existingSpecies) {
+        setFormData((prev) => ({ ...prev, species: existingSpecies }));
+      }
     }
+    setLastBandId(bandId);
+  } else if (!bandId && lastBandId) {
+    setLastBandId("");
   }
 
   // Calculate range validation for wing and weight
