@@ -9,6 +9,7 @@ export interface Program {
   id: string;
   bandGroupIds: string[];
   recaptureIds: string[];
+  currentBandSizes: Record<BandSize, Band>;
 }
 
 export class Band {
@@ -36,6 +37,11 @@ export class Band {
       return (parseInt(this.bandGroupId, 10) + 1).toString();
     }
     return this.bandGroupId;
+  }
+
+  increment(): Band {
+    const bandId = (parseInt(`${this.bandPrefix}${this.bandSuffix}`, 10) + 1).toString();
+    return new Band(bandId.slice(0, 4), bandId.slice(4));
   }
 }
 
