@@ -6,6 +6,7 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -37,10 +38,17 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
+  const [useCurrentTime, setUseCurrentTime] = useState(true);
 
   // Reset form data when modal opens
   if (isOpen && !prevIsOpen) {
-    setFormData(getDefaultFormData(selectedProgram || ""));
+    const defaultData = getDefaultFormData(selectedProgram || "");
+    // Preserve date/time if useCurrentTime is false
+    if (!useCurrentTime) {
+      defaultData.date = formData.date;
+      defaultData.time = formData.time;
+    }
+    setFormData(defaultData);
     setLastBandId("");
   }
   if (isOpen !== prevIsOpen) {
@@ -56,6 +64,16 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // Update date/time when useCurrentTime is enabled
+  if (useCurrentTime) {
+    const now = new Date();
+    const currentDate = now.toISOString().split("T")[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+    if (formData.date !== currentDate || formData.time !== currentTime) {
+      setFormData((prev) => ({ ...prev, date: currentDate, time: currentTime }));
+    }
+  }
 
   // Species range lookups
   const pyleSpeciesRange = useMemo(() => {
@@ -86,7 +104,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
 
   // Auto-fill species from past bird events whenever bandId changes
-   if (bandId && bandId !== lastBandId) {
+  if (bandId && bandId !== lastBandId) {
     const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
     const events = birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
     if (events.length > 0) {
@@ -187,7 +205,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   // Compute auto values (without setState)
   const displayCaptureType = useMemo(() => {
-    if (!formData.date || pastBirdEvents.length === 0) return BirdEventType.Banded;
+    if (!formData.date || pastBirdEvents.length === 0) return BirdEventType.None;
     const currentDate = new Date(formData.date);
     const hasRecentCapture = pastBirdEvents.some((capture) => {
       const captureDate = new Date(capture.date);
@@ -212,9 +230,9 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   const focusPrevInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
     if (currentIndex > 0) {
-      const prevKey = CAPTURE_COLUMNS.slice(0, currentIndex).reverse().find(
-        (col) => !["captureType", "date", "time"].includes(col.key)
-      )?.key;
+      const prevKey = CAPTURE_COLUMNS.slice(0, currentIndex)
+        .reverse()
+        .find((col) => !["captureType", "date", "time"].includes(col.key))?.key;
       if (!prevKey) return;
 
       inputRefs.current.get(prevKey)?.focus();
@@ -325,8 +343,13 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-row items-center gap-1 p-8 pb-0 font-normal">
-              Add Capture in <span className="font-bold">{selectedProgram}</span>
+            <ModalHeader className="flex flex-row items-center justify-between p-8 pb-0 font-normal">
+              <div className="flex flex-row items-center gap-1">
+                Add Capture in <span className="font-bold">{selectedProgram}</span>
+              </div>
+              <Switch size="sm" isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
+                Use current time
+              </Switch>
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
               {formData.species.length === 4 && (pyleSpeciesRange || mboSpeciesRange) && (
@@ -348,15 +371,22 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                     {CAPTURE_COLUMNS.filter((column) => column.key !== "actions").map((column) => {
                       const columnKey = column.key as keyof CaptureFormData;
                       const inputColor = getInputColor(columnKey);
+
+                      const getReadonlyValue = () => {
+                        if (column.key === "programId") return selectedProgram;
+                        if (column.key === "captureType") return displayCaptureType;
+                        if (useCurrentTime && (columnKey === "date" || columnKey === "time"))
+                          return formData[columnKey];
+                        return null;
+                      };
+
+                      const readonlyValue = getReadonlyValue();
+
                       return (
                         <TableCell key={column.key} className="p-1">
-                          {column.key === "programId" ? (
-                            <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border">
-                              {selectedProgram}
-                            </div>
-                          ) : column.key === "captureType" ? (
-                            <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border">
-                              {displayCaptureType}
+                          {readonlyValue ? (
+                            <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border whitespace-nowrap">
+                              {readonlyValue}
                             </div>
                           ) : (
                             <Input
