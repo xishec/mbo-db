@@ -7,16 +7,18 @@ import {
   ModalFooter,
   ModalHeader,
   Switch,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableColumn,
   TableHeader,
   TableRow,
+  Tabs,
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
-import { BirdEventType, type CaptureFormData } from "../../types";
+import { BandSize, BirdEventType, type CaptureFormData } from "../../types";
 import { CAPTURE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
 import {
   formatFieldValue,
@@ -39,6 +41,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
   const [useCurrentTime, setUseCurrentTime] = useState(true);
+  const [bandSize, setBandSize] = useState(BandSize.Other);
 
   // Reset form data when modal opens
   if (isOpen && !prevIsOpen) {
@@ -357,6 +360,21 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                   <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />
                   <SpeciesRangeTable title="MBO" speciesCode={formData.species} speciesRange={mboSpeciesRange} />
                 </div>
+              )}
+              {!formData.bandGroup && !formData.bandLastTwoDigits && (
+                <Tabs
+                  color="primary"
+                  size="sm"
+                  classNames={{
+                    tabContent: "text-gray-700",
+                  }}
+                  selectedKey={bandSize}
+                  onSelectionChange={(key) => setBandSize(key as BandSize)}
+                >
+                  {Object.values(BandSize).map((size) => (
+                    <Tab key={size} title={size} />
+                  ))}
+                </Tabs>
               )}
               <Table aria-label="New capture form">
                 <TableHeader columns={CAPTURE_COLUMNS.filter((column) => column.key !== "actions")}>

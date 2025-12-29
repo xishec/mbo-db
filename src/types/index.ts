@@ -79,7 +79,7 @@ export function generateBirdEventId(
   return `${bandId}${date}${bander}${scribe}${net}${weight}`.replace(".", "");
 }
 
-export const enum BirdEventType {
+export enum BirdEventType {
   Banded = "Banded",
   None = "None",
   Alien = "Alien",
@@ -87,7 +87,21 @@ export const enum BirdEventType {
   Return = "Return",
 }
 
-export const enum HEADERS {
+export enum BandSize {
+  Size0a = "0a",
+  Size0 = "0",
+  Size1 = "1",
+  Size1b = "1b",
+  Size1a = "1a",
+  Size1d = "1d",
+  Size2 = "2",
+  Size3 = "3",
+  Size3b = "3b",
+  Size3a = "3a",
+  Other = "other",
+}
+
+export enum HEADERS {
   Program = "Program",
   BandPrefix = "BandPrefix",
   BandSuffix = "BandSuffix",

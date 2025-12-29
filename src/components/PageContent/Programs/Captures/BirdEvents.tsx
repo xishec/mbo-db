@@ -48,7 +48,7 @@ export default function BirdEvents() {
           ))}
         </Tabs>
         <Button color="secondary" onPress={onOpen}>
-          Add Capture
+          {birdEventTabType === "NEW_CAPTURES" ? "Add Capture" : "Add Re-Capture"}
         </Button>
       </div>
 
