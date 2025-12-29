@@ -35,7 +35,7 @@ interface AddCaptureModalProps {
 }
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture } = useData();
+  const { selectedProgram, nextBandSizes, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -287,13 +287,13 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   const handleSave = useCallback(async () => {
     try {
-      await addCapture(formData, displayCaptureType);
+      await addCapture(formData, displayCaptureType, bandSize, nextBandSizes);
       handleClose();
     } catch (err) {
       console.error("Failed to save capture:", err);
       alert("Failed to save capture. Please try again.");
     }
-  }, [formData, handleClose, addCapture, displayCaptureType]);
+  }, [formData, handleClose, addCapture, displayCaptureType, bandSize, nextBandSizes]);
 
   const getInputColor = (columnKey: keyof CaptureFormData) => {
     // Check wing range validation

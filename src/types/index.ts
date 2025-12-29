@@ -9,7 +9,7 @@ export interface Program {
   id: string;
   bandGroupIds: string[];
   recaptureIds: string[];
-  currentBandSizes: Record<BandSize, Band>;
+  nextBandSizes?: Record<BandSize, string>;
 }
 
 export class Band {
@@ -37,11 +37,6 @@ export class Band {
       return (parseInt(this.bandGroupId, 10) + 1).toString();
     }
     return this.bandGroupId;
-  }
-
-  increment(): Band {
-    const bandId = (parseInt(`${this.bandPrefix}${this.bandSuffix}`, 10) + 1).toString();
-    return new Band(bandId.slice(0, 4), bandId.slice(4));
   }
 }
 
@@ -169,6 +164,7 @@ export interface DataContextType {
   // Selected program
   selectedProgram: string | null;
   selectProgram: (programId: string | null) => void;
+  nextBandSizes: Record<BandSize, string> | undefined;
 
   // All data from alpha/
   yearsToProgramMap: YearToProgramMap;
@@ -183,7 +179,12 @@ export interface DataContextType {
   pendingCount: number;
 
   // Actions
-  addCapture: (captureData: CaptureFormData, birdEventType: BirdEventType) => Promise<void>;
+  addCapture: (
+    captureData: CaptureFormData,
+    birdEventType: BirdEventType,
+    bandSize: BandSize,
+    nextBandSizes: Record<BandSize, string> | undefined
+  ) => Promise<void>;
   addProgram: (programName: string, year: string) => Promise<void>;
 }
 
@@ -225,9 +226,10 @@ export const enum ProgramEventType {
 }
 
 export interface ProgramEvent {
-  id: string; // program ID
+  id: string;
   name: string;
   year: string;
+  nextBandSizes?: Record<BandSize, string>;
   programEventType: ProgramEventType;
 }
 
