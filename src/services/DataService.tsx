@@ -243,6 +243,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const count = await getQueueCount();
       setPendingCount(count);
 
+      // Update React state to match what we just synced to RTDB
+      // This keeps in-memory state synchronized with IndexedDB and RTDB
+      setYearsToProgramMap(state.yearsToProgramMap);
+      setProgramsMap(state.programsMap);
+      setBandIdToBirdEventIdsMap(state.bandIdToBirdEventIdsMap);
+      setBirdEventsMap(state.birdEventsMap);
+      setBandGroupsMap(state.bandGroupsMap);
+
+      // Update selectedProgram if it exists, to keep it in sync with programsMap
+      setSelectedProgram((current) => {
+        if (!current) return null;
+        const updated = state.programsMap[current.id];
+        return updated || current;
+      });
+
       console.log("✅ Queue sync completed");
     } catch (err) {
       console.error("Error syncing queue:", err);
@@ -390,6 +405,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setBandGroupsMap(newBandGroupsMap);
         setProgramsMap(newProgramsMap);
         setYearsToProgramMap(newYearsToProgramMap);
+
+        // Update selectedProgram if it's the one we just modified
+        setSelectedProgram((current) => {
+          if (!current || current.id !== captureData.programId) return current;
+          return newProgramsMap[captureData.programId];
+        });
 
         // 5. Update IndexedDB cache to keep it in sync
         await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
