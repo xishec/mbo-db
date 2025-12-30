@@ -12,6 +12,7 @@ import {
   DropdownItem,
   User,
   Badge,
+  Chip,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
@@ -22,6 +23,7 @@ import { app } from "../firebase";
 import LoginModal from "./Modals/LoginModal";
 import { LogsModal } from "./Modals/LogsModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
+import { SyncQueueModal } from "./Modals/SyncQueueModal";
 import { useData } from "../services/useData";
 import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap } from "../types";
 
@@ -69,9 +71,10 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
+  const { isOpen: isSyncQueueOpen, onOpen: onSyncQueueOpen, onClose: onSyncQueueClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
-  const { birdEventsMap, bandIdToBirdEventIdsMap } = useData();
+  const { birdEventsMap, bandIdToBirdEventIdsMap, isOnline, pendingCount } = useData();
 
   // Calculate error count
   const errorCount = useMemo(() => {
@@ -102,6 +105,19 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
           <p className="text-xl">
             <span className="font-bold">MBO</span> Database
           </p>
+          <div className="ml-4">
+            <Badge content={pendingCount} color="warning" size="sm" isInvisible={pendingCount === 0}>
+              <Chip
+                size="sm"
+                variant="flat"
+                color={isOnline ? "success" : "warning"}
+                className="cursor-pointer"
+                onClick={onSyncQueueOpen}
+              >
+                {isOnline ? "Online" : "Offline"}
+              </Chip>
+            </Badge>
+          </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">
           <NavbarItem isActive={activePage === "programs"} className="w-24">
@@ -163,13 +179,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
         <NavbarContent justify="end">
           <NavbarItem>
             <Badge content={errorCount} color="danger" size="md" isInvisible={errorCount === 0}>
-              <Button
-                isIconOnly
-                variant="light"
-                onPress={onErrorsOpen}
-                aria-label="View errors"
-                size="sm"
-              >
+              <Button isIconOnly variant="light" onPress={onErrorsOpen} aria-label="View errors" size="sm">
                 <ExclamationTriangleIcon className="w-5 h-5" />
               </Button>
             </Badge>
@@ -214,6 +224,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
       <LoginModal isOpen={isOpen} onOpenChange={onOpenChange} />
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
       <LogsModal isOpen={isLogsOpen} onClose={onLogsClose} />
+      <SyncQueueModal isOpen={isSyncQueueOpen} onClose={onSyncQueueClose} />
     </>
   );
 }
