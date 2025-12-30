@@ -17,6 +17,7 @@ var require_main = __commonJS({
           contextIsolation: true
         }
       });
+      mainWindow.maximize();
       if (isDev) {
         mainWindow.loadURL("http://localhost:5173");
         mainWindow.webContents.openDevTools();

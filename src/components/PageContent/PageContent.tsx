@@ -1,6 +1,5 @@
 import Programs from "./Programs/Programs";
 import Search from "./Search";
-import Errors from "./Errors";
 
 interface PageContentProps {
   activePage: string;
@@ -12,7 +11,6 @@ export default function PageContent({ activePage }: PageContentProps) {
       <div className="mx-auto h-full">
         {activePage === "programs" && <Programs />}
         {activePage === "search" && <Search />}
-        {activePage === "errors" && <Errors />}
         {activePage === "DET" && (
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-4">DET</h2>

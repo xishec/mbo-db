@@ -11,13 +11,54 @@ import {
   DropdownMenu,
   DropdownItem,
   User,
+  Badge,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-import { useState, useEffect } from "react";
+import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { useState, useEffect, useMemo } from "react";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import type { User as FirebaseUser } from "firebase/auth";
 import { app } from "../firebase";
 import LoginModal from "./Modals/LoginModal";
+import { LogsModal } from "./Modals/LogsModal";
+import { ErrorsModal } from "./Modals/ErrorsModal";
+import { useData } from "../services/useData";
+import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap } from "../types";
+
+/**
+ * Scans through bands to find conflicting changes.
+ */
+function findSexConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, birdEventsMap: BirdEventsMap): BirdEvent[] {
+  const conflicts: BirdEvent[] = [];
+
+  for (const bandId in bandIdToBirdEventIdsMap) {
+    const eventIds = bandIdToBirdEventIdsMap[bandId];
+
+    for (let i = 1; i < eventIds.length; i++) {
+      const currentEvent = birdEventsMap[eventIds[i]];
+      const previousEvent = birdEventsMap[eventIds[i - 1]];
+
+      if (!currentEvent || !previousEvent) {
+        continue;
+      }
+
+      const currentSex = currentEvent.sex;
+      const previousSex = previousEvent.sex;
+      const currentSpecies = currentEvent.species;
+      const previousSpecies = previousEvent.species;
+
+      if (
+        (previousSex === "4" && currentSex === "5") ||
+        (previousSex === "5" && currentSex === "4") ||
+        currentSpecies !== previousSpecies
+      ) {
+        conflicts.push(currentEvent);
+      }
+    }
+  }
+
+  return conflicts;
+}
 
 interface NavigationProps {
   activePage: string;
@@ -26,8 +67,16 @@ interface NavigationProps {
 
 export default function Navigation({ activePage, onPageChange }: NavigationProps) {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
+  const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
+  const { birdEventsMap, bandIdToBirdEventIdsMap } = useData();
+
+  // Calculate error count
+  const errorCount = useMemo(() => {
+    return findSexConflicts(bandIdToBirdEventIdsMap, birdEventsMap).length;
+  }, [bandIdToBirdEventIdsMap, birdEventsMap]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -83,20 +132,6 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               Search
             </Link>
           </NavbarItem>
-          <NavbarItem isActive={activePage === "errors"} className="w-24">
-            <Link
-              aria-current={activePage === "errors" ? "page" : undefined}
-              color={activePage === "errors" ? "primary" : "foreground"}
-              href="#"
-              className="inline-block w-full text-center"
-              onClick={(e) => {
-                e.preventDefault();
-                onPageChange("errors");
-              }}
-            >
-              Errors
-            </Link>
-          </NavbarItem>
           <NavbarItem isActive={activePage === "customers"} className="w-24">
             <Link
               aria-current={activePage === "customers" ? "page" : undefined}
@@ -126,6 +161,24 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
           </NavbarItem>
         </NavbarContent>
         <NavbarContent justify="end">
+          <NavbarItem>
+            <Badge content={errorCount} color="danger" size="sm" isInvisible={errorCount === 0}>
+              <Button
+                isIconOnly
+                variant="light"
+                onPress={onErrorsOpen}
+                aria-label="View errors"
+                size="sm"
+              >
+                <ExclamationTriangleIcon className="w-5 h-5" />
+              </Button>
+            </Badge>
+          </NavbarItem>
+          <NavbarItem>
+            <Button isIconOnly variant="light" onPress={onLogsOpen} aria-label="View logs" size="sm">
+              <CodeBracketIcon className="w-5 h-5" />
+            </Button>
+          </NavbarItem>
           <NavbarItem className="flex items-center">
             {user ? (
               <Dropdown placement="bottom-end">
@@ -159,6 +212,8 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
         </NavbarContent>
       </Navbar>
       <LoginModal isOpen={isOpen} onOpenChange={onOpenChange} />
+      <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
+      <LogsModal isOpen={isLogsOpen} onClose={onLogsClose} />
     </>
   );
 }

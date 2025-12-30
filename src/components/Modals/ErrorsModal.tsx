@@ -1,5 +1,14 @@
 import { useMemo } from "react";
-import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  Chip,
+} from "@heroui/react";
+import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import { useData } from "../../services/useData";
 import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap } from "../../types";
 
@@ -44,7 +53,12 @@ function findSexConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, bird
   return conflicts;
 }
 
-export default function Errors() {
+interface ErrorsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   const { birdEventsMap, bandIdToBirdEventIdsMap } = useData();
 
   // Find all bird events with sex conflicts (4 -> 5 or 5 -> 4) or species conflicts
@@ -53,16 +67,41 @@ export default function Errors() {
   }, [bandIdToBirdEventIdsMap, birdEventsMap]);
 
   return (
-    <div className="text-center p-4">
-      <h2 className="text-3xl font-bold mb-4">Errors</h2>
-      <p className="mb-4">
-        Conflicting Bird Events: Sex changed (4↔5) or Species changed ({conflictingBirdEvents.length} found)
-      </p>
-      <BirdEventsTable
-        captures={conflictingBirdEvents}
-        maxTableHeight={600}
-        sortDescriptors={[{ column: "date", direction: "descending" }]}
-      />
-    </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="5xl"
+      scrollBehavior="inside"
+    >
+      <ModalContent>
+        <ModalHeader className="flex flex-col gap-1">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold">Data Errors</h2>
+              <p className="text-sm text-default-500">
+                Conflicting Bird Events: Sex changed (4↔5) or Species changed
+              </p>
+            </div>
+            <Chip color="danger" size="lg" variant="flat">
+              {conflictingBirdEvents.length} errors
+            </Chip>
+          </div>
+        </ModalHeader>
+
+        <ModalBody>
+          <BirdEventsTable
+            captures={conflictingBirdEvents}
+            maxTableHeight={600}
+            sortDescriptors={[{ column: "date", direction: "descending" }]}
+          />
+        </ModalBody>
+
+        <ModalFooter>
+          <Button color="primary" onPress={onClose} size="sm">
+            Close
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
 }

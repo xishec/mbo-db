@@ -26,6 +26,7 @@ import {
   getQueueCount,
 } from "./indexedDB";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { logger } from "./logger";
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -48,7 +49,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const loadAlphaData = async () => {
       try {
-        console.log(`Checking for ${CURRENT_ENVIRONMENT}/ data updates...`);
+        logger.info("DataLoad", `Checking for ${CURRENT_ENVIRONMENT}/ data updates...`);
 
         // Check if we have cached data
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
@@ -59,24 +60,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
 
         // Log timestamps for debugging
-        console.log("📅 Cache timestamp:", cachedTimestamp ? new Date(cachedTimestamp).toLocaleString() : "None");
-        console.log(
-          "📅 Firebase timestamp:",
-          firebaseTimestamp ? new Date(firebaseTimestamp).toLocaleString() : "None"
-        );
+        logger.debug("DataLoad", "Cache timestamp", { timestamp: cachedTimestamp, formatted: cachedTimestamp ? new Date(cachedTimestamp).toLocaleString() : "None" });
+        logger.debug("DataLoad", "Firebase timestamp", { timestamp: firebaseTimestamp, formatted: firebaseTimestamp ? new Date(firebaseTimestamp).toLocaleString() : "None" });
 
         // Determine if we need to fetch fresh data
         const needsFetch = !cachedData || !cachedTimestamp || !firebaseTimestamp || firebaseTimestamp > cachedTimestamp;
 
         if (!needsFetch && cachedData) {
-          console.log(`✅ Using cached ${CURRENT_ENVIRONMENT}/ data (up to date)`);
+          logger.info("DataLoad", `Using cached ${CURRENT_ENVIRONMENT}/ data (up to date)`);
           populateStateFromData(cachedData);
           setIsLoading(false);
           return;
         }
 
         // Fetch fresh data from Firebase
-        console.log(`Fetching fresh ${CURRENT_ENVIRONMENT}/ data from Firebase RTDB...`);
+        logger.info("DataLoad", `Fetching fresh ${CURRENT_ENVIRONMENT}/ data from Firebase RTDB...`);
         const snapshot = await get(ref(db, CURRENT_ENVIRONMENT));
 
         if (cancelled) return;
@@ -92,20 +90,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
           populateStateFromData(data);
 
-          console.log(`✅ Loaded ${CURRENT_ENVIRONMENT}/ data:`, {
+          const loadStats = {
             yearsToProgramMap: Object.keys(data.yearsToProgramMap ?? {}).length,
             programsMap: Object.keys(data.programsMap ?? {}).length,
             bandIdToBirdEventIdsMap: Object.keys(data.bandIdToBirdEventIdsMap ?? {}).length,
             birdEventsMap: Object.keys(data.birdEventsMap ?? {}).length,
             bandGroupsMap: Object.keys(data.bandGroupsMap ?? {}).length,
             hasMagicTable: !!data.magicTable,
-          });
+          };
+          logger.info("DataLoad", `Loaded ${CURRENT_ENVIRONMENT}/ data`, loadStats);
         } else {
-          setError(`Error: ${CURRENT_ENVIRONMENT}/ is missing from the database. Please run import scripts.`);
-          console.error(`Error: ${CURRENT_ENVIRONMENT}/ is missing from the database. Please run import scripts.`);
+          const errorMsg = `Error: ${CURRENT_ENVIRONMENT}/ is missing from the database. Please run import scripts.`;
+          setError(errorMsg);
+          logger.error("DataLoad", errorMsg);
         }
       } catch (err) {
-        console.error(`Error loading ${CURRENT_ENVIRONMENT}/ data:`, err);
+        logger.error("DataLoad", `Error loading ${CURRENT_ENVIRONMENT}/ data`, err);
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load data");
         }
@@ -299,12 +299,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const pendingEvents = await getQueuedEvents();
       if (pendingEvents.length === 0) return;
 
-      console.log(`🔄 Syncing ${pendingEvents.length} pending events...`);
+      logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
 
       // Read current state from IndexedDB (single source of truth)
       const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
       if (!cachedData) {
-        console.error("❌ Cannot sync: No cached data in IndexedDB");
+        logger.error("SyncQueue", "Cannot sync: No cached data in IndexedDB");
         return;
       }
 
@@ -331,9 +331,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           await removeFromQueue(pending.id);
           successCount++;
           
-          console.log(`✅ Synced bird event ${successCount}/${pendingEvents.length}: ${birdEvent.id}`);
+          logger.sync("SyncQueue", `Synced bird event ${successCount}/${pendingEvents.length}`, { eventId: birdEvent.id });
         } catch (err) {
-          console.error(`❌ Failed to sync event ${pending.id}:`, err);
+          logger.error("SyncQueue", `Failed to sync event ${pending.id}`, err);
           // Leave in queue to retry later - continue with remaining events
         }
       }
@@ -350,9 +350,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Sync React state with IndexedDB/RTDB
       updateReactStateFromCache(state);
 
-      console.log(`✅ Queue sync completed: ${successCount}/${pendingEvents.length} succeeded, ${remainingCount} remaining`);
+      logger.sync("SyncQueue", `Queue sync completed`, { succeeded: successCount, total: pendingEvents.length, remaining: remainingCount });
     } catch (err) {
-      console.error("❌ Error syncing queue:", err);
+      logger.error("SyncQueue", "Error syncing queue", err);
     }
   }, [isOnline, reconstructBandObjects, syncBirdEventToRTDB, updateReactStateFromCache]);
 
@@ -456,8 +456,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               ...(existing?.nextBandSizes || {}),
               [bandSize]: nextBandId,
             } as Record<BandSize, string>;
+            logger.debug("AddCapture", "Updated next band ID", { bandSize, nextBandId, programId: captureData.programId });
           } catch (error) {
-            console.error("Error updating next band ID:", error);
+            logger.error("AddCapture", "Error updating next band ID", error);
           }
         }
 
@@ -521,12 +522,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (isOnline) {
           await syncQueue();
         } else {
-          console.log("📴 Offline - event queued for later sync:", newBirdEvent.id);
+          logger.info("AddCapture", "Offline - event queued for later sync", { eventId: newBirdEvent.id });
         }
 
-        console.log("✅ Capture added:", newBirdEvent.id);
+        logger.info("AddCapture", "Capture added", { eventId: newBirdEvent.id, programId: captureData.programId, bandSize });
       } catch (err) {
-        console.error("Error adding capture:", err);
+        logger.error("AddCapture", "Error adding capture", err);
         throw err;
       }
     },
@@ -599,13 +600,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           magicTable,
         });
 
-        console.log("✅ Program added:", programId);
+        logger.info("AddProgram", "Program added", { programId, year });
       } catch (err) {
-        console.error("Error adding program:", err);
+        logger.error("AddProgram", "Error adding program", err);
         throw err;
       }
     },
-    [isOnline, yearsToProgramMap]
+    [isOnline, yearsToProgramMap, programsMap, bandIdToBirdEventIdsMap, birdEventsMap, bandGroupsMap, magicTable]
   );
 
   return (

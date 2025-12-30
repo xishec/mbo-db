@@ -14,6 +14,9 @@ function createWindow() {
     },
   });
 
+  // Maximize window to fill the screen
+  mainWindow.maximize();
+
   if (isDev) {
     // In development, load from Vite dev server
     mainWindow.loadURL("http://localhost:5173");
