@@ -74,7 +74,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   const { isOpen: isSyncQueueOpen, onOpen: onSyncQueueOpen, onClose: onSyncQueueClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
-  const { birdEventsMap, bandIdToBirdEventIdsMap, isOnline, pendingCount } = useData();
+  const { birdEventsMap, bandIdToBirdEventIdsMap, isOnline, pendingCount, forceOffline, setForceOffline } = useData();
 
   // Calculate error count
   const errorCount = useMemo(() => {
@@ -101,7 +101,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
     <>
       <Navbar maxWidth="full" classNames={{ wrapper: "px-8" }}>
         <NavbarBrand>
-          <img src="/mbo-logo.svg" alt="MBO Logo" className="h-8 w-8 mr-2" />
+          <img 
+            src="/mbo-logo.svg" 
+            alt="MBO Logo" 
+            className="h-8 w-8 mr-2 cursor-pointer" 
+            onClick={() => setForceOffline(!forceOffline)}
+            title={forceOffline ? "Click to enable online mode" : "Click to force offline mode"}
+          />
           <p className="text-xl">
             <span className="font-bold">MBO</span> Database
           </p>

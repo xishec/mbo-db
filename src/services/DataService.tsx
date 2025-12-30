@@ -33,7 +33,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
-  const isOnline = useOnlineStatus();
+  const [forceOffline, setForceOffline] = useState(false);
+  const actualIsOnline = useOnlineStatus();
+  const isOnline = forceOffline ? false : actualIsOnline;
 
   // All data from alpha/
   const [yearsToProgramMap, setYearsToProgramMap] = useState<YearToProgramMap>({});
@@ -624,6 +626,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         magicTable,
         isOnline,
         pendingCount,
+        forceOffline,
+        setForceOffline,
         addCapture,
         addProgram,
       }}

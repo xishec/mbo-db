@@ -176,6 +176,8 @@ export interface DataContextType {
   // Offline support
   isOnline: boolean;
   pendingCount: number;
+  forceOffline: boolean;
+  setForceOffline: (force: boolean) => void;
 
   // Actions
   addCapture: (
