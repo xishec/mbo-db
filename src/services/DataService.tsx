@@ -197,6 +197,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const count = await getQueueCount();
       setPendingCount(count);
 
+      // Update IndexedDB to reflect synced changes
+      await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+        yearsToProgramMap,
+        programsMap,
+        bandIdToBirdEventIdsMap,
+        birdEventsMap,
+        bandGroupsMap,
+        magicTable,
+      });
+      await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
+
       console.log("✅ Queue sync completed");
     } catch (err) {
       console.error("Error syncing queue:", err);
@@ -262,24 +273,28 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           environment: CURRENT_ENVIRONMENT,
         });
 
-        // 3. Update local state
+        // 3. Calculate all new state values first
         const year = captureData.date.substring(0, 4);
 
-        setBirdEventsMap((prev) => ({ ...prev, [newBirdEvent.id]: newBirdEvent }));
+        // New birdEventsMap
+        const newBirdEventsMap = { ...birdEventsMap, [newBirdEvent.id]: newBirdEvent };
 
-        setBandIdToBirdEventIdsMap((prev) => ({
-          ...prev,
-          [band.id]: [...(prev[band.id] || []), newBirdEvent.id],
-        }));
+        // New bandIdToBirdEventIdsMap
+        const newBandIdToBirdEventIdsMap = {
+          ...bandIdToBirdEventIdsMap,
+          [band.id]: [...(bandIdToBirdEventIdsMap[band.id] || []), newBirdEvent.id],
+        };
 
+        // New bandGroupsMap
+        let newBandGroupsMap = bandGroupsMap;
         if (isNewCapture) {
-          setBandGroupsMap((prev) => ({
-            ...prev,
+          newBandGroupsMap = {
+            ...bandGroupsMap,
             [band.bandGroupId]: {
               id: band.bandGroupId,
-              newCaptureIds: [...(prev[band.bandGroupId]?.newCaptureIds || []), newBirdEvent.id],
+              newCaptureIds: [...(bandGroupsMap[band.bandGroupId]?.newCaptureIds || []), newBirdEvent.id],
             },
-          }));
+          };
         }
 
         // 4. Calculate next band ID if applicable (online only)
@@ -304,44 +319,52 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        setProgramsMap((prev) => {
-          const existingProgram = prev[captureData.programId];
-          let newBandGroupIds = existingProgram?.bandGroupIds || [];
-          if (isNewCapture && !newBandGroupIds.includes(band.bandGroupId)) {
-            newBandGroupIds = [...newBandGroupIds, band.bandGroupId];
-          }
+        // New programsMap
+        const existingProgram = programsMap[captureData.programId];
+        let newBandGroupIds = existingProgram?.bandGroupIds || [];
+        if (isNewCapture && !newBandGroupIds.includes(band.bandGroupId)) {
+          newBandGroupIds = [...newBandGroupIds, band.bandGroupId];
+        }
 
-          const newRecaptureIds = existingProgram.recaptureIds || [];
-          if (!isNewCapture) {
-            newRecaptureIds.push(newBirdEvent.id);
-          }
+        let newRecaptureIds = existingProgram?.recaptureIds || [];
+        if (!isNewCapture) {
+          newRecaptureIds = [...newRecaptureIds, newBirdEvent.id];
+        }
 
+        const newProgramsMap = {
+          ...programsMap,
+          [captureData.programId]: {
+            id: captureData.programId,
+            bandGroupIds: newBandGroupIds,
+            recaptureIds: newRecaptureIds,
+            nextBandSizes: updatedNextBandSizes || existingProgram?.nextBandSizes,
+          },
+        };
 
-          return {
-            ...prev,
-            [captureData.programId]: {
-              id: captureData.programId,
-              bandGroupIds: newBandGroupIds,
-              recaptureIds: newRecaptureIds,
-              nextBandSizes: updatedNextBandSizes || existingProgram?.nextBandSizes,
-            },
-          };
-        });
+        // New yearsToProgramMap
+        const newYearsToProgramMap = {
+          ...yearsToProgramMap,
+          [year]: yearsToProgramMap[year]
+            ? [...new Set([...yearsToProgramMap[year], captureData.programId])]
+            : [captureData.programId],
+        };
 
-        setYearsToProgramMap((prev) => ({
-          ...prev,
-          [year]: prev[year] ? [...new Set([...prev[year], captureData.programId])] : [captureData.programId],
-        }));
+        // Update React state
+        setBirdEventsMap(newBirdEventsMap);
+        setBandIdToBirdEventIdsMap(newBandIdToBirdEventIdsMap);
+        setBandGroupsMap(newBandGroupsMap);
+        setProgramsMap(newProgramsMap);
+        setYearsToProgramMap(newYearsToProgramMap);
 
         // 5. Update IndexedDB cache to keep it in sync
-        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
-          yearsToProgramMap,
-          programsMap,
-          bandIdToBirdEventIdsMap,
-          birdEventsMap,
-          bandGroupsMap,
+        saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+          yearsToProgramMap: newYearsToProgramMap,
+          programsMap: newProgramsMap,
+          bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
+          birdEventsMap: newBirdEventsMap,
+          bandGroupsMap: newBandGroupsMap,
           magicTable,
-        });
+        }).catch((err) => console.error("Error saving to IndexedDB:", err));
 
         // 6. Sync queue and update pending count
         const count = await getQueueCount();
@@ -396,23 +419,37 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), updatedPrograms);
         }
 
-        // Update local state
-        setProgramsMap((prev) => ({
-          ...prev,
+        // Calculate new state
+        const newProgramsMap = {
+          ...programsMap,
           [programId]: {
             id: programId,
             bandGroupIds: [],
             recaptureIds: [],
           },
-        }));
+        };
 
-        setYearsToProgramMap((prev) => ({
-          ...prev,
-          [year]: prev[year] ? Array.from(new Set([...prev[year], programId])) : [programId],
-        }));
+        const newYearsToProgramMap = {
+          ...yearsToProgramMap,
+          [year]: yearsToProgramMap[year] ? Array.from(new Set([...yearsToProgramMap[year], programId])) : [programId],
+        };
+
+        // Update React state
+        setProgramsMap(newProgramsMap);
+        setYearsToProgramMap(newYearsToProgramMap);
 
         // Update lastModified timestamp
         await set(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`), Date.now());
+
+        // Update IndexedDB with new state
+        saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+          yearsToProgramMap: newYearsToProgramMap,
+          programsMap: newProgramsMap,
+          bandIdToBirdEventIdsMap,
+          birdEventsMap,
+          bandGroupsMap,
+          magicTable,
+        }).catch((err) => console.error("Error saving to IndexedDB:", err));
 
         console.log("✅ Program added:", programId);
       } catch (err) {

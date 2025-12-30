@@ -14,6 +14,7 @@ import BirdEvents from "./Captures/BirdEvents";
 import { useMemo, useState } from "react";
 import { useData } from "../../../services/useData";
 import AddProgramModal from "../../Modals/AddProgramModal";
+import type { Program } from "../../../types";
 
 export default function Programs() {
   const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading } = useData();
@@ -110,7 +111,7 @@ export default function Programs() {
             isHeaderSticky
             aria-label="Programs table"
             selectionMode="single"
-            selectedKeys={selectedProgram ? new Set([selectedProgram.id]) : new Set()}
+            selectedKeys={selectedProgram ? new Set([(selectedProgram as Program).id]) : new Set()}
             onSelectionChange={handleProgramChange}
             isVirtualized
             maxTableHeight={600}
