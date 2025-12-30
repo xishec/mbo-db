@@ -93,7 +93,7 @@ export default function NewCaptures() {
             );
           })}
         </Autocomplete>
-        <Switch isSelected={showOtherPrograms} onValueChange={setShowOtherPrograms} size="md">
+        <Switch isSelected={showOtherPrograms} onValueChange={setShowOtherPrograms} size="md" className="self-end mb-1.5">
           Show all captures
         </Switch>
       </div>
