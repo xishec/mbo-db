@@ -6,7 +6,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Chip,
 } from "@heroui/react";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import { useData } from "../../services/useData";
@@ -82,9 +81,6 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                 Conflicting Bird Events: Sex changed (4↔5) or Species changed
               </p>
             </div>
-            <Chip color="danger" size="lg" variant="flat">
-              {conflictingBirdEvents.length} errors
-            </Chip>
           </div>
         </ModalHeader>
 

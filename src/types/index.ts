@@ -186,6 +186,7 @@ export interface DataContextType {
     bandSize: BandSize
   ) => Promise<void>;
   addProgram: (programName: string, year: string) => Promise<void>;
+  syncQueue: () => Promise<void>;
 }
 
 // Form types

@@ -630,6 +630,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setForceOffline,
         addCapture,
         addProgram,
+        syncQueue,
       }}
     >
       {children}

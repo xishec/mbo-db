@@ -74,7 +74,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   const { isOpen: isSyncQueueOpen, onOpen: onSyncQueueOpen, onClose: onSyncQueueClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
-  const { birdEventsMap, bandIdToBirdEventIdsMap, pendingCount } = useData();
+  const { birdEventsMap, bandIdToBirdEventIdsMap, pendingCount, isOnline, syncQueue } = useData();
 
   // Calculate error count
   const errorCount = useMemo(() => {
@@ -106,20 +106,22 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
             <span className="font-bold">MBO</span> Database
           </p>
           <div className="ml-4 flex items-center gap-2">
-            <Badge content={pendingCount} color="warning" size="sm" isInvisible={pendingCount === 0}>
+            <Badge content={pendingCount} color={isOnline ? "primary" : "secondary"} size="md" isInvisible={pendingCount === 0 && isOnline}>
               <Chip
                 size="md"
                 variant="flat"
-                color={pendingCount === 0 ? "primary" : "secondary"}
+                color={isOnline ? "primary" : "secondary"}
                 className="cursor-pointer"
                 onClick={onSyncQueueOpen}
               >
-                Sync Queue
+                {isOnline ? "Online" : "Offline"}
               </Chip>
             </Badge>
-            <Button isIconOnly size="sm" variant="light" aria-label="Sync">
-              <ArrowPathIcon className="w-4 h-4" />
-            </Button>
+            {isOnline && (
+              <Button isIconOnly size="sm" variant="light" aria-label="Sync" onPress={() => syncQueue()}>
+                <ArrowPathIcon className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">

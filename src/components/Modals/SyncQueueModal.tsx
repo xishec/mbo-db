@@ -6,7 +6,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Chip,
 } from "@heroui/react";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import { getQueuedEvents } from "../../services/indexedDB";
@@ -50,9 +49,6 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
                 Pending bird events waiting to sync to Firebase
               </p>
             </div>
-            <Chip color="warning" size="lg" variant="flat">
-              {queuedEvents.length} pending
-            </Chip>
           </div>
         </ModalHeader>
 
