@@ -180,6 +180,28 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
+          // Update programsMap
+          const existingProgram = programsMap[birdEvent.programId];
+          if (existingProgram) {
+            let updatedBandGroupIds = existingProgram.bandGroupIds || [];
+            if (isNewCapture && !updatedBandGroupIds.includes(band.bandGroupId)) {
+              updatedBandGroupIds = [...updatedBandGroupIds, band.bandGroupId];
+              await set(
+                ref(db, `${environment}/programsMap/${birdEvent.programId}/bandGroupIds`),
+                updatedBandGroupIds
+              );
+            }
+
+            let updatedRecaptureIds = existingProgram.recaptureIds || [];
+            if (!isNewCapture && !updatedRecaptureIds.includes(birdEventId)) {
+              updatedRecaptureIds = [...updatedRecaptureIds, birdEventId];
+              await set(
+                ref(db, `${environment}/programsMap/${birdEvent.programId}/recaptureIds`),
+                updatedRecaptureIds
+              );
+            }
+          }
+
           console.log(`✅ Synced bird event: ${birdEventId} to ${environment}`);
 
           // Remove from queue after successful sync
@@ -212,7 +234,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("Error syncing queue:", err);
     }
-  }, [isOnline, bandIdToBirdEventIdsMap, bandGroupsMap]);
+  }, [isOnline, bandIdToBirdEventIdsMap, bandGroupsMap, programsMap]);
 
   // Sync queue when coming online or when dependencies change
   useEffect(() => {
