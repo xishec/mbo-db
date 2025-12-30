@@ -124,8 +124,9 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
               </p>
             </div>
             <div className="flex gap-4 items-center">
-              <span className="text-sm">Force Offline</span>
-              <Switch size="sm" isSelected={forceOffline} onValueChange={setForceOffline}></Switch>
+              <Switch size="sm" isSelected={forceOffline} onValueChange={setForceOffline}>
+                Force Offline
+              </Switch>
               <div className="flex gap-2">
                 {Object.entries(stats.byLevel).map(([level, count]) => (
                   <Chip key={level} color={getLevelColor(level as LogLevel)} size="sm" variant="flat">
