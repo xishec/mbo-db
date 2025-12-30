@@ -1,5 +1,5 @@
 import { Autocomplete, AutocompleteItem, Spinner, Switch } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
 
@@ -30,6 +30,24 @@ export default function NewCaptures() {
 
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const [showOtherPrograms, setShowOtherPrograms] = useState(false);
+  const prevBandGroupIdsRef = useRef<string[]>([]);
+
+  // Auto-select newly added band group
+  useEffect(() => {
+    const currentBandGroupIds = bandGroupOptions;
+    const prevBandGroupIds = prevBandGroupIdsRef.current;
+
+    // Check if a new band group was added
+    if (currentBandGroupIds.length > prevBandGroupIds.length) {
+      const newBandGroupId = currentBandGroupIds.find((id) => !prevBandGroupIds.includes(id));
+      if (newBandGroupId) {
+        setSelectedBandGroupId(newBandGroupId);
+      }
+    }
+
+    // Update ref for next comparison
+    prevBandGroupIdsRef.current = currentBandGroupIds;
+  }, [bandGroupOptions]);
 
   // Derive effective selection: use selected if valid, otherwise default to first option
   const effectiveBandGroupId = useMemo(() => {
