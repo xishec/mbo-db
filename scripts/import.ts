@@ -253,9 +253,11 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
           recaptureIds: [],
         };
       }
-      if (birdEventType === BirdEventType.Banded) {
+      const isNewCapture = birdEventType === BirdEventType.Banded;
+      if (isNewCapture && !programsMap[programId].bandGroupIds.includes(bandGroupId)) {
         programsMap[programId].bandGroupIds.push(bandGroupId);
-      } else {
+      }
+      if (!isNewCapture && !programsMap[programId].recaptureIds.includes(birdEventId)) {
         programsMap[programId].recaptureIds.push(birdEventId);
       }
     }

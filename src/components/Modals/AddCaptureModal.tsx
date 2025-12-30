@@ -361,21 +361,19 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                   <SpeciesRangeTable title="MBO" speciesCode={formData.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
-              {!formData.bandGroup && !formData.bandLastTwoDigits && (
-                <Tabs
-                  color="primary"
-                  size="sm"
-                  classNames={{
-                    tabContent: "text-gray-700",
-                  }}
-                  selectedKey={bandSize}
-                  onSelectionChange={(key) => setBandSize(key as BandSize)}
-                >
-                  {Object.values(BandSize).map((size) => (
-                    <Tab key={size} title={size} />
-                  ))}
-                </Tabs>
-              )}
+              <Tabs
+                color="primary"
+                size="sm"
+                classNames={{
+                  tabContent: "text-gray-700",
+                }}
+                selectedKey={bandSize}
+                onSelectionChange={(key) => setBandSize(key as BandSize)}
+              >
+                {Object.values(BandSize).map((size) => (
+                  <Tab key={size} title={size} />
+                ))}
+              </Tabs>
               <Table aria-label="New capture form">
                 <TableHeader columns={CAPTURE_COLUMNS.filter((column) => column.key !== "actions")}>
                   {(column) => (

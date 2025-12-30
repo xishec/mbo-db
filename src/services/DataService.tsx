@@ -329,7 +329,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           [year]: prev[year] ? [...new Set([...prev[year], captureData.programId])] : [captureData.programId],
         }));
 
-        // 5. Sync queue and update pending count
+        // 5. Update IndexedDB cache to keep it in sync
+        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+          yearsToProgramMap,
+          programsMap,
+          bandIdToBirdEventIdsMap,
+          birdEventsMap,
+          bandGroupsMap,
+          magicTable,
+        });
+
+        // 6. Sync queue and update pending count
         const count = await getQueueCount();
         setPendingCount(count);
 
@@ -345,7 +355,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [bandIdToBirdEventIdsMap, isOnline, syncQueue]
+    [bandIdToBirdEventIdsMap, birdEventsMap, bandGroupsMap, isOnline, magicTable, programsMap, syncQueue, yearsToProgramMap]
   );
 
   const addProgram = useCallback(
