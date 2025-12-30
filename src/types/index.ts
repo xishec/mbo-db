@@ -219,24 +219,10 @@ export interface CaptureColumn {
   minLength?: number;
 }
 
-// Program Event types
-export const enum ProgramEventType {
-  Created = "Created",
-  Modified = "Modified",
-}
-
-export interface ProgramEvent {
-  id: string;
-  name: string;
-  year: string;
-  nextBandSizes?: Record<BandSize, string>;
-  programEventType: ProgramEventType;
-}
-
 // Queue types for offline support
 export interface PendingEvent {
   id: string;
-  pendingEvent: BirdEvent | ProgramEvent;
+  pendingEvent: BirdEvent;
   timestamp: number;
   environment: string;
 }
