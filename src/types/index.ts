@@ -162,9 +162,8 @@ export interface DataContextType {
   error: string | null;
 
   // Selected program
-  selectedProgram: string | null;
-  selectProgram: (programId: string | null) => void;
-  nextBandSizes: Record<BandSize, string> | undefined;
+  selectedProgram: Program | null;
+  selectProgram: (program: Program | null) => void;
 
   // All data from alpha/
   yearsToProgramMap: YearToProgramMap;
@@ -182,8 +181,7 @@ export interface DataContextType {
   addCapture: (
     captureData: CaptureFormData,
     birdEventType: BirdEventType,
-    bandSize: BandSize,
-    nextBandSizes: Record<BandSize, string> | undefined
+    bandSize: BandSize
   ) => Promise<void>;
   addProgram: (programName: string, year: string) => Promise<void>;
 }

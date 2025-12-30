@@ -13,7 +13,7 @@ import {
   type BirdEvent,
   BandSize,
 } from "../types";
-import { Band, BirdEventType, generateBirdEventId } from "../types";
+import { Band, BirdEventType, generateBirdEventId, type Program } from "../types";
 import { DataContext } from "./DataContext";
 import {
   saveDataToIndexedDB,
@@ -30,7 +30,7 @@ import { useOnlineStatus } from "../hooks/useOnlineStatus";
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+  const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const isOnline = useOnlineStatus();
 
@@ -305,21 +305,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
 
         setProgramsMap((prev) => {
-          const existing = prev[captureData.programId];
-          const bandGroupIds = existing?.bandGroupIds.includes(band.bandGroupId)
-            ? existing.bandGroupIds
-            : [...(existing?.bandGroupIds || []), band.bandGroupId];
-          const recaptureIds = isNewCapture
-            ? existing?.recaptureIds || []
-            : [...(existing?.recaptureIds || []), newBirdEvent.id];
+          const existingProgram = prev[captureData.programId];
+          let newBandGroupIds = existingProgram?.bandGroupIds || [];
+          if (isNewCapture && !newBandGroupIds.includes(band.bandGroupId)) {
+            newBandGroupIds = [...newBandGroupIds, band.bandGroupId];
+          }
+
+          const newRecaptureIds = existingProgram.recaptureIds || [];
+          if (!isNewCapture) {
+            newRecaptureIds.push(newBirdEvent.id);
+          }
+
 
           return {
             ...prev,
             [captureData.programId]: {
               id: captureData.programId,
-              bandGroupIds,
-              recaptureIds,
-              nextBandSizes: updatedNextBandSizes || existing?.nextBandSizes,
+              bandGroupIds: newBandGroupIds,
+              recaptureIds: newRecaptureIds,
+              nextBandSizes: updatedNextBandSizes || existingProgram?.nextBandSizes,
             },
           };
         });
@@ -355,7 +359,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [bandIdToBirdEventIdsMap, birdEventsMap, bandGroupsMap, isOnline, magicTable, programsMap, syncQueue, yearsToProgramMap]
+    [
+      bandIdToBirdEventIdsMap,
+      birdEventsMap,
+      bandGroupsMap,
+      isOnline,
+      magicTable,
+      programsMap,
+      syncQueue,
+      yearsToProgramMap,
+    ]
   );
 
   const addProgram = useCallback(
@@ -417,7 +430,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         error,
         selectedProgram,
         selectProgram: setSelectedProgram,
-        nextBandSizes: selectedProgram ? programsMap[selectedProgram]?.nextBandSizes : undefined,
         yearsToProgramMap,
         programsMap,
         bandIdToBirdEventIdsMap,

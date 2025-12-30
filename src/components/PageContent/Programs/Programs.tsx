@@ -16,7 +16,7 @@ import { useData } from "../../../services/useData";
 import AddProgramModal from "../../Modals/AddProgramModal";
 
 export default function Programs() {
-  const { selectProgram, selectedProgram, yearsToProgramMap, isLoading } = useData();
+  const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading } = useData();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
 
   // Year rows for the table (sorted descending)
@@ -42,7 +42,7 @@ export default function Programs() {
 
   const handleProgramChange = (keys: "all" | Set<React.Key>) => {
     const selected = keys === "all" ? null : String(Array.from(keys)[0]) || null;
-    selectProgram(selected);
+    selectProgram(selected ? programsMap[selected] : null);
   };
 
   if (isLoading) {
@@ -70,7 +70,7 @@ export default function Programs() {
             Years
           </BreadcrumbItem>
           {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
-          {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram}</BreadcrumbItem>}
+          {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram.id}</BreadcrumbItem>}
         </Breadcrumbs>
         {!selectedProgram && (
           <Button color="primary" onPress={() => setIsAddProgramModalOpen(true)}>

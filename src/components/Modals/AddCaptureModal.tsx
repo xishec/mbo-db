@@ -35,8 +35,8 @@ interface AddCaptureModalProps {
 }
 
 export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
-  const { selectedProgram, nextBandSizes, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture } = useData();
-  const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram || ""));
+  const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture } = useData();
+  const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
@@ -45,7 +45,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   // Reset form data when modal opens
   if (isOpen && !prevIsOpen) {
-    const defaultData = getDefaultFormData(selectedProgram || "");
+    const defaultData = getDefaultFormData(selectedProgram?.id || "");
     // Preserve date/time if useCurrentTime is false
     if (!useCurrentTime) {
       defaultData.date = formData.date;
@@ -287,13 +287,13 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
 
   const handleSave = useCallback(async () => {
     try {
-      await addCapture(formData, displayCaptureType, bandSize, nextBandSizes);
+      await addCapture(formData, displayCaptureType, bandSize);
       handleClose();
     } catch (err) {
       console.error("Failed to save capture:", err);
       alert("Failed to save capture. Please try again.");
     }
-  }, [formData, handleClose, addCapture, displayCaptureType, bandSize, nextBandSizes]);
+  }, [formData, handleClose, addCapture, displayCaptureType, bandSize]);
 
   const getInputColor = (columnKey: keyof CaptureFormData) => {
     // Check wing range validation
@@ -348,7 +348,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
           <>
             <ModalHeader className="flex flex-row items-center justify-between p-8 pb-0 font-normal">
               <div className="flex flex-row items-center gap-1">
-                Add Capture in <span className="font-bold">{selectedProgram}</span>
+                Add Capture in <span className="font-bold">{selectedProgram?.id}</span>
               </div>
               <Switch size="sm" isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
                 Use current time
@@ -389,7 +389,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                       const inputColor = getInputColor(columnKey);
 
                       const getReadonlyValue = () => {
-                        if (column.key === "programId") return selectedProgram;
+                        if (column.key === "programId") return selectedProgram?.id;
                         if (column.key === "captureType") return displayCaptureType;
                         if (useCurrentTime && (columnKey === "date" || columnKey === "time"))
                           return formData[columnKey];

@@ -4,15 +4,15 @@ import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
 
 export default function ReCaptures() {
-  const { selectedProgram, programsMap, birdEventsMap, isLoading } = useData();
+  const { selectedProgram, birdEventsMap, isLoading } = useData();
 
   // Get recaptures for the selected program
   const reCaptures = useMemo(() => {
     if (!selectedProgram) return [];
-    const program = programsMap[selectedProgram];
-    const recaptureIds = program?.recaptureIds ?? [];
-    return recaptureIds.map((id) => birdEventsMap[id]).filter(Boolean);
-  }, [selectedProgram, programsMap, birdEventsMap]);
+    const program = selectedProgram;
+    const recaptureIds = program.recaptureIds || [];
+    return recaptureIds.map((id: string) => birdEventsMap[id]).filter(Boolean);
+  }, [selectedProgram, birdEventsMap]);
 
   if (isLoading) {
     return (
