@@ -16,19 +16,22 @@ import {
   CardBody,
   Accordion,
   AccordionItem,
+  Switch,
 } from "@heroui/react";
 import { logger, LogLevel, type LogEntry } from "../../services/logger";
+import { useData } from "../../services/useData";
 
-interface LogsModalProps {
+interface DeveloperModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function LogsModal({ isOpen, onClose }: LogsModalProps) {
+export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
   const [logs, setLogs] = useState<LogEntry[]>(logger.getLogs());
   const [searchQuery, setSearchQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState<Set<string>>(new Set(["all"]));
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set(["all"]));
+  const { forceOffline, setForceOffline } = useData();
 
   // Subscribe to log updates
   useEffect(() => {
@@ -110,27 +113,26 @@ export function LogsModal({ isOpen, onClose }: LogsModalProps) {
   const stats = logger.getStats();
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="5xl"
-      scrollBehavior="inside"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xl font-bold">Application Logs</h2>
+              <h2 className="text-xl font-bold">Developer Mode</h2>
               <p className="text-sm text-default-500">
                 {filteredLogs.length} of {logs.length} logs
               </p>
             </div>
-            <div className="flex gap-2">
-              {Object.entries(stats.byLevel).map(([level, count]) => (
-                <Chip key={level} color={getLevelColor(level as LogLevel)} size="sm" variant="flat">
-                  {level}: {count}
-                </Chip>
-              ))}
+            <div className="flex gap-4 items-center">
+              <span className="text-sm">Force Offline</span>
+              <Switch size="sm" isSelected={forceOffline} onValueChange={setForceOffline}></Switch>
+              <div className="flex gap-2">
+                {Object.entries(stats.byLevel).map(([level, count]) => (
+                  <Chip key={level} color={getLevelColor(level as LogLevel)} size="sm" variant="flat">
+                    {level}: {count}
+                  </Chip>
+                ))}
+              </div>
             </div>
           </div>
         </ModalHeader>
@@ -201,7 +203,7 @@ export function LogsModal({ isOpen, onClose }: LogsModalProps) {
                                 </span>
                               </div>
                               <p className="text-sm font-medium">{log.message}</p>
-                              {(log.data !== undefined && log.data !== null) ? (
+                              {log.data !== undefined && log.data !== null ? (
                                 <Accordion className="mt-2" variant="light">
                                   <AccordionItem
                                     key="data"
@@ -212,7 +214,7 @@ export function LogsModal({ isOpen, onClose }: LogsModalProps) {
                                     }}
                                   >
                                     <pre className="text-xs bg-default-100 p-2 rounded overflow-x-auto">
-                                      {typeof log.data === 'string' ? log.data : JSON.stringify(log.data, null, 2)}
+                                      {typeof log.data === "string" ? log.data : JSON.stringify(log.data, null, 2)}
                                     </pre>
                                   </AccordionItem>
                                 </Accordion>

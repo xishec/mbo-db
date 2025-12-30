@@ -15,13 +15,13 @@ import {
   Chip,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { CodeBracketIcon, ExclamationTriangleIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useState, useEffect, useMemo } from "react";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import type { User as FirebaseUser } from "firebase/auth";
 import { app } from "../firebase";
 import LoginModal from "./Modals/LoginModal";
-import { LogsModal } from "./Modals/LogsModal";
+import { DeveloperModal } from "./Modals/DeveloperModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
 import { SyncQueueModal } from "./Modals/SyncQueueModal";
 import { useData } from "../services/useData";
@@ -74,7 +74,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   const { isOpen: isSyncQueueOpen, onOpen: onSyncQueueOpen, onClose: onSyncQueueClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
-  const { birdEventsMap, bandIdToBirdEventIdsMap, isOnline, pendingCount, forceOffline, setForceOffline } = useData();
+  const { birdEventsMap, bandIdToBirdEventIdsMap, pendingCount } = useData();
 
   // Calculate error count
   const errorCount = useMemo(() => {
@@ -101,28 +101,25 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
     <>
       <Navbar maxWidth="full" classNames={{ wrapper: "px-8" }}>
         <NavbarBrand>
-          <img 
-            src="/mbo-logo.svg" 
-            alt="MBO Logo" 
-            className="h-8 w-8 mr-2 cursor-pointer" 
-            onClick={() => setForceOffline(!forceOffline)}
-            title={forceOffline ? "Click to enable online mode" : "Click to force offline mode"}
-          />
+          <img src="/mbo-logo.svg" alt="MBO Logo" className="h-8 w-8 mr-2" />
           <p className="text-xl">
             <span className="font-bold">MBO</span> Database
           </p>
-          <div className="ml-4">
+          <div className="ml-4 flex items-center gap-2">
             <Badge content={pendingCount} color="warning" size="sm" isInvisible={pendingCount === 0}>
               <Chip
-                size="sm"
+                size="md"
                 variant="flat"
-                color={isOnline ? "success" : "warning"}
+                color={pendingCount === 0 ? "primary" : "secondary"}
                 className="cursor-pointer"
                 onClick={onSyncQueueOpen}
               >
-                {isOnline ? "Online" : "Offline"}
+                Sync Queue
               </Chip>
             </Badge>
+            <Button isIconOnly size="sm" variant="light" aria-label="Sync">
+              <ArrowPathIcon className="w-4 h-4" />
+            </Button>
           </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">
@@ -229,7 +226,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
       </Navbar>
       <LoginModal isOpen={isOpen} onOpenChange={onOpenChange} />
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
-      <LogsModal isOpen={isLogsOpen} onClose={onLogsClose} />
+      <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />
       <SyncQueueModal isOpen={isSyncQueueOpen} onClose={onSyncQueueClose} />
     </>
   );
