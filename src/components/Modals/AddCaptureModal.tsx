@@ -196,6 +196,17 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
       }
     }
 
+    // Check if bird is being recaptured on the same day
+    if (pastBirdEvents.length > 0 && formData.date) {
+      const sameDayCapture = pastBirdEvents.some((capture) => capture.date === formData.date);
+      if (sameDayCapture) {
+        messages.push({
+          text: "Bird was already captured today - should be released without logging",
+          color: "danger",
+        });
+      }
+    }
+
     for (const column of CAPTURE_COLUMNS) {
       const value = formData[column.key as keyof CaptureFormData];
       if (column.minLength && value.length > 0 && value.length < column.minLength) {

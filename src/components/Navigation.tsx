@@ -162,7 +162,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
         </NavbarContent>
         <NavbarContent justify="end">
           <NavbarItem>
-            <Badge content={errorCount} color="danger" size="sm" isInvisible={errorCount === 0}>
+            <Badge content={errorCount} color="danger" size="md" isInvisible={errorCount === 0}>
               <Button
                 isIconOnly
                 variant="light"
