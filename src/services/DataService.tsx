@@ -62,8 +62,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
 
         // Log timestamps for debugging
-        logger.debug("DataLoad", "Cache timestamp", { timestamp: cachedTimestamp, formatted: cachedTimestamp ? new Date(cachedTimestamp).toLocaleString() : "None" });
-        logger.debug("DataLoad", "Firebase timestamp", { timestamp: firebaseTimestamp, formatted: firebaseTimestamp ? new Date(firebaseTimestamp).toLocaleString() : "None" });
+        logger.debug("DataLoad", "Cache timestamp", {
+          timestamp: cachedTimestamp,
+          formatted: cachedTimestamp ? new Date(cachedTimestamp).toLocaleString() : "None",
+        });
+        logger.debug("DataLoad", "Firebase timestamp", {
+          timestamp: firebaseTimestamp,
+          formatted: firebaseTimestamp ? new Date(firebaseTimestamp).toLocaleString() : "None",
+        });
 
         // Determine if we need to fetch fresh data
         const needsFetch = !cachedData || !cachedTimestamp || !firebaseTimestamp || firebaseTimestamp > cachedTimestamp;
@@ -145,13 +151,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * THREE-TIER SYNC ARCHITECTURE (optimized for 50MB database)
    * ============================================================
    * React State (volatile) → IndexedDB (persistent cache) → Firebase RTDB (source of truth)
-   * 
+   *
    * This architecture enables:
    * - Offline-first operation with minimal sync overhead
    * - Delta sync: only changed events (~1-5KB each) instead of full 50MB upload
    * - Fast sync times (milliseconds vs seconds for full sync)
    * - Lower Firebase costs and better battery life
-   * 
+   *
    * Sync Flow:
    * 1. User action → Update React state + IndexedDB immediately (optimistic UI)
    * 2. Queue BirdEvent for background sync
@@ -176,7 +182,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   /**
    * Syncs a single bird event to Firebase RTDB with all its relationships.
    * This is the core delta sync operation - only writes changed data.
-   * 
+   *
    * Updates four related nodes atomically:
    * 1. birdEventsMap/{eventId} - The event itself
    * 2. bandIdToBirdEventIdsMap/{bandId} - Index by band ID
@@ -216,10 +222,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           });
         } else if (!existingBandGroup.newCaptureIds.includes(birdEventId)) {
           // Append to existing band group
-          await set(
-            ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}/newCaptureIds`),
-            [...existingBandGroup.newCaptureIds, birdEventId]
-          );
+          await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}/newCaptureIds`), [
+            ...existingBandGroup.newCaptureIds,
+            birdEventId,
+          ]);
         }
       }
 
@@ -230,10 +236,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (isNewCapture) {
           const existingBandGroupIds = existingProgram.bandGroupIds || [];
           if (!existingBandGroupIds.includes(band.bandGroupId)) {
-            await set(
-              ref(db, `${environment}/programsMap/${programId}/bandGroupIds`),
-              [...existingBandGroupIds, band.bandGroupId]
-            );
+            await set(ref(db, `${environment}/programsMap/${programId}/bandGroupIds`), [
+              ...existingBandGroupIds,
+              band.bandGroupId,
+            ]);
           }
         }
 
@@ -241,10 +247,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!isNewCapture) {
           const existingRecaptureIds = existingProgram.recaptureIds || [];
           if (!existingRecaptureIds.includes(birdEventId)) {
-            await set(
-              ref(db, `${environment}/programsMap/${programId}/recaptureIds`),
-              [...existingRecaptureIds, birdEventId]
-            );
+            await set(ref(db, `${environment}/programsMap/${programId}/recaptureIds`), [
+              ...existingRecaptureIds,
+              birdEventId,
+            ]);
           }
         }
       }
@@ -282,14 +288,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Syncs pending events from queue to Firebase RTDB.
-   * 
+   *
    * Process:
    * 1. Check if online and if queue has items
    * 2. Read current state from IndexedDB (single source of truth)
    * 3. For each queued event, sync to RTDB (delta sync)
    * 4. Remove successfully synced events from queue
    * 5. Update timestamps and React state
-   * 
+   *
    * Error handling:
    * - Failed events stay in queue for automatic retry on next sync
    * - Partial success is okay - we continue with remaining events
@@ -328,12 +334,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
           const birdEvent = pending.pendingEvent as BirdEvent;
           await syncBirdEventToRTDB(birdEvent, pending.environment, state);
-          
+
           // Remove from queue only after successful sync
           await removeFromQueue(pending.id);
           successCount++;
-          
-          logger.sync("SyncQueue", `Synced bird event ${successCount}/${pendingEvents.length}`, { eventId: birdEvent.id });
+
+          logger.sync("SyncQueue", `Synced bird event ${successCount}/${pendingEvents.length}`, {
+            eventId: birdEvent.id,
+          });
         } catch (err) {
           logger.error("SyncQueue", `Failed to sync event ${pending.id}`, err);
           // Leave in queue to retry later - continue with remaining events
@@ -352,18 +360,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Sync React state with IndexedDB/RTDB
       updateReactStateFromCache(state);
 
-      logger.sync("SyncQueue", `Queue sync completed`, { succeeded: successCount, total: pendingEvents.length, remaining: remainingCount });
+      logger.sync("SyncQueue", `Queue sync completed`, {
+        succeeded: successCount,
+        total: pendingEvents.length,
+        remaining: remainingCount,
+      });
     } catch (err) {
       logger.error("SyncQueue", "Error syncing queue", err);
     }
   }, [isOnline, reconstructBandObjects, syncBirdEventToRTDB, updateReactStateFromCache]);
-
-  // Sync queue when coming online or when dependencies change
-  useEffect(() => {
-    if (isOnline && !isLoading) {
-      syncQueue();
-    }
-  }, [isOnline, isLoading, syncQueue]);
 
   // Update pending count on mount
   useEffect(() => {
@@ -458,7 +463,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               ...(existing?.nextBandSizes || {}),
               [bandSize]: nextBandId,
             } as Record<BandSize, string>;
-            logger.debug("AddCapture", "Updated next band ID", { bandSize, nextBandId, programId: captureData.programId });
+            logger.debug("AddCapture", "Updated next band ID", {
+              bandSize,
+              nextBandId,
+              programId: captureData.programId,
+            });
           } catch (error) {
             logger.error("AddCapture", "Error updating next band ID", error);
           }
@@ -527,7 +536,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           logger.info("AddCapture", "Offline - event queued for later sync", { eventId: newBirdEvent.id });
         }
 
-        logger.info("AddCapture", "Capture added", { eventId: newBirdEvent.id, programId: captureData.programId, bandSize });
+        logger.info("AddCapture", "Capture added", {
+          eventId: newBirdEvent.id,
+          programId: captureData.programId,
+          bandSize,
+        });
       } catch (err) {
         logger.error("AddCapture", "Error adding capture", err);
         throw err;
