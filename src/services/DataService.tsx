@@ -282,6 +282,28 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }));
         }
 
+        // 4. Calculate next band ID if applicable (online only)
+        let updatedNextBandSizes: Record<BandSize, string> | undefined;
+        if (isOnline && bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits) {
+          try {
+            const currentBandId = `${captureData.bandGroup}${captureData.bandLastTwoDigits}`;
+            const nextBandId = (parseInt(currentBandId, 10) + 1).toString().padStart(9, "0");
+
+            await set(
+              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/nextBandSizes/${bandSize}`),
+              nextBandId
+            );
+
+            const existing = programsMap[captureData.programId];
+            updatedNextBandSizes = {
+              ...(existing?.nextBandSizes || {}),
+              [bandSize]: nextBandId,
+            } as Record<BandSize, string>;
+          } catch (error) {
+            console.error("Error updating next band ID:", error);
+          }
+        }
+
         setProgramsMap((prev) => {
           const existing = prev[captureData.programId];
           const bandGroupIds = existing?.bandGroupIds.includes(band.bandGroupId)
@@ -297,7 +319,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               id: captureData.programId,
               bandGroupIds,
               recaptureIds,
-              nextBandSizes: existing?.nextBandSizes,
+              nextBandSizes: updatedNextBandSizes || existing?.nextBandSizes,
             },
           };
         });
@@ -306,32 +328,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           [year]: prev[year] ? [...new Set([...prev[year], captureData.programId])] : [captureData.programId],
         }));
-
-        // 4. Update next band ID (online only)
-        if (isOnline && bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits) {
-          try {
-            const currentBandId = `${captureData.bandGroup}${captureData.bandLastTwoDigits}`;
-            const nextBandId = (parseInt(currentBandId, 10) + 1).toString().padStart(9, "0");
-
-            await set(
-              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/nextBandSizes/${bandSize}`),
-              nextBandId
-            );
-
-            setProgramsMap((prev) => ({
-              ...prev,
-              [captureData.programId]: {
-                ...prev[captureData.programId],
-                nextBandSizes: {
-                  ...(prev[captureData.programId]?.nextBandSizes || {}),
-                  [bandSize]: nextBandId,
-                } as Record<BandSize, string>,
-              },
-            }));
-          } catch (error) {
-            console.error("Error updating next band ID:", error);
-          }
-        }
 
         // 5. Sync queue and update pending count
         const count = await getQueueCount();
