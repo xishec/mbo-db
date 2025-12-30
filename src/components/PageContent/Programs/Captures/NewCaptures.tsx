@@ -4,24 +4,20 @@ import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
 
 export default function NewCaptures() {
-  const { selectedProgram, programsMap, bandGroupsMap, birdEventsMap, isLoading } = useData();
+  const { selectedProgram, bandGroupsMap, birdEventsMap, isLoading } = useData();
 
   // Get band group IDs for the selected program
   const bandGroupIds = useMemo(() => {
-    if (!selectedProgram) return [];
-    const program = programsMap[selectedProgram];
-    return program?.bandGroupIds ?? [];
-  }, [selectedProgram, programsMap]);
+    return selectedProgram?.bandGroupIds ?? [];
+  }, [selectedProgram]);
 
   // Build bandGroupToNewCaptures from the data
   const bandGroupToNewCaptures = useMemo(() => {
-    const result: Record<string, typeof birdEventsMap[string][]> = {};
+    const result: Record<string, (typeof birdEventsMap)[string][]> = {};
     for (const bandGroupId of bandGroupIds) {
       const bandGroup = bandGroupsMap[bandGroupId];
       if (bandGroup) {
-        result[bandGroupId] = bandGroup.newCaptureIds
-          .map((id) => birdEventsMap[id])
-          .filter(Boolean);
+        result[bandGroupId] = bandGroup.newCaptureIds.map((id) => birdEventsMap[id]).filter(Boolean);
       }
     }
     return result;
@@ -86,7 +82,7 @@ export default function NewCaptures() {
 
       {effectiveBandGroupId ? (
         <BirdEventsTable
-          programId={selectedProgram ?? undefined}
+          programId={selectedProgram?.id}
           captures={captures}
           maxTableHeight={800}
           sortDescriptors={[{ column: "bandLastTwoDigits", direction: "ascending" }]}

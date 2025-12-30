@@ -8,9 +8,7 @@ export default function ReCaptures() {
 
   // Get recaptures for the selected program
   const reCaptures = useMemo(() => {
-    if (!selectedProgram) return [];
-    const program = selectedProgram;
-    const recaptureIds = program.recaptureIds || [];
+    const recaptureIds = selectedProgram?.recaptureIds ?? [];
     return recaptureIds.map((id: string) => birdEventsMap[id]).filter(Boolean);
   }, [selectedProgram, birdEventsMap]);
 

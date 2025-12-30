@@ -110,7 +110,7 @@ export default function Programs() {
             isHeaderSticky
             aria-label="Programs table"
             selectionMode="single"
-            selectedKeys={selectedProgram ? new Set([selectedProgram]) : new Set()}
+            selectedKeys={selectedProgram ? new Set([selectedProgram.id]) : new Set()}
             onSelectionChange={handleProgramChange}
             isVirtualized
             maxTableHeight={600}
