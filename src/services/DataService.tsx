@@ -149,6 +149,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       console.log(`🔄 Syncing ${pendingEvents.length} pending events...`);
 
+      // Read current state from IndexedDB (single source of truth)
+      const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
+      if (!cachedData) {
+        console.error("Cannot sync: No cached data in IndexedDB");
+        return;
+      }
+
+      // Reconstruct Band objects from serialized data
+      const reconstructedBirdEventsMap = Object.fromEntries(
+        Object.entries(cachedData.birdEventsMap ?? {}).map(([id, event]) => [
+          id,
+          { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix) },
+        ])
+      );
+
+      const state = {
+        yearsToProgramMap: cachedData.yearsToProgramMap ?? {},
+        programsMap: cachedData.programsMap ?? {},
+        bandIdToBirdEventIdsMap: cachedData.bandIdToBirdEventIdsMap ?? {},
+        birdEventsMap: reconstructedBirdEventsMap,
+        bandGroupsMap: cachedData.bandGroupsMap ?? {},
+      };
+
       for (const pending of pendingEvents) {
         const { pendingEvent, environment } = pending;
 
@@ -161,7 +184,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           await set(ref(db, `${environment}/birdEventsMap/${birdEventId}`), birdEvent);
 
           // Update bandIdToBirdEventIdsMap
-          const birdEventIds = bandIdToBirdEventIdsMap[band.id] || [];
+          const birdEventIds = state.bandIdToBirdEventIdsMap[band.id] || [];
           if (!birdEventIds.includes(birdEventId)) {
             const newBirdEventIds = [...birdEventIds, birdEventId];
             await set(ref(db, `${environment}/bandIdToBirdEventIdsMap/${band.id}`), newBirdEventIds);
@@ -169,19 +192,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
           // Update bandGroupsMap
           if (isNewCapture) {
-            if (!bandGroupsMap[band.bandGroupId]) {
+            if (!state.bandGroupsMap[band.bandGroupId]) {
               await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}`), {
                 id: band.bandGroupId,
                 newCaptureIds: [birdEventId],
               });
             } else {
-              const updatedCaptureIds = [...bandGroupsMap[band.bandGroupId].newCaptureIds, birdEventId];
+              const updatedCaptureIds = [...state.bandGroupsMap[band.bandGroupId].newCaptureIds, birdEventId];
               await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}/newCaptureIds`), updatedCaptureIds);
             }
           }
 
           // Update programsMap
-          const existingProgram = programsMap[birdEvent.programId];
+          const existingProgram = state.programsMap[birdEvent.programId];
           if (existingProgram) {
             let updatedBandGroupIds = existingProgram.bandGroupIds || [];
             if (isNewCapture && !updatedBandGroupIds.includes(band.bandGroupId)) {
@@ -214,27 +237,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       // Update lastModified timestamp after all syncs (use CURRENT_ENVIRONMENT for this)
       await set(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`), Date.now());
+      await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
 
       // Update pending count
       const count = await getQueueCount();
       setPendingCount(count);
 
-      // Update IndexedDB to reflect synced changes
-      await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
-        yearsToProgramMap,
-        programsMap,
-        bandIdToBirdEventIdsMap,
-        birdEventsMap,
-        bandGroupsMap,
-        magicTable,
-      });
-      await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
-
       console.log("✅ Queue sync completed");
     } catch (err) {
       console.error("Error syncing queue:", err);
     }
-  }, [isOnline, bandIdToBirdEventIdsMap, bandGroupsMap, programsMap]);
+  }, [isOnline]);
 
   // Sync queue when coming online or when dependencies change
   useEffect(() => {
@@ -379,14 +392,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setYearsToProgramMap(newYearsToProgramMap);
 
         // 5. Update IndexedDB cache to keep it in sync
-        saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
           yearsToProgramMap: newYearsToProgramMap,
           programsMap: newProgramsMap,
           bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
           birdEventsMap: newBirdEventsMap,
           bandGroupsMap: newBandGroupsMap,
           magicTable,
-        }).catch((err) => console.error("Error saving to IndexedDB:", err));
+        });
 
         // 6. Sync queue and update pending count
         const count = await getQueueCount();
@@ -464,14 +477,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await set(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`), Date.now());
 
         // Update IndexedDB with new state
-        saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
           yearsToProgramMap: newYearsToProgramMap,
           programsMap: newProgramsMap,
           bandIdToBirdEventIdsMap,
           birdEventsMap,
           bandGroupsMap,
           magicTable,
-        }).catch((err) => console.error("Error saving to IndexedDB:", err));
+        });
 
         console.log("✅ Program added:", programId);
       } catch (err) {
