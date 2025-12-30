@@ -454,13 +454,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             const nextBandId = (parseInt(currentBandId, 10) + 1).toString().padStart(9, "0");
 
             await set(
-              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/nextBandSizes/${bandSize}`),
+              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/BandSizeToBandIdMap/${bandSize}`),
               nextBandId
             );
 
             const existing = programsMap[captureData.programId];
             updatedNextBandSizes = {
-              ...(existing?.nextBandSizes || {}),
+              ...(existing?.BandSizeToBandIdMap || {}),
               [bandSize]: nextBandId,
             } as Record<BandSize, string>;
             logger.debug("AddCapture", "Updated next band ID", {
@@ -491,7 +491,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             id: captureData.programId,
             bandGroupIds: newBandGroupIds,
             recaptureIds: newRecaptureIds,
-            nextBandSizes: updatedNextBandSizes || existingProgram?.nextBandSizes,
+            BandSizeToBandIdMap: updatedNextBandSizes || existingProgram?.BandSizeToBandIdMap,
           },
         };
 

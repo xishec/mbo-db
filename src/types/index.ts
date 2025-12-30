@@ -9,7 +9,7 @@ export interface Program {
   id: string;
   bandGroupIds: string[];
   recaptureIds: string[];
-  nextBandSizes?: Record<BandSize, string>;
+  BandSizeToBandIdMap?: Record<BandSize, string>;
 }
 
 export class Band {

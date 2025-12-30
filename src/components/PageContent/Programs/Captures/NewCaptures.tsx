@@ -1,9 +1,12 @@
-import { Autocomplete, AutocompleteItem, Spinner, Switch } from "@heroui/react";
+import { Autocomplete, AutocompleteItem, Spinner, Switch, Button, useDisclosure } from "@heroui/react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
+import { BandSize } from "../../../../types";
+import AddCaptureModal from "../../../Modals/AddCaptureModal";
 
 export default function NewCaptures() {
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { selectedProgram, bandGroupsMap, birdEventsMap, isLoading } = useData();
 
   // Get band group IDs for the selected program
@@ -73,6 +76,19 @@ export default function NewCaptures() {
 
   return (
     <div className="w-full flex flex-col gap-4">
+      <div className="grid grid-cols-11 gap-2">
+        {Object.values(BandSize).map((bandSize) => (
+          <div key={bandSize} className="flex flex-col gap-2">
+            <div className="text-center text-sm font-semibold">{bandSize}</div>
+            <Button size="sm" variant="solid" color="secondary" className="w-full" onPress={onOpen}>
+              {selectedProgram?.BandSizeToBandIdMap?.[bandSize] ?? "Use"}
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} />
+
       <div className="flex items-center gap-4">
         <Autocomplete
           label="Band Group"
@@ -93,7 +109,12 @@ export default function NewCaptures() {
             );
           })}
         </Autocomplete>
-        <Switch isSelected={showOtherPrograms} onValueChange={setShowOtherPrograms} size="md" className="self-end mb-1.5">
+        <Switch
+          isSelected={showOtherPrograms}
+          onValueChange={setShowOtherPrograms}
+          size="md"
+          className="self-end mb-1.5"
+        >
           Show all captures
         </Switch>
       </div>
