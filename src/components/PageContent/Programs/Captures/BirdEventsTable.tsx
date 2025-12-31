@@ -170,7 +170,6 @@ export default function BirdEventsTable({
 
   const renderCell = useCallback(
     (item: TableRow, columnKey: React.Key) => {
-      console.log(item);
       if (columnKey === "actions") {
         return (
           <div className="relative flex items-center justify-center gap-2">

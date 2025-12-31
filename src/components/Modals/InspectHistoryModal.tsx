@@ -14,8 +14,9 @@ export default function InspectHistoryModal({ isOpen, onOpenChange, birdEvent }:
   const { birdEventsMap } = useData();
 
   const birdEvents = useMemo(() => {
-    const events: BirdEvent[] = [birdEvent];
-    let currentEvent = birdEvent;
+    const event = birdEventsMap[birdEvent.id];
+    const events: BirdEvent[] = [event];
+    let currentEvent = event;
 
     // Recursively follow the previousEventId chain
     while (currentEvent.previousEventId) {
@@ -29,7 +30,7 @@ export default function InspectHistoryModal({ isOpen, onOpenChange, birdEvent }:
     }
 
     return events;
-  }, [birdEvent, birdEventsMap]);
+  }, [birdEvent.id, birdEventsMap]);
 
   return (
     <Modal
