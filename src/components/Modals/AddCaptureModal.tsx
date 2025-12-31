@@ -56,13 +56,12 @@ export default function AddCaptureModal({ isOpen, onOpenChange, bandSize = BandS
     let preFilled = false;
     if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
       const bandId = bandSizeToBandIdMap[bandSize];
-      if (bandId.includes("-")) {
-        const [bandGroup, bandLastTwoDigits] = bandId.split("-");
-        if (bandGroup.length === 7 && bandLastTwoDigits.length === 2) {
-          defaultData.bandGroup = bandGroup;
-          defaultData.bandLastTwoDigits = bandLastTwoDigits;
-          preFilled = true;
-        }
+      if (bandId.length === 9) {
+        const bandGroup = bandId.slice(0, 7);
+        const bandLastTwoDigits = bandId.slice(7, 9);
+        defaultData.bandGroup = bandGroup;
+        defaultData.bandLastTwoDigits = bandLastTwoDigits;
+        preFilled = true;
       }
     }
     setFormData(defaultData);
