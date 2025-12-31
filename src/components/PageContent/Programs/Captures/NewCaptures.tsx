@@ -127,7 +127,8 @@ export default function NewCaptures() {
           className="max-w-xs"
         >
           {bandGroupOptions.map((bandGroupId) => {
-            const count = bandGroupToNewCaptures[bandGroupId]?.length ?? 0;
+            const count =
+              bandGroupToNewCaptures[bandGroupId].filter((birdEvent) => birdEvent.modifiedEventId == null).length ?? 0;
             return (
               <AutocompleteItem key={bandGroupId} endContent={`${count} used`}>
                 {bandGroupId}

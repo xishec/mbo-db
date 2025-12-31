@@ -38,7 +38,7 @@ export default function InspectCaptureModal({ isOpen, onOpenChange, bandId }: In
                   birdEvents={birdEvents}
                   maxTableHeight={500}
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
-                  disableInspect
+                  allowInspect={false}
                 />
               ) : (
                 <p>No captures found for this band.</p>

@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { CAPTURE_COLUMNS } from "./helpers";
 import InspectCaptureModal from "../../../Modals/InspectCaptureModal";
-import { EyeIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, PencilSquareIcon, ClockIcon } from "@heroicons/react/24/outline";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 
 // Helper to convert BirdEvent to table row format
@@ -39,7 +39,7 @@ interface BirdEventsTableProps {
   birdEvents: BirdEvent[];
   maxTableHeight: number;
   sortDescriptors?: SortDescriptor[];
-  disableInspect?: boolean;
+  allowInspect?: boolean;
 }
 
 export default function BirdEventsTable({
@@ -48,7 +48,7 @@ export default function BirdEventsTable({
   maxTableHeight,
   sortDescriptors: initialSortDescriptors,
   showOtherPrograms,
-  disableInspect = false,
+  allowInspect = true,
 }: BirdEventsTableProps) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>(
     initialSortDescriptors ?? [{ column: "date", direction: "descending" }]
@@ -60,7 +60,7 @@ export default function BirdEventsTable({
 
   // Convert BirdEvents to table rows (exclude events that have been modified)
   const rows = useMemo(
-    () => birdEvents.filter((birdEvent) => !birdEvent.modifiedEventId).map(birdEventToRow),
+    () => birdEvents.filter((birdEvent) => birdEvent.modifiedEventId == null).map(birdEventToRow),
     [birdEvents]
   );
 
@@ -153,20 +153,30 @@ export default function BirdEventsTable({
       if (columnKey === "actions") {
         return (
           <div className="relative flex items-center gap-2">
-            {!disableInspect && (
+            {allowInspect && (
+              <>
+                <span
+                  className="text-lg text-default-600 cursor-pointer active:opacity-50"
+                  onClick={() => handleInspect(item.id)}
+                >
+                  <EyeIcon className="w-5 h-5" />
+                </span>
+                <span
+                  className="text-lg text-default-600 cursor-pointer active:opacity-50"
+                  onClick={() => handleEdit(item.id)}
+                >
+                  <PencilSquareIcon className="w-5 h-5" />
+                </span>
+              </>
+            )}
+            {!allowInspect && (
               <span
                 className="text-lg text-default-600 cursor-pointer active:opacity-50"
                 onClick={() => handleInspect(item.id)}
               >
-                <EyeIcon className="w-5 h-5" />
+                <ClockIcon className="w-5 h-5" />
               </span>
             )}
-            <span
-              className="text-lg text-default-600 cursor-pointer active:opacity-50"
-              onClick={() => handleEdit(item.id)}
-            >
-              <PencilSquareIcon className="w-5 h-5" />
-            </span>
           </div>
         );
       }
@@ -174,7 +184,7 @@ export default function BirdEventsTable({
       const cellValue = item[columnKey as keyof TableRow];
       return cellValue;
     },
-    [handleInspect, handleEdit, disableInspect]
+    [handleInspect, handleEdit, allowInspect]
   );
 
   const primarySortDescriptor = sortDescriptors[0];
@@ -222,9 +232,8 @@ export default function BirdEventsTable({
         onOpenChange={setIsEditModalOpen}
         birdEventToModify={selectedBirdEvent || undefined}
       />
-      {!disableInspect && (
-        <InspectCaptureModal isOpen={isInspectModalOpen} onOpenChange={setIsInspectModalOpen} bandId={selectedBandId} />
-      )}
+
+      <InspectCaptureModal isOpen={isInspectModalOpen} onOpenChange={setIsInspectModalOpen} bandId={selectedBandId} />
     </>
   );
 }
