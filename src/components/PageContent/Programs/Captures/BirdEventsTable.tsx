@@ -36,7 +36,7 @@ type TableRow = CaptureFormData & { id: string };
 interface BirdEventsTableProps {
   programId?: string;
   showOtherPrograms?: boolean;
-  captures: BirdEvent[];
+  birdEvents: BirdEvent[];
   maxTableHeight: number;
   sortDescriptors?: SortDescriptor[];
   disableInspect?: boolean;
@@ -44,7 +44,7 @@ interface BirdEventsTableProps {
 
 export default function BirdEventsTable({
   programId,
-  captures,
+  birdEvents,
   maxTableHeight,
   sortDescriptors: initialSortDescriptors,
   showOtherPrograms,
@@ -58,10 +58,13 @@ export default function BirdEventsTable({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isInspectModalOpen, setIsInspectModalOpen] = useState(false);
 
-  // Convert BirdEvents to table rows
-  const rows = useMemo(() => captures.map(birdEventToRow), [captures]);
+  // Convert BirdEvents to table rows (exclude events that have been modified)
+  const rows = useMemo(
+    () => birdEvents.filter((birdEvent) => !birdEvent.modifiedEventId).map(birdEventToRow),
+    [birdEvents]
+  );
 
-  // Filter captures based on showOtherPrograms
+  // Filter birdEvents based on showOtherPrograms
   const filteredRows = useMemo(() => {
     if (programId === undefined || showOtherPrograms === undefined) {
       return rows;
@@ -73,7 +76,7 @@ export default function BirdEventsTable({
     }
   }, [rows, showOtherPrograms, programId]);
 
-  // Sort captures based on multiple sortDescriptors (cascading sort)
+  // Sort birdEvents based on multiple sortDescriptors (cascading sort)
   const sortedRows = useMemo(() => {
     if (sortDescriptors.length === 0) return filteredRows;
 
@@ -125,24 +128,24 @@ export default function BirdEventsTable({
 
   const handleInspect = useCallback(
     (eventId: string) => {
-      const event = captures.find((e) => e.id === eventId);
+      const event = birdEvents.find((e) => e.id === eventId);
       if (event && event.band) {
         setSelectedBandId(event.band.id);
         setIsInspectModalOpen(true);
       }
     },
-    [captures]
+    [birdEvents]
   );
 
   const handleEdit = useCallback(
     (eventId: string) => {
-      const event = captures.find((e) => e.id === eventId);
+      const event = birdEvents.find((e) => e.id === eventId);
       if (event) {
         setSelectedBirdEvent(event);
         setIsEditModalOpen(true);
       }
     },
-    [captures]
+    [birdEvents]
   );
 
   const renderCell = useCallback(
@@ -183,11 +186,11 @@ export default function BirdEventsTable({
     <>
       <div className="w-full flex flex-col gap-4">
         <div className="text-sm">
-          {filteredRows.length} of {rows.length} {rows.length === 1 ? "capture" : "captures"}
+          {filteredRows.length} of {rows.length} {rows.length === 1 ? "capture" : "birdEvents"}
         </div>
         <Table
           isHeaderSticky
-          aria-label="Captures table"
+          aria-label="birdEvents table"
           sortDescriptor={primarySortDescriptor}
           onSortChange={handleSortChange}
           isVirtualized
@@ -204,7 +207,7 @@ export default function BirdEventsTable({
               </TableColumn>
             )}
           </TableHeader>
-          <TableBody items={sortedRows} emptyContent="No captures found">
+          <TableBody items={sortedRows} emptyContent="No birdEvents found">
             {(item) => (
               <TableRow key={item.id} className={programId && item.programId !== programId ? "opacity-20" : ""}>
                 {(columnKey) => <TableCell className="whitespace-nowrap">{renderCell(item, columnKey)}</TableCell>}

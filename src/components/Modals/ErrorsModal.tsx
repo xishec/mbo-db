@@ -72,7 +72,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
 
         <ModalBody>
           <BirdEventsTable
-            captures={conflictingBirdEvents}
+            birdEvents={conflictingBirdEvents}
             maxTableHeight={600}
             sortDescriptors={[{ column: "date", direction: "descending" }]}
           />

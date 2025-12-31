@@ -35,7 +35,7 @@ export default function InspectCaptureModal({ isOpen, onOpenChange, bandId }: In
             <ModalBody className="gap-4 px-8 py-4">
               {birdEvents.length > 0 ? (
                 <BirdEventsTable
-                  captures={birdEvents}
+                  birdEvents={birdEvents}
                   maxTableHeight={500}
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
                   disableInspect

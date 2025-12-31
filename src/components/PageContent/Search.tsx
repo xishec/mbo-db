@@ -282,7 +282,7 @@ export default function Search() {
               Filtered results ({filteredCaptures.length} of {allCaptures.length}):
             </h3>
             <BirdEventsTable
-              captures={filteredCaptures}
+              birdEvents={filteredCaptures}
               maxTableHeight={600}
               sortDescriptors={[{ column: "date", direction: "descending" }]}
             />

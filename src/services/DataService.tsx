@@ -433,7 +433,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       captureData: CaptureFormData,
       birdEventType: BirdEventType,
       bandSize: BandSize,
-      previousEventId?: string
+      previousEventId: string | undefined
     ) => {
       try {
         // 1. Create Band and BirdEvent objects

@@ -43,7 +43,7 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
             </div>
           ) : (
             <BirdEventsTable
-              captures={birdEvents}
+              birdEvents={birdEvents}
               maxTableHeight={600}
               sortDescriptors={[{ column: "date", direction: "descending" }]}
             />

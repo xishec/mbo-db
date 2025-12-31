@@ -277,6 +277,7 @@ export default function AddBirdEventModal({
 
   // Compute auto values (without setState)
   const displayCaptureType = useMemo(() => {
+    if (birdEventToModify) return birdEventToModify.birdEventType;
     if (!formData.date || pastBirdEvents.length === 0) return BirdEventType.None;
     const currentDate = new Date(formData.date);
     const hasRecentCapture = pastBirdEvents.some((capture) => {
@@ -285,7 +286,7 @@ export default function AddBirdEventModal({
       return daysDiff <= 90;
     });
     return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
-  }, [formData.date, pastBirdEvents]);
+  }, [birdEventToModify, formData.date, pastBirdEvents]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
@@ -356,13 +357,13 @@ export default function AddBirdEventModal({
 
   const handleSave = useCallback(async () => {
     try {
-      await addBirdEvent(formData, displayCaptureType, bandSize);
+      await addBirdEvent(formData, displayCaptureType, bandSize, birdEventToModify?.id);
       handleClose();
     } catch (err) {
       console.error("Failed to save capture:", err);
       alert("Failed to save capture. Please try again.");
     }
-  }, [formData, handleClose, addBirdEvent, displayCaptureType, bandSize]);
+  }, [formData, handleClose, addBirdEvent, displayCaptureType, bandSize, birdEventToModify]);
 
   const getInputColor = (columnKey: keyof CaptureFormData) => {
     // Check wing range validation
@@ -510,7 +511,7 @@ export default function AddBirdEventModal({
                     Existing data for band <span className="font-bold">{bandId}</span> :
                   </h3>
                   <BirdEventsTable
-                    captures={pastBirdEvents}
+                    birdEvents={pastBirdEvents}
                     maxTableHeight={300}
                     sortDescriptors={[{ column: "date", direction: "ascending" }]}
                     disableInspect
