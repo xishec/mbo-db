@@ -4,7 +4,7 @@ import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { CAPTURE_COLUMNS } from "./helpers";
 import InspectCaptureModal from "../../../Modals/InspectCaptureModal";
 import { EyeIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
-import AddBirdEventModal from "../../../Modals/AddCaptureModal";
+import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): CaptureFormData & { id: string } {
@@ -123,47 +123,56 @@ export default function BirdEventsTable({
     });
   }, []);
 
-  const handleInspect = useCallback((eventId: string) => {
-    const event = captures.find((e) => e.id === eventId);
-    if (event && event.band) {
-      setSelectedBandId(event.band.id);
-      setIsInspectModalOpen(true);
-    }
-  }, [captures]);
+  const handleInspect = useCallback(
+    (eventId: string) => {
+      const event = captures.find((e) => e.id === eventId);
+      if (event && event.band) {
+        setSelectedBandId(event.band.id);
+        setIsInspectModalOpen(true);
+      }
+    },
+    [captures]
+  );
 
-  const handleEdit = useCallback((eventId: string) => {
-    const event = captures.find((e) => e.id === eventId);
-    if (event) {
-      setSelectedBirdEvent(event);
-      setIsEditModalOpen(true);
-    }
-  }, [captures]);
+  const handleEdit = useCallback(
+    (eventId: string) => {
+      const event = captures.find((e) => e.id === eventId);
+      if (event) {
+        setSelectedBirdEvent(event);
+        setIsEditModalOpen(true);
+      }
+    },
+    [captures]
+  );
 
-  const renderCell = useCallback((item: TableRow, columnKey: React.Key) => {
-    if (columnKey === "actions") {
-      return (
-        <div className="relative flex items-center gap-2">
-          {!disableInspect && (
-            <span 
+  const renderCell = useCallback(
+    (item: TableRow, columnKey: React.Key) => {
+      if (columnKey === "actions") {
+        return (
+          <div className="relative flex items-center gap-2">
+            {!disableInspect && (
+              <span
+                className="text-lg text-default-600 cursor-pointer active:opacity-50"
+                onClick={() => handleInspect(item.id)}
+              >
+                <EyeIcon className="w-5 h-5" />
+              </span>
+            )}
+            <span
               className="text-lg text-default-600 cursor-pointer active:opacity-50"
-              onClick={() => handleInspect(item.id)}
+              onClick={() => handleEdit(item.id)}
             >
-              <EyeIcon className="w-5 h-5" />
+              <PencilSquareIcon className="w-5 h-5" />
             </span>
-          )}
-          <span 
-            className="text-lg text-default-600 cursor-pointer active:opacity-50"
-            onClick={() => handleEdit(item.id)}
-          >
-            <PencilSquareIcon className="w-5 h-5" />
-          </span>
-        </div>
-      );
-    }
+          </div>
+        );
+      }
 
-    const cellValue = item[columnKey as keyof TableRow];
-    return cellValue;
-  }, [handleInspect, handleEdit, disableInspect]);
+      const cellValue = item[columnKey as keyof TableRow];
+      return cellValue;
+    },
+    [handleInspect, handleEdit, disableInspect]
+  );
 
   const primarySortDescriptor = sortDescriptors[0];
 
@@ -186,9 +195,9 @@ export default function BirdEventsTable({
         >
           <TableHeader columns={displayColumns}>
             {(column) => (
-              <TableColumn 
-                key={column.key} 
-                allowsSorting={column.key !== "actions"} 
+              <TableColumn
+                key={column.key}
+                allowsSorting={column.key !== "actions"}
                 className={`whitespace-nowrap ${column.className ?? ""}`}
               >
                 {column.label}
@@ -198,28 +207,20 @@ export default function BirdEventsTable({
           <TableBody items={sortedRows} emptyContent="No captures found">
             {(item) => (
               <TableRow key={item.id} className={programId && item.programId !== programId ? "opacity-20" : ""}>
-                {(columnKey) => (
-                  <TableCell className="whitespace-nowrap">
-                    {renderCell(item, columnKey)}
-                  </TableCell>
-                )}
+                {(columnKey) => <TableCell className="whitespace-nowrap">{renderCell(item, columnKey)}</TableCell>}
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      
-      <AddBirdEventModal 
-        isOpen={isEditModalOpen} 
+
+      <AddBirdEventModal
+        isOpen={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
-        birdEvent={selectedBirdEvent}
+        birdEventToModify={selectedBirdEvent || undefined}
       />
       {!disableInspect && (
-        <InspectCaptureModal 
-          isOpen={isInspectModalOpen} 
-          onOpenChange={setIsInspectModalOpen}
-          bandId={selectedBandId}
-        />
+        <InspectCaptureModal isOpen={isInspectModalOpen} onOpenChange={setIsInspectModalOpen} bandId={selectedBandId} />
       )}
     </>
   );

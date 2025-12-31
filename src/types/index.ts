@@ -28,7 +28,7 @@ export class Band {
     this.bandGroupId = bandGroupIdNumber.toString();
     this.bandPrefix = bandPrefix;
     this.bandSuffix = bandSuffix;
-    this.id = `${this.bandGroupId}-${this.last2digits}`;
+    this.id = `${this.bandGroupId}${this.last2digits}`;
   }
 
   // 1462068-00 should be the same Band Group as 1462067-99

@@ -16,7 +16,7 @@ import {
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
-import { BandSize, BirdEventType, type CaptureFormData } from "../../types";
+import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
 import { CAPTURE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
 import {
   formatFieldValue,
@@ -31,14 +31,14 @@ interface AddBirdEventModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   bandSize?: BandSize;
-  prefilledBandId?: string;
+  birdEventToModify?: BirdEvent;
 }
 
 export default function AddBirdEventModal({
   isOpen,
   onOpenChange,
   bandSize = BandSize.Other,
-  prefilledBandId,
+  birdEventToModify,
 }: AddBirdEventModalProps) {
   const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addBirdEvent, bandSizeToBandIdMap } =
     useData();
@@ -46,54 +46,73 @@ export default function AddBirdEventModal({
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
   const [useCurrentTime, setUseCurrentTime] = useState(true);
-  const [bandWasPreFilled, setBandWasPreFilled] = useState(false);
 
   // Reset form data when modal opens
   useEffect(() => {
     if (!isOpen) return;
 
     const defaultData = getDefaultFormData(selectedProgram?.id || "");
-    // Preserve date/time if useCurrentTime is false
-    if (!useCurrentTime) {
-      defaultData.date = formData.date;
-      defaultData.time = formData.time;
-    }
-    // Populate bandGroup and bandLastTwoDigits from prefilledBandId or bandSize
-    let preFilled = false;
-    if (prefilledBandId && prefilledBandId.length === 9) {
-      // Prefill from explicit prefilledBandId prop (takes priority)
-      const bandGroup = prefilledBandId.slice(0, 7);
-      const bandLastTwoDigits = prefilledBandId.slice(7, 9);
+
+    // If modifying an existing bird event, use its data
+    if (birdEventToModify) {
+      const bandGroup = birdEventToModify.band.id.slice(0, 7);
+      const bandLastTwoDigits = birdEventToModify.band.id.slice(7, 9);
+
+      defaultData.programId = birdEventToModify.programId;
       defaultData.bandGroup = bandGroup;
       defaultData.bandLastTwoDigits = bandLastTwoDigits;
-      preFilled = true;
-    } else if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
-      // Fallback to bandSize mapping
-      const bandId = bandSizeToBandIdMap[bandSize];
-      if (bandId.length === 9) {
-        const bandGroup = bandId.slice(0, 7);
-        const bandLastTwoDigits = bandId.slice(7, 9);
-        defaultData.bandGroup = bandGroup;
-        defaultData.bandLastTwoDigits = bandLastTwoDigits;
-        preFilled = true;
+      defaultData.species = birdEventToModify.species;
+      defaultData.wing = birdEventToModify.wing.toString();
+      defaultData.age = birdEventToModify.age;
+      defaultData.howAged = birdEventToModify.howAged;
+      defaultData.sex = birdEventToModify.sex;
+      defaultData.howSexed = birdEventToModify.howSexed;
+      defaultData.fat = birdEventToModify.fat.toString();
+      defaultData.weight = birdEventToModify.weight.toString();
+      defaultData.date = birdEventToModify.date;
+      defaultData.time = birdEventToModify.time;
+      defaultData.bander = birdEventToModify.bander;
+      defaultData.scribe = birdEventToModify.scribe;
+      defaultData.net = birdEventToModify.net;
+      defaultData.notes = birdEventToModify.notes;
+
+      setUseCurrentTime(false); // Disable auto-update when modifying
+    } else {
+      // Preserve date/time if useCurrentTime is false
+      if (!useCurrentTime) {
+        defaultData.date = formData.date;
+        defaultData.time = formData.time;
+      }
+
+      // Populate bandGroup and bandLastTwoDigits from bandSize
+      if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
+        const bandId = bandSizeToBandIdMap[bandSize];
+        if (bandId.length === 9) {
+          const bandGroup = bandId.slice(0, 7);
+          const bandLastTwoDigits = bandId.slice(7, 9);
+          defaultData.bandGroup = bandGroup;
+          defaultData.bandLastTwoDigits = bandLastTwoDigits;
+        }
       }
     }
+
     setFormData(defaultData);
     setLastBandId("");
-    setBandWasPreFilled(preFilled);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, bandSize, prefilledBandId]);
 
-  // Focus on bandGroup or species input when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
-        const focusField = bandWasPreFilled ? "species" : "bandGroup";
-        inputRefs.current.get(focusField)?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, bandWasPreFilled]);
+    // Focus on first empty input after modal renders
+    const timer = setTimeout(() => {
+      const firstEmptyField = CAPTURE_COLUMNS.find((col) => {
+        const key = col.key as keyof CaptureFormData;
+        return !defaultData[key];
+      });
+      if (firstEmptyField) {
+        inputRefs.current.get(firstEmptyField.key)?.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, bandSize, birdEventToModify]);
 
   // Update date/time when useCurrentTime is enabled
   useEffect(() => {
@@ -130,7 +149,7 @@ export default function AddBirdEventModal({
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
     if (formData.bandGroup.length === 7 && formData.bandLastTwoDigits.length === 2) {
-      return `${formData.bandGroup}-${formData.bandLastTwoDigits}`;
+      return `${formData.bandGroup}${formData.bandLastTwoDigits}`;
     }
     return "";
   }, [formData.bandGroup, formData.bandLastTwoDigits]);
@@ -394,8 +413,8 @@ export default function AddBirdEventModal({
         {() => (
           <>
             <ModalHeader className="flex flex-row items-center justify-between p-8 pb-0 font-normal">
-              <div className="flex flex-row items-center gap-1">
-                Add Capture in <span className="font-bold">{selectedProgram?.id}</span>
+              <div className="flex flex-row items-center gap-1 font-bold">
+                {birdEventToModify ? "Modify" : "Add"} Capture
               </div>
               <Switch isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
                 Use current time
@@ -427,8 +446,8 @@ export default function AddBirdEventModal({
                         if (column.key === "captureType") return displayCaptureType;
                         if (useCurrentTime && (columnKey === "date" || columnKey === "time"))
                           return formData[columnKey];
-                        // Make band fields readonly when prefilled from prefilledBandId
-                        if (prefilledBandId && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
+                        // Make band fields readonly when prefilled from birdEventToModify
+                        if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
                           return formData[columnKey];
                         return null;
                       };
