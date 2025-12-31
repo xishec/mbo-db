@@ -514,6 +514,7 @@ export default function AddBirdEventModal({
                     birdEvents={pastBirdEvents}
                     maxTableHeight={300}
                     sortDescriptors={[{ column: "date", direction: "ascending" }]}
+                    allowInspectHistory
                   />
                 </div>
               )}

@@ -20,5 +20,12 @@ export default function ReCaptures() {
     );
   }
 
-  return <BirdEventsTable birdEvents={reCaptures} maxTableHeight={800} sortDescriptors={[{ column: "date", direction: "descending" }]} />;
+  return (
+    <BirdEventsTable
+      birdEvents={reCaptures}
+      maxTableHeight={800}
+      sortDescriptors={[{ column: "date", direction: "descending" }]}
+      allowInspectBandId
+    />
+  );
 }

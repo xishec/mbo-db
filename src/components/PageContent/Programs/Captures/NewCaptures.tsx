@@ -153,6 +153,7 @@ export default function NewCaptures() {
           maxTableHeight={800}
           sortDescriptors={[{ column: "bandLastTwoDigits", direction: "ascending" }]}
           showOtherPrograms={showOtherPrograms}
+          allowInspectBandId
         />
       ) : (
         <div className="p-4">Select a band group to view captures</div>

@@ -3,13 +3,13 @@ import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 
-interface InspectCaptureModalProps {
+interface InspectBandIdModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   bandId: string | null;
 }
 
-export default function InspectCaptureModal({ isOpen, onOpenChange, bandId }: InspectCaptureModalProps) {
+export default function InspectBandIdModal({ isOpen, onOpenChange, bandId }: InspectBandIdModalProps) {
   const { bandIdToBirdEventIdsMap, birdEventsMap } = useData();
 
   const birdEvents = useMemo(() => {
@@ -38,7 +38,7 @@ export default function InspectCaptureModal({ isOpen, onOpenChange, bandId }: In
                   birdEvents={birdEvents}
                   maxTableHeight={500}
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
-                  allowInspect={false}
+                  allowInspectHistory
                 />
               ) : (
                 <p>No captures found for this band.</p>
