@@ -9,7 +9,7 @@ interface BandSizeSettingModalProps {
 }
 
 export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeSettingModalProps) {
-  const { bandSizeToBandIdMap } = useData();
+  const { bandSizeToBandIdMap, isOnline, updateBandSizeMap } = useData();
   
   // Initialize from bandSizeToBandIdMap using useMemo
   const initialBandSizeMap = useMemo(() => {
@@ -29,10 +29,16 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
     }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log("Saving band size map:", bandSizeMap);
-    onOpenChange(false);
+  const handleSave = async () => {
+    if (!isOnline) return;
+
+    try {
+      await updateBandSizeMap(bandSizeMap);
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to save band size settings:", error);
+      alert("Failed to save settings. Please try again.");
+    }
   };
 
   return (
@@ -62,7 +68,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
               <Button color="danger" variant="light" onPress={onClose} className="flex-1">
                 Close
               </Button>
-              <Button color="primary" onPress={handleSave} className="flex-1">
+              <Button color="primary" onPress={handleSave} className="flex-1" isDisabled={!isOnline}>
                 Save
               </Button>
             </ModalFooter>

@@ -1,4 +1,4 @@
-import { Autocomplete, AutocompleteItem, Spinner, Switch, Button, useDisclosure, Tooltip } from "@heroui/react";
+import { Autocomplete, AutocompleteItem, Spinner, Switch, Button, useDisclosure } from "@heroui/react";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
@@ -83,20 +83,19 @@ export default function NewCaptures() {
       <div className="flex items-center gap-2">
         <div className="grid grid-cols-11 gap-2 flex-1">
           {Object.values(BandSize).map((bandSize) => (
-            <Tooltip closeDelay={50} key={bandSize} content={bandSizeToBandIdMap?.[bandSize] || "Not set"}>
-              <Button
-                size="md"
-                variant="bordered"
-                color="default"
-                className="w-full"
-                onPress={() => {
-                  setSelectedBandSize(bandSize);
-                  onOpen();
-                }}
-              >
-                {bandSize}
-              </Button>
-            </Tooltip>
+            <Button
+              key={bandSize}
+              size="md"
+              variant="bordered"
+              color="default"
+              className="w-full"
+              onPress={() => {
+                setSelectedBandSize(bandSize);
+                onOpen();
+              }}
+            >
+              {bandSizeToBandIdMap?.[bandSize] || bandSize}
+            </Button>
           ))}
         </div>
         <Button isIconOnly size="md" variant="light" onPress={onSettingsOpen} aria-label="Band size settings">
