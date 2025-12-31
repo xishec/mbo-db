@@ -44,7 +44,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [birdEventsMap, setBirdEventsMap] = useState<BirdEventsMap>({});
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>({});
   const [magicTable, setMagicTable] = useState<MagicTable>({ pyle: {}, mbo: {} });
-  const [bandSizeToBandIdMap, setBandSizeToBandIdMap] = useState<Record<BandSize, string>>({} as Record<BandSize, string>);
+  const [bandSizeToBandIdMap, setBandSizeToBandIdMap] = useState<Record<BandSize, string>>(
+    {} as Record<BandSize, string>
+  );
 
   // Load entire alpha/ on mount
   useEffect(() => {
@@ -185,11 +187,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * Syncs a single bird event to Firebase RTDB with all its relationships.
    * This is the core delta sync operation - only writes changed data.
    *
-   * Updates four related nodes atomically:
+   * Updates up to five related nodes atomically:
    * 1. birdEventsMap/{eventId} - The event itself
-   * 2. bandIdToBirdEventIdsMap/{bandId} - Index by band ID
-   * 3. bandGroupsMap/{bandGroupId} - New captures by band group
-   * 4. programsMap/{programId} - Program's captures and recaptures
+   * 2. birdEventsMap/{previousEventId} - Previous event's modifiedEventId (if applicable)
+   * 3. bandIdToBirdEventIdsMap/{bandId} - Index by band ID
+   * 4. bandGroupsMap/{bandGroupId} - New captures by band group
+   * 5. programsMap/{programId} - Program's captures and recaptures
    */
   const syncBirdEventToRTDB = useCallback(
     async (
@@ -199,21 +202,33 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
         bandGroupsMap: BandGroupsMap;
         programsMap: ProgramsMap;
+        birdEventsMap: BirdEventsMap;
       }
     ): Promise<void> => {
-      const { band, id: birdEventId, birdEventType, programId } = birdEvent;
+      const { band, id: birdEventId, birdEventType, programId, previousEventId } = birdEvent;
       const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
 
       // 1. Write the bird event itself
       await set(ref(db, `${environment}/birdEventsMap/${birdEventId}`), birdEvent);
 
-      // 2. Update band ID index (only if not already indexed)
+      // 2. If this event modifies a previous event, update the previous event's modifiedEventId
+      if (previousEventId && state.birdEventsMap[previousEventId]) {
+        const updatedPreviousEvent = {
+          ...state.birdEventsMap[previousEventId],
+          modifiedEventId: birdEventId,
+        };
+        await set(ref(db, `${environment}/birdEventsMap/${previousEventId}`), updatedPreviousEvent);
+        // Update local state to reflect the change
+        state.birdEventsMap[previousEventId] = updatedPreviousEvent;
+      }
+
+      // 3. Update band ID index (only if not already indexed)
       const existingBirdEventIds = state.bandIdToBirdEventIdsMap[band.id] || [];
       if (!existingBirdEventIds.includes(birdEventId)) {
         await set(ref(db, `${environment}/bandIdToBirdEventIdsMap/${band.id}`), [...existingBirdEventIds, birdEventId]);
       }
 
-      // 3. Update band group map (only for new captures)
+      // 4. Update band group map (only for new captures)
       if (isNewCapture) {
         const existingBandGroup = state.bandGroupsMap[band.bandGroupId];
         if (!existingBandGroup) {
@@ -231,7 +246,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 4. Update program map
+      // 5. Update program map
       const existingProgram = state.programsMap[programId];
       if (existingProgram) {
         // Update band group IDs for new captures
@@ -414,7 +429,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addBirdEvent = useCallback(
-    async (captureData: CaptureFormData, birdEventType: BirdEventType, bandSize: BandSize) => {
+    async (
+      captureData: CaptureFormData,
+      birdEventType: BirdEventType,
+      bandSize: BandSize,
+      previousEventId?: string
+    ) => {
       try {
         // 1. Create Band and BirdEvent objects
         const bandPrefix = captureData.bandGroup.substring(0, 4);
@@ -447,7 +467,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           scribe: captureData.scribe,
           net: captureData.net,
           notes: captureData.notes,
-          previousEventId: null,
+          previousEventId: previousEventId || null,
           modifiedEventId: null,
           birdEventType,
         };
@@ -463,8 +483,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // 3. Calculate all new state values first
         const year = captureData.date.substring(0, 4);
 
-        // New birdEventsMap
-        const newBirdEventsMap = { ...birdEventsMap, [newBirdEvent.id]: newBirdEvent };
+        // New birdEventsMap - update previous event if this is a modification
+        let newBirdEventsMap = { ...birdEventsMap, [newBirdEvent.id]: newBirdEvent };
+        if (previousEventId && birdEventsMap[previousEventId]) {
+          newBirdEventsMap = {
+            ...newBirdEventsMap,
+            [previousEventId]: {
+              ...birdEventsMap[previousEventId],
+              modifiedEventId: newBirdEvent.id,
+            },
+          };
+        }
 
         // New bandIdToBirdEventIdsMap
         const newBandIdToBirdEventIdsMap = {
@@ -487,7 +516,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // 4. Calculate next band ID if applicable
         let updatedNextBandSizes: Record<BandSize, string> | undefined;
         if (bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits) {
-          updatedNextBandSizes = await incrementBandSize(bandSize, captureData.bandGroup, captureData.bandLastTwoDigits);
+          updatedNextBandSizes = await incrementBandSize(
+            bandSize,
+            captureData.bandGroup,
+            captureData.bandLastTwoDigits
+          );
         }
 
         // New programsMap
@@ -650,7 +683,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [isOnline, yearsToProgramMap, programsMap, bandIdToBirdEventIdsMap, birdEventsMap, bandGroupsMap, magicTable, bandSizeToBandIdMap]
+    [
+      isOnline,
+      yearsToProgramMap,
+      programsMap,
+      bandIdToBirdEventIdsMap,
+      birdEventsMap,
+      bandGroupsMap,
+      magicTable,
+      bandSizeToBandIdMap,
+    ]
   );
 
   const updateBandSizeMap = useCallback(
