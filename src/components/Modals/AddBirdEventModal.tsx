@@ -46,6 +46,7 @@ export default function AddBirdEventModal({
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
   const [useCurrentTime, setUseCurrentTime] = useState(true);
+  const [bandWasPreFilled, setBandWasPreFilled] = useState(false);
 
   // Reset form data when modal opens
   useEffect(() => {
@@ -77,6 +78,7 @@ export default function AddBirdEventModal({
       defaultData.notes = birdEventToModify.notes;
 
       setUseCurrentTime(false); // Disable auto-update when modifying
+      setBandWasPreFilled(true);
     } else {
       // Preserve date/time if useCurrentTime is false
       if (!useCurrentTime) {
@@ -85,6 +87,7 @@ export default function AddBirdEventModal({
       }
 
       // Populate bandGroup and bandLastTwoDigits from bandSize
+      let preFilled = false;
       if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
         const bandId = bandSizeToBandIdMap[bandSize];
         if (bandId.length === 9) {
@@ -92,27 +95,27 @@ export default function AddBirdEventModal({
           const bandLastTwoDigits = bandId.slice(7, 9);
           defaultData.bandGroup = bandGroup;
           defaultData.bandLastTwoDigits = bandLastTwoDigits;
+          preFilled = true;
         }
       }
+      setBandWasPreFilled(preFilled);
     }
 
     setFormData(defaultData);
     setLastBandId("");
-
-    // Focus on first empty input after modal renders
-    const timer = setTimeout(() => {
-      const firstEmptyField = CAPTURE_COLUMNS.find((col) => {
-        const key = col.key as keyof CaptureFormData;
-        return !defaultData[key];
-      });
-      if (firstEmptyField) {
-        inputRefs.current.get(firstEmptyField.key)?.focus();
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, bandSize, birdEventToModify]);
+
+  // Focus on bandGroup or species input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        const focusField = bandWasPreFilled ? "species" : "bandGroup";
+        inputRefs.current.get(focusField)?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, bandWasPreFilled]);
 
   // Update date/time when useCurrentTime is enabled
   useEffect(() => {
