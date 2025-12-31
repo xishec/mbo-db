@@ -9,16 +9,16 @@ interface BandSizeSettingModalProps {
 }
 
 export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeSettingModalProps) {
-  const { selectedProgram } = useData();
+  const { bandSizeToBandIdMap } = useData();
   
-  // Initialize from selectedProgram using useMemo
+  // Initialize from bandSizeToBandIdMap using useMemo
   const initialBandSizeMap = useMemo(() => {
     const initialMap = {} as Record<BandSize, string>;
     Object.values(BandSize).forEach((bandSize) => {
-      initialMap[bandSize] = selectedProgram?.BandSizeToBandIdMap?.[bandSize] || "";
+      initialMap[bandSize] = bandSizeToBandIdMap?.[bandSize] || "";
     });
     return initialMap;
-  }, [selectedProgram]);
+  }, [bandSizeToBandIdMap]);
 
   const [bandSizeMap, setBandSizeMap] = useState<Record<BandSize, string>>(initialBandSizeMap);
 

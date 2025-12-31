@@ -4,12 +4,12 @@ export type ProgramsMap = Record<string, Program>;
 export type BandGroupsMap = Record<string, BandGroup>;
 export type BirdEventsMap = Record<string, BirdEvent>;
 export type BandIdToBirdEventIdsMap = Record<string, string[]>;
+export type BandSizeToBandIdMap = Record<BandSize, string>;
 
 export interface Program {
   id: string;
   bandGroupIds: string[];
   recaptureIds: string[];
-  BandSizeToBandIdMap?: Record<BandSize, string>;
 }
 
 export class Band {
@@ -153,6 +153,7 @@ export interface AlphaData {
   birdEventsMap: BirdEventsMap;
   bandGroupsMap: BandGroupsMap;
   magicTable: MagicTable;
+  bandSizeToBandIdMap: BandSizeToBandIdMap;
 }
 
 // Service types
@@ -172,6 +173,7 @@ export interface DataContextType {
   birdEventsMap: BirdEventsMap;
   bandGroupsMap: BandGroupsMap;
   magicTable: MagicTable;
+  bandSizeToBandIdMap: BandSizeToBandIdMap;
 
   // Offline support
   isOnline: boolean;
@@ -180,11 +182,7 @@ export interface DataContextType {
   setForceOffline: (force: boolean) => void;
 
   // Actions
-  addCapture: (
-    captureData: CaptureFormData,
-    birdEventType: BirdEventType,
-    bandSize: BandSize
-  ) => Promise<void>;
+  addCapture: (captureData: CaptureFormData, birdEventType: BirdEventType, bandSize: BandSize) => Promise<void>;
   addProgram: (programName: string, year: string) => Promise<void>;
   syncQueue: () => Promise<void>;
 }

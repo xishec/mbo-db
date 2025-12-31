@@ -44,6 +44,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [birdEventsMap, setBirdEventsMap] = useState<BirdEventsMap>({});
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>({});
   const [magicTable, setMagicTable] = useState<MagicTable>({ pyle: {}, mbo: {} });
+  const [bandSizeToBandIdMap, setBandSizeToBandIdMap] = useState<Record<BandSize, string>>({} as Record<BandSize, string>);
 
   // Load entire alpha/ on mount
   useEffect(() => {
@@ -138,6 +139,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       );
       setBandGroupsMap(data.bandGroupsMap ?? {});
       setMagicTable(data.magicTable ?? { pyle: {}, mbo: {} });
+      setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
     };
 
     loadAlphaData();
@@ -353,6 +355,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await set(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`), now);
       await saveLastUpdated(CURRENT_ENVIRONMENT, now);
 
+      // Sync bandSizeToBandIdMap from IndexedDB to RTDB
+      if (cachedData.bandSizeToBandIdMap) {
+        try {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), cachedData.bandSizeToBandIdMap);
+          logger.sync("SyncQueue", "Synced bandSizeToBandIdMap to RTDB");
+        } catch (err) {
+          logger.error("SyncQueue", "Failed to sync bandSizeToBandIdMap", err);
+        }
+      }
+
       // Update pending count
       const remainingCount = await getQueueCount();
       setPendingCount(remainingCount);
@@ -446,30 +458,37 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           };
         }
 
-        // 4. Calculate next band ID if applicable (online only)
+        // 4. Calculate next band ID if applicable
         let updatedNextBandSizes: Record<BandSize, string> | undefined;
-        if (isOnline && bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits) {
-          try {
-            const currentBandId = `${captureData.bandGroup}${captureData.bandLastTwoDigits}`;
-            const nextBandId = (parseInt(currentBandId, 10) + 1).toString().padStart(9, "0");
+        if (bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits) {
+          const currentBandId = `${captureData.bandGroup}${captureData.bandLastTwoDigits}`;
+          const nextBandId = (parseInt(currentBandId, 10) + 1).toString().padStart(9, "0");
 
-            await set(
-              ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${captureData.programId}/BandSizeToBandIdMap/${bandSize}`),
-              nextBandId
-            );
+          updatedNextBandSizes = {
+            ...bandSizeToBandIdMap,
+            [bandSize]: nextBandId,
+          } as Record<BandSize, string>;
 
-            const existing = programsMap[captureData.programId];
-            updatedNextBandSizes = {
-              ...(existing?.BandSizeToBandIdMap || {}),
-              [bandSize]: nextBandId,
-            } as Record<BandSize, string>;
-            logger.debug("AddCapture", "Updated next band ID", {
+          // Update RTDB immediately if online (will be synced by syncQueue if offline)
+          if (isOnline) {
+            try {
+              await set(
+                ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap/${bandSize}`),
+                nextBandId
+              );
+              logger.debug("AddCapture", "Updated next band ID in RTDB", {
+                bandSize,
+                nextBandId,
+                programId: captureData.programId,
+              });
+            } catch (error) {
+              logger.error("AddCapture", "Error updating next band ID in RTDB", error);
+            }
+          } else {
+            logger.debug("AddCapture", "Offline - band size map will sync later", {
               bandSize,
               nextBandId,
-              programId: captureData.programId,
             });
-          } catch (error) {
-            logger.error("AddCapture", "Error updating next band ID", error);
           }
         }
 
@@ -491,7 +510,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             id: captureData.programId,
             bandGroupIds: newBandGroupIds,
             recaptureIds: newRecaptureIds,
-            BandSizeToBandIdMap: updatedNextBandSizes || existingProgram?.BandSizeToBandIdMap,
           },
         };
 
@@ -509,6 +527,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setBandGroupsMap(newBandGroupsMap);
         setProgramsMap(newProgramsMap);
         setYearsToProgramMap(newYearsToProgramMap);
+        if (updatedNextBandSizes) {
+          setBandSizeToBandIdMap(updatedNextBandSizes);
+        }
 
         // Update selectedProgram if it's the one we just modified
         setSelectedProgram((current) => {
@@ -524,6 +545,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           birdEventsMap: newBirdEventsMap,
           bandGroupsMap: newBandGroupsMap,
           magicTable,
+          bandSizeToBandIdMap: updatedNextBandSizes || bandSizeToBandIdMap,
         });
 
         // 6. Sync queue and update pending count
@@ -555,6 +577,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       programsMap,
       syncQueue,
       yearsToProgramMap,
+      bandSizeToBandIdMap,
     ]
   );
 
@@ -613,6 +636,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           birdEventsMap,
           bandGroupsMap,
           magicTable,
+          bandSizeToBandIdMap,
         });
 
         logger.info("AddProgram", "Program added", { programId, year });
@@ -621,7 +645,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [isOnline, yearsToProgramMap, programsMap, bandIdToBirdEventIdsMap, birdEventsMap, bandGroupsMap, magicTable]
+    [isOnline, yearsToProgramMap, programsMap, bandIdToBirdEventIdsMap, birdEventsMap, bandGroupsMap, magicTable, bandSizeToBandIdMap]
   );
 
   return (
@@ -637,6 +661,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         birdEventsMap,
         bandGroupsMap,
         magicTable,
+        bandSizeToBandIdMap,
         isOnline,
         pendingCount,
         forceOffline,
