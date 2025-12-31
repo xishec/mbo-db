@@ -67,14 +67,23 @@ export default function AddCaptureModal({ isOpen, onOpenChange, bandSize = BandS
   }, [isOpen]);
 
   // Update date/time when useCurrentTime is enabled
-  if (useCurrentTime) {
-    const now = new Date();
-    const currentDate = now.toISOString().split("T")[0];
-    const currentTime = now.toTimeString().slice(0, 5);
-    if (formData.date !== currentDate || formData.time !== currentTime) {
-      setFormData((prev) => ({ ...prev, date: currentDate, time: currentTime }));
-    }
-  }
+  useEffect(() => {
+    if (!useCurrentTime) return;
+    
+    const updateTime = () => {
+      const now = new Date();
+      const currentDate = now.toISOString().split("T")[0];
+      const currentTime = now.toTimeString().slice(0, 5);
+      setFormData((prev) => {
+        if (prev.date === currentDate && prev.time === currentTime) return prev;
+        return { ...prev, date: currentDate, time: currentTime };
+      });
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [useCurrentTime]);
 
   // Species range lookups
   const pyleSpeciesRange = useMemo(() => {

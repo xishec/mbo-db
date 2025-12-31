@@ -52,11 +52,12 @@ export function getApplicableRange(speciesRange: SpeciesRange | null, sex: strin
     };
   }
 
+  // Use unknown range if available, otherwise use combined male/female range
   return {
-    weightLower: Math.min(speciesRange.mWeightLower, speciesRange.fWeightLower),
-    weightUpper: Math.max(speciesRange.mWeightUpper, speciesRange.fWeightUpper),
-    wingLower: Math.min(speciesRange.mWingLower, speciesRange.fWingLower),
-    wingUpper: Math.max(speciesRange.mWingUpper, speciesRange.fWingUpper),
+    weightLower: speciesRange.unknownWeightLower || Math.min(speciesRange.mWeightLower, speciesRange.fWeightLower),
+    weightUpper: speciesRange.unknownWeightUpper || Math.max(speciesRange.mWeightUpper, speciesRange.fWeightUpper),
+    wingLower: speciesRange.unknownWingLower || Math.min(speciesRange.mWingLower, speciesRange.fWingLower),
+    wingUpper: speciesRange.unknownWingUpper || Math.max(speciesRange.mWingUpper, speciesRange.fWingUpper),
   };
 }
 

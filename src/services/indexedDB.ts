@@ -101,7 +101,6 @@ export async function saveDataToIndexedDB(environment: string, data: AlphaData):
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
       db.close();
-      console.log(`✅ ${environment} data saved to IndexedDB`);
       resolve();
     };
     transaction.onerror = () => {
@@ -136,30 +135,23 @@ export async function getDataFromIndexedDB(environment: string): Promise<AlphaDa
  * Save environment-specific lastUpdated timestamp to IndexedDB
  */
 export async function saveLastUpdated(environment: string, timestamp: number): Promise<void> {
-  try {
-    const db = await openDB();
-    const transaction = db.transaction([METADATA_STORE], "readwrite");
-    const store = transaction.objectStore(METADATA_STORE);
+  const db = await openDB();
+  const transaction = db.transaction([METADATA_STORE], "readwrite");
+  const store = transaction.objectStore(METADATA_STORE);
 
-    const entry: MetadataEntry = { key: `lastUpdated_${environment}`, value: timestamp };
-    store.put(entry);
+  const entry: MetadataEntry = { key: `lastUpdated_${environment}`, value: timestamp };
+  store.put(entry);
 
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => {
-        db.close();
-        console.log(`✅ ${environment} timestamp saved to IndexedDB:`, timestamp);
-        resolve();
-      };
-      transaction.onerror = () => {
-        db.close();
-        console.error(`❌ Failed to save ${environment} timestamp to IndexedDB:`, transaction.error);
-        reject(transaction.error);
-      };
-    });
-  } catch (error) {
-    console.error("❌ Error in saveEnvironmentLastUpdated:", error);
-    throw error;
-  }
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
 }
 
 /**
@@ -197,7 +189,6 @@ export async function addToQueue(pendingEvent: PendingEvent): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
       db.close();
-      console.log(`✅ Added to queue: ${pendingEvent.id}`);
       resolve();
     };
     transaction.onerror = () => {
@@ -241,7 +232,6 @@ export async function removeFromQueue(eventId: string): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
       db.close();
-      console.log(`✅ Removed from queue: ${eventId}`);
       resolve();
     };
     transaction.onerror = () => {
