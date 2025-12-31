@@ -185,11 +185,10 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
   birdEvent.band = new Band(bandPrefix, bandSuffix);
   birdEvent.id = generateBirdEventId(
     birdEvent.band.id,
-    birdEvent.date,
-    birdEvent.bander,
-    birdEvent.scribe,
-    birdEvent.net,
-    birdEvent.weight.toString()
+    birdEvent.date!,
+    birdEvent.net!,
+    String(birdEvent.wing || ""),
+    String(birdEvent.weight || "")
   );
   birdEvent.time = "10:00";
   return birdEvent;

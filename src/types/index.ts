@@ -72,12 +72,12 @@ export interface BirdEvent {
 export function generateBirdEventId(
   bandId: string,
   date: string,
-  bander: string,
-  scribe: string,
   net: string,
-  weight: string
+  wing: string,
+  weight: string,
+  isModification: boolean = false
 ): string {
-  return `${bandId}${date}${bander}${scribe}${net}${weight}`.replace(".", "");
+  return `${bandId}${date}${net}${wing}${weight}${isModification ? "ModAt" + Date.now() : ""}`.replace(".", "");
 }
 
 export enum BirdEventType {

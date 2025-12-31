@@ -446,10 +446,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           id: generateBirdEventId(
             band.id,
             captureData.date,
-            captureData.bander,
-            captureData.scribe,
             captureData.net,
-            captureData.weight
+            captureData.wing,
+            captureData.weight,
+            previousEventId !== undefined
           ),
           programId: captureData.programId,
           band,
