@@ -124,12 +124,12 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
               </p>
             </div>
             <div className="flex gap-4 items-center">
-              <Switch size="sm" isSelected={forceOffline} onValueChange={setForceOffline}>
+              <Switch isSelected={forceOffline} onValueChange={setForceOffline}>
                 Force Offline
               </Switch>
               <div className="flex gap-2">
                 {Object.entries(stats.byLevel).map(([level, count]) => (
-                  <Chip key={level} color={getLevelColor(level as LogLevel)} size="sm" variant="flat">
+                  <Chip key={level} color={getLevelColor(level as LogLevel)} variant="flat">
                     {level}: {count}
                   </Chip>
                 ))}
@@ -193,12 +193,10 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
-                                <Chip color={getLevelColor(log.level)} size="sm" variant="flat">
+                                <Chip color={getLevelColor(log.level)} variant="flat">
                                   {log.level}
                                 </Chip>
-                                <Chip size="sm" variant="flat">
-                                  {log.category}
-                                </Chip>
+                                <Chip variant="flat">{log.category}</Chip>
                                 <span className="text-xs text-default-400">
                                   {new Date(log.timestamp).toLocaleString()}
                                 </span>
@@ -266,13 +264,13 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
         </ModalBody>
 
         <ModalFooter>
-          <Button color="danger" variant="light" onPress={handleClearLogs} size="sm">
+          <Button color="danger" variant="light" onPress={handleClearLogs}>
             Clear Logs
           </Button>
-          <Button color="primary" variant="light" onPress={handleExportLogs} size="sm">
+          <Button color="primary" variant="light" onPress={handleExportLogs}>
             Export JSON
           </Button>
-          <Button color="primary" onPress={onClose} size="sm">
+          <Button color="primary" onPress={onClose}>
             Close
           </Button>
         </ModalFooter>

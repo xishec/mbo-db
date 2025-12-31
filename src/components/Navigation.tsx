@@ -106,7 +106,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
             <span className="font-bold">MBO</span> Database
           </p>
           <div className="ml-4 flex items-center gap-2">
-            <Badge content={pendingCount} color={isOnline ? "primary" : "secondary"} size="md" isInvisible={pendingCount === 0 && isOnline}>
+            <Badge
+              content={pendingCount}
+              color={isOnline ? "primary" : "secondary"}
+              size="sm"
+              showOutline={false}
+              isInvisible={pendingCount === 0 && isOnline}
+            >
               <Chip
                 size="md"
                 variant="flat"
@@ -118,7 +124,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               </Chip>
             </Badge>
             {isOnline && (
-              <Button isIconOnly size="sm" variant="light" aria-label="Sync" onPress={() => syncQueue()}>
+              <Button isIconOnly variant="light" aria-label="Sync" onPress={() => syncQueue()}>
                 <ArrowPathIcon className="w-4 h-4" />
               </Button>
             )}
@@ -183,14 +189,14 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
         </NavbarContent>
         <NavbarContent justify="end">
           <NavbarItem>
-            <Badge content={errorCount} color="danger" size="md" isInvisible={errorCount === 0}>
-              <Button isIconOnly variant="light" onPress={onErrorsOpen} aria-label="View errors" size="sm">
+            <Badge content={errorCount} color="danger" size="sm" showOutline={false} isInvisible={errorCount === 0}>
+              <Button isIconOnly variant="light" onPress={onErrorsOpen} aria-label="View errors">
                 <ExclamationTriangleIcon className="w-5 h-5" />
               </Button>
             </Badge>
           </NavbarItem>
           <NavbarItem>
-            <Button isIconOnly variant="light" onPress={onLogsOpen} aria-label="View logs" size="sm">
+            <Button isIconOnly variant="light" onPress={onLogsOpen} aria-label="View logs">
               <CodeBracketIcon className="w-5 h-5" />
             </Button>
           </NavbarItem>

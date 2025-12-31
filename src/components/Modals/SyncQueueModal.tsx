@@ -1,12 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-} from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import { getQueuedEvents } from "../../services/indexedDB";
 import type { PendingEvent } from "../../types";
@@ -23,9 +16,7 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
   useEffect(() => {
     if (!isOpen) return;
 
-    getQueuedEvents()
-      .then(setQueuedEvents)
-      .catch(console.error);
+    getQueuedEvents().then(setQueuedEvents).catch(console.error);
   }, [isOpen]);
 
   // Convert pending events to bird events for display
@@ -34,20 +25,13 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
   }, [queuedEvents]);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="5xl"
-      scrollBehavior="inside"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-bold">Sync Queue</h2>
-              <p className="text-sm text-default-500">
-                Pending bird events waiting to sync to Firebase
-              </p>
+              <p className="text-sm text-default-500">Pending bird events waiting to sync to Firebase</p>
             </div>
           </div>
         </ModalHeader>
@@ -67,7 +51,7 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
         </ModalBody>
 
         <ModalFooter>
-          <Button color="primary" onPress={onClose} size="sm">
+          <Button color="primary" onPress={onClose}>
             Close
           </Button>
         </ModalFooter>

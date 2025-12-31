@@ -1,12 +1,5 @@
 import { useMemo } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-} from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import { useData } from "../../services/useData";
 import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap } from "../../types";
@@ -66,20 +59,13 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   }, [bandIdToBirdEventIdsMap, birdEventsMap]);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="5xl"
-      scrollBehavior="inside"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-bold">Data Errors</h2>
-              <p className="text-sm text-default-500">
-                Conflicting Bird Events: Sex changed (4↔5) or Species changed
-              </p>
+              <p className="text-sm text-default-500">Conflicting Bird Events: Sex changed (4↔5) or Species changed</p>
             </div>
           </div>
         </ModalHeader>
@@ -93,7 +79,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
         </ModalBody>
 
         <ModalFooter>
-          <Button color="primary" onPress={onClose} size="sm">
+          <Button color="primary" onPress={onClose}>
             Close
           </Button>
         </ModalFooter>

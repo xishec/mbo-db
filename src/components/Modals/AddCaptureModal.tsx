@@ -7,14 +7,12 @@ import {
   ModalFooter,
   ModalHeader,
   Switch,
-  Tab,
   Table,
   TableBody,
   TableCell,
   TableColumn,
   TableHeader,
   TableRow,
-  Tabs,
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
@@ -361,7 +359,7 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
               <div className="flex flex-row items-center gap-1">
                 Add Capture in <span className="font-bold">{selectedProgram?.id}</span>
               </div>
-              <Switch size="sm" isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
+              <Switch isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
                 Use current time
               </Switch>
             </ModalHeader>
@@ -372,19 +370,6 @@ export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModa
                   <SpeciesRangeTable title="MBO" speciesCode={formData.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
-              <Tabs
-                color="primary"
-                size="sm"
-                classNames={{
-                  tabContent: "text-gray-700",
-                }}
-                selectedKey={bandSize}
-                onSelectionChange={(key) => setBandSize(key as BandSize)}
-              >
-                {Object.values(BandSize).map((size) => (
-                  <Tab key={size} title={size} />
-                ))}
-              </Tabs>
               <Table aria-label="New capture form">
                 <TableHeader columns={CAPTURE_COLUMNS.filter((column) => column.key !== "actions")}>
                   {(column) => (

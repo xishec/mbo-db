@@ -1,12 +1,15 @@
 import { Autocomplete, AutocompleteItem, Spinner, Switch, Button, useDisclosure } from "@heroui/react";
+import { SettingsOutlined } from "@mui/icons-material";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
 import { BandSize } from "../../../../types";
 import AddCaptureModal from "../../../Modals/AddCaptureModal";
+import BandSizeSettingModal from "../../../Modals/BandSizeSettingModal";
 
 export default function NewCaptures() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onOpenChange: onSettingsOpenChange } = useDisclosure();
   const { selectedProgram, bandGroupsMap, birdEventsMap, isLoading } = useData();
 
   // Get band group IDs for the selected program
@@ -76,18 +79,22 @@ export default function NewCaptures() {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <div className="grid grid-cols-11 gap-2">
-        {Object.values(BandSize).map((bandSize) => (
-          <div key={bandSize} className="flex flex-col gap-2">
-            <div className="text-center text-sm font-semibold">{bandSize}</div>
-            <Button size="sm" variant="solid" color="secondary" className="w-full" onPress={onOpen}>
-              {selectedProgram?.BandSizeToBandIdMap?.[bandSize] ?? "Use"}
+      <div className="flex items-center gap-2">
+        <div className="grid grid-cols-11 gap-2 flex-1">
+          {Object.values(BandSize).map((bandSize) => (
+            <Button size="md" variant="bordered" color="default" className="w-full" onPress={onOpen}>
+              {bandSize}
             </Button>
-          </div>
-        ))}
+          ))}
+        </div>
+        <Button isIconOnly size="md" variant="light" onPress={onSettingsOpen} aria-label="Band size settings">
+          <SettingsOutlined className="w-4 h-4" />
+        </Button>
       </div>
 
       <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} />
+
+      <BandSizeSettingModal isOpen={isSettingsOpen} onOpenChange={onSettingsOpenChange} />
 
       <div className="flex items-center gap-4">
         <Autocomplete
