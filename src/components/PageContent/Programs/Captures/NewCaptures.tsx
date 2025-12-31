@@ -1,5 +1,5 @@
 import { Autocomplete, AutocompleteItem, Spinner, Switch, Button, useDisclosure } from "@heroui/react";
-import { SettingsOutlined } from "@mui/icons-material";
+import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
@@ -11,6 +11,7 @@ export default function NewCaptures() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onOpenChange: onSettingsOpenChange } = useDisclosure();
   const { selectedProgram, bandGroupsMap, birdEventsMap, isLoading } = useData();
+  const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(BandSize.Other);
 
   // Get band group IDs for the selected program
   const bandGroupIds = useMemo(() => {
@@ -82,17 +83,27 @@ export default function NewCaptures() {
       <div className="flex items-center gap-2">
         <div className="grid grid-cols-11 gap-2 flex-1">
           {Object.values(BandSize).map((bandSize) => (
-            <Button size="md" variant="bordered" color="default" className="w-full" onPress={onOpen}>
+            <Button
+              key={bandSize}
+              size="md"
+              variant="bordered"
+              color="default"
+              className="w-full"
+              onPress={() => {
+                setSelectedBandSize(bandSize);
+                onOpen();
+              }}
+            >
               {bandSize}
             </Button>
           ))}
         </div>
         <Button isIconOnly size="md" variant="light" onPress={onSettingsOpen} aria-label="Band size settings">
-          <SettingsOutlined className="w-4 h-4" />
+          <Cog6ToothIcon className="w-5 h-5" />
         </Button>
       </div>
 
-      <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} />
+      <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} bandSize={selectedBandSize} />
 
       <BandSizeSettingModal isOpen={isSettingsOpen} onOpenChange={onSettingsOpenChange} />
 

@@ -125,7 +125,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
             </Badge>
             {isOnline && (
               <Button isIconOnly variant="light" aria-label="Sync" onPress={() => syncQueue()}>
-                <ArrowPathIcon className="w-4 h-4" />
+                <ArrowPathIcon className="w-5 h-5" />
               </Button>
             )}
           </div>
@@ -214,7 +214,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
                         name: user.email?.[0].toUpperCase(),
                       }}
                     />
-                    <ChevronDownIcon className="w-4 h-4" />
+                    <ChevronDownIcon className="w-5 h-5" />
                   </div>
                 </DropdownTrigger>
                 <DropdownMenu aria-label="User Actions" variant="flat">

@@ -30,16 +30,16 @@ import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTabl
 interface AddCaptureModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  bandSize?: BandSize;
 }
 
-export default function AddCaptureModal({ isOpen, onOpenChange }: AddCaptureModalProps) {
+export default function AddCaptureModal({ isOpen, onOpenChange, bandSize = BandSize.Other }: AddCaptureModalProps) {
   const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
   const [useCurrentTime, setUseCurrentTime] = useState(true);
-  const [bandSize, setBandSize] = useState(BandSize.Other);
 
   // Reset form data when modal opens
   if (isOpen && !prevIsOpen) {
