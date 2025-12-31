@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
 import { BandSize } from "../../../../types";
-import AddCaptureModal from "../../../Modals/AddCaptureModal";
+import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import BandSizeSettingModal from "../../../Modals/BandSizeSettingModal";
 
 export default function NewCaptures() {
@@ -111,7 +111,7 @@ export default function NewCaptures() {
         </Button>
       </div>
 
-      <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} bandSize={selectedBandSize} />
+      <AddBirdEventModal isOpen={isOpen} onOpenChange={onOpenChange} bandSize={selectedBandSize} />
 
       <BandSizeSettingModal isOpen={isSettingsOpen} onOpenChange={onSettingsOpenChange} />
 

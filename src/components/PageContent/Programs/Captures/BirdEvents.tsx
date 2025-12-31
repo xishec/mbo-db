@@ -1,7 +1,7 @@
 import { Button, Spinner, Tab, Tabs, useDisclosure } from "@heroui/react";
 import { useState } from "react";
 import { useData } from "../../../../services/useData";
-import AddCaptureModal from "../../../Modals/AddCaptureModal";
+import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
 
@@ -29,7 +29,7 @@ export default function BirdEvents() {
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
-      <AddCaptureModal isOpen={isOpen} onOpenChange={onOpenChange} />
+      <AddBirdEventModal isOpen={isOpen} onOpenChange={onOpenChange} />
 
       <div className="w-full flex items-end justify-between gap-4">
         <Tabs

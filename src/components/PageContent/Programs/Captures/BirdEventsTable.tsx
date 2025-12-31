@@ -2,9 +2,9 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type S
 import { useCallback, useMemo, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { CAPTURE_COLUMNS } from "./helpers";
-import EditCaptureModal from "../../../Modals/EditCaptureModal";
 import InspectCaptureModal from "../../../Modals/InspectCaptureModal";
 import { EyeIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import AddBirdEventModal from "../../../Modals/AddCaptureModal";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): CaptureFormData & { id: string } {
@@ -209,7 +209,7 @@ export default function BirdEventsTable({
         </Table>
       </div>
       
-      <EditCaptureModal 
+      <AddBirdEventModal 
         isOpen={isEditModalOpen} 
         onOpenChange={setIsEditModalOpen}
         birdEvent={selectedBirdEvent}
