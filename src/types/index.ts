@@ -182,7 +182,7 @@ export interface DataContextType {
   setForceOffline: (force: boolean) => void;
 
   // Actions
-  addCapture: (captureData: CaptureFormData, birdEventType: BirdEventType, bandSize: BandSize) => Promise<void>;
+  addBirdEvent: (captureData: CaptureFormData, birdEventType: BirdEventType, bandSize: BandSize) => Promise<void>;
   addProgram: (programName: string, year: string) => Promise<void>;
   syncQueue: () => Promise<void>;
   updateBandSizeMap: (bandSizeMap: BandSizeToBandIdMap) => Promise<void>;

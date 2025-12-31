@@ -403,7 +403,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setBandSizeToBandIdMap(updatedBandSizeMap);
 
       // When online, update RTDB immediately
-      // When offline, updated map is saved to IndexedDB (by addCapture) and synced to RTDB via syncQueue later
+      // When offline, updated map is saved to IndexedDB (by addBirdEvent) and synced to RTDB via syncQueue later
       if (isOnline) {
         await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap/${bandSize}`), nextBandId);
       }
@@ -413,7 +413,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [bandSizeToBandIdMap, isOnline]
   );
 
-  const addCapture = useCallback(
+  const addBirdEvent = useCallback(
     async (captureData: CaptureFormData, birdEventType: BirdEventType, bandSize: BandSize) => {
       try {
         // 1. Create Band and BirdEvent objects
@@ -557,16 +557,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (isOnline) {
           await syncQueue();
         } else {
-          logger.info("AddCapture", "Offline - event queued for later sync", { eventId: newBirdEvent.id });
+          logger.info("AddBirdEvent", "Offline - event queued for later sync", { eventId: newBirdEvent.id });
         }
 
-        logger.info("AddCapture", "Capture added", {
+        logger.info("AddBirdEvent", "Bird event added", {
           eventId: newBirdEvent.id,
           programId: captureData.programId,
           bandSize,
         });
       } catch (err) {
-        logger.error("AddCapture", "Error adding capture", err);
+        logger.error("AddBirdEvent", "Error adding bird event", err);
         throw err;
       }
     },
@@ -709,7 +709,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         pendingCount,
         forceOffline,
         setForceOffline,
-        addCapture,
+        addBirdEvent,
         addProgram,
         syncQueue,
         updateBandSizeMap,
