@@ -34,42 +34,58 @@ interface AddCaptureModalProps {
 }
 
 export default function AddCaptureModal({ isOpen, onOpenChange, bandSize = BandSize.Other }: AddCaptureModalProps) {
-  const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture } = useData();
+  const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addCapture, bandSizeToBandIdMap } =
+    useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
   const [useCurrentTime, setUseCurrentTime] = useState(true);
+  const [bandWasPreFilled, setBandWasPreFilled] = useState(false);
 
   // Reset form data when modal opens
-  if (isOpen && !prevIsOpen) {
+  useEffect(() => {
+    if (!isOpen) return;
+
     const defaultData = getDefaultFormData(selectedProgram?.id || "");
     // Preserve date/time if useCurrentTime is false
     if (!useCurrentTime) {
       defaultData.date = formData.date;
       defaultData.time = formData.time;
     }
+    // Populate bandGroup and bandLastTwoDigits from bandSize
+    let preFilled = false;
+    if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
+      const bandId = bandSizeToBandIdMap[bandSize];
+      if (bandId.includes("-")) {
+        const [bandGroup, bandLastTwoDigits] = bandId.split("-");
+        if (bandGroup.length === 7 && bandLastTwoDigits.length === 2) {
+          defaultData.bandGroup = bandGroup;
+          defaultData.bandLastTwoDigits = bandLastTwoDigits;
+          preFilled = true;
+        }
+      }
+    }
     setFormData(defaultData);
     setLastBandId("");
-  }
-  if (isOpen !== prevIsOpen) {
-    setPrevIsOpen(isOpen);
-  }
+    setBandWasPreFilled(preFilled);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, bandSize]);
 
-  // Focus on bandGroup input when modal opens
+  // Focus on bandGroup or species input when modal opens
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
-        inputRefs.current.get("bandGroup")?.focus();
+        const focusField = bandWasPreFilled ? "species" : "bandGroup";
+        inputRefs.current.get(focusField)?.focus();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, bandWasPreFilled]);
 
   // Update date/time when useCurrentTime is enabled
   useEffect(() => {
     if (!useCurrentTime) return;
-    
+
     const updateTime = () => {
       const now = new Date();
       const currentDate = now.toISOString().split("T")[0];

@@ -83,7 +83,14 @@ export default function NewCaptures() {
       <div className="flex items-center gap-2">
         <div className="grid grid-cols-11 gap-2 flex-1">
           {Object.values(BandSize).map((bandSize) => (
-            <Tooltip closeDelay={50} key={bandSize} content={bandSizeToBandIdMap?.[bandSize] || "Not set"}>
+            <Tooltip
+              closeDelay={50}
+              key={bandSize}
+              color={bandSizeToBandIdMap?.[bandSize] ? "secondary" : "default"}
+              placement="bottom"
+              content={bandSizeToBandIdMap?.[bandSize] || "Not set"}
+              isDisabled={bandSize === BandSize.Other}
+            >
               <Button
                 size="md"
                 variant="bordered"
