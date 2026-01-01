@@ -4,13 +4,13 @@ import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import type { BirdEvent } from "../../types";
 
-interface InspectHistoryModalProps {
+interface ModificationHistoryModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   birdEvent: BirdEvent;
 }
 
-export default function InspectHistoryModal({ isOpen, onOpenChange, birdEvent }: InspectHistoryModalProps) {
+export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEvent }: ModificationHistoryModalProps) {
   const { birdEventsMap } = useData();
 
   const birdEvents = useMemo(() => {
@@ -29,7 +29,7 @@ export default function InspectHistoryModal({ isOpen, onOpenChange, birdEvent }:
       }
     }
 
-    return events;
+    return events.sort((a, b) => a.id.localeCompare(b.id));
   }, [birdEvent.id, birdEventsMap]);
 
   return (
@@ -44,7 +44,7 @@ export default function InspectHistoryModal({ isOpen, onOpenChange, birdEvent }:
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-row items-center gap-1 p-8 pb-0 font-normal">
-              History for Band <span className="font-bold">{birdEvent.band?.id}</span>
+              Modification history of band <span className="font-bold">{birdEvent.band?.id}</span>
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
               {birdEvents.length > 0 ? (

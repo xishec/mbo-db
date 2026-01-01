@@ -2,10 +2,10 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type S
 import { useCallback, useMemo, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { CAPTURE_COLUMNS } from "./helpers";
-import InspectBandIdModal from "../../../Modals/InspectBandIdModal";
+import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
 import { EyeIcon, PencilSquareIcon, ClockIcon, TrashIcon } from "@heroicons/react/24/outline";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
-import InspectHistoryModal from "../../../Modals/InspectHistoryModal";
+import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
@@ -63,8 +63,8 @@ export default function BirdEventsTable({
   const [selectedBirdEvent, setSelectedBirdEvent] = useState<BirdEvent | null>(null);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isInspectBandIdModalOpen, setIsInspectBandIdModalOpen] = useState(false);
-  const [isInspectHistoryModalOpen, setIsInspectHistoryModalOpen] = useState(false);
+  const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
+  const [isModificationHistoryModalOpen, setIsModificationHistoryModalOpen] = useState(false);
 
   // Convert BirdEvents to table rows (exclude events that have been modified)
   const rows = useMemo(
@@ -140,7 +140,7 @@ export default function BirdEventsTable({
       const event = birdEvents.find((e) => e.id === eventId);
       if (event && event.band) {
         setSelectedBandId(event.band.id);
-        setIsInspectBandIdModalOpen(true);
+        setIsCaptureHistoryModalOpen(true);
       }
     },
     [birdEvents]
@@ -151,7 +151,7 @@ export default function BirdEventsTable({
       const event = birdEvents.find((e) => e.id === eventId);
       if (event) {
         setSelectedBirdEvent(event);
-        setIsInspectHistoryModalOpen(true);
+        setIsModificationHistoryModalOpen(true);
       }
     },
     [birdEvents]
@@ -264,15 +264,15 @@ export default function BirdEventsTable({
         birdEventToModify={selectedBirdEvent || undefined}
       />
 
-      <InspectBandIdModal
-        isOpen={isInspectBandIdModalOpen}
-        onOpenChange={setIsInspectBandIdModalOpen}
+      <CaptureHistoryModal
+        isOpen={isCaptureHistoryModalOpen}
+        onOpenChange={setIsCaptureHistoryModalOpen}
         bandId={selectedBandId}
       />
       {selectedBirdEvent && (
-        <InspectHistoryModal
-          isOpen={isInspectHistoryModalOpen}
-          onOpenChange={setIsInspectHistoryModalOpen}
+        <ModificationHistoryModal
+          isOpen={isModificationHistoryModalOpen}
+          onOpenChange={setIsModificationHistoryModalOpen}
           birdEvent={selectedBirdEvent}
         />
       )}
