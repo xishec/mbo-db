@@ -168,14 +168,6 @@ export default function BirdEventsTable({
     [birdEvents]
   );
 
-  const handleTrash = useCallback(
-    (eventId: string) => {
-      const event = birdEvents.find((e) => e.id === eventId);
-      console.log(event);
-    },
-    [birdEvents]
-  );
-
   const renderCell = useCallback(
     (item: TableRow, columnKey: React.Key) => {
       if (columnKey === "actions") {
@@ -194,7 +186,7 @@ export default function BirdEventsTable({
               )}
               {showHistory ? (
                 item.modifiedEventId ? (
-                  <span className="cursor-pointer" onClick={() => handleTrash(item.id)}>
+                  <span className="cursor-pointer" onClick={() => handleEdit(item.id)}>
                     <ArrowUturnLeftIcon className="w-4 h-4" />
                   </span>
                 ) : null
@@ -215,7 +207,6 @@ export default function BirdEventsTable({
       handleInspectBandId,
       handleInspectHistory,
       handleEdit,
-      handleTrash,
       allowInspectBandId,
       allowInspectHistory,
       showHistory,
