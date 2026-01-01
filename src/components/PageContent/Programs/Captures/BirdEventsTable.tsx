@@ -191,7 +191,7 @@ export default function BirdEventsTable({
                 </span>
               )}
               {showHistory ? (
-                item.previousEventId ? (
+                item.previousEventId && !item.modifiedEventId ? (
                   <span
                     className="text-lg text-default-600 cursor-pointer active:opacity-50"
                     onClick={() => handleInspectHistory(item.id)}
@@ -249,11 +249,14 @@ export default function BirdEventsTable({
             )}
           </TableHeader>
           <TableBody items={sortedRows} emptyContent="No birdEvents found">
-            {(item) => (
-              <TableRow key={item.id} className={programId && item.programId !== programId ? "opacity-20" : ""}>
-                {(columnKey) => <TableCell className="whitespace-nowrap">{renderCell(item, columnKey)}</TableCell>}
-              </TableRow>
-            )}
+            {(item) => {
+              const isLowOpacity = (programId && item.programId !== programId) || item.modifiedEventId;
+              return (
+                <TableRow key={item.id} className={isLowOpacity ? "opacity-20" : ""}>
+                  {(columnKey) => <TableCell className="whitespace-nowrap">{renderCell(item, columnKey)}</TableCell>}
+                </TableRow>
+              );
+            }}
           </TableBody>
         </Table>
       </div>
