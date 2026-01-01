@@ -30,7 +30,7 @@ export default function CaptureHistoryModal({ isOpen, onOpenChange, bandId }: Ca
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-row items-center gap-1 p-8 pb-0 font-normal">
-              Capture history of band : <span className="font-bold">{bandId}</span>
+              History of band : <span className="font-bold">{bandId}</span>
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
               {birdEvents.length > 0 ? (
@@ -39,6 +39,7 @@ export default function CaptureHistoryModal({ isOpen, onOpenChange, bandId }: Ca
                   maxTableHeight={500}
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
                   allowInspectHistory
+                  hiddenColumns={["bandGroup","bandLastTwoDigits"]}
                 />
               ) : (
                 <p>No captures found for this band.</p>

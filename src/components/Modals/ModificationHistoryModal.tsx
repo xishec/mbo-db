@@ -37,7 +37,7 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
       isKeyboardDismissDisabled
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      className={`!max-w-[calc(100%-4rem)]`}
+      className={`!max-w-[calc(100%-8rem)]`}
       scrollBehavior="inside"
     >
       <ModalContent>
@@ -50,9 +50,10 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
               {birdEvents.length > 0 ? (
                 <BirdEventsTable
                   birdEvents={birdEvents}
-                  maxTableHeight={500}
+                  maxTableHeight={400}
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
                   showHistory
+                  hiddenColumns={["bandGroup", "bandLastTwoDigits"]}
                 />
               ) : (
                 <p>No history found for this band.</p>

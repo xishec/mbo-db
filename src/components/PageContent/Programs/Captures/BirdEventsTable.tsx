@@ -45,6 +45,7 @@ interface BirdEventsTableProps {
   allowInspectBandId?: boolean;
   allowInspectHistory?: boolean;
   showHistory?: boolean;
+  hiddenColumns?: string[];
 }
 
 export default function BirdEventsTable({
@@ -56,6 +57,7 @@ export default function BirdEventsTable({
   allowInspectBandId = false,
   allowInspectHistory = false,
   showHistory = false,
+  hiddenColumns = [],
 }: BirdEventsTableProps) {
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>(
     initialSortDescriptors ?? [{ column: "date", direction: "descending" }]
@@ -203,20 +205,13 @@ export default function BirdEventsTable({
       const cellValue = item[columnKey as keyof TableRow];
       return cellValue;
     },
-    [
-      handleInspectBandId,
-      handleInspectHistory,
-      handleEdit,
-      allowInspectBandId,
-      allowInspectHistory,
-      showHistory,
-    ]
+    [handleInspectBandId, handleInspectHistory, handleEdit, allowInspectBandId, allowInspectHistory, showHistory]
   );
 
   const primarySortDescriptor = sortDescriptors[0];
 
-  // Always show all columns including actions
-  const displayColumns = CAPTURE_COLUMNS;
+  // Filter columns based on hiddenColumns prop
+  const displayColumns = CAPTURE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key));
 
   return (
     <>
