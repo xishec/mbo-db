@@ -372,16 +372,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await saveLastUpdated(CURRENT_ENVIRONMENT, now);
       }
 
-      // Sync bandSizeToBandIdMap from IndexedDB to RTDB
-      if (cachedData.bandSizeToBandIdMap) {
-        try {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), cachedData.bandSizeToBandIdMap);
-          logger.sync("SyncQueue", "Synced bandSizeToBandIdMap to RTDB");
-        } catch (err) {
-          logger.error("SyncQueue", "Failed to sync bandSizeToBandIdMap", err);
-        }
-      }
-
       // Update pending count
       const remainingCount = await getQueueCount();
       setPendingCount(remainingCount);
@@ -409,21 +399,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const currentBandId = `${bandGroup}${bandLastTwoDigits}`;
       const nextBandId = (parseInt(currentBandId, 10) + 1).toString().padStart(9, "0");
 
-      const updatedBandSizeMap = {
+      const updatedMap = {
         ...bandSizeToBandIdMap,
         [bandSize]: nextBandId,
-      } as Record<BandSize, string>;
+      };
 
-      // Update React state immediately (both online and offline)
-      setBandSizeToBandIdMap(updatedBandSizeMap);
+      // Update React state immediately
+      setBandSizeToBandIdMap(updatedMap);
 
       // When online, update RTDB immediately
-      // When offline, updated map is saved to IndexedDB (by addBirdEvent) and synced to RTDB via syncQueue later
+      // When offline, state is saved to IndexedDB via addBirdEvent and will sync when back online
       if (isOnline) {
         await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap/${bandSize}`), nextBandId);
       }
 
-      return updatedBandSizeMap;
+      return updatedMap;
     },
     [bandSizeToBandIdMap, isOnline]
   );
@@ -513,15 +503,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           };
         }
 
-        // 4. Calculate next band ID if applicable
-        let updatedNextBandSizes: Record<BandSize, string> | undefined;
-        if (bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits) {
-          updatedNextBandSizes = await incrementBandSize(
-            bandSize,
-            captureData.bandGroup,
-            captureData.bandLastTwoDigits
-          );
-        }
+        // 4. Increment band size if applicable
+        const updatedBandSizeMap = (bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits)
+          ? await incrementBandSize(bandSize, captureData.bandGroup, captureData.bandLastTwoDigits)
+          : bandSizeToBandIdMap;
 
         // New programsMap
         const existingProgram = programsMap[captureData.programId];
@@ -573,7 +558,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           birdEventsMap: newBirdEventsMap,
           bandGroupsMap: newBandGroupsMap,
           magicTable,
-          bandSizeToBandIdMap: updatedNextBandSizes || bandSizeToBandIdMap,
+          bandSizeToBandIdMap: updatedBandSizeMap,
         });
 
         // 6. Update lastModified timestamp if online (after all RTDB writes)
