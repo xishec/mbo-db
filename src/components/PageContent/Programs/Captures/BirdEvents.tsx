@@ -86,7 +86,13 @@ export default function BirdEvents() {
             </Button>
           </div>
         ) : (
-          <Button color="secondary" onPress={onOpen}>
+          <Button
+            color="secondary"
+            onPress={() => {
+              setSelectedBandSize(BandSize.Other);
+              onOpen();
+            }}
+          >
             Add Re-Capture
           </Button>
         )}

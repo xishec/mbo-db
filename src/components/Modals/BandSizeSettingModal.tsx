@@ -9,7 +9,7 @@ interface BandSizeSettingModalProps {
 }
 
 export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeSettingModalProps) {
-  const { bandSizeToBandIdMap, isOnline, updateBandSizeMap } = useData();
+  const { bandSizeToBandIdMap, updateBandSizeMap } = useData();
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   // Initialize from bandSizeToBandIdMap - store as single 9-digit string
