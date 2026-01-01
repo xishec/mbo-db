@@ -79,17 +79,17 @@ export default defineConfig({
         start_url: "/",
         icons: [
           {
-            src: "pwa-192x192.svg",
+            src: "mbo-favicon.svg",
             sizes: "192x192",
             type: "image/svg+xml",
           },
           {
-            src: "pwa-512x512.svg",
+            src: "mbo-logo.svg",
             sizes: "512x512",
             type: "image/svg+xml",
           },
           {
-            src: "pwa-512x512.svg",
+            src: "mbo-logo.svg",
             sizes: "512x512",
             type: "image/svg+xml",
             purpose: "any maskable",
