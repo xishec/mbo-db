@@ -75,6 +75,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             birdEvents={conflictingBirdEvents}
             maxTableHeight={600}
             sortDescriptors={[{ column: "date", direction: "descending" }]}
+            allowInspectBandId
           />
         </ModalBody>
 

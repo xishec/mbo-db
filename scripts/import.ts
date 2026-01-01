@@ -96,7 +96,7 @@ export function parseCSV(csvContent: string): BirdEvent[] {
   const headers = parseCSVLine(rows[0]);
   const birdEvents: BirdEvent[] = [];
 
-  const lastRows = rows.slice(-5000);
+  const lastRows = rows.slice(-10000);
   // const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
@@ -187,8 +187,8 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
     birdEvent.band.id,
     birdEvent.date!,
     birdEvent.net!,
-    String(birdEvent.wing || ""),
-    String(birdEvent.weight || "")
+    String(birdEvent.wing),
+    String(birdEvent.weight)
   );
   birdEvent.time = "10:00";
   return birdEvent;
