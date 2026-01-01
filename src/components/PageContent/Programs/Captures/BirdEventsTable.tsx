@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { CAPTURE_COLUMNS } from "./helpers";
 import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
-import { EyeIcon, PencilSquareIcon, ClockIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, PencilSquareIcon, ClockIcon, ArrowUturnLeftIcon } from "@heroicons/react/24/outline";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 
@@ -168,6 +168,14 @@ export default function BirdEventsTable({
     [birdEvents]
   );
 
+  const handleTrash = useCallback(
+    (eventId: string) => {
+      const event = birdEvents.find((e) => e.id === eventId);
+      console.log(event);
+    },
+    [birdEvents]
+  );
+
   const renderCell = useCallback(
     (item: TableRow, columnKey: React.Key) => {
       if (columnKey === "actions") {
@@ -175,36 +183,24 @@ export default function BirdEventsTable({
           <div className="relative flex items-center justify-center gap-2">
             <>
               {allowInspectBandId && (
-                <span
-                  className="text-lg text-default-600 cursor-pointer active:opacity-50"
-                  onClick={() => handleInspectBandId(item.id)}
-                >
-                  <EyeIcon className="w-5 h-5" />
+                <span className="cursor-pointer" onClick={() => handleInspectBandId(item.id)}>
+                  <EyeIcon className="w-4 h-4" />
                 </span>
               )}
               {allowInspectHistory && item.previousEventId && (
-                <span
-                  className="text-lg text-default-600 cursor-pointer active:opacity-50"
-                  onClick={() => handleInspectHistory(item.id)}
-                >
-                  <ClockIcon className="w-5 h-5" />
+                <span className="cursor-pointer" onClick={() => handleInspectHistory(item.id)}>
+                  <ClockIcon className="w-4 h-4" />
                 </span>
               )}
               {showHistory ? (
-                item.previousEventId && !item.modifiedEventId ? (
-                  <span
-                    className="text-lg text-default-600 cursor-pointer active:opacity-50"
-                    onClick={() => handleInspectHistory(item.id)}
-                  >
-                    <TrashIcon className="w-5 h-5" />
+                item.modifiedEventId ? (
+                  <span className="cursor-pointer" onClick={() => handleTrash(item.id)}>
+                    <ArrowUturnLeftIcon className="w-4 h-4" />
                   </span>
                 ) : null
               ) : (
-                <span
-                  className="text-lg text-default-600 cursor-pointer active:opacity-50"
-                  onClick={() => handleEdit(item.id)}
-                >
-                  <PencilSquareIcon className="w-5 h-5" />
+                <span className="cursor-pointer" onClick={() => handleEdit(item.id)}>
+                  <PencilSquareIcon className="w-4 h-4" />
                 </span>
               )}
             </>
@@ -215,7 +211,15 @@ export default function BirdEventsTable({
       const cellValue = item[columnKey as keyof TableRow];
       return cellValue;
     },
-    [handleInspectBandId, handleInspectHistory, handleEdit, allowInspectBandId, allowInspectHistory, showHistory]
+    [
+      handleInspectBandId,
+      handleInspectHistory,
+      handleEdit,
+      handleTrash,
+      allowInspectBandId,
+      allowInspectHistory,
+      showHistory,
+    ]
   );
 
   const primarySortDescriptor = sortDescriptors[0];
@@ -250,10 +254,16 @@ export default function BirdEventsTable({
           </TableHeader>
           <TableBody items={sortedRows} emptyContent="No birdEvents found">
             {(item) => {
-              const isLowOpacity = (programId && item.programId !== programId) || item.modifiedEventId;
+              const isLowOpacity = (programId && item.programId !== programId) || !!item.modifiedEventId;
               return (
-                <TableRow key={item.id} className={isLowOpacity ? "opacity-20" : ""}>
-                  {(columnKey) => <TableCell className="whitespace-nowrap">{renderCell(item, columnKey)}</TableCell>}
+                <TableRow key={item.id}>
+                  {(columnKey) => (
+                    <TableCell
+                      className={`whitespace-nowrap ${columnKey !== "actions" && isLowOpacity ? "opacity-20" : ""}`}
+                    >
+                      {renderCell(item, columnKey)}
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             }}
