@@ -66,8 +66,6 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
   };
 
   const handleSave = async () => {
-    if (!isOnline) return;
-
     try {
       await updateBandSizeMap(bandSizeMap);
       onOpenChange(false);
@@ -142,7 +140,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
               <Button color="danger" variant="light" onPress={onClose} className="flex-1">
                 Close
               </Button>
-              <Button color="primary" onPress={handleSave} className="flex-1" isDisabled={!isOnline}>
+              <Button color="primary" onPress={handleSave} className="flex-1">
                 Save
               </Button>
             </ModalFooter>

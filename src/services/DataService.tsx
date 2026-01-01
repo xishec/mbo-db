@@ -724,20 +724,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateBandSizeMap = useCallback(
     async (newBandSizeMap: Record<BandSize, string>) => {
-      if (!isOnline) {
-        throw new Error("Cannot update band size map while offline");
-      }
-
       try {
-        // Update Firebase RTDB
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), newBandSizeMap);
-
-        // Update React state
+        // Update React state immediately (works both online and offline)
         setBandSizeToBandIdMap(newBandSizeMap);
 
-        // Update lastModified timestamp and IndexedDB
-        await updateLastModifiedTimestamp();
+        // Save to IndexedDB (works both online and offline)
         await saveCompleteStateToIndexedDB({ bandSizeToBandIdMap: newBandSizeMap });
+
+        // Handle online vs offline sync
+        if (isOnline) {
+          // Online: sync to RTDB immediately
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), newBandSizeMap);
+          await updateLastModifiedTimestamp();
+          logger.info("UpdateBandSizeMap", "Band size map synced to RTDB");
+        } else {
+          // Offline: will be synced via syncQueue when back online
+          logger.info("UpdateBandSizeMap", "Band size map saved offline - will sync when online");
+        }
 
         logger.info("UpdateBandSizeMap", "Band size map updated");
       } catch (err) {
