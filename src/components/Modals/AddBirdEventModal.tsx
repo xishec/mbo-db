@@ -159,10 +159,10 @@ export default function AddBirdEventModal({
 
   // Derive past bird events from bandId (no state needed!)
   const pastBirdEvents = useMemo(() => {
-    if (!bandId) return [];
+    if (!bandId || birdEventToModify) return [];
     const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
     return birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
-  }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
+  }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap, birdEventToModify]);
 
   // Auto-fill species from past bird events whenever bandId changes
   if (bandId && bandId !== lastBandId) {
