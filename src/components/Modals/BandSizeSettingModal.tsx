@@ -78,7 +78,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside">
       <ModalContent>
-        {(onClose) => (
+        {(handleClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
               <h2 className="text-2xl font-bold">Band Size Settings</h2>
@@ -136,11 +136,11 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
                   );
                 })}
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-0">
-              <Button color="danger" variant="light" onPress={onClose} className="flex-1">
-                Close
+            <ModalFooter className="gap-4 p-8 pt-4">
+              <Button color="danger" variant="bordered" onPress={handleClose}>
+                Cancel
               </Button>
-              <Button color="primary" onPress={handleSave} className="flex-1">
+              <Button color="primary" onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

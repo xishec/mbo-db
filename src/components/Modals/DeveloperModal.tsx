@@ -263,7 +263,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
           </Tabs>
         </ModalBody>
 
-        <ModalFooter>
+        <ModalFooter className="gap-4 p-8 pt-4">
           <Button color="danger" variant="light" onPress={handleClearLogs}>
             Clear Logs
           </Button>

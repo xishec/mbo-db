@@ -74,7 +74,7 @@ export default function Programs() {
           {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram.id}</BreadcrumbItem>}
         </Breadcrumbs>
         {!selectedProgram && (
-          <Button color="primary" onPress={() => setIsAddProgramModalOpen(true)}>
+          <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
             Add Program
           </Button>
         )}

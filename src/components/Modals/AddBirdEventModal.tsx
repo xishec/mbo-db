@@ -519,8 +519,8 @@ export default function AddBirdEventModal({
                 </div>
               )}
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-0">
-              <Button color="danger" variant="light" onPress={handleClose}>
+            <ModalFooter className="gap-4 p-8 pt-4">
+              <Button color="danger" variant="bordered" onPress={handleClose}>
                 Cancel
               </Button>
               <Button color="primary" onPress={handleSave}>

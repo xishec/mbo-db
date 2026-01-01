@@ -50,7 +50,7 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
           )}
         </ModalBody>
 
-        <ModalFooter>
+        <ModalFooter className="gap-4 p-8 pt-4">
           <Button color="primary" onPress={onClose}>
             Close
           </Button>

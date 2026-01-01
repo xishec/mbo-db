@@ -44,7 +44,7 @@ export default function CaptureHistoryModal({ isOpen, onOpenChange, bandId }: Ca
                 <p>No captures found for this band.</p>
               )}
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-0">
+            <ModalFooter className="gap-4 p-8 pt-4">
               <Button color="primary" onPress={onClose}>
                 Close
               </Button>

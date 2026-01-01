@@ -58,7 +58,7 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
                 <p>No history found for this band.</p>
               )}
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-0">
+            <ModalFooter className="gap-4 p-8 pt-4">
               <Button color="primary" onPress={onClose}>
                 Close
               </Button>

@@ -68,10 +68,10 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
             autoFocus
           />
         </ModalBody>
-        <ModalFooter className="gap-4 p-8 pt-0">
+        <ModalFooter className="gap-4 p-8 pt-4">
           <Button
             color="danger"
-            variant="light"
+            variant="bordered"
             onPress={() => onOpenChange(false)}
             className="flex-1"
             isDisabled={isLoading}

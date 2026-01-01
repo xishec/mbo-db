@@ -213,9 +213,9 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 </Link>
               </div>
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-0">
-              <Button color="danger" variant="light" onPress={onClose} className="flex-1">
-                Close
+            <ModalFooter className="gap-4 p-8 pt-4">
+              <Button color="danger" variant="bordered" onPress={onClose} className="flex-1">
+                Cancel
               </Button>
               <Button
                 color="primary"
