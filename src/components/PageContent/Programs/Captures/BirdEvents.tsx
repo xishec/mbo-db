@@ -53,15 +53,19 @@ export default function BirdEvents() {
         </Tabs>
         {birdEventTabType === BirdEventTabType.NEW_CAPTURES ? (
           <div className="flex items-center gap-2">
-            <div >
-              <ButtonGroup color="secondary" variant="solid" fullWidth>
+            <div>
+              <ButtonGroup color="secondary" variant="flat" fullWidth>
                 {Object.values(BandSize).map((bandSize) => (
                   <Tooltip
                     key={bandSize}
                     closeDelay={50}
-                    color={bandSizeToBandIdMap?.[bandSize] ? "secondary" : "default"}
+                    color={"default"}
                     placement="bottom"
-                    content={bandSizeToBandIdMap?.[bandSize] || "Not set"}
+                    content={
+                      bandSizeToBandIdMap?.[bandSize]
+                        ? `${bandSizeToBandIdMap[bandSize].slice(0, 7)}-${bandSizeToBandIdMap[bandSize].slice(-2)}`
+                        : "Not set"
+                    }
                     isDisabled={bandSize === BandSize.Other}
                   >
                     <Button
@@ -69,6 +73,7 @@ export default function BirdEvents() {
                         setSelectedBandSize(bandSize);
                         onOpen();
                       }}
+                      className="text-gray-700"
                     >
                       {bandSize}
                     </Button>
