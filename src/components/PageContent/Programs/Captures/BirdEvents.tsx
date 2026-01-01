@@ -1,7 +1,10 @@
-import { Button, Spinner, Tab, Tabs, useDisclosure } from "@heroui/react";
+import { Button, Spinner, Tab, Tabs, useDisclosure, ButtonGroup, Tooltip } from "@heroui/react";
+import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useData } from "../../../../services/useData";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
+import BandSizeSettingModal from "../../../Modals/BandSizeSettingModal";
+import { BandSize } from "../../../../types";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
 
@@ -13,7 +16,9 @@ enum BirdEventTabType {
 export default function BirdEvents() {
   const [birdEventTabType, setBirdEventTabType] = useState<BirdEventTabType>(BirdEventTabType.NEW_CAPTURES);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { selectedProgram, isLoading } = useData();
+  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onOpenChange: onSettingsOpenChange } = useDisclosure();
+  const { selectedProgram, isLoading, bandSizeToBandIdMap } = useData();
+  const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(BandSize.Other);
 
   if (!selectedProgram) {
     return null;
@@ -29,7 +34,8 @@ export default function BirdEvents() {
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
-      <AddBirdEventModal isOpen={isOpen} onOpenChange={onOpenChange} />
+      <AddBirdEventModal isOpen={isOpen} onOpenChange={onOpenChange} bandSize={selectedBandSize} />
+      <BandSizeSettingModal isOpen={isSettingsOpen} onOpenChange={onSettingsOpenChange} />
 
       <div className="w-full flex items-end justify-between gap-4">
         <Tabs
@@ -45,7 +51,36 @@ export default function BirdEvents() {
             <Tab key={value} title={value} />
           ))}
         </Tabs>
-        {birdEventTabType === BirdEventTabType.RE_CAPTURES && (
+        {birdEventTabType === BirdEventTabType.NEW_CAPTURES ? (
+          <div className="flex items-center gap-2">
+            <div >
+              <ButtonGroup color="secondary" variant="solid" fullWidth>
+                {Object.values(BandSize).map((bandSize) => (
+                  <Tooltip
+                    key={bandSize}
+                    closeDelay={50}
+                    color={bandSizeToBandIdMap?.[bandSize] ? "secondary" : "default"}
+                    placement="bottom"
+                    content={bandSizeToBandIdMap?.[bandSize] || "Not set"}
+                    isDisabled={bandSize === BandSize.Other}
+                  >
+                    <Button
+                      onPress={() => {
+                        setSelectedBandSize(bandSize);
+                        onOpen();
+                      }}
+                    >
+                      {bandSize}
+                    </Button>
+                  </Tooltip>
+                ))}
+              </ButtonGroup>
+            </div>
+            <Button isIconOnly size="md" variant="light" onPress={onSettingsOpen} aria-label="Band size settings">
+              <Cog6ToothIcon className="w-5 h-5" />
+            </Button>
+          </div>
+        ) : (
           <Button color="secondary" onPress={onOpen}>
             Add Re-Capture
           </Button>

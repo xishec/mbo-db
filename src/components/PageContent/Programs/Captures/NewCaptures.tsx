@@ -1,17 +1,10 @@
-import { Autocomplete, AutocompleteItem, Spinner, Switch, Button, useDisclosure, Tooltip } from "@heroui/react";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { Autocomplete, AutocompleteItem, Spinner, Switch } from "@heroui/react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
-import { BandSize } from "../../../../types";
-import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
-import BandSizeSettingModal from "../../../Modals/BandSizeSettingModal";
 
 export default function NewCaptures() {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onOpenChange: onSettingsOpenChange } = useDisclosure();
-  const { selectedProgram, bandGroupsMap, birdEventsMap, isLoading, bandSizeToBandIdMap } = useData();
-  const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(BandSize.Other);
+  const { selectedProgram, bandGroupsMap, birdEventsMap, isLoading } = useData();
 
   // Get band group IDs for the selected program
   const bandGroupIds = useMemo(() => {
@@ -80,41 +73,6 @@ export default function NewCaptures() {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <div className="grid grid-cols-11 gap-2 flex-1">
-          {Object.values(BandSize).map((bandSize) => (
-            <Tooltip
-              closeDelay={50}
-              key={bandSize}
-              color={bandSizeToBandIdMap?.[bandSize] ? "secondary" : "default"}
-              placement="bottom"
-              content={bandSizeToBandIdMap?.[bandSize] || "Not set"}
-              isDisabled={bandSize === BandSize.Other}
-            >
-              <Button
-                size="md"
-                variant="bordered"
-                color="default"
-                className="w-full"
-                onPress={() => {
-                  setSelectedBandSize(bandSize);
-                  onOpen();
-                }}
-              >
-                {bandSize}
-              </Button>
-            </Tooltip>
-          ))}
-        </div>
-        <Button isIconOnly size="md" variant="light" onPress={onSettingsOpen} aria-label="Band size settings">
-          <Cog6ToothIcon className="w-5 h-5" />
-        </Button>
-      </div>
-
-      <AddBirdEventModal isOpen={isOpen} onOpenChange={onOpenChange} bandSize={selectedBandSize} />
-
-      <BandSizeSettingModal isOpen={isSettingsOpen} onOpenChange={onSettingsOpenChange} />
-
       <div className="flex items-center gap-4">
         <Autocomplete
           label="Band Group"
