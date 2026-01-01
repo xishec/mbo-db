@@ -159,20 +159,32 @@ export default function AddBirdEventModal({
 
   // Derive past bird events from bandId (no state needed!)
   const pastBirdEvents = useMemo(() => {
-    if (!bandId || birdEventToModify) return [];
+    if (!bandId) return [];
     const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
-    return birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
+    return birdEventIds
+      .map((id) => birdEventsMap[id])
+      .filter(Boolean)
+      .filter((event) => event.modifiedEventId == null)
+      .filter((event) => !birdEventToModify || event.id !== birdEventToModify.id);
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap, birdEventToModify]);
 
   // Auto-fill species from past bird events whenever bandId changes
   if (bandId && bandId !== lastBandId) {
-    const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
-    const events = birdEventIds.map((id) => birdEventsMap[id]).filter(Boolean);
-    if (events.length > 0) {
-      const existingSpecies = events[0]?.species;
-      if (existingSpecies) {
-        setFormData((prev) => ({ ...prev, species: existingSpecies }));
-      }
+    let existingSpecies: string | undefined;
+    
+    if (birdEventToModify) {
+      existingSpecies = birdEventToModify.species;
+    } else {
+      const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
+      const events = birdEventIds
+        .map((id) => birdEventsMap[id])
+        .filter(Boolean)
+        .filter((event) => event.modifiedEventId == null);
+      existingSpecies = events[0]?.species;
+    }
+    
+    if (existingSpecies) {
+      setFormData((prev) => ({ ...prev, species: existingSpecies }));
     }
     setLastBandId(bandId);
   } else if (!bandId && lastBandId) {
@@ -405,12 +417,14 @@ export default function AddBirdEventModal({
     return "";
   };
 
+  const shouldShowPastBirdEvents = pastBirdEvents.length > 0 && !birdEventToModify;
+
   return (
     <Modal
       isKeyboardDismissDisabled
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      className={`!max-w-[calc(100%-4rem)] ${pastBirdEvents.length > 0 ? "!h-[calc(100%-4rem)]" : ""}`}
+      className={`!max-w-[calc(100%-4rem)] ${shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""}`}
       scrollBehavior="inside"
     >
       <ModalContent>
@@ -505,7 +519,7 @@ export default function AddBirdEventModal({
                 </div>
               )}
 
-              {pastBirdEvents.length > 0 && (
+              {shouldShowPastBirdEvents && (
                 <div className="mt-4">
                   <h3 className="text-lg font-normal mb-2">
                     Existing data for band <span className="font-bold">{bandId}</span> :
