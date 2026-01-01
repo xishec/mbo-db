@@ -15,7 +15,10 @@ export default function CaptureHistoryModal({ isOpen, onOpenChange, bandId }: Ca
   const birdEvents = useMemo(() => {
     if (!bandId) return [];
     const eventIds = bandIdToBirdEventIdsMap[bandId] || [];
-    return eventIds.map((id) => birdEventsMap[id]).filter(Boolean);
+    return eventIds
+      .map((id) => birdEventsMap[id])
+      .filter(Boolean)
+      .filter((event) => event.modifiedEventId == null);
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
 
   return (
@@ -39,7 +42,7 @@ export default function CaptureHistoryModal({ isOpen, onOpenChange, bandId }: Ca
                   maxTableHeight={500}
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
                   allowInspectHistory
-                  hiddenColumns={["bandGroup","bandLastTwoDigits"]}
+                  hiddenColumns={["bandGroup", "bandLastTwoDigits"]}
                 />
               ) : (
                 <p>No captures found for this band.</p>

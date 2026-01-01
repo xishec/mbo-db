@@ -53,7 +53,7 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
                   maxTableHeight={400}
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
                   showHistory
-                  hiddenColumns={["bandGroup", "bandLastTwoDigits"]}
+                  hiddenColumns={["actions","bandGroup", "bandLastTwoDigits"]}
                 />
               ) : (
                 <p>No history found for this band.</p>

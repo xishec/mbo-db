@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { CAPTURE_COLUMNS } from "./helpers";
 import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
-import { EyeIcon, PencilSquareIcon, ClockIcon, ArrowUturnLeftIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, PencilSquareIcon, ClockIcon } from "@heroicons/react/24/outline";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 
@@ -187,11 +187,7 @@ export default function BirdEventsTable({
                 </span>
               )}
               {showHistory ? (
-                item.modifiedEventId ? (
-                  <span className="cursor-pointer" onClick={() => handleEdit(item.id)}>
-                    <ArrowUturnLeftIcon className="w-4 h-4" />
-                  </span>
-                ) : null
+                null
               ) : (
                 <span className="cursor-pointer" onClick={() => handleEdit(item.id)}>
                   <PencilSquareIcon className="w-4 h-4" />
