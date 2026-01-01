@@ -441,7 +441,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       logger.error("SyncQueue", "Error syncing queue", err);
     }
-  }, [isOnline, reconstructBandObjects, syncBirdEventToRTDB, updateReactStateFromCache, updateLastModifiedTimestamp]);
+  }, [
+    isOnline,
+    reconstructBandObjects,
+    updateReactStateFromCache,
+    bandSizeToBandIdMap,
+    syncBirdEventToRTDB,
+    updateLastModifiedTimestamp,
+  ]);
 
   const incrementBandSize = useCallback(
     async (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string): Promise<Record<BandSize, string>> => {
@@ -601,7 +608,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return newProgramsMap[captureData.programId];
         });
 
-        // 5. Update IndexedDB cache to keep it in sync
+        // 5. Save to IndexedDB (works both online and offline)
         await saveCompleteStateToIndexedDB({
           yearsToProgramMap: newYearsToProgramMap,
           programsMap: newProgramsMap,
@@ -611,20 +618,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandSizeToBandIdMap: updatedBandSizeMap,
         });
 
-        // 6. Update lastModified timestamp if online (after all RTDB writes)
+        // 6. Handle online vs offline sync
         if (isOnline) {
+          // Online: update timestamp and sync immediately
           await updateLastModifiedTimestamp();
-        }
-
-        // 7. Sync queue and update pending count
-        const count = await getQueueCount();
-        setPendingCount(count);
-
-        if (isOnline) {
           await syncQueue();
         } else {
-          logger.info("AddBirdEvent", "Offline - event queued for later sync", { eventId: newBirdEvent.id });
+          // Offline: just log that event is queued
+          logger.info("AddBirdEvent", "Offline - event queued for sync when online", { eventId: newBirdEvent.id });
         }
+
+        // 7. Update pending count
+        const count = await getQueueCount();
+        setPendingCount(count);
 
         logger.info("AddBirdEvent", "Bird event added", {
           eventId: newBirdEvent.id,
