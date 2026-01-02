@@ -661,6 +661,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        // Validate unique displayName
+        const existingProgram = Object.values(programsMap).find(
+          (p) => p.displayName.toLowerCase() === displayName.toLowerCase()
+        );
+        if (existingProgram) {
+          throw new Error(`A program with the display name "${displayName}" already exists`);
+        }
+
         // Create new program directly in Firebase
         await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}`), {
           id: programId,
@@ -718,6 +726,65 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [isOnline, yearsToProgramMap, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
+  const updateProgram = useCallback(
+    async (programId: string, newDisplayName: string) => {
+      if (!isOnline) {
+        throw new Error("Cannot update programs while offline");
+      }
+
+      try {
+        // Validate unique displayName (excluding current program)
+        const existingProgram = Object.values(programsMap).find(
+          (p) => p.id !== programId && p.displayName.toLowerCase() === newDisplayName.toLowerCase()
+        );
+        if (existingProgram) {
+          throw new Error(`A program with the display name "${newDisplayName}" already exists`);
+        }
+
+        // Get the current program
+        const currentProgram = programsMap[programId];
+        if (!currentProgram) {
+          throw new Error(`Program with ID "${programId}" not found`);
+        }
+
+        // Update program in Firebase (only displayName can change, ID remains the same)
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}/displayName`), newDisplayName);
+
+        // Calculate new state
+        const newProgramsMap = {
+          ...programsMap,
+          [programId]: {
+            ...currentProgram,
+            displayName: newDisplayName,
+          },
+        };
+
+        // Update React state
+        setProgramsMap(newProgramsMap);
+
+        // Update selectedProgram if it's the one we just modified
+        setSelectedProgram((current) => {
+          if (!current || current.id !== programId) return current;
+          return newProgramsMap[programId];
+        });
+
+        // Update lastModified timestamp in RTDB and IndexedDB
+        await updateLastModifiedTimestamp();
+
+        // Update IndexedDB with new state
+        await saveCompleteStateToIndexedDB({
+          programsMap: newProgramsMap,
+        });
+
+        logger.info("UpdateProgram", "Program updated", { programId, newDisplayName });
+      } catch (err) {
+        logger.error("UpdateProgram", "Error updating program", err);
+        throw err;
+      }
+    },
+    [isOnline, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+  );
+
   const updateBandSizeMap = useCallback(
     async (newBandSizeMap: Record<BandSize, string>) => {
       try {
@@ -767,6 +834,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setForceOffline,
         addBirdEvent,
         addProgram,
+        updateProgram,
         syncQueue,
         updateBandSizeMap,
       }}

@@ -9,16 +9,21 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
+  Tooltip,
 } from "@heroui/react";
+import { PencilIcon } from "@heroicons/react/24/outline";
 import BirdEvents from "./Captures/BirdEvents";
 import { useMemo, useState } from "react";
 import { useData } from "../../../services/useData";
 import AddProgramModal from "../../Modals/AddProgramModal";
+import EditProgramModal from "../../Modals/EditProgramModal";
 import type { Program } from "../../../types";
 
 export default function Programs() {
   const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading } = useData();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
+  const [isEditProgramModalOpen, setIsEditProgramModalOpen] = useState(false);
+  const [programToEdit, setProgramToEdit] = useState<Program | null>(null);
 
   // Year rows for the table (sorted descending)
   const yearRows = useMemo(() => {
@@ -61,18 +66,35 @@ export default function Programs() {
   return (
     <div className="h-full w-full flex flex-col items-center pt-4 p-8 gap-4">
       <div className="w-full flex justify-between items-center">
-        <Breadcrumbs>
-          <BreadcrumbItem
-            onPress={() => {
-              setSelectedYear("");
-              selectProgram(null);
-            }}
-          >
-            Years
-          </BreadcrumbItem>
-          {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
-          {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram.displayName}</BreadcrumbItem>}
-        </Breadcrumbs>
+        <div className="flex items-center gap-2">
+          <Breadcrumbs>
+            <BreadcrumbItem
+              onPress={() => {
+                setSelectedYear("");
+                selectProgram(null);
+              }}
+            >
+              Years
+            </BreadcrumbItem>
+            {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
+            {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram.displayName}</BreadcrumbItem>}
+          </Breadcrumbs>
+          {selectedProgram && (
+            <Tooltip content="Edit Program" placement="bottom" closeDelay={50}>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                onPress={() => {
+                  setProgramToEdit(selectedProgram);
+                  setIsEditProgramModalOpen(true);
+                }}
+              >
+                <PencilIcon className="h-3 w-3" />
+              </Button>
+            </Tooltip>
+          )}
+        </div>
         {!selectedProgram && (
           <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
             Add Program
@@ -136,6 +158,11 @@ export default function Programs() {
       {selectedProgram && <BirdEvents />}
 
       <AddProgramModal isOpen={isAddProgramModalOpen} onOpenChange={setIsAddProgramModalOpen} />
+      <EditProgramModal
+        isOpen={isEditProgramModalOpen}
+        onOpenChange={setIsEditProgramModalOpen}
+        program={programToEdit}
+      />
     </div>
   );
 }

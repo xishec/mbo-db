@@ -75,7 +75,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   const { isOpen: isSyncQueueOpen, onOpen: onSyncQueueOpen, onClose: onSyncQueueClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
-  const { birdEventsMap, bandIdToBirdEventIdsMap, pendingCount, isOnline, syncQueue } = useData();
+  const { birdEventsMap, bandIdToBirdEventIdsMap, pendingCount, isOnline, syncQueue, selectProgram } = useData();
 
   // Calculate error count
   const errorCount = useMemo(() => {
@@ -140,6 +140,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               className="inline-block w-full text-center"
               onClick={(e) => {
                 e.preventDefault();
+                selectProgram(null);
                 onPageChange("programs");
               }}
             >
@@ -154,6 +155,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               className="inline-block w-full text-center"
               onClick={(e) => {
                 e.preventDefault();
+                selectProgram(null);
                 onPageChange("search");
               }}
             >
@@ -168,6 +170,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               className="inline-block w-full text-center"
               onClick={(e) => {
                 e.preventDefault();
+                selectProgram(null);
                 onPageChange("customers");
               }}
             >
@@ -181,6 +184,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               className="inline-block w-full text-center"
               onClick={(e) => {
                 e.preventDefault();
+                selectProgram(null);
                 onPageChange("integrations");
               }}
             >
