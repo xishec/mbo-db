@@ -1,9 +1,9 @@
-import { defineConfig, Plugin } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
-import { writeFileSync, readFileSync } from "fs";
+import { writeFileSync } from "fs";
 
 // Plugin to fix CommonJS exports in Electron files
 function fixElectronCJS(): Plugin {
@@ -24,6 +24,9 @@ function fixElectronCJS(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    sourcemap: false,
+  },
   plugins: [
     react(),
     electron([

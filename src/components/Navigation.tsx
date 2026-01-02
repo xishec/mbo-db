@@ -26,6 +26,7 @@ import { ErrorsModal } from "./Modals/ErrorsModal";
 import { SyncQueueModal } from "./Modals/SyncQueueModal";
 import { useData } from "../services/useData";
 import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap } from "../types";
+import mboLogo from "../assets/mbo-logo.svg";
 
 /**
  * Scans through bands to find conflicting changes.
@@ -101,7 +102,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
     <>
       <Navbar maxWidth="full" classNames={{ wrapper: "px-8" }}>
         <NavbarBrand>
-          <img src="/mbo-logo.svg" alt="MBO Logo" className="h-8 w-8 mr-2" />
+          <img src={mboLogo} alt="MBO Logo" className="h-8 w-8 mr-2" />
           <p className="text-xl">
             <span className="font-bold">MBO</span> Database
           </p>

@@ -248,6 +248,7 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
       if (!programsMap[programId]) {
         programsMap[programId] = {
           id: programId,
+          displayName: programId,
           bandGroupIds: [],
           recaptureIds: [],
         };

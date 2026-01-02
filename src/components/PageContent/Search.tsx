@@ -1,34 +1,9 @@
 import { Input, Progress, Select, SelectItem, Chip, Button } from "@heroui/react";
 import { useState, useMemo, useCallback } from "react";
 import { useData } from "../../services/useData";
-import type { Capture } from "../../types";
+import type { BirdEvent } from "../../types";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import { CAPTURE_COLUMNS } from "./Programs/Captures/helpers";
-
-// // Capture properties available for filtering
-// const CAPTURE_COLUMNS: { key: keyof Capture; label: string; type: "string" | "number" }[] = [
-//   { key: "bandGroup", label: "Band Group", type: "string" },
-//   { key: "bandLastTwoDigits", label: "Band Last Two Digits", type: "string" },
-//   { key: "bandId", label: "Band ID", type: "string" },
-//   { key: "programId", label: "Program ID", type: "string" },
-//   { key: "bandPrefix", label: "Band Prefix", type: "string" },
-//   { key: "bandSuffix", label: "Band Suffix", type: "string" },
-//   { key: "species", label: "Species", type: "string" },
-//   { key: "wing", label: "Wing", type: "number" },
-//   { key: "age", label: "Age", type: "string" },
-//   { key: "howAged", label: "How Aged", type: "string" },
-//   { key: "sex", label: "Sex", type: "string" },
-//   { key: "howSexed", label: "How Sexed", type: "string" },
-//   { key: "fat", label: "Fat", type: "number" },
-//   { key: "weight", label: "Weight", type: "number" },
-//   { key: "date", label: "Date", type: "string" },
-//   { key: "time", label: "Time", type: "string" },
-//   { key: "bander", label: "Bander", type: "string" },
-//   { key: "scribe", label: "Scribe", type: "string" },
-//   { key: "net", label: "Net", type: "string" },
-//   { key: "notes", label: "Notes", type: "string" },
-//   { key: "captureType", label: "Capture Type", type: "string" },
-// ];
 
 // Operators for filtering
 const STRING_OPERATORS = [
@@ -55,17 +30,20 @@ const NUMBER_OPERATORS = [
 
 interface Filter {
   id: string;
-  property: keyof Capture;
+  property: typeof CAPTURE_COLUMNS[number]["key"];
   operator: string;
   value: string;
 }
 
 export default function Search() {
-  const { allCaptures, isLoadingAllCaptures } = useData();
+  const { birdEventsMap, isLoading } = useData();
+
+  // Convert birdEventsMap to array
+  const allBirdEvents = useMemo(() => Object.values(birdEventsMap).filter(event => event.modifiedEventId == null), [birdEventsMap]);
 
   // Filter state
   const [filters, setFilters] = useState<Filter[]>([]);
-  const [currentProperty, setCurrentProperty] = useState<keyof Capture | "">("");
+  const [currentProperty, setCurrentProperty] = useState<typeof CAPTURE_COLUMNS[number]["key"] | "">("");
   const [currentOperator, setCurrentOperator] = useState<string>("");
   const [currentValue, setCurrentValue] = useState<string>("");
 
@@ -82,7 +60,7 @@ export default function Search() {
 
   // Handle property selection change
   const handlePropertyChange = useCallback((keys: Iterable<React.Key>) => {
-    const selected = Array.from(keys)[0] as keyof Capture | undefined;
+    const selected = Array.from(keys)[0] as typeof CAPTURE_COLUMNS[number]["key"] | undefined;
     setCurrentProperty(selected ?? "");
     setCurrentOperator(""); // Reset operator when property changes
   }, []);
@@ -115,11 +93,11 @@ export default function Search() {
 
   // Apply filters to captures
   const filteredCaptures = useMemo(() => {
-    if (filters.length === 0) return allCaptures;
+    if (filters.length === 0) return allBirdEvents;
 
-    return allCaptures.filter((capture) => {
+    return allBirdEvents.filter((capture: BirdEvent) => {
       return filters.every((filter) => {
-        const rawValue = capture[filter.property];
+        const rawValue = (capture as any)[filter.property];
         const propType = CAPTURE_COLUMNS.find((p) => p.key === filter.property)?.type ?? "string";
 
         // Handle defined/not_defined operators (work for both types)
@@ -173,17 +151,17 @@ export default function Search() {
         }
       });
     });
-  }, [allCaptures, filters]);
+  }, [allBirdEvents, filters]);
 
   // Get operator label for display
-  const getOperatorLabel = (operator: string, propertyKey: keyof Capture) => {
+  const getOperatorLabel = (operator: string, propertyKey: string) => {
     const propType = CAPTURE_COLUMNS.find((p) => p.key === propertyKey)?.type ?? "string";
     const operators = propType === "number" ? NUMBER_OPERATORS : STRING_OPERATORS;
     return operators.find((o) => o.key === operator)?.label ?? operator;
   };
 
   // Get property label for display
-  const getPropertyLabel = (propertyKey: keyof Capture) => {
+  const getPropertyLabel = (propertyKey: string) => {
     return CAPTURE_COLUMNS.find((p) => p.key === propertyKey)?.label ?? propertyKey;
   };
 
@@ -200,7 +178,7 @@ export default function Search() {
             variant="bordered"
             labelPlacement="outside"
             size="md"
-            selectedKeys={currentProperty ? [currentProperty] : []}
+            selectedKeys={currentProperty ? [currentProperty as string] : []}
             onSelectionChange={handlePropertyChange}
             className="w-48"
           >
@@ -258,7 +236,7 @@ export default function Search() {
             {filters.map((filter) => (
               <div key={filter.id} className="flex items-center gap-1">
                 <Chip onClose={() => removeFilter(filter.id)} variant="flat" color="secondary" size="md">
-                  {getPropertyLabel(filter.property)} {getOperatorLabel(filter.operator, filter.property)}
+                  {getPropertyLabel(filter.property as string)} {getOperatorLabel(filter.operator, filter.property)}
                   {filter.operator !== "defined" && filter.operator !== "not_defined" && ` "${filter.value}"`}
                 </Chip>
               </div>
@@ -269,17 +247,17 @@ export default function Search() {
           </div>
         )}
 
-        {isLoadingAllCaptures && (
+        {isLoading && (
           <div className="w-full max-w-md flex flex-col gap-2">
             <Progress size="sm" isIndeterminate aria-label="Loading captures..." color="secondary" />
             <p className="text-sm">Loading all captures...</p>
           </div>
         )}
 
-        {!isLoadingAllCaptures && filters.length > 0 && filteredCaptures.length > 0 && (
+        {!isLoading && filters.length > 0 && filteredCaptures.length > 0 && (
           <div className="w-full">
             <h3 className="text-lg font-normal mb-2">
-              Filtered results ({filteredCaptures.length} of {allCaptures.length}):
+              Filtered results ({filteredCaptures.length} of {allBirdEvents.length}):
             </h3>
             <BirdEventsTable
               birdEvents={filteredCaptures}
@@ -289,7 +267,7 @@ export default function Search() {
           </div>
         )}
 
-        {!isLoadingAllCaptures && filters.length > 0 && filteredCaptures.length === 0 && (
+        {!isLoading && filters.length > 0 && filteredCaptures.length === 0 && (
           <div className="p-4">No captures match the current filters</div>
         )}
       </div>

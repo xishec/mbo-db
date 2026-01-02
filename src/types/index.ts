@@ -8,6 +8,7 @@ export type BandSizeToBandIdMap = Record<BandSize, string>;
 
 export interface Program {
   id: string;
+  displayName: string;
   bandGroupIds: string[];
   recaptureIds: string[];
 }

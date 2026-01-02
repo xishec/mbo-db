@@ -26,3 +26,5 @@ dist-ssr
 # firebase
 *.cache
 mbo-db-firebase-adminsdk-fbsvc-5fcd6de6b9.json
+
+release

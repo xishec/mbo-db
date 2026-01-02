@@ -14,6 +14,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build && electron-builder",
     "build:dir": "tsc -b && vite build && electron-builder --dir",
+    "build:win": "tsc -b && vite build && electron-builder --win",
+    "build:all": "tsc -b && vite build && electron-builder -mw",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -61,17 +63,32 @@
     "directories": {
       "output": "release"
     },
+    "icon": "public/mbo-logo.svg",
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "public/icon.icns",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
       ]
     },
     "win": {
+      "icon": "public/icon.ico",
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64", "arm64"]
+        }
       ]
     }
   }
