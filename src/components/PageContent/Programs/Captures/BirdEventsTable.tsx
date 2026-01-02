@@ -6,6 +6,7 @@ import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
 import { PencilSquareIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
+import { useData } from "../../../../services/useData";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
@@ -59,6 +60,7 @@ export default function BirdEventsTable({
   showHistory = false,
   hiddenColumns = [],
 }: BirdEventsTableProps) {
+  const { programsMap } = useData();
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>(
     initialSortDescriptors ?? [{ column: "date", direction: "descending" }]
   );
@@ -196,10 +198,23 @@ export default function BirdEventsTable({
         );
       }
 
+      if (columnKey === "programId") {
+        console.log(programsMap[item.programId].displayName);
+        return programsMap[item.programId]?.displayName;
+      }
+
       const cellValue = item[columnKey as keyof TableRow];
       return cellValue;
     },
-    [handleInspectBandId, handleInspectHistory, handleEdit, allowInspectBandId, allowInspectHistory, showHistory]
+    [
+      handleInspectBandId,
+      handleInspectHistory,
+      handleEdit,
+      allowInspectBandId,
+      allowInspectHistory,
+      showHistory,
+      programsMap,
+    ]
   );
 
   const primarySortDescriptor = sortDescriptors[0];

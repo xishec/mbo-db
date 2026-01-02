@@ -577,7 +577,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ...programsMap,
           [captureData.programId]: {
             id: captureData.programId,
-            displayName: captureData.programId,
+            displayName: existingProgram.displayName,
             bandGroupIds: newBandGroupIds,
             recaptureIds: newRecaptureIds,
           } as Program,

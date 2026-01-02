@@ -83,7 +83,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
             isInvalid={!!error}
             errorMessage={error}
           />
-        </ModalBody>handleClose
+        </ModalBody>
         <ModalFooter className="gap-4 p-8 pt-4">
           <Button
             color="danger"

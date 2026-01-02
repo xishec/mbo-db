@@ -492,7 +492,7 @@ export default function AddBirdEventModal({
                       const inputColor = getInputColor(columnKey);
 
                       const getReadonlyValue = () => {
-                        if (column.key === "programId") return selectedProgram?.id;
+                        if (column.key === "programId") return selectedProgram?.displayName;
                         if (useCurrentTime && (columnKey === "date" || columnKey === "time"))
                           return formData[columnKey];
                         // Make band fields readonly when prefilled from birdEventToModify
