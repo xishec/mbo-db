@@ -199,7 +199,6 @@ export default function BirdEventsTable({
       }
 
       if (columnKey === "programId") {
-        console.log(programsMap[item.programId].displayName);
         return programsMap[item.programId]?.displayName;
       }
 
@@ -222,6 +221,13 @@ export default function BirdEventsTable({
   // Filter columns based on hiddenColumns prop
   const displayColumns = CAPTURE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key));
 
+  // Create a stable key that changes when programsMap changes (for program name updates)
+  const tableKey = useMemo(() => {
+    // Include a hash of program display names to trigger re-render when they change
+    const programNames = Object.values(programsMap).map(p => p.displayName).sort().join(',');
+    return `table-${programNames}`;
+  }, [programsMap]);
+
   return (
     <>
       <div className="w-full flex flex-col gap-4">
@@ -229,6 +235,7 @@ export default function BirdEventsTable({
           {filteredRows.length} of {rows.length} {rows.length === 1 ? "capture" : "birdEvents"}
         </div>
         <Table
+          key={tableKey}
           isHeaderSticky
           aria-label="birdEvents table"
           sortDescriptor={primarySortDescriptor}

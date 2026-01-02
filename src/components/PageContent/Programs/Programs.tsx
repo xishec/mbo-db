@@ -77,7 +77,9 @@ export default function Programs() {
               Years
             </BreadcrumbItem>
             {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
-            {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram.displayName}</BreadcrumbItem>}
+            {selectedProgram && (
+              <BreadcrumbItem isCurrent>{programsMap[selectedProgram.id]?.displayName}</BreadcrumbItem>
+            )}
           </Breadcrumbs>
           {selectedProgram && isOnline && (
             <Tooltip content="Edit Program" placement="bottom" closeDelay={50}>
