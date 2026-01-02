@@ -1,5 +1,5 @@
 import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useData } from "../../services/useData";
 import type { Program } from "../../types";
 
@@ -10,7 +10,7 @@ interface EditProgramModalProps {
 }
 
 export default function EditProgramModal({ isOpen, onOpenChange, program }: EditProgramModalProps) {
-  const { updateProgram, isOnline } = useData();
+  const { updateProgram, isOnline, programsMap } = useData();
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -22,6 +22,20 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
       setError("");
     }
   }, [program]);
+
+  // Check if display name is unique (case-insensitive, excluding current program)
+  const isDuplicate = useMemo(() => {
+    if (!displayName.trim() || !program) return false;
+    const trimmedDisplayName = displayName.trim();
+    return Object.values(programsMap).some(
+      (p) => p.id !== program.id && p.displayName.toLowerCase() === trimmedDisplayName.toLowerCase()
+    );
+  }, [displayName, program, programsMap]);
+
+  // Check if displayName has changed
+  const hasChanged = useMemo(() => {
+    return displayName.trim() !== program?.displayName;
+  }, [displayName, program]);
 
   const handleSubmit = async () => {
     if (displayName.trim() && program) {
@@ -69,14 +83,14 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
               setError("");
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && displayName.trim()) {
+              if (e.key === "Enter" && displayName.trim() && !isDuplicate && hasChanged) {
                 handleSubmit();
               }
             }}
             isRequired
             autoFocus
-            isInvalid={!!error}
-            errorMessage={error}
+            isInvalid={!!error || isDuplicate}
+            errorMessage={error || (isDuplicate ? "A program with this display name already exists" : "")}
           />
         </ModalBody>
         <ModalFooter className="gap-4 p-8 pt-4">
@@ -86,7 +100,7 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
           <Button
             color="primary"
             onPress={handleSubmit}
-            isDisabled={!displayName.trim() || displayName.trim() === program?.displayName || !isOnline}
+            isDisabled={!displayName.trim() || !hasChanged || isDuplicate || !isOnline}
             isLoading={isLoading}
             className="flex-1"
           >

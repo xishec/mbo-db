@@ -661,18 +661,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // Validate unique displayName
+        // Trim whitespace from displayName
+        const trimmedDisplayName = displayName.trim();
+        if (!trimmedDisplayName) {
+          throw new Error("Display name cannot be empty");
+        }
+
+        // Validate unique displayName (case-insensitive)
         const existingProgram = Object.values(programsMap).find(
-          (p) => p.displayName.toLowerCase() === displayName.toLowerCase()
+          (p) => p.displayName.toLowerCase() === trimmedDisplayName.toLowerCase()
         );
         if (existingProgram) {
-          throw new Error(`A program with the display name "${displayName}" already exists`);
+          throw new Error(`A program with the display name "${trimmedDisplayName}" already exists`);
         }
 
         // Create new program directly in Firebase
         await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}`), {
           id: programId,
-          displayName: displayName,
+          displayName: trimmedDisplayName,
           bandGroupIds: [],
           recaptureIds: [],
         });
@@ -690,7 +696,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ...programsMap,
           [programId]: {
             id: programId,
-            displayName: displayName,
+            displayName: trimmedDisplayName,
             bandGroupIds: [],
             recaptureIds: [],
           },
@@ -717,7 +723,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           programsMap: newProgramsMap,
         });
 
-        logger.info("AddProgram", "Program added", { programId, year });
+        logger.info("AddProgram", "Program added", { programId, displayName: trimmedDisplayName, year });
       } catch (err) {
         logger.error("AddProgram", "Error adding program", err);
         throw err;
@@ -733,33 +739,59 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // Validate unique displayName (excluding current program)
-        const existingProgram = Object.values(programsMap).find(
-          (p) => p.id !== programId && p.displayName.toLowerCase() === newDisplayName.toLowerCase()
-        );
-        if (existingProgram) {
-          throw new Error(`A program with the display name "${newDisplayName}" already exists`);
-        }
-
         // Get the current program
         const currentProgram = programsMap[programId];
         if (!currentProgram) {
           throw new Error(`Program with ID "${programId}" not found`);
         }
 
+        // Trim whitespace from displayName
+        const trimmedDisplayName = newDisplayName.trim();
+        if (!trimmedDisplayName) {
+          throw new Error("Display name cannot be empty");
+        }
+
+        // Check if displayName actually changed
+        if (currentProgram.displayName === trimmedDisplayName) {
+          return;
+        }
+
+        // Validate unique displayName (case-insensitive, excluding current program)
+        const existingProgram = Object.values(programsMap).find(
+          (p) => p.id !== programId && p.displayName.toLowerCase() === trimmedDisplayName.toLowerCase()
+        );
+        if (existingProgram) {
+          throw new Error(`A program with the display name "${trimmedDisplayName}" already exists`);
+        }
+
         // Update program in Firebase (only displayName can change, ID remains the same)
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}/displayName`), newDisplayName);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}/displayName`), trimmedDisplayName);
 
         // Calculate new state
         const newProgramsMap = {
           ...programsMap,
           [programId]: {
             ...currentProgram,
-            displayName: newDisplayName,
+            displayName: trimmedDisplayName,
           },
         };
 
-        // Update React state
+        // Update IndexedDB first
+        const updatedAlphaData = {
+          yearsToProgramMap,
+          programsMap: newProgramsMap,
+          bandIdToBirdEventIdsMap,
+          birdEventsMap,
+          bandGroupsMap,
+          magicTable,
+          bandSizeToBandIdMap,
+        };
+        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, updatedAlphaData);
+
+        // Update lastModified timestamp in RTDB and IndexedDB
+        await updateLastModifiedTimestamp();
+
+        // Update React state after successful persistence
         setProgramsMap(newProgramsMap);
 
         // Update selectedProgram if it's the one we just modified
@@ -768,21 +800,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return newProgramsMap[programId];
         });
 
-        // Update lastModified timestamp in RTDB and IndexedDB
-        await updateLastModifiedTimestamp();
-
-        // Update IndexedDB with new state
-        await saveCompleteStateToIndexedDB({
-          programsMap: newProgramsMap,
-        });
-
-        logger.info("UpdateProgram", "Program updated", { programId, newDisplayName });
+        logger.info("UpdateProgram", "Program updated", { programId, newDisplayName: trimmedDisplayName });
       } catch (err) {
         logger.error("UpdateProgram", "Error updating program", err);
         throw err;
       }
     },
-    [isOnline, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+    [
+      isOnline,
+      programsMap,
+      yearsToProgramMap,
+      bandIdToBirdEventIdsMap,
+      birdEventsMap,
+      bandGroupsMap,
+      magicTable,
+      bandSizeToBandIdMap,
+      updateLastModifiedTimestamp,
+    ]
   );
 
   const updateBandSizeMap = useCallback(
