@@ -658,18 +658,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addProgram = useCallback(
-    async (programName: string, year: string) => {
+    async (programId: string, displayName: string, year: string) => {
       if (!isOnline) {
         throw new Error("Cannot add programs while offline");
       }
 
       try {
-        // Generate unique ID for the new program
-        const programId = programName;
-
         // Create new program directly in Firebase
         await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}`), {
           id: programId,
+          displayName: displayName,
           bandGroupIds: [],
           recaptureIds: [],
         });
@@ -687,6 +685,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ...programsMap,
           [programId]: {
             id: programId,
+            displayName: displayName,
             bandGroupIds: [],
             recaptureIds: [],
           },

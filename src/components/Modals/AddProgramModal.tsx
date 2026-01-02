@@ -9,16 +9,18 @@ interface AddProgramModalProps {
 
 export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModalProps) {
   const { addProgram } = useData();
-  const [programName, setProgramName] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [year, setYear] = useState(() => new Date().getFullYear().toString());
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (programName.trim() && year.trim()) {
+    if (displayName.trim() && year.trim()) {
       setIsLoading(true);
       try {
-        await addProgram(programName.trim(), year.trim());
-        setProgramName("");
+        // Auto-generate programId from timestamp
+        const programId = `${displayName.trim()}-${Date.now().toString()}`;
+        await addProgram(programId, displayName.trim(), year.trim());
+        setDisplayName("");
         setYear(new Date().getFullYear().toString());
         onOpenChange(false);
       } catch (err) {
@@ -34,7 +36,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
           <h2 className="text-2xl font-bold">Add New Program</h2>
-          <p className="text-sm font-normal">Enter a name and year for the new program</p>
+          <p className="text-sm font-normal">Enter a display name and year for the new program</p>
         </ModalHeader>
         <ModalBody className="gap-4 px-8 py-4">
           <Input
@@ -45,7 +47,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
             labelPlacement="outside"
             onChange={(e) => setYear(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && programName.trim() && year.trim()) {
+              if (e.key === "Enter" && displayName.trim() && year.trim()) {
                 handleSubmit();
               }
             }}
@@ -53,14 +55,14 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
             type="number"
           />
           <Input
-            label="Program Name"
-            placeholder="Enter program name"
+            label="Display Name"
+            placeholder="Enter display name (e.g., MBO Fall Migration)"
             variant="bordered"
-            value={programName}
+            value={displayName}
             labelPlacement="outside"
-            onChange={(e) => setProgramName(e.target.value)}
+            onChange={(e) => setDisplayName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && programName.trim() && year.trim()) {
+              if (e.key === "Enter" && displayName.trim() && year.trim()) {
                 handleSubmit();
               }
             }}
@@ -81,7 +83,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
           <Button
             color="primary"
             onPress={handleSubmit}
-            isDisabled={!programName.trim() || !year.trim()}
+            isDisabled={!displayName.trim() || !year.trim()}
             isLoading={isLoading}
             className="flex-1"
           >

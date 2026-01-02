@@ -71,7 +71,7 @@ export default function Programs() {
             Years
           </BreadcrumbItem>
           {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
-          {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram.id}</BreadcrumbItem>}
+          {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram.displayName}</BreadcrumbItem>}
         </Breadcrumbs>
         {!selectedProgram && (
           <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
@@ -123,9 +123,9 @@ export default function Programs() {
             <TableBody emptyContent={selectedYear ? "No programs found" : "Select a year"}>
               {[...programs]
                 .sort((a, b) => a.localeCompare(b))
-                .map((name) => (
-                  <TableRow key={name}>
-                    <TableCell>{name}</TableCell>
+                .map((programId) => (
+                  <TableRow key={programId}>
+                    <TableCell>{programsMap[programId]?.displayName}</TableCell>
                   </TableRow>
                 ))}
             </TableBody>

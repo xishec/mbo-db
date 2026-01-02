@@ -189,7 +189,7 @@ export interface DataContextType {
     bandSize: BandSize,
     previousEventId: string | undefined
   ) => Promise<void>;
-  addProgram: (programName: string, year: string) => Promise<void>;
+  addProgram: (programId: string, displayName: string, year: string) => Promise<void>;
   syncQueue: () => Promise<void>;
   updateBandSizeMap: (bandSizeMap: BandSizeToBandIdMap) => Promise<void>;
 }
