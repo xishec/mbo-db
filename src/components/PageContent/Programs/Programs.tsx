@@ -20,7 +20,7 @@ import EditProgramModal from "../../Modals/EditProgramModal";
 import type { Program } from "../../../types";
 
 export default function Programs() {
-  const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading } = useData();
+  const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading, isOnline } = useData();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
   const [isEditProgramModalOpen, setIsEditProgramModalOpen] = useState(false);
   const [programToEdit, setProgramToEdit] = useState<Program | null>(null);
@@ -79,7 +79,7 @@ export default function Programs() {
             {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
             {selectedProgram && <BreadcrumbItem isCurrent>{selectedProgram.displayName}</BreadcrumbItem>}
           </Breadcrumbs>
-          {selectedProgram && (
+          {selectedProgram && isOnline && (
             <Tooltip content="Edit Program" placement="bottom" closeDelay={50}>
               <Button
                 isIconOnly

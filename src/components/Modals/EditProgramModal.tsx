@@ -10,7 +10,7 @@ interface EditProgramModalProps {
 }
 
 export default function EditProgramModal({ isOpen, onOpenChange, program }: EditProgramModalProps) {
-  const { updateProgram } = useData();
+  const { updateProgram, isOnline } = useData();
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -80,19 +80,13 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
           />
         </ModalBody>
         <ModalFooter className="gap-4 p-8 pt-4">
-          <Button
-            color="danger"
-            variant="bordered"
-            onPress={handleClose}
-            className="flex-1"
-            isDisabled={isLoading}
-          >
+          <Button color="danger" variant="bordered" onPress={handleClose} className="flex-1" isDisabled={isLoading}>
             Cancel
           </Button>
           <Button
             color="primary"
             onPress={handleSubmit}
-            isDisabled={!displayName.trim() || displayName.trim() === program?.displayName}
+            isDisabled={!displayName.trim() || displayName.trim() === program?.displayName || !isOnline}
             isLoading={isLoading}
             className="flex-1"
           >
