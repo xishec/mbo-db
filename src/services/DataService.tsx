@@ -61,7 +61,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const cachedTimestamp = await getLastUpdated(CURRENT_ENVIRONMENT);
 
         // Get the lastModified timestamp from Firebase
-        const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`));
+        const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`));
         const firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
 
         // Log timestamps for debugging
@@ -314,7 +314,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    */
   const updateLastModifiedTimestamp = useCallback(async (): Promise<void> => {
     const now = Date.now();
-    await set(ref(db, `${CURRENT_ENVIRONMENT}/lastModified`), now);
+    await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`), now);
     await saveLastUpdated(CURRENT_ENVIRONMENT, now);
   }, []);
 
@@ -581,9 +581,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ...programsMap,
           [captureData.programId]: {
             id: captureData.programId,
+            displayName: captureData.programId,
             bandGroupIds: newBandGroupIds,
             recaptureIds: newRecaptureIds,
-          },
+          } as Program,
         };
 
         // New yearsToProgramMap

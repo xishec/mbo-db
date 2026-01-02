@@ -47,10 +47,10 @@ class Logger {
     // Notify listeners
     this.notifyListeners();
 
-    // Also log to console for development
-    const emoji = this.getEmojiForLevel(level);
-    const timestamp = new Date(entry.timestamp).toLocaleTimeString();
-    console.log(`${emoji} [${timestamp}] [${category}] ${message}`, data ?? "");
+    // // Also log to console for development
+    // const emoji = this.getEmojiForLevel(level);
+    // const timestamp = new Date(entry.timestamp).toLocaleTimeString();
+    // console.log(`${emoji} [${timestamp}] [${category}] ${message}`, data ?? "");
   }
 
   private getEmojiForLevel(level: LogLevel): string {

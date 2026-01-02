@@ -96,7 +96,7 @@ export function parseCSV(csvContent: string): BirdEvent[] {
   const headers = parseCSVLine(rows[0]);
   const birdEvents: BirdEvent[] = [];
 
-  const lastRows = rows.slice(-10000);
+  const lastRows = rows.slice(-5000);
   // const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
@@ -374,7 +374,8 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   await set(ref(db, "alpha/magicTable/mbo"), mboMagicTable);
 
   // Set lastModified timestamp to signal clients that data has been updated
-  await set(ref(db, "alpha/lastModified"), Date.now());
+  await set(ref(db, "alpha/metadata/lastModified"), Date.now());
+  await set(ref(db, "alpha/metadata/dbVersion"), Date.now());
 
   console.log("✅ All data uploaded successfully!");
 }

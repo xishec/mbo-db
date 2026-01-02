@@ -186,9 +186,7 @@ export default function BirdEventsTable({
                   <ClockIcon className="w-4 h-4" />
                 </span>
               )}
-              {showHistory ? (
-                null
-              ) : (
+              {showHistory ? null : (
                 <span className="cursor-pointer" onClick={() => handleEdit(item.id)}>
                   <PencilSquareIcon className="w-4 h-4" />
                 </span>
