@@ -475,14 +475,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addBirdEvent = useCallback(
-    async (
-      captureData: CaptureFormData,
-      birdEventType: BirdEventType,
-      bandSize: BandSize,
-      previousEventId: string | undefined
-    ) => {
+    async (captureData: CaptureFormData, bandSize: BandSize, previousEventId: string | undefined) => {
       try {
         // 1. Create Band and BirdEvent objects
+        const birdEventType = captureData.captureType as BirdEventType;
         const bandPrefix = captureData.bandGroup.substring(0, 4);
         const bandSuffix = captureData.bandGroup.substring(4) + captureData.bandLastTwoDigits;
         const band = new Band(bandPrefix, bandSuffix);

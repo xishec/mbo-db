@@ -6,6 +6,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Select,
+  SelectItem,
   Switch,
   Table,
   TableBody,
@@ -40,8 +42,15 @@ export default function AddBirdEventModal({
   bandSize = BandSize.Other,
   birdEventToModify,
 }: AddBirdEventModalProps) {
-  const { selectedProgram, magicTable, bandIdToBirdEventIdsMap, birdEventsMap, addBirdEvent, bandSizeToBandIdMap } =
-    useData();
+  const {
+    selectedProgram,
+    bandGroupsMap,
+    magicTable,
+    bandIdToBirdEventIdsMap,
+    birdEventsMap,
+    addBirdEvent,
+    bandSizeToBandIdMap,
+  } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
@@ -168,10 +177,34 @@ export default function AddBirdEventModal({
       .filter((event) => !birdEventToModify || event.id !== birdEventToModify.id);
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap, birdEventToModify]);
 
+  // Compute suggested capture type (doesn't auto-update formData)
+  const suggestedCaptureType = useMemo(() => {
+    if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
+    else if (pastBirdEvents.length === 0) {
+      if (bandGroupsMap[formData.bandGroup]) return BirdEventType.Banded;
+      else return BirdEventType.Alien;
+    } else {
+      const currentDate = new Date(formData.date);
+      const hasRecentCapture = pastBirdEvents.some((capture) => {
+        const captureDate = new Date(capture.date);
+        const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 90;
+      });
+      return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
+    }
+  }, [bandGroupsMap, formData.bandGroup, formData.date, formData.species, pastBirdEvents]);
+
+  // Set captureType to suggested value only when modal opens or key dependencies change
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData((prev) => ({ ...prev, captureType: suggestedCaptureType }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, suggestedCaptureType]);
+
   // Auto-fill species from past bird events whenever bandId changes
   if (bandId && bandId !== lastBandId) {
     let existingSpecies: string | undefined;
-    
+
     if (birdEventToModify) {
       existingSpecies = birdEventToModify.species;
     } else {
@@ -182,7 +215,7 @@ export default function AddBirdEventModal({
         .filter((event) => event.modifiedEventId == null);
       existingSpecies = events[0]?.species;
     }
-    
+
     if (existingSpecies) {
       setFormData((prev) => ({ ...prev, species: existingSpecies }));
     }
@@ -267,7 +300,7 @@ export default function AddBirdEventModal({
     }
 
     // Check if bird is being recaptured on the same day
-    if (pastBirdEvents.length > 0 && formData.date) {
+    if (pastBirdEvents.length > 0 && formData.date && useCurrentTime) {
       const sameDayCapture = pastBirdEvents.some((capture) => capture.date === formData.date);
       if (sameDayCapture) {
         messages.push({
@@ -285,20 +318,18 @@ export default function AddBirdEventModal({
     }
 
     return messages;
-  }, [rangeValidation, formData, sexCode, pyleRange, mboRange, pastBirdEvents]);
-
-  // Compute auto values (without setState)
-  const displayCaptureType = useMemo(() => {
-    if (birdEventToModify) return birdEventToModify.birdEventType;
-    if (!formData.date || pastBirdEvents.length === 0) return BirdEventType.None;
-    const currentDate = new Date(formData.date);
-    const hasRecentCapture = pastBirdEvents.some((capture) => {
-      const captureDate = new Date(capture.date);
-      const daysDiff = Math.abs((currentDate.getTime() - captureDate.getTime()) / (1000 * 60 * 60 * 24));
-      return daysDiff <= 90;
-    });
-    return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
-  }, [birdEventToModify, formData.date, pastBirdEvents]);
+  }, [
+    sexCode,
+    rangeValidation.wing.pyle,
+    rangeValidation.wing.mbo,
+    rangeValidation.weight.pyle,
+    rangeValidation.weight.mbo,
+    pyleRange,
+    mboRange,
+    pastBirdEvents,
+    formData,
+    useCurrentTime,
+  ]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
@@ -369,13 +400,13 @@ export default function AddBirdEventModal({
 
   const handleSave = useCallback(async () => {
     try {
-      await addBirdEvent(formData, displayCaptureType, bandSize, birdEventToModify?.id);
+      await addBirdEvent(formData, bandSize, birdEventToModify?.id);
       handleClose();
     } catch (err) {
       console.error("Failed to save capture:", err);
       alert("Failed to save capture. Please try again.");
     }
-  }, [formData, handleClose, addBirdEvent, displayCaptureType, bandSize, birdEventToModify]);
+  }, [formData, handleClose, addBirdEvent, bandSize, birdEventToModify]);
 
   const getInputColor = (columnKey: keyof CaptureFormData) => {
     // Check wing range validation
@@ -461,7 +492,6 @@ export default function AddBirdEventModal({
 
                       const getReadonlyValue = () => {
                         if (column.key === "programId") return selectedProgram?.id;
-                        if (column.key === "captureType") return displayCaptureType;
                         if (useCurrentTime && (columnKey === "date" || columnKey === "time"))
                           return formData[columnKey];
                         // Make band fields readonly when prefilled from birdEventToModify
@@ -478,6 +508,26 @@ export default function AddBirdEventModal({
                             <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border whitespace-nowrap">
                               {readonlyValue}
                             </div>
+                          ) : column.key === "captureType" ? (
+                            <Select
+                              variant="bordered"
+                              aria-label={column.label}
+                              selectedKeys={[formData.captureType]}
+                              onSelectionChange={(keys) => {
+                                const value = Array.from(keys)[0] as string;
+                                setFormData((prev) => ({ ...prev, captureType: value }));
+                              }}
+                              classNames={{
+                                trigger: "min-h-unit-10 h-unit-10",
+                                value: "text-sm",
+                              }}
+                            >
+                              {Object.values(BirdEventType).map((type) => (
+                                <SelectItem key={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </Select>
                           ) : (
                             <Input
                               ref={(el) => {

@@ -185,7 +185,6 @@ export interface DataContextType {
   // Actions
   addBirdEvent: (
     captureData: CaptureFormData,
-    birdEventType: BirdEventType,
     bandSize: BandSize,
     previousEventId: string | undefined
   ) => Promise<void>;
