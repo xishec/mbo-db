@@ -8,7 +8,7 @@ export const CAPTURE_COLUMNS: CaptureColumn[] = [
   { key: "bandGroup", label: "Band Group", maxLength: 7, minLength: 7 },
   { key: "bandLastTwoDigits", label: "Band", maxLength: 2, minLength: 2 },
   { key: "species", label: "Species", maxLength: 4, minLength: 4 },
-  { key: "captureType", label: "Capture Type", className: "min-w-[125px]" },
+  { key: "birdEventType", label: "Event Type", className: "min-w-[125px]" },
   { key: "date", label: "Date", type: "date" },
   { key: "time", label: "Time", type: "time" },
   { key: "wing", label: "Wing", className: "min-w-[60px]", maxLength: 4, minLength: 2 },
@@ -89,7 +89,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     bander: "",
     scribe: "",
     net: "",
-    captureType: BirdEventType.None,
+    birdEventType: BirdEventType.None,
     notes: "",
   };
 }

@@ -87,6 +87,7 @@ export default function NewCaptures() {
           {bandGroupOptions.map((bandGroupId) => {
             const count =
               bandGroupToNewCaptures[bandGroupId].filter((birdEvent) => birdEvent.modifiedEventId == null).length ?? 0;
+            if (count === 0) return null;
             return (
               <AutocompleteItem key={bandGroupId} endContent={`${count} used`}>
                 {bandGroupId}

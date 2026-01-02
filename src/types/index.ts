@@ -211,7 +211,7 @@ export interface CaptureFormData {
   bander: string;
   scribe: string;
   net: string;
-  captureType: string;
+  birdEventType: string;
   notes: string;
 }
 

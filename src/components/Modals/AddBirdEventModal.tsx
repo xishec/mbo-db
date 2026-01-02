@@ -178,7 +178,8 @@ export default function AddBirdEventModal({
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap, birdEventToModify]);
 
   // Compute suggested capture type (doesn't auto-update formData)
-  const suggestedCaptureType = useMemo(() => {
+  const suggestedBirdEventType = useMemo(() => {
+    if (birdEventToModify) return birdEventToModify.birdEventType;
     if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
     else if (pastBirdEvents.length === 0) {
       if (bandGroupsMap[formData.bandGroup]) return BirdEventType.Banded;
@@ -192,14 +193,14 @@ export default function AddBirdEventModal({
       });
       return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
     }
-  }, [bandGroupsMap, formData.bandGroup, formData.date, formData.species, pastBirdEvents]);
+  }, [bandGroupsMap, birdEventToModify, formData.bandGroup, formData.date, formData.species, pastBirdEvents]);
 
-  // Set captureType to suggested value only when modal opens or key dependencies change
+  // Set birdEventType to suggested value only when modal opens or key dependencies change
   useEffect(() => {
     if (!isOpen) return;
-    setFormData((prev) => ({ ...prev, captureType: suggestedCaptureType }));
+    setFormData((prev) => ({ ...prev, birdEventType: suggestedBirdEventType }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, suggestedCaptureType]);
+  }, [isOpen, suggestedBirdEventType]);
 
   // Auto-fill species from past bird events whenever bandId changes
   if (bandId && bandId !== lastBandId) {
@@ -335,7 +336,7 @@ export default function AddBirdEventModal({
     const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
     if (currentIndex < CAPTURE_COLUMNS.length - 1) {
       const nextKey = CAPTURE_COLUMNS.slice(currentIndex + 1).find(
-        (col) => !["captureType", "date", "time"].includes(col.key)
+        (col) => !["birdEventType", "date", "time"].includes(col.key)
       )?.key;
       if (!nextKey) return;
 
@@ -348,7 +349,7 @@ export default function AddBirdEventModal({
     if (currentIndex > 0) {
       const prevKey = CAPTURE_COLUMNS.slice(0, currentIndex)
         .reverse()
-        .find((col) => !["captureType", "date", "time"].includes(col.key))?.key;
+        .find((col) => !["birdEventType", "date", "time"].includes(col.key))?.key;
       if (!prevKey) return;
 
       inputRefs.current.get(prevKey)?.focus();
@@ -508,14 +509,14 @@ export default function AddBirdEventModal({
                             <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border whitespace-nowrap">
                               {readonlyValue}
                             </div>
-                          ) : column.key === "captureType" ? (
+                          ) : column.key === "birdEventType" ? (
                             <Select
                               variant="bordered"
                               aria-label={column.label}
-                              selectedKeys={[formData.captureType]}
+                              selectedKeys={[formData.birdEventType]}
                               onSelectionChange={(keys) => {
                                 const value = Array.from(keys)[0] as string;
-                                setFormData((prev) => ({ ...prev, captureType: value }));
+                                setFormData((prev) => ({ ...prev, birdEventType: value }));
                               }}
                               classNames={{
                                 trigger: "min-h-unit-10 h-unit-10",
@@ -523,9 +524,7 @@ export default function AddBirdEventModal({
                               }}
                             >
                               {Object.values(BirdEventType).map((type) => (
-                                <SelectItem key={type}>
-                                  {type}
-                                </SelectItem>
+                                <SelectItem key={type}>{type}</SelectItem>
                               ))}
                             </Select>
                           ) : (

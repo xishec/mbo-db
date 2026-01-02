@@ -27,7 +27,7 @@ function birdEventToRow(event: BirdEvent): TableRow {
     bander: event.bander,
     scribe: event.scribe,
     net: event.net,
-    captureType: event.birdEventType,
+    birdEventType: event.birdEventType,
     notes: event.notes,
     modifiedEventId: event.modifiedEventId,
     previousEventId: event.previousEventId,
