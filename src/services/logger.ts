@@ -53,22 +53,22 @@ class Logger {
     // console.log(`${emoji} [${timestamp}] [${category}] ${message}`, data ?? "");
   }
 
-  private getEmojiForLevel(level: LogLevel): string {
-    switch (level) {
-      case LogLevel.DEBUG:
-        return "🔍";
-      case LogLevel.INFO:
-        return "ℹ️";
-      case LogLevel.WARN:
-        return "⚠️";
-      case LogLevel.ERROR:
-        return "❌";
-      case LogLevel.SYNC:
-        return "🔄";
-      default:
-        return "📝";
-    }
-  }
+  // private getEmojiForLevel(level: LogLevel): string {
+  //   switch (level) {
+  //     case LogLevel.DEBUG:
+  //       return "🔍";
+  //     case LogLevel.INFO:
+  //       return "ℹ️";
+  //     case LogLevel.WARN:
+  //       return "⚠️";
+  //     case LogLevel.ERROR:
+  //       return "❌";
+  //     case LogLevel.SYNC:
+  //       return "🔄";
+  //     default:
+  //       return "📝";
+  //   }
+  // }
 
   debug(category: string, message: string, data?: unknown) {
     this.addLog(LogLevel.DEBUG, category, message, data);

@@ -17,7 +17,10 @@
     "build:win": "tsc -b && vite build && electron-builder --win",
     "build:all": "tsc -b && vite build && electron-builder -mw",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-icons": "npx tsx scripts/generate-icons.ts",
+    "generate-icns": "bash scripts/generate-icns.sh",
+    "generate-ico": "npx tsx scripts/generate-ico.ts"
   },
   "main": "dist-electron/main.cjs",
   "dependencies": {
