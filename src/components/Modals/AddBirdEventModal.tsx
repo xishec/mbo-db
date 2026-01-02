@@ -179,9 +179,10 @@ export default function AddBirdEventModal({
 
   // Compute suggested capture type (doesn't auto-update formData)
   const suggestedBirdEventType = useMemo(() => {
+    if (formData.bandGroup.length !== 7) return BirdEventType.None;
     if (birdEventToModify) return birdEventToModify.birdEventType;
     if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
-    else if (pastBirdEvents.length === 0) {
+    if (pastBirdEvents.length === 0) {
       if (bandGroupsMap[formData.bandGroup]) return BirdEventType.Banded;
       else return BirdEventType.Alien;
     } else {
@@ -401,7 +402,8 @@ export default function AddBirdEventModal({
 
   const handleSave = useCallback(async () => {
     try {
-      await addBirdEvent(formData, bandSize, birdEventToModify?.id);
+      const bandSizeToSend = formData.birdEventType === BirdEventType.Banded ? bandSize : BandSize.Other;
+      await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
       handleClose();
     } catch (err) {
       console.error("Failed to save capture:", err);
