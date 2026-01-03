@@ -47,6 +47,7 @@ interface BirdEventsTableProps {
   allowInspectHistory?: boolean;
   showHistory?: boolean;
   hiddenColumns?: string[];
+  birdEventIdToHighlight?: string;
 }
 
 export default function BirdEventsTable({
@@ -59,6 +60,7 @@ export default function BirdEventsTable({
   allowInspectHistory = false,
   showHistory = false,
   hiddenColumns = [],
+  birdEventIdToHighlight,
 }: BirdEventsTableProps) {
   const { programsMap, isLoggedIn } = useData();
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>(
@@ -143,6 +145,7 @@ export default function BirdEventsTable({
     (eventId: string) => {
       const event = birdEvents.find((e) => e.id === eventId);
       if (event && event.band) {
+        setSelectedBirdEvent(event);
         setSelectedBandId(event.band.id);
         setIsCaptureHistoryModalOpen(true);
       }
@@ -175,7 +178,6 @@ export default function BirdEventsTable({
   const renderCell = useCallback(
     (item: TableRow, columnKey: React.Key) => {
       if (columnKey === "actions") {
-        console.log(isLoggedIn)
         return (
           <div className="relative flex items-center justify-center gap-2">
             <>
@@ -247,6 +249,10 @@ export default function BirdEventsTable({
           onSortChange={handleSortChange}
           isVirtualized
           maxTableHeight={maxTableHeight}
+          selectionMode={birdEventIdToHighlight ? "single" : "none"}
+          selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
+          disallowEmptySelection
+          color="primary"
         >
           <TableHeader columns={displayColumns}>
             {(column) => (
@@ -288,6 +294,7 @@ export default function BirdEventsTable({
         isOpen={isCaptureHistoryModalOpen}
         onOpenChange={setIsCaptureHistoryModalOpen}
         bandId={selectedBandId}
+        birdEventIdToHighlight={selectedBirdEvent?.id || undefined}
       />
       {selectedBirdEvent && (
         <ModificationHistoryModal

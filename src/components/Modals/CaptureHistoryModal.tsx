@@ -7,9 +7,15 @@ interface CaptureHistoryModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   bandId: string | null;
+  birdEventIdToHighlight?: string;
 }
 
-export default function CaptureHistoryModal({ isOpen, onOpenChange, bandId }: CaptureHistoryModalProps) {
+export default function CaptureHistoryModal({
+  isOpen,
+  onOpenChange,
+  bandId,
+  birdEventIdToHighlight,
+}: CaptureHistoryModalProps) {
   const { bandIdToBirdEventIdsMap, birdEventsMap } = useData();
 
   const birdEvents = useMemo(() => {
@@ -43,6 +49,7 @@ export default function CaptureHistoryModal({ isOpen, onOpenChange, bandId }: Ca
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
                   allowInspectHistory
                   hiddenColumns={["bandGroup", "bandLastTwoDigits"]}
+                  birdEventIdToHighlight={birdEventIdToHighlight}
                 />
               ) : (
                 <p>No captures found for this band.</p>
