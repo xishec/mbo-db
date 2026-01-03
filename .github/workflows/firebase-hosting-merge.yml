@@ -50,10 +50,8 @@ jobs:
           name: release-${{ matrix.os }}
           path: |
             release/*.dmg
-            release/*.zip
             release/*.exe
-            release/*.blockmap
-          retention-days: 7
+          retention-days: 3650
   
   # Create GitHub Release with all artifacts
   create_release:
