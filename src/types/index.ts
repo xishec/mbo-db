@@ -163,6 +163,10 @@ export interface DataContextType {
   isLoading: boolean;
   error: string | null;
 
+  // User authentication
+  isLoggedIn: boolean;
+  isAdmin: boolean;
+
   // Selected program
   selectedProgram: Program | null;
   selectProgram: (program: Program | null) => void;

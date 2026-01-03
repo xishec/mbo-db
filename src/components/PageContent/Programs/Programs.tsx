@@ -20,7 +20,7 @@ import EditProgramModal from "../../Modals/EditProgramModal";
 import type { Program } from "../../../types";
 
 export default function Programs() {
-  const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading, isOnline } = useData();
+  const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading, isOnline, isLoggedIn } = useData();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
   const [isEditProgramModalOpen, setIsEditProgramModalOpen] = useState(false);
   const [programToEdit, setProgramToEdit] = useState<Program | null>(null);
@@ -81,7 +81,7 @@ export default function Programs() {
               <BreadcrumbItem isCurrent>{programsMap[selectedProgram.id]?.displayName}</BreadcrumbItem>
             )}
           </Breadcrumbs>
-          {selectedProgram && isOnline && (
+          {selectedProgram && isOnline && isLoggedIn && (
             <Tooltip content="Edit Program" placement="bottom" closeDelay={50}>
               <Button
                 isIconOnly
@@ -97,7 +97,7 @@ export default function Programs() {
             </Tooltip>
           )}
         </div>
-        {!selectedProgram && (
+        {!selectedProgram && isLoggedIn && (
           <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
             Add Program
           </Button>

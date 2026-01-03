@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { get, ref, set } from "firebase/database";
-import { db, CURRENT_ENVIRONMENT } from "../firebase";
+import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
   type AlphaData,
   type YearToProgramMap,
@@ -27,6 +27,7 @@ import {
 } from "./indexedDB";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
+import { onAuthStateChanged, type User } from "firebase/auth";
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -36,6 +37,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [forceOffline, setForceOffline] = useState(false);
   const actualIsOnline = useOnlineStatus();
   const isOnline = forceOffline ? false : actualIsOnline;
+
+  // User authentication
+  const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // All data from alpha/
   const [yearsToProgramMap, setYearsToProgramMap] = useState<YearToProgramMap>({});
@@ -149,6 +154,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Monitor auth state and check if user is admin
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+
+      if (currentUser) {
+        // Check if user is admin from database
+        try {
+          const roleRef = ref(db, `users/${currentUser.uid}/role`);
+          const snapshot = await get(roleRef);
+          setIsAdmin(snapshot.val() === "admin");
+        } catch (error) {
+          logger.error("Auth", "Error checking admin status", error);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   /**
@@ -476,6 +504,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addBirdEvent = useCallback(
     async (captureData: CaptureFormData, bandSize: BandSize, previousEventId: string | undefined) => {
+      if (!user) {
+        throw new Error("Must be logged in to add bird events");
+      }
+
       try {
         // 1. Create Band and BirdEvent objects
         const birdEventType = captureData.birdEventType as BirdEventType;
@@ -640,6 +672,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     },
     [
+      user,
       bandIdToBirdEventIdsMap,
       birdEventsMap,
       bandGroupsMap,
@@ -656,6 +689,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addProgram = useCallback(
     async (programId: string, displayName: string, year: string) => {
+      if (!user) {
+        throw new Error("Must be logged in to add programs");
+      }
       if (!isOnline) {
         throw new Error("Cannot add programs while offline");
       }
@@ -729,11 +765,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [isOnline, yearsToProgramMap, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+    [user, isOnline, yearsToProgramMap, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
   const updateProgram = useCallback(
     async (programId: string, newDisplayName: string) => {
+      if (!user) {
+        throw new Error("Must be logged in to update programs");
+      }
       if (!isOnline) {
         throw new Error("Cannot update programs while offline");
       }
@@ -807,6 +846,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     },
     [
+      user,
       isOnline,
       programsMap,
       yearsToProgramMap,
@@ -821,6 +861,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateBandSizeMap = useCallback(
     async (newBandSizeMap: Record<BandSize, string>) => {
+      if (!user) {
+        throw new Error("Must be logged in to update band size map");
+      }
+
       try {
         // Update React state immediately (works both online and offline)
         setBandSizeToBandIdMap(newBandSizeMap);
@@ -845,7 +889,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+    [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
   return (
@@ -853,6 +897,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoading,
         error,
+        isLoggedIn: !!user,
+        isAdmin,
         selectedProgram,
         selectProgram: setSelectedProgram,
         yearsToProgramMap,

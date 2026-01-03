@@ -60,7 +60,7 @@ export default function BirdEventsTable({
   showHistory = false,
   hiddenColumns = [],
 }: BirdEventsTableProps) {
-  const { programsMap } = useData();
+  const { programsMap, isLoggedIn } = useData();
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>(
     initialSortDescriptors ?? [{ column: "date", direction: "descending" }]
   );
@@ -175,6 +175,7 @@ export default function BirdEventsTable({
   const renderCell = useCallback(
     (item: TableRow, columnKey: React.Key) => {
       if (columnKey === "actions") {
+        console.log(isLoggedIn)
         return (
           <div className="relative flex items-center justify-center gap-2">
             <>
@@ -188,7 +189,7 @@ export default function BirdEventsTable({
                   <ClockIcon className="w-4 h-4" />
                 </span>
               )}
-              {showHistory ? null : (
+              {showHistory || !isLoggedIn ? null : (
                 <span className="cursor-pointer" onClick={() => handleEdit(item.id)}>
                   <PencilSquareIcon className="w-4 h-4" />
                 </span>
@@ -213,6 +214,7 @@ export default function BirdEventsTable({
       allowInspectHistory,
       showHistory,
       programsMap,
+      isLoggedIn,
     ]
   );
 
@@ -224,7 +226,10 @@ export default function BirdEventsTable({
   // Create a stable key that changes when programsMap changes (for program name updates)
   const tableKey = useMemo(() => {
     // Include a hash of program display names to trigger re-render when they change
-    const programNames = Object.values(programsMap).map(p => p.displayName).sort().join(',');
+    const programNames = Object.values(programsMap)
+      .map((p) => p.displayName)
+      .sort()
+      .join(",");
     return `table-${programNames}`;
   }, [programsMap]);
 
