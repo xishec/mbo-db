@@ -402,7 +402,10 @@ export default function AddBirdEventModal({
 
   const handleSave = useCallback(async () => {
     try {
-      const bandSizeToSend = formData.birdEventType === BirdEventType.Banded ? bandSize : BandSize.Other;
+      const bandSizeToSend =
+        formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None
+          ? bandSize
+          : BandSize.Other;
       await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
       handleClose();
     } catch (err) {
@@ -468,9 +471,11 @@ export default function AddBirdEventModal({
               <div className="flex flex-row items-center gap-1 font-bold">
                 {birdEventToModify ? "Modify" : "Add"} Capture
               </div>
-              <Switch isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
-                Use current time
-              </Switch>
+              {!birdEventToModify && (
+                <Switch isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
+                  Use current time
+                </Switch>
+              )}
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
               {formData.species.length === 4 && (pyleSpeciesRange || mboSpeciesRange) && (

@@ -96,8 +96,8 @@ export function parseCSV(csvContent: string): BirdEvent[] {
   const headers = parseCSVLine(rows[0]);
   const birdEvents: BirdEvent[] = [];
 
-  const lastRows = rows.slice(-5000);
-  // const lastRows = rows;
+  // const lastRows = rows.slice(-5000);
+  const lastRows = rows;
 
   for (let i = 1; i < lastRows.length; i++) {
     const row = lastRows[i].trim();
@@ -232,7 +232,7 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
     // bandGroupsMap
     const bandGroupId = birdEvent.band.bandGroupId;
     const birdEventType = birdEvent.birdEventType;
-    if (bandGroupId && birdEventType === BirdEventType.Banded) {
+    if (bandGroupId && (birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None)) {
       if (!bandGroupsMap[bandGroupId]) {
         bandGroupsMap[bandGroupId] = {
           id: bandGroupId,
@@ -253,7 +253,7 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
           recaptureIds: [],
         };
       }
-      const isNewCapture = birdEventType === BirdEventType.Banded;
+      const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
       if (isNewCapture && !programsMap[programId].bandGroupIds.includes(bandGroupId)) {
         programsMap[programId].bandGroupIds.push(bandGroupId);
       }
