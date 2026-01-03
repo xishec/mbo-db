@@ -191,7 +191,7 @@ export default function BirdEventsTable({
                   <ClockIcon className="w-4 h-4" />
                 </span>
               )}
-              {showHistory || !isLoggedIn ? null : (
+              {allowInspectHistory && isLoggedIn && (
                 <span className="cursor-pointer" onClick={() => handleEdit(item.id)}>
                   <PencilSquareIcon className="w-4 h-4" />
                 </span>
@@ -214,7 +214,6 @@ export default function BirdEventsTable({
       handleEdit,
       allowInspectBandId,
       allowInspectHistory,
-      showHistory,
       programsMap,
       isLoggedIn,
     ]
@@ -249,10 +248,10 @@ export default function BirdEventsTable({
           onSortChange={handleSortChange}
           isVirtualized
           maxTableHeight={maxTableHeight}
-          selectionMode={birdEventIdToHighlight ? "single" : "none"}
+          selectionMode="single"
           selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
           disallowEmptySelection
-          color="primary"
+          color="default"
         >
           <TableHeader columns={displayColumns}>
             {(column) => (
