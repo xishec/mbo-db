@@ -19,7 +19,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
-import { CAPTURE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
+import { TABLE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
 import {
   formatFieldValue,
   getApplicableRange,
@@ -312,7 +312,7 @@ export default function AddBirdEventModal({
       }
     }
 
-    for (const column of CAPTURE_COLUMNS) {
+    for (const column of TABLE_COLUMNS) {
       const value = formData[column.key as keyof CaptureFormData];
       if (column.minLength && value.length > 0 && value.length < column.minLength) {
         messages.push({ text: `${column.label} is incomplete`, color: "warning" });
@@ -334,9 +334,9 @@ export default function AddBirdEventModal({
   ]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
-    const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
-    if (currentIndex < CAPTURE_COLUMNS.length - 1) {
-      const nextKey = CAPTURE_COLUMNS.slice(currentIndex + 1).find(
+    const currentIndex = TABLE_COLUMNS.findIndex((col) => col.key === currentField);
+    if (currentIndex < TABLE_COLUMNS.length - 1) {
+      const nextKey = TABLE_COLUMNS.slice(currentIndex + 1).find(
         (col) => !["birdEventType", "date", "time"].includes(col.key)
       )?.key;
       if (!nextKey) return;
@@ -346,9 +346,9 @@ export default function AddBirdEventModal({
   }, []);
 
   const focusPrevInput = useCallback((currentField: keyof CaptureFormData) => {
-    const currentIndex = CAPTURE_COLUMNS.findIndex((col) => col.key === currentField);
+    const currentIndex = TABLE_COLUMNS.findIndex((col) => col.key === currentField);
     if (currentIndex > 0) {
-      const prevKey = CAPTURE_COLUMNS.slice(0, currentIndex)
+      const prevKey = TABLE_COLUMNS.slice(0, currentIndex)
         .reverse()
         .find((col) => !["birdEventType", "date", "time"].includes(col.key))?.key;
       if (!prevKey) return;
@@ -438,7 +438,7 @@ export default function AddBirdEventModal({
       }
     }
 
-    const column = CAPTURE_COLUMNS.find((col) => col.key === columnKey);
+    const column = TABLE_COLUMNS.find((col) => col.key === columnKey);
     const value = formData[columnKey];
     const isIncomplete = column?.minLength && value.length > 0 && value.length < column.minLength;
     return isIncomplete ? "warning" : null;
@@ -485,7 +485,7 @@ export default function AddBirdEventModal({
                 </div>
               )}
               <Table aria-label="New capture form">
-                <TableHeader columns={CAPTURE_COLUMNS.filter((column) => column.key !== "actions")}>
+                <TableHeader columns={TABLE_COLUMNS.filter((column) => column.key !== "actions")}>
                   {(column) => (
                     <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
                       {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
@@ -494,7 +494,7 @@ export default function AddBirdEventModal({
                 </TableHeader>
                 <TableBody>
                   <TableRow key="new-capture">
-                    {CAPTURE_COLUMNS.filter((column) => column.key !== "actions").map((column) => {
+                    {TABLE_COLUMNS.filter((column) => column.key !== "actions").map((column) => {
                       const columnKey = column.key as keyof CaptureFormData;
                       const inputColor = getInputColor(columnKey);
 

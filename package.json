@@ -13,6 +13,7 @@
     "parse": "npx tsx scripts/import.ts",
     "dev": "vite",
     "build": "tsc -b && vite build && electron-builder",
+    "build:web": "tsc -b && vite build --config vite.config.web.ts",
     "build:dir": "tsc -b && vite build && electron-builder --dir",
     "build:mmac": "tsc -b && vite build && electron-builder  --mac --arm64",
     "build:win": "tsc -b && vite build && electron-builder --win",
@@ -21,7 +22,8 @@
     "preview": "vite preview",
     "generate-icons": "npx tsx scripts/generate-icons.ts",
     "generate-icns": "bash scripts/generate-icns.sh",
-    "generate-ico": "npx tsx scripts/generate-ico.ts"
+    "generate-ico": "npx tsx scripts/generate-ico.ts",
+    "deploy": "npm run build:web && firebase deploy --only hosting"
   },
   "main": "dist-electron/main.cjs",
   "dependencies": {

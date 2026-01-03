@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
 import { useCallback, useMemo, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
-import { CAPTURE_COLUMNS } from "./helpers";
+import { TABLE_COLUMNS } from "./helpers";
 import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
 import { PencilSquareIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
@@ -222,7 +222,7 @@ export default function BirdEventsTable({
   const primarySortDescriptor = sortDescriptors[0];
 
   // Filter columns based on hiddenColumns prop
-  const displayColumns = CAPTURE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key));
+  const displayColumns = TABLE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key));
 
   // Create a stable key that changes when programsMap changes (for program name updates)
   const tableKey = useMemo(() => {

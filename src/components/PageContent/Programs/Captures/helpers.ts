@@ -2,7 +2,7 @@ import { type SpeciesRange, type CaptureFormData, BirdEventType } from "../../..
 
 import type { CaptureColumn } from "../../../../types";
 
-export const CAPTURE_COLUMNS: CaptureColumn[] = [
+export const TABLE_COLUMNS: CaptureColumn[] = [
   { key: "actions", label: "Actions", className: "w-[100px]" },
   { key: "programId", label: "Program", className: "min-w-[150px]" },
   { key: "bandGroup", label: "Band Group", maxLength: 7, minLength: 7 },
