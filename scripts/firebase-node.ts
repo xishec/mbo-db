@@ -2,8 +2,11 @@ import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 import { config } from "dotenv";
 
-// Load environment variables from .env.local
-config({ path: ".env.local" });
+// Load environment variables based on NODE_ENV
+const envFile = process.env.NODE_ENV === "production" ? ".env.production" : ".env.local";
+config({ path: envFile });
+
+console.log(`🔧 Using environment: ${envFile}`);
 
 const firebaseConfig = {
   apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -18,3 +21,4 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
+export const ENVIRONMENT = (process.env.VITE_ENVIRONMENT as "alpha" | "beta" | "prod") || "alpha";

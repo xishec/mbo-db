@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { db } from "./firebase-node";
+import { db, ENVIRONMENT } from "./firebase-node";
 import { ref, set, type Database } from "firebase/database";
 import {
   BirdEvent,
@@ -366,16 +366,16 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
 
   console.log("Uploading data to RTDB...");
 
-  await set(ref(db, "alpha/yearsToProgramMap"), yearsToProgramMap);
-  await set(ref(db, "alpha/programsMap"), programsMap);
-  await writeObjectToDB(db, "alpha/bandIdToBirdEventIdsMap", bandIdToBirdEventIdsMap);
-  await writeObjectToDB(db, "alpha/birdEventsMap", birdEventsMap);
-  await writeObjectToDB(db, "alpha/bandGroupsMap", bandGroupsMap);
-  await set(ref(db, "alpha/magicTable/mbo"), mboMagicTable);
+  await set(ref(db, `${ENVIRONMENT}/yearsToProgramMap`), yearsToProgramMap);
+  await set(ref(db, `${ENVIRONMENT}/programsMap`), programsMap);
+  await writeObjectToDB(db, `${ENVIRONMENT}/bandIdToBirdEventIdsMap`, bandIdToBirdEventIdsMap);
+  await writeObjectToDB(db, `${ENVIRONMENT}/birdEventsMap`, birdEventsMap);
+  await writeObjectToDB(db, `${ENVIRONMENT}/bandGroupsMap`, bandGroupsMap);
+  await set(ref(db, `${ENVIRONMENT}/magicTable/mbo`), mboMagicTable);
 
   // Set lastModified timestamp to signal clients that data has been updated
-  await set(ref(db, "alpha/metadata/lastModified"), Date.now());
-  await set(ref(db, "alpha/metadata/dbVersion"), Date.now());
+  await set(ref(db, `${ENVIRONMENT}/metadata/lastModified`), Date.now());
+  await set(ref(db, `${ENVIRONMENT}/metadata/dbVersion`), Date.now());
 
   console.log("✅ All data uploaded successfully!");
 }
