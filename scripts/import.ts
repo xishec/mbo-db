@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { db, ENVIRONMENT } from "./firebase-node";
-import { ref, set, type Database } from "firebase/database";
+import type { Database } from "firebase-admin/database";
 import {
   BirdEvent,
   BirdEventType,
@@ -366,16 +366,16 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
 
   console.log("Uploading data to RTDB...");
 
-  await set(ref(db, `${ENVIRONMENT}/yearsToProgramMap`), yearsToProgramMap);
-  await set(ref(db, `${ENVIRONMENT}/programsMap`), programsMap);
+  await db.ref(`${ENVIRONMENT}/yearsToProgramMap`).set(yearsToProgramMap);
+  await db.ref(`${ENVIRONMENT}/programsMap`).set(programsMap);
   await writeObjectToDB(db, `${ENVIRONMENT}/bandIdToBirdEventIdsMap`, bandIdToBirdEventIdsMap);
   await writeObjectToDB(db, `${ENVIRONMENT}/birdEventsMap`, birdEventsMap);
   await writeObjectToDB(db, `${ENVIRONMENT}/bandGroupsMap`, bandGroupsMap);
-  await set(ref(db, `${ENVIRONMENT}/magicTable/mbo`), mboMagicTable);
+  await db.ref(`${ENVIRONMENT}/magicTable/mbo`).set(mboMagicTable);
 
   // Set lastModified timestamp to signal clients that data has been updated
-  await set(ref(db, `${ENVIRONMENT}/metadata/lastModified`), Date.now());
-  await set(ref(db, `${ENVIRONMENT}/metadata/dbVersion`), Date.now());
+  await db.ref(`${ENVIRONMENT}/metadata/lastModified`).set(Date.now());
+  await db.ref(`${ENVIRONMENT}/metadata/dbVersion`).set(Date.now());
 
   console.log("✅ All data uploaded successfully!");
 }
@@ -389,7 +389,7 @@ const writeObjectToDB = async (db: Database, path: string, data: Record<string, 
 
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
-    const promises = batch.map(([key, value]) => set(ref(db, `${path}/${key}`), value));
+    const promises = batch.map(([key, value]) => db.ref(`${path}/${key}`).set(value));
     await Promise.all(promises);
     uploadedCount += batch.length;
     console.log(`Uploaded ${uploadedCount}/${entries.length} to '${path}'...`);
