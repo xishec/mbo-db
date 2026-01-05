@@ -43,8 +43,7 @@ export default function Search() {
     () =>
       Object.values(birdEventsMap)
         .filter((event) => event.modifiedEventId == null)
-        .sort((a, b) => (a.date < b.date ? 1 : -1))
-        .slice(0, 999),
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
     [birdEventsMap]
   );
 
@@ -220,7 +219,7 @@ export default function Search() {
             onSelectionChange={handlePropertyChange}
             className="w-48"
           >
-            {TABLE_COLUMNS.map((prop: CaptureColumn) => (
+            {TABLE_COLUMNS.filter((col) => col.key !== "actions").map((prop: CaptureColumn) => (
               <SelectItem key={prop.key}>{prop.label}</SelectItem>
             ))}
           </Select>
@@ -298,9 +297,10 @@ export default function Search() {
               Filtered results ({filteredBirdEvents.length} of {allBirdEvents.length}):
             </h3>
             <BirdEventsTable
-              birdEvents={filteredBirdEvents}
+              birdEvents={filteredBirdEvents.slice(0, 999)}
               maxTableHeight={600}
               sortDescriptors={[{ column: "date", direction: "descending" }]}
+              allowInspectBandId
             />
           </div>
         )}
