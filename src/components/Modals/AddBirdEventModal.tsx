@@ -58,11 +58,16 @@ export default function AddBirdEventModal({
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
   const [useCurrentTime, setUseCurrentTime] = useState(true);
-  const [bandWasPreFilled, setBandWasPreFilled] = useState(false);
+  const [shouldFocusSpecies, setShouldFocusSpecies] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [wasOpen, setWasOpen] = useState(false);
 
   // Reset form data when modal opens
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setWasOpen(false);
+      return;
+    }
 
     const defaultData = getDefaultFormData(selectedProgram?.id || "");
 
@@ -90,8 +95,12 @@ export default function AddBirdEventModal({
       defaultData.notes = birdEventToModify.notes;
 
       setUseCurrentTime(false); // Disable auto-update when modifying
-      setBandWasPreFilled(true);
-    } else {
+      setShouldFocusSpecies(true);
+      setFormData(defaultData);
+      setLastBandId("");
+      setWasOpen(true);
+    } else if (!wasOpen) {
+      // First time opening modal - reset to defaults
       // Preserve date/time if useCurrentTime is false
       if (!useCurrentTime) {
         defaultData.date = formData.date;
@@ -110,11 +119,27 @@ export default function AddBirdEventModal({
           preFilled = true;
         }
       }
-      setBandWasPreFilled(preFilled);
+      setShouldFocusSpecies(preFilled);
+      setFormData(defaultData);
+      setLastBandId("");
+      setWasOpen(true);
+    } else {
+      // Modal already open - only update band fields if bandSize changed
+      if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
+        const bandId = bandSizeToBandIdMap[bandSize];
+        if (bandId.length === 9) {
+          const bandGroup = bandId.slice(0, 7);
+          const bandLastTwoDigits = bandId.slice(7, 9);
+          setFormData((prev) => ({
+            ...prev,
+            bandGroup,
+            bandLastTwoDigits,
+          }));
+          setLastBandId("");
+          setShouldFocusSpecies(true);
+        }
+      }
     }
-
-    setFormData(defaultData);
-    setLastBandId("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap]);
 
@@ -122,12 +147,12 @@ export default function AddBirdEventModal({
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
-        const focusField = bandWasPreFilled ? "species" : "bandGroup";
+        const focusField = shouldFocusSpecies ? "species" : "bandGroup";
         inputRefs.current.get(focusField)?.focus();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, bandWasPreFilled]);
+  }, [isOpen, shouldFocusSpecies]);
 
   // Update date/time when useCurrentTime is enabled
   useEffect(() => {
@@ -211,7 +236,6 @@ export default function AddBirdEventModal({
   useEffect(() => {
     if (!isOpen) return;
     setFormData((prev) => ({ ...prev, birdEventType: suggestedBirdEventType }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, suggestedBirdEventType]);
 
   // Auto-fill species from past bird events whenever bandId changes
@@ -411,8 +435,20 @@ export default function AddBirdEventModal({
     onOpenChange(false);
   }, [onOpenChange]);
 
+  const handleModalOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (!isOpen && isSaving) {
+        // Prevent closing modal while saving
+        return;
+      }
+      onOpenChange(isOpen);
+    },
+    [isSaving, onOpenChange]
+  );
+
   const handleSave = useCallback(
     async (shouldContinue: boolean = false) => {
+      setIsSaving(true);
       try {
         const bandSizeToSend =
           formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None
@@ -421,29 +457,20 @@ export default function AddBirdEventModal({
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
         if (shouldContinue) {
+          await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
+          
+          setIsSaving(false);
           setTimeout(() => {
             const focusField = "species";
             inputRefs.current.get(focusField)?.focus();
           }, 100);
-
-          const updatedMap = await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
-
-          // Update form data with the new band ID
-          const newBandId = updatedMap[bandSizeToSend];
-          if (newBandId && newBandId.length === 9) {
-            const newBandGroup = newBandId.slice(0, 7);
-            const newBandLastTwoDigits = newBandId.slice(7, 9);
-            formData.bandGroup = newBandGroup;
-            formData.bandLastTwoDigits = newBandLastTwoDigits;
-            setFormData({ ...formData });
-            setLastBandId("");
-          }
         } else {
           handleClose();
         }
       } catch (err) {
         console.error("Failed to save capture:", err);
         alert("Failed to save capture. Please try again.");
+        setIsSaving(false);
       }
     },
     [formData, handleClose, addBirdEvent, bandSize, birdEventToModify, incrementBandSize]
@@ -498,7 +525,7 @@ export default function AddBirdEventModal({
     <Modal
       isKeyboardDismissDisabled
       isOpen={isOpen}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleModalOpenChange}
       className={`!max-w-[calc(100%-4rem)] ${shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""}`}
       scrollBehavior="inside"
     >
@@ -563,6 +590,7 @@ export default function AddBirdEventModal({
                                 const value = Array.from(keys)[0] as string;
                                 setFormData((prev) => ({ ...prev, birdEventType: value }));
                               }}
+                              isDisabled={isSaving}
                               classNames={{
                                 trigger: "min-h-unit-10 h-unit-10",
                                 value: "text-sm",
@@ -586,6 +614,7 @@ export default function AddBirdEventModal({
                               value={formData[columnKey]}
                               onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
                               onKeyDown={(e) => handleKeyDown(e, columnKey)}
+                              isDisabled={isSaving}
                               style={column.maxLength ? { width: `${10 * column.maxLength}px` } : undefined}
                               classNames={{
                                 input:
@@ -628,13 +657,13 @@ export default function AddBirdEventModal({
               )}
             </ModalBody>
             <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="danger" variant="bordered" onPress={handleClose}>
+              <Button color="danger" variant="bordered" onPress={handleClose} isDisabled={isSaving}>
                 Cancel
               </Button>
-              <Button color="primary" variant="bordered" onPress={handleSaveAndNext}>
+              <Button color="primary" variant="bordered" onPress={handleSaveAndNext} isLoading={isSaving} isDisabled={isSaving}>
                 Save and Next
               </Button>
-              <Button color="primary" onPress={handleSaveAndClose}>
+              <Button color="primary" onPress={handleSaveAndClose} isLoading={isSaving} isDisabled={isSaving}>
                 Save
               </Button>
             </ModalFooter>
