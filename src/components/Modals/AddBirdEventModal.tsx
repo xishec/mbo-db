@@ -52,6 +52,7 @@ export default function AddBirdEventModal({
     birdEventsMap,
     addBirdEvent,
     bandSizeToBandIdMap,
+    incrementBandSize,
   } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -115,7 +116,7 @@ export default function AddBirdEventModal({
     setFormData(defaultData);
     setLastBandId("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, bandSize, birdEventToModify]);
+  }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap]);
 
   // Focus on bandGroup or species input when modal opens
   useEffect(() => {
@@ -410,19 +411,46 @@ export default function AddBirdEventModal({
     onOpenChange(false);
   }, [onOpenChange]);
 
-  const handleSave = useCallback(async () => {
-    try {
-      const bandSizeToSend =
-        formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None
-          ? bandSize
-          : BandSize.Other;
-      await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
-      handleClose();
-    } catch (err) {
-      console.error("Failed to save capture:", err);
-      alert("Failed to save capture. Please try again.");
-    }
-  }, [formData, handleClose, addBirdEvent, bandSize, birdEventToModify]);
+  const handleSave = useCallback(
+    async (shouldContinue: boolean = false) => {
+      try {
+        const bandSizeToSend =
+          formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None
+            ? bandSize
+            : BandSize.Other;
+        await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
+
+        if (shouldContinue) {
+          setTimeout(() => {
+            const focusField = "species";
+            inputRefs.current.get(focusField)?.focus();
+          }, 100);
+
+          const updatedMap = await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
+
+          // Update form data with the new band ID
+          const newBandId = updatedMap[bandSizeToSend];
+          if (newBandId && newBandId.length === 9) {
+            const newBandGroup = newBandId.slice(0, 7);
+            const newBandLastTwoDigits = newBandId.slice(7, 9);
+            formData.bandGroup = newBandGroup;
+            formData.bandLastTwoDigits = newBandLastTwoDigits;
+            setFormData({ ...formData });
+            setLastBandId("");
+          }
+        } else {
+          handleClose();
+        }
+      } catch (err) {
+        console.error("Failed to save capture:", err);
+        alert("Failed to save capture. Please try again.");
+      }
+    },
+    [formData, handleClose, addBirdEvent, bandSize, birdEventToModify, incrementBandSize]
+  );
+
+  const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);
+  const handleSaveAndNext = useCallback(() => handleSave(true), [handleSave]);
 
   const getInputColor = (columnKey: keyof CaptureFormData) => {
     // Check wing range validation
@@ -603,7 +631,10 @@ export default function AddBirdEventModal({
               <Button color="danger" variant="bordered" onPress={handleClose}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button color="primary" variant="bordered" onPress={handleSaveAndNext}>
+                Save and Next
+              </Button>
+              <Button color="primary" onPress={handleSaveAndClose}>
                 Save
               </Button>
             </ModalFooter>

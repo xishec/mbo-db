@@ -291,6 +291,7 @@ export default function BirdEventsTable({
         isOpen={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         birdEventToModify={selectedBirdEvent || undefined}
+        isNewCapture={false}
       />
 
       <CaptureHistoryModal

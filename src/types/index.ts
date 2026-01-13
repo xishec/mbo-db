@@ -196,6 +196,7 @@ export interface DataContextType {
   updateProgram: (programId: string, newDisplayName: string) => Promise<void>;
   syncQueue: () => Promise<void>;
   updateBandSizeMap: (bandSizeMap: BandSizeToBandIdMap) => Promise<void>;
+  incrementBandSize: (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string) => Promise<Record<BandSize, string>>;
 }
 
 // Form types

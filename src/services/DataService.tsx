@@ -917,6 +917,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         updateProgram,
         syncQueue,
         updateBandSizeMap,
+        incrementBandSize,
       }}
     >
       {children}
