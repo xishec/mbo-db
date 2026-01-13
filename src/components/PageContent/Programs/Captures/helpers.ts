@@ -8,7 +8,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
   { key: "bandGroup", label: "Band Group", maxLength: 7, minLength: 7, className: "w-[100px]" },
   { key: "bandLastTwoDigits", label: "Band", maxLength: 2, minLength: 2, className: "w-[75px]" },
   { key: "species", label: "Species", maxLength: 4, minLength: 4, className: "w-[100px]" },
-  { key: "birdEventType", label: "Event Type", className: "w-[100px]" },
+  { key: "birdEventType", label: "Event Type", className: "w-[125px]" },
   { key: "date", label: "Date", type: "date", className: "w-[100px]" },
   { key: "time", label: "Time", type: "time", className: "w-[75px]" },
   { key: "wing", label: "Wing", maxLength: 4, minLength: 2, className: "w-[75px]" },

@@ -84,7 +84,12 @@ export default function BirdEvents() {
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
-      <AddBirdEventModal isOpen={isOpen} onOpenChange={onOpenChange} bandSize={selectedBandSize} />
+      <AddBirdEventModal
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        bandSize={selectedBandSize}
+        isNewCapture={birdEventTabType === BirdEventTabType.NEW_CAPTURES}
+      />
       <BandSizeSettingModal isOpen={isSettingsOpen} onOpenChange={onSettingsOpenChange} />
 
       <div className="w-full flex items-end justify-between gap-4">

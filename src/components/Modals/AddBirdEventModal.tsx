@@ -34,6 +34,7 @@ interface AddBirdEventModalProps {
   onOpenChange: (isOpen: boolean) => void;
   bandSize?: BandSize;
   birdEventToModify?: BirdEvent;
+  isNewCapture: boolean;
 }
 
 export default function AddBirdEventModal({
@@ -41,6 +42,7 @@ export default function AddBirdEventModal({
   onOpenChange,
   bandSize = BandSize.Other,
   birdEventToModify,
+  isNewCapture,
 }: AddBirdEventModalProps) {
   const {
     selectedProgram,
@@ -183,7 +185,7 @@ export default function AddBirdEventModal({
     if (birdEventToModify) return birdEventToModify.birdEventType;
     if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
     if (pastBirdEvents.length === 0) {
-      if (bandGroupsMap[formData.bandGroup]) return BirdEventType.Banded;
+      if (bandGroupsMap[formData.bandGroup] || isNewCapture) return BirdEventType.Banded;
       else return BirdEventType.Alien;
     } else {
       const currentDate = new Date(formData.date);
@@ -194,7 +196,15 @@ export default function AddBirdEventModal({
       });
       return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
     }
-  }, [bandGroupsMap, birdEventToModify, formData.bandGroup, formData.date, formData.species, pastBirdEvents]);
+  }, [
+    bandGroupsMap,
+    birdEventToModify,
+    formData.bandGroup,
+    formData.date,
+    formData.species,
+    pastBirdEvents,
+    isNewCapture,
+  ]);
 
   // Set birdEventType to suggested value only when modal opens or key dependencies change
   useEffect(() => {
