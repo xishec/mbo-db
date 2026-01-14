@@ -19,7 +19,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
-import { TABLE_COLUMNS, getSortedColumns } from "../PageContent/Programs/Captures/helpers";
+import { getSortedColumns } from "../PageContent/Programs/Captures/helpers";
 import {
   formatFieldValue,
   getApplicableRange,
@@ -351,7 +351,7 @@ export default function AddBirdEventModal({
       }
     }
 
-    for (const column of TABLE_COLUMNS) {
+    for (const column of sortedColumns) {
       const value = formData[column.key as keyof CaptureFormData];
       if (column.minLength && value.length > 0 && value.length < column.minLength) {
         messages.push({ text: `${column.label} is incomplete`, color: "warning" });
@@ -370,31 +370,36 @@ export default function AddBirdEventModal({
     pastBirdEvents,
     formData,
     useCurrentTime,
+    sortedColumns,
   ]);
 
   const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
-    const currentIndex = TABLE_COLUMNS.findIndex((col) => col.key === currentField);
-    if (currentIndex < TABLE_COLUMNS.length - 1) {
-      const nextKey = TABLE_COLUMNS.slice(currentIndex + 1).find(
-        (col) => !["birdEventType", "date", "time"].includes(col.key)
-      )?.key;
+    const currentIndex = sortedColumns.findIndex((col) => col.key === currentField);
+    if (currentIndex < sortedColumns.length - 1) {
+      const nextKey = sortedColumns
+        .slice(currentIndex + 1)
+        .find((col) => !["birdEventType", "date", "time"].includes(col.key))?.key;
       if (!nextKey) return;
 
       inputRefs.current.get(nextKey)?.focus();
     }
-  }, []);
+  }, [sortedColumns]);
 
-  const focusPrevInput = useCallback((currentField: keyof CaptureFormData) => {
-    const currentIndex = TABLE_COLUMNS.findIndex((col) => col.key === currentField);
-    if (currentIndex > 0) {
-      const prevKey = TABLE_COLUMNS.slice(0, currentIndex)
-        .reverse()
-        .find((col) => !["birdEventType", "date", "time"].includes(col.key))?.key;
-      if (!prevKey) return;
+  const focusPrevInput = useCallback(
+    (currentField: keyof CaptureFormData) => {
+      const currentIndex = sortedColumns.findIndex((col) => col.key === currentField);
+      if (currentIndex > 0) {
+        const prevKey = sortedColumns
+          .slice(0, currentIndex)
+          .reverse()
+          .find((col) => !["birdEventType", "date", "time"].includes(col.key))?.key;
+        if (!prevKey) return;
 
-      inputRefs.current.get(prevKey)?.focus();
-    }
-  }, []);
+        inputRefs.current.get(prevKey)?.focus();
+      }
+    },
+    [sortedColumns]
+  );
 
   const handleInputChange = useCallback(
     (field: keyof CaptureFormData, value: string, maxLength?: number) => {
@@ -505,7 +510,7 @@ export default function AddBirdEventModal({
       }
     }
 
-    const column = TABLE_COLUMNS.find((col) => col.key === columnKey);
+    const column = sortedColumns.find((col) => col.key === columnKey);
     const value = formData[columnKey];
     const isIncomplete = column?.minLength && value.length > 0 && value.length < column.minLength;
     return isIncomplete ? "warning" : null;
@@ -528,7 +533,7 @@ export default function AddBirdEventModal({
       isKeyboardDismissDisabled
       isOpen={isOpen}
       onOpenChange={handleModalOpenChange}
-      className={`${birdEventToModify ? "!max-w-[calc(100%-8rem)]" : "!max-w-[calc(100%-4rem)]"} ${
+      className={`${birdEventToModify ? "!max-w-[calc(100%-12rem)]" : "!max-w-[calc(100%-8rem)]"} ${
         shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""
       }`}
       scrollBehavior="inside"

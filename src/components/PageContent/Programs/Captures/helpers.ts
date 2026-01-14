@@ -188,7 +188,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     scribe: "",
     net: "",
     birdEventType: BirdEventType.None,
-    birdStatus: "",
+    birdStatus: "300",
     notes: "",
   };
 }

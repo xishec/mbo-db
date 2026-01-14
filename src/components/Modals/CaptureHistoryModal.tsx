@@ -32,7 +32,7 @@ export default function CaptureHistoryModal({
       isKeyboardDismissDisabled
       isOpen={isOpen}
       onOpenChange={onOpenChange}
-      className={`!max-w-[calc(100%-4rem)]`}
+      className={`!max-w-[calc(100%-8rem)]`}
       scrollBehavior="inside"
     >
       <ModalContent>

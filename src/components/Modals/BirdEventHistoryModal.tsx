@@ -46,11 +46,11 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
 
   // Convert history entries to bird events for display, with latest event highlighted
   const birdEvents = useMemo(() => {
-    return historyEntries.map((entry) => entry.birdEvent);
+    return historyEntries.sort((a, b) => b.timestamp - a.timestamp).map((entry) => entry.birdEvent);
   }, [historyEntries]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} onClose={onClose} className={`!max-w-[calc(100%-8rem)]`} scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
@@ -77,12 +77,7 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
                 </Button>
               </div>
 
-              <BirdEventsTable
-                birdEvents={birdEvents}
-                maxTableHeight={600}
-                sortDescriptors={[{ column: "date", direction: "descending" }]}
-                allowInspectBandId
-              />
+              <BirdEventsTable birdEvents={birdEvents} maxTableHeight={600} sortDescriptors={[]} allowInspectBandId />
             </>
           )}
         </ModalBody>
