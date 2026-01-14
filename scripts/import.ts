@@ -196,6 +196,8 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
     String(birdEvent.wing),
     String(birdEvent.weight)
   );
+  // Set updatedAt using date and time from the bird event as millisecond timestamp
+  birdEvent.updatedAt = String(Date.parse(`${birdEvent.date} ${birdEvent.time}`));
   return birdEvent;
 }
 

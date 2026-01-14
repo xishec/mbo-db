@@ -65,6 +65,7 @@ export interface BirdEvent {
   net: string;
   birdStatus: string;
   notes: string;
+  updatedAt: string;
 
   previousEventId: string | null;
   modifiedEventId: string | null;

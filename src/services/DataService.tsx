@@ -545,6 +545,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           previousEventId: previousEventId || null,
           modifiedEventId: null,
           birdEventType,
+          updatedAt: previousEventId ? String(Date.now()) : String(Date.parse(`${captureData.date} ${captureData.time}`)),
         };
 
         // 2. Queue the bird event for sync (also automatically adds to history)
