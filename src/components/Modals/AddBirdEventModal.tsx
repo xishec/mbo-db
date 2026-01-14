@@ -97,6 +97,7 @@ export default function AddBirdEventModal({
       defaultData.bander = birdEventToModify.bander;
       defaultData.scribe = birdEventToModify.scribe;
       defaultData.net = birdEventToModify.net;
+      defaultData.birdStatus = birdEventToModify.birdStatus;
       defaultData.notes = birdEventToModify.notes;
 
       setUseCurrentTime(false); // Disable auto-update when modifying

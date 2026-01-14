@@ -540,6 +540,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bander: captureData.bander,
           scribe: captureData.scribe,
           net: captureData.net,
+          birdStatus: captureData.birdStatus,
           notes: captureData.notes,
           previousEventId: previousEventId || null,
           modifiedEventId: null,
