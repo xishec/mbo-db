@@ -19,7 +19,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
-import { TABLE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
+import { TABLE_COLUMNS, getSortedColumns } from "../PageContent/Programs/Captures/helpers";
 import {
   formatFieldValue,
   getApplicableRange,
@@ -58,9 +58,14 @@ export default function AddBirdEventModal({
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
   const [useCurrentTime, setUseCurrentTime] = useState(true);
-  const [shouldFocusSpecies, setShouldFocusSpecies] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
+
+  // Get sorted columns based on capture type
+  const sortedColumns = useMemo(
+    () => getSortedColumns(isNewCapture, birdEventToModify?.id),
+    [isNewCapture, birdEventToModify?.id]
+  );
 
   // Reset form data when modal opens
   useEffect(() => {
@@ -95,7 +100,6 @@ export default function AddBirdEventModal({
       defaultData.notes = birdEventToModify.notes;
 
       setUseCurrentTime(false); // Disable auto-update when modifying
-      setShouldFocusSpecies(true);
       setFormData(defaultData);
       setLastBandId("");
       setWasOpen(true);
@@ -119,10 +123,14 @@ export default function AddBirdEventModal({
           preFilled = true;
         }
       }
-      setShouldFocusSpecies(preFilled);
       setFormData(defaultData);
       setLastBandId("");
       setWasOpen(true);
+      if (isNewCapture) {
+        focusTo(preFilled ? "species" : "bandGroup");
+      } else {
+        focusTo("bander");
+      }
     } else {
       // Modal already open - only update band fields if bandSize changed
       if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
@@ -136,23 +144,18 @@ export default function AddBirdEventModal({
             bandLastTwoDigits,
           }));
           setLastBandId("");
-          setShouldFocusSpecies(true);
+          focusTo("bander");
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap]);
 
-  // Focus on bandGroup or species input when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
-        const focusField = shouldFocusSpecies ? "species" : "bandGroup";
-        inputRefs.current.get(focusField)?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, shouldFocusSpecies]);
+  const focusTo = useCallback((fieldKey: string) => {
+    setTimeout(() => {
+      inputRefs.current.get(fieldKey)?.focus();
+    }, 100);
+  }, []);
 
   // Update date/time when useCurrentTime is enabled
   useEffect(() => {
@@ -458,13 +461,11 @@ export default function AddBirdEventModal({
 
         if (shouldContinue) {
           await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
-          
+
           setIsSaving(false);
-          setTimeout(() => {
-            const focusField = "species";
-            inputRefs.current.get(focusField)?.focus();
-          }, 100);
+          focusTo("species");
         } else {
+          setIsSaving(false);
           handleClose();
         }
       } catch (err) {
@@ -473,7 +474,7 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, handleClose, addBirdEvent, bandSize, birdEventToModify, incrementBandSize]
+    [formData, bandSize, addBirdEvent, birdEventToModify?.id, incrementBandSize, focusTo, handleClose]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);
@@ -550,7 +551,7 @@ export default function AddBirdEventModal({
                 </div>
               )}
               <Table aria-label="New capture form">
-                <TableHeader columns={TABLE_COLUMNS.filter((column) => column.key !== "actions")}>
+                <TableHeader columns={sortedColumns.filter((column) => column.key !== "actions")}>
                   {(column) => (
                     <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
                       {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
@@ -559,73 +560,76 @@ export default function AddBirdEventModal({
                 </TableHeader>
                 <TableBody>
                   <TableRow key="new-capture">
-                    {TABLE_COLUMNS.filter((column) => column.key !== "actions").map((column) => {
-                      const columnKey = column.key as keyof CaptureFormData;
-                      const inputColor = getInputColor(columnKey);
+                    {sortedColumns
+                      .filter((column) => column.key !== "actions")
+                      .map((column) => {
+                        const columnKey = column.key as keyof CaptureFormData;
+                        const inputColor = getInputColor(columnKey);
 
-                      const getReadonlyValue = () => {
-                        if (column.key === "programId") return selectedProgram?.displayName;
-                        if (useCurrentTime && (columnKey === "date" || columnKey === "time"))
-                          return formData[columnKey];
-                        // Make band fields readonly when prefilled from birdEventToModify
-                        if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
-                          return formData[columnKey];
-                        return null;
-                      };
+                        const getReadonlyValue = () => {
+                          if (column.key === "programId") return selectedProgram?.displayName;
+                          if (useCurrentTime && (columnKey === "date" || columnKey === "time"))
+                            return formData[columnKey];
+                          // Make band fields readonly when prefilled from birdEventToModify
+                          if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
+                            return formData[columnKey];
+                          return null;
+                        };
 
-                      const readonlyValue = getReadonlyValue();
+                        const readonlyValue = getReadonlyValue();
 
-                      return (
-                        <TableCell key={column.key} className="p-1">
-                          {readonlyValue ? (
-                            <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border whitespace-nowrap">
-                              {readonlyValue}
-                            </div>
-                          ) : column.key === "birdEventType" ? (
-                            <Select
-                              variant="bordered"
-                              aria-label={column.label}
-                              selectedKeys={[formData.birdEventType]}
-                              onSelectionChange={(keys) => {
-                                const value = Array.from(keys)[0] as string;
-                                setFormData((prev) => ({ ...prev, birdEventType: value }));
-                              }}
-                              isDisabled={isSaving}
-                              classNames={{
-                                trigger: "min-h-unit-10 h-unit-10",
-                                value: "text-sm",
-                              }}
-                            >
-                              {Object.values(BirdEventType).map((type) => (
-                                <SelectItem key={type}>{type}</SelectItem>
-                              ))}
-                            </Select>
-                          ) : (
-                            <Input
-                              ref={(el) => {
-                                if (el) inputRefs.current.set(columnKey, el);
-                              }}
-                              variant="bordered"
-                              color={inputColor || "default"}
-                              aria-label={column.label}
-                              type={column.type || "text"}
-                              maxLength={column.maxLength}
-                              validationBehavior="aria"
-                              value={formData[columnKey]}
-                              onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
-                              onKeyDown={(e) => handleKeyDown(e, columnKey)}
-                              isDisabled={isSaving}
-                              style={column.maxLength ? { width: `${10 * column.maxLength}px` } : undefined}
-                              classNames={{
-                                input:
-                                  "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                inputWrapper: getBorderClass(inputColor),
-                              }}
-                            />
-                          )}
-                        </TableCell>
-                      );
-                    })}
+                        return (
+                          <TableCell key={column.key} className="p-1">
+                            {readonlyValue ? (
+                              <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border whitespace-nowrap">
+                                {readonlyValue}
+                              </div>
+                            ) : column.key === "birdEventType" ? (
+                              <Select
+                                variant="bordered"
+                                aria-label={column.label}
+                                selectedKeys={[formData.birdEventType]}
+                                onSelectionChange={(keys) => {
+                                  const value = Array.from(keys)[0] as string;
+                                  setFormData((prev) => ({ ...prev, birdEventType: value }));
+                                }}
+                                isDisabled={isSaving}
+                                classNames={{
+                                  trigger: "min-h-unit-10 h-unit-10",
+                                  value: "text-sm",
+                                }}
+                              >
+                                {Object.values(BirdEventType).map((type) => (
+                                  <SelectItem key={type}>{type}</SelectItem>
+                                ))}
+                              </Select>
+                            ) : (
+                              <Input
+                                ref={(el) => {
+                                  if (el) inputRefs.current.set(columnKey, el);
+                                }}
+                                variant="bordered"
+                                color={inputColor || "default"}
+                                aria-label={column.label}
+                                type={column.type || "text"}
+                                maxLength={column.maxLength}
+                                validationBehavior="aria"
+                                value={formData[columnKey]}
+                                onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
+                                onKeyDown={(e) => handleKeyDown(e, columnKey)}
+                                onFocus={(e) => e.target.select()}
+                                isDisabled={isSaving}
+                                style={column.maxLength ? { width: `${10 * column.maxLength}px` } : undefined}
+                                classNames={{
+                                  input:
+                                    "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                  inputWrapper: getBorderClass(inputColor),
+                                }}
+                              />
+                            )}
+                          </TableCell>
+                        );
+                      })}
                   </TableRow>
                 </TableBody>
               </Table>
@@ -660,7 +664,13 @@ export default function AddBirdEventModal({
               <Button color="danger" variant="bordered" onPress={handleClose} isDisabled={isSaving}>
                 Cancel
               </Button>
-              <Button color="primary" variant="bordered" onPress={handleSaveAndNext} isLoading={isSaving} isDisabled={isSaving}>
+              <Button
+                color="primary"
+                variant="bordered"
+                onPress={handleSaveAndNext}
+                isLoading={isSaving}
+                isDisabled={isSaving}
+              >
                 Save and Next
               </Button>
               <Button color="primary" onPress={handleSaveAndClose} isLoading={isSaving} isDisabled={isSaving}>

@@ -24,6 +24,39 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
   { key: "notes", label: "Notes" },
 ];
 
+// Column order for re-captures (isNewCapture = false)
+export const RE_CAPTURE_COLUMN_ORDER: string[] = [
+  "actions",
+  "programId",
+  "birdEventType",
+  "bander",
+  "scribe",
+  "date",
+  "time",
+  "net",
+  "bandGroup",
+  "bandLastTwoDigits",
+  "species",
+  "wing",
+  "age",
+  "howAged",
+  "sex",
+  "howSexed",
+  "fat",
+  "weight",
+  "notes",
+];
+
+export function getSortedColumns(isNewCapture: boolean, birdEventToModifyId?: string): CaptureColumn[] {
+  if (isNewCapture || birdEventToModifyId) {
+    return TABLE_COLUMNS;
+  }
+
+  return RE_CAPTURE_COLUMN_ORDER.map((key) => TABLE_COLUMNS.find((col) => col.key === key)).filter(
+    (col): col is CaptureColumn => col !== undefined
+  );
+}
+
 export interface ApplicableRange {
   weightLower: number;
   weightUpper: number;
