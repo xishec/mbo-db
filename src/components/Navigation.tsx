@@ -15,7 +15,12 @@ import {
   Chip,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-import { CodeBracketIcon, ExclamationTriangleIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import {
+  CodeBracketIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
 import { useState, useEffect, useMemo } from "react";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import type { User as FirebaseUser } from "firebase/auth";
@@ -24,6 +29,7 @@ import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
 import { SyncQueueModal } from "./Modals/SyncQueueModal";
+import { BirdEventHistoryModal } from "./Modals/BirdEventHistoryModal";
 import { useData } from "../services/useData";
 import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap } from "../types";
 import mboLogo from "../assets/mbo-logo.svg";
@@ -73,6 +79,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
   const { isOpen: isSyncQueueOpen, onOpen: onSyncQueueOpen, onClose: onSyncQueueClose } = useDisclosure();
+  const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
   const { birdEventsMap, bandIdToBirdEventIdsMap, pendingCount, isOnline, syncQueue, selectProgram } = useData();
@@ -200,6 +207,11 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
         </NavbarContent>
         <NavbarContent justify="end">
           <NavbarItem>
+            <Button isIconOnly variant="light" onPress={onHistoryOpen} aria-label="View bird event history">
+              <ClockIcon className="w-5 h-5" />
+            </Button>
+          </NavbarItem>
+          <NavbarItem>
             <Badge content={errorCount} color="danger" size="sm" showOutline={false} isInvisible={errorCount === 0}>
               <Button isIconOnly variant="light" onPress={onErrorsOpen} aria-label="View errors">
                 <ExclamationTriangleIcon className="w-5 h-5" />
@@ -247,6 +259,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
       <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />
       <SyncQueueModal isOpen={isSyncQueueOpen} onClose={onSyncQueueClose} />
+      <BirdEventHistoryModal isOpen={isHistoryOpen} onClose={onHistoryClose} />
     </>
   );
 }

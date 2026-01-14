@@ -1,4 +1,5 @@
 import type { AlphaData, PendingEvent } from "../types";
+import { Band } from "../types";
 import { db, CURRENT_ENVIRONMENT } from "../firebase";
 import { ref, get } from "firebase/database";
 
@@ -8,6 +9,7 @@ const DB_NAME = "mbo-db";
 const METADATA_STORE = "metadata";
 const DATA_STORE = "data";
 const QUEUE_STORE = "queue";
+const HISTORY_STORE = "history";
 
 interface MetadataEntry {
   key: string;
@@ -55,7 +57,8 @@ async function openDB(): Promise<IDBDatabase> {
       const hasAllStores = 
         db.objectStoreNames.contains(METADATA_STORE) &&
         db.objectStoreNames.contains(DATA_STORE) &&
-        db.objectStoreNames.contains(QUEUE_STORE);
+        db.objectStoreNames.contains(QUEUE_STORE) &&
+        db.objectStoreNames.contains(HISTORY_STORE);
       
       if (!hasAllStores) {
         // Close and delete the database, then recreate
@@ -88,6 +91,13 @@ async function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(QUEUE_STORE)) {
         db.createObjectStore(QUEUE_STORE, { keyPath: "id" });
       }
+
+      // Create history store (for bird event history tracking)
+      if (!db.objectStoreNames.contains(HISTORY_STORE)) {
+        const historyStore = db.createObjectStore(HISTORY_STORE, { keyPath: "id", autoIncrement: true });
+        historyStore.createIndex("timestamp", "timestamp", { unique: false });
+        historyStore.createIndex("eventId", "birdEvent.id", { unique: false });
+      }
     };
   });
 }
@@ -97,11 +107,12 @@ async function openDB(): Promise<IDBDatabase> {
  */
 export async function clearAllIndexedDB(): Promise<void> {
   const db = await openDB();
-  const transaction = db.transaction([METADATA_STORE, DATA_STORE, QUEUE_STORE], "readwrite");
+  const transaction = db.transaction([METADATA_STORE, DATA_STORE, QUEUE_STORE, HISTORY_STORE], "readwrite");
 
   transaction.objectStore(METADATA_STORE).clear();
   transaction.objectStore(DATA_STORE).clear();
   transaction.objectStore(QUEUE_STORE).clear();
+  transaction.objectStore(HISTORY_STORE).clear();
 
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
@@ -204,14 +215,23 @@ export async function getLastUpdated(environment: string): Promise<number | null
 }
 
 /**
- * Add a pending event to the queue
+ * Add a pending event to the queue and automatically track it in history
  */
 export async function addToQueue(pendingEvent: PendingEvent): Promise<void> {
   const db = await openDB();
-  const transaction = db.transaction([QUEUE_STORE], "readwrite");
-  const store = transaction.objectStore(QUEUE_STORE);
+  const transaction = db.transaction([QUEUE_STORE, HISTORY_STORE], "readwrite");
+  const queueStore = transaction.objectStore(QUEUE_STORE);
+  const historyStore = transaction.objectStore(HISTORY_STORE);
 
-  store.put(pendingEvent);
+  // Add to queue
+  queueStore.put(pendingEvent);
+
+  // Add to history (automatically tracked for all queued events)
+  historyStore.add({
+    birdEvent: pendingEvent.pendingEvent,
+    timestamp: pendingEvent.timestamp,
+    action: pendingEvent.action,
+  });
 
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
@@ -285,6 +305,94 @@ export async function getQueueCount(): Promise<number> {
     request.onerror = () => {
       db.close();
       reject(request.error);
+    };
+  });
+}
+
+/**
+ * Bird event history entry
+ */
+export interface BirdEventHistoryEntry {
+  id?: number; // Auto-incremented by IndexedDB
+  birdEvent: import("../types").BirdEvent;
+  timestamp: number;
+  action: "added" | "modified";
+}
+
+/**
+ * Add a bird event to history
+ */
+export async function addToHistory(entry: Omit<BirdEventHistoryEntry, "id">): Promise<void> {
+  const db = await openDB();
+  const transaction = db.transaction([HISTORY_STORE], "readwrite");
+  const store = transaction.objectStore(HISTORY_STORE);
+
+  store.add(entry);
+
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
+}
+
+/**
+ * Get all bird event history entries, sorted by timestamp descending (newest first)
+ */
+export async function getBirdEventHistory(): Promise<BirdEventHistoryEntry[]> {
+  const db = await openDB();
+  const transaction = db.transaction([HISTORY_STORE], "readonly");
+  const store = transaction.objectStore(HISTORY_STORE);
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => {
+      db.close();
+      const entries = request.result as BirdEventHistoryEntry[];
+      
+      // Reconstruct Band instances (lost during IndexedDB serialization)
+      const entriesWithBandInstances = entries.map((entry) => ({
+        ...entry,
+        birdEvent: {
+          ...entry.birdEvent,
+          band: new Band(entry.birdEvent.band.bandPrefix, entry.birdEvent.band.bandSuffix),
+        },
+      }));
+      
+      // Sort by timestamp descending (newest first)
+      entriesWithBandInstances.sort((a, b) => b.timestamp - a.timestamp);
+      resolve(entriesWithBandInstances);
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
+/**
+ * Clear all bird event history
+ */
+export async function clearBirdEventHistory(): Promise<void> {
+  const db = await openDB();
+  const transaction = db.transaction([HISTORY_STORE], "readwrite");
+  const store = transaction.objectStore(HISTORY_STORE);
+
+  store.clear();
+
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
     };
   });
 }

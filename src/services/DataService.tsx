@@ -546,12 +546,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           birdEventType,
         };
 
-        // 2. Queue the bird event for sync
+        // 2. Queue the bird event for sync (also automatically adds to history)
         await addToQueue({
           id: crypto.randomUUID(),
           pendingEvent: newBirdEvent,
           timestamp: Date.now(),
           environment: CURRENT_ENVIRONMENT,
+          action: previousEventId ? "modified" : "added",
         });
 
         // 3. Calculate all new state values first

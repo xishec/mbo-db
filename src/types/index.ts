@@ -244,4 +244,5 @@ export interface PendingEvent {
   pendingEvent: BirdEvent;
   timestamp: number;
   environment: string;
+  action: "added" | "modified";
 }
