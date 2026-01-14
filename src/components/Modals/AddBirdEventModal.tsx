@@ -562,7 +562,7 @@ export default function AddBirdEventModal({
               >
                 <TableHeader columns={sortedColumns.filter((column) => column.key !== "actions")}>
                   {(column) => (
-                    <TableColumn key={column.key} className={column.className || ""}>
+                    <TableColumn key={column.key} className={column.inputClassName || ""}>
                       {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
                     </TableColumn>
                   )}
@@ -628,7 +628,6 @@ export default function AddBirdEventModal({
                                 onKeyDown={(e) => handleKeyDown(e, columnKey)}
                                 onFocus={(e) => e.target.select()}
                                 isDisabled={isSaving}
-                                style={column.maxLength ? { width: `${10 * column.maxLength}px` } : undefined}
                                 classNames={{
                                   input:
                                     "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",

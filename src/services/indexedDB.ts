@@ -26,7 +26,7 @@ async function getDBVersion(): Promise<number> {
     const dbVersion = snapshot.val();
     
     if (dbVersion && typeof dbVersion === 'number') {
-      console.log(`[IndexedDB] Using RTDB dbVersion as DB version: ${dbVersion}`);
+      console.log(`[IndexedDB] Using RTDB dbVersion as DB version: ${new Date(dbVersion).toLocaleString()} (${dbVersion})`);
       return dbVersion;
     }
     

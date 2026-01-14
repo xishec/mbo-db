@@ -263,7 +263,7 @@ export default function BirdEventsTable({
               <TableColumn
                 key={column.key}
                 allowsSorting={column.key !== "actions"}
-                className={`whitespace-nowrap ${column.className ?? ""}`}
+                className={`whitespace-nowrap ${column.tableClassName ?? ""}`}
               >
                 {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
               </TableColumn>

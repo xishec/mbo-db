@@ -234,7 +234,8 @@ export interface CaptureColumn {
   key: keyof CaptureFormData | "actions";
   label: string;
   type?: string;
-  className?: string;
+  tableClassName?: string;
+  inputClassName?: string;
   maxLength?: number;
   minLength?: number;
 }

@@ -29,7 +29,8 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
       }
     }
 
-    return events.sort((a, b) => a.id.localeCompare(b.id));
+    console.log(events)
+    return events.sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
   }, [birdEvent.id, birdEventsMap]);
 
   return (
@@ -51,9 +52,9 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
                 <BirdEventsTable
                   birdEvents={birdEvents}
                   maxTableHeight={400}
-                  sortDescriptors={[{ column: "date", direction: "ascending" }]}
+                  sortDescriptors={[]}
                   showHistory
-                  hiddenColumns={["actions","bandGroup", "bandLastTwoDigits"]}
+                  hiddenColumns={["actions", "bandGroup", "bandLastTwoDigits"]}
                 />
               ) : (
                 <p>No history found for this band.</p>
