@@ -528,7 +528,9 @@ export default function AddBirdEventModal({
       isKeyboardDismissDisabled
       isOpen={isOpen}
       onOpenChange={handleModalOpenChange}
-      className={`!max-w-[calc(100%-4rem)] ${shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""}`}
+      className={`${birdEventToModify ? "!max-w-[calc(100%-8rem)]" : "!max-w-[calc(100%-4rem)]"} ${
+        shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""
+      }`}
       scrollBehavior="inside"
     >
       <ModalContent>
@@ -551,10 +553,16 @@ export default function AddBirdEventModal({
                   <SpeciesRangeTable title="MBO" speciesCode={formData.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
-              <Table aria-label="New capture form">
+              <Table
+                aria-label="New capture form"
+                classNames={{
+                  base: "table-fixed",
+                  table: "table-fixed",
+                }}
+              >
                 <TableHeader columns={sortedColumns.filter((column) => column.key !== "actions")}>
                   {(column) => (
-                    <TableColumn key={column.key} className={`whitespace-nowrap ${column.className || ""}`}>
+                    <TableColumn key={column.key} className={column.className || ""}>
                       {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
                     </TableColumn>
                   )}
