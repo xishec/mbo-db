@@ -63,6 +63,7 @@ export interface BirdEvent {
   bander: string;
   scribe: string;
   net: string;
+  birdStatus: string;
   notes: string;
 
   previousEventId: string | null;
@@ -115,12 +116,14 @@ export enum HEADERS {
   HowSexed = "HowSexed",
   Fat = "Fat",
   Weight = "Weight",
+  WeightTime = "WeightTime",
   CaptureDate = "CaptureDate",
   Bander = "Bander",
   Scribe = "Scribe",
   Net = "Net",
   NotesForMBO = "NotesForMBO",
   D18 = "D18",
+  BirdStatus = "BirdStatus",
 }
 
 export interface SpeciesRange {
@@ -196,7 +199,11 @@ export interface DataContextType {
   updateProgram: (programId: string, newDisplayName: string) => Promise<void>;
   syncQueue: () => Promise<void>;
   updateBandSizeMap: (bandSizeMap: BandSizeToBandIdMap) => Promise<void>;
-  incrementBandSize: (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string) => Promise<Record<BandSize, string>>;
+  incrementBandSize: (
+    bandSize: BandSize,
+    bandGroup: string,
+    bandLastTwoDigits: string
+  ) => Promise<Record<BandSize, string>>;
 }
 
 // Form types
@@ -218,6 +225,7 @@ export interface CaptureFormData {
   scribe: string;
   net: string;
   birdEventType: string;
+  birdStatus: string;
   notes: string;
 }
 

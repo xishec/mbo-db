@@ -29,6 +29,7 @@ function birdEventToRow(event: BirdEvent): TableRow {
     scribe: event.scribe,
     net: event.net,
     birdEventType: event.birdEventType,
+    birdStatus: event.birdStatus,
     notes: event.notes,
     modifiedEventId: event.modifiedEventId,
     previousEventId: event.previousEventId,
@@ -254,7 +255,7 @@ export default function BirdEventsTable({
           color="default"
           classNames={{
             base: "table-fixed",
-            table: "table-fixed"
+            table: "table-fixed",
           }}
         >
           <TableHeader columns={displayColumns}>
@@ -264,7 +265,7 @@ export default function BirdEventsTable({
                 allowsSorting={column.key !== "actions"}
                 className={`whitespace-nowrap ${column.className ?? ""}`}
               >
-                {column.label}
+                {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
               </TableColumn>
             )}
           </TableHeader>

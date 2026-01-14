@@ -177,6 +177,12 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
       case HEADERS.D18:
         birdEvent.birdEventType = value as unknown as BirdEventType;
         break;
+      case HEADERS.BirdStatus:
+        birdEvent.birdStatus = value;
+        break;
+      case HEADERS.WeightTime:
+        birdEvent.time = value.slice(0, 5);
+        break;
       default:
         break;
     }
@@ -190,7 +196,6 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
     String(birdEvent.wing),
     String(birdEvent.weight)
   );
-  birdEvent.time = "10:00";
   return birdEvent;
 }
 

@@ -13,15 +13,16 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
   { key: "time", label: "Time", type: "time", className: "w-[75px]" },
   { key: "wing", label: "Wing", maxLength: 4, minLength: 2, className: "w-[75px]" },
   { key: "age", label: "Age", maxLength: 1, minLength: 1, className: "w-[50px]" },
-  { key: "howAged", label: "", maxLength: 1, minLength: 1, className: "w-[50px]" },
+  { key: "howAged", label: "How Aged", maxLength: 1, minLength: 1, className: "w-[50px]" },
   { key: "sex", label: "Sex", maxLength: 1, minLength: 1, className: "w-[50px]" },
-  { key: "howSexed", label: "", maxLength: 1, minLength: 1, className: "w-[50px]" },
+  { key: "howSexed", label: "How Sexed", maxLength: 1, minLength: 1, className: "w-[50px]" },
   { key: "fat", label: "Fat", maxLength: 1, minLength: 1, className: "w-[50px]" },
   { key: "weight", label: "Weight", maxLength: 5, minLength: 2, className: "w-[75px]" },
   { key: "bander", label: "Bander", maxLength: 3, minLength: 3, className: "w-[75px]" },
   { key: "scribe", label: "Scribe", maxLength: 3, minLength: 3, className: "w-[75px]" },
   { key: "net", label: "Net", maxLength: 2, minLength: 2, className: "w-[50px]" },
-  { key: "notes", label: "Notes" },
+  { key: "birdStatus", label: "Status", maxLength: 3, minLength: 3, className: "w-[75px]" },
+  { key: "notes", label: "Notes", className: "w-[1000px]" },
 ];
 
 // Column order for re-captures (isNewCapture = false)
@@ -44,6 +45,7 @@ export const RE_CAPTURE_COLUMN_ORDER: string[] = [
   "howSexed",
   "fat",
   "weight",
+  "birdStatus",
   "notes",
 ];
 
@@ -123,6 +125,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     scribe: "",
     net: "",
     birdEventType: BirdEventType.None,
+    birdStatus: "",
     notes: "",
   };
 }
