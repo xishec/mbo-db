@@ -54,12 +54,10 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
               Unknown {speciesRange.unknownCounter ? ` (${speciesRange.unknownCounter})` : ""}
             </TableCell>
             <TableCell>
-              {Math.min(speciesRange.mWeightLower, speciesRange.fWeightLower)} -{" "}
-              {Math.max(speciesRange.mWeightUpper, speciesRange.fWeightUpper)}
+              {speciesRange.unknownWeightLower} - {speciesRange.unknownWeightUpper}
             </TableCell>
             <TableCell>
-              {Math.min(speciesRange.mWingLower, speciesRange.fWingLower)} -{" "}
-              {Math.max(speciesRange.mWingUpper, speciesRange.fWingUpper)}
+              {speciesRange.unknownWingLower} - {speciesRange.unknownWingUpper}
             </TableCell>
           </TableRow>
         </TableBody>

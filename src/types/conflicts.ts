@@ -87,6 +87,29 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
       event.age
     );
     if (wingReason) reasons.push(wingReason);
+  } else {
+    // Unknown sex - use unknown ranges
+    const weightReason = checkMeasurementTolerance(
+      event.weight,
+      speciesRange.unknownWeightLower,
+      speciesRange.unknownWeightUpper,
+      "Weight",
+      "male",
+      "g",
+      event.age
+    );
+    if (weightReason) reasons.push(weightReason);
+    
+    const wingReason = checkMeasurementTolerance(
+      event.wing,
+      speciesRange.unknownWingLower,
+      speciesRange.unknownWingUpper,
+      "Wing",
+      "male",
+      "mm",
+      event.age
+    );
+    if (wingReason) reasons.push(wingReason);
   }
   
   return reasons;
