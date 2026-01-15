@@ -116,22 +116,28 @@ export default function BirdEventsTable({
   const { birdEventsMap, rows } = useMemo(() => {
     const eventsMap = new Map<string, BirdEvent>();
     const tableRows: TableRow[] = [];
-    
+
     for (const event of birdEvents) {
       // Skip duplicates
       if (eventsMap.has(event.id)) continue;
-      
+
       eventsMap.set(event.id, event);
-      
+
       // Skip modified events unless showHistory is true
       if (!showHistory && event.modifiedEventId != null) continue;
-      
+
       // Skip events from other programs if needed
-      if (programId !== undefined && showOtherPrograms !== undefined && !showOtherPrograms && event.programId !== programId) continue;
-      
+      if (
+        programId !== undefined &&
+        showOtherPrograms !== undefined &&
+        !showOtherPrograms &&
+        event.programId !== programId
+      )
+        continue;
+
       tableRows.push(birdEventToRow(event));
     }
-    
+
     return { birdEventsMap: eventsMap, rows: tableRows };
   }, [birdEvents, showHistory, programId, showOtherPrograms]);
 
@@ -279,7 +285,7 @@ export default function BirdEventsTable({
     <>
       <div className="w-full flex flex-col gap-4">
         <div className="text-sm">
-          {rows.length} {rows.length === 1 ? "capture" : "birdEvents"}
+          showing {rows.length} of {birdEvents.length} {rows.length === 1 ? "entry" : "entries"}
         </div>
         <Table
           isHeaderSticky

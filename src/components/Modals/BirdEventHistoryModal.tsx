@@ -28,12 +28,18 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
   }, [birdEventsMap]);
 
   return (
-    <Modal isDismissable isOpen={isOpen} onClose={onClose} className={`!max-w-[calc(100%-8rem)]`} scrollBehavior="inside">
+    <Modal
+      isDismissable
+      isOpen={isOpen}
+      onClose={onClose}
+      className={`!max-w-[calc(100%-8rem)]`}
+      scrollBehavior="inside"
+    >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xl">Bird Event History</h2>
+              <h2 className="text-xl">Recent History</h2>
               <p className="text-sm text-default-600 font-light">Showing the 10 most recently updated bird events</p>
             </div>
           </div>
@@ -46,10 +52,6 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
             </div>
           ) : (
             <>
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-md font-semibold">Recent Events ({birdEvents.length})</h3>
-              </div>
-
               <BirdEventsTable
                 birdEvents={birdEvents}
                 maxTableHeight={600}
