@@ -41,7 +41,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
   };
 
   return (
-    <Modal isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
+    <Modal isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
           <h2 className="text-2xl font-bold">Add New Program</h2>

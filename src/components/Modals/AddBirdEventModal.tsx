@@ -638,7 +638,7 @@ export default function AddBirdEventModal({
 
   return (
     <Modal
-      isKeyboardDismissDisabled
+      isDismissable
       isOpen={isOpen}
       onOpenChange={handleModalOpenChange}
       className={`${birdEventToModify ? "!max-w-[calc(100%-12rem)]" : "!max-w-[calc(100%-8rem)]"} ${

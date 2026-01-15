@@ -76,7 +76,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside">
+    <Modal isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside">
       <ModalContent>
         {(handleClose) => (
           <>

@@ -58,7 +58,7 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
+    <Modal isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
       <ModalContent>
         {() => (
           <>

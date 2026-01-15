@@ -35,7 +35,7 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
 
   return (
     <Modal
-      isKeyboardDismissDisabled
+      isDismissable
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       className={`!max-w-[calc(100%-8rem)]`}

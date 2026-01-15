@@ -28,7 +28,7 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
   }, [birdEventsMap]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className={`!max-w-[calc(100%-8rem)]`} scrollBehavior="inside">
+    <Modal isDismissable isOpen={isOpen} onClose={onClose} className={`!max-w-[calc(100%-8rem)]`} scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">

@@ -25,7 +25,7 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
   }, [queuedEvents]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
+    <Modal isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
