@@ -2,6 +2,7 @@ import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Button } from
 import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
+import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 
 interface CaptureHistoryModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ export default function CaptureHistoryModal({
   bandId,
   birdEventIdToHighlight,
 }: CaptureHistoryModalProps) {
-  const { bandIdToBirdEventIdsMap, birdEventsMap } = useData();
+  const { bandIdToBirdEventIdsMap, birdEventsMap, magicTable } = useData();
 
   const birdEvents = useMemo(() => {
     if (!bandId) return [];
@@ -75,6 +76,16 @@ export default function CaptureHistoryModal({
     };
   }, [birdEvents]);
 
+  const pyleSpeciesRange = useMemo(() => {
+    if (!birdInfo || birdInfo.species.length !== 4 || !magicTable || !magicTable.pyle) return null;
+    return magicTable.pyle[birdInfo.species] || null;
+  }, [birdInfo, magicTable]);
+
+  const mboSpeciesRange = useMemo(() => {
+    if (!birdInfo || birdInfo.species.length !== 4 || !magicTable || !magicTable.mbo) return null;
+    return magicTable.mbo[birdInfo.species] || null;
+  }, [birdInfo, magicTable]);
+
   return (
     <Modal
       isKeyboardDismissDisabled
@@ -120,6 +131,12 @@ export default function CaptureHistoryModal({
                       )}
                     </div>
                   </div>
+                </div>
+              )}
+              {birdInfo && birdInfo.species.length === 4 && (pyleSpeciesRange || mboSpeciesRange) && (
+                <div className="flex gap-4">
+                  <SpeciesRangeTable title="Pyle" speciesCode={birdInfo.species} speciesRange={pyleSpeciesRange} />
+                  <SpeciesRangeTable title="MBO" speciesCode={birdInfo.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
               {birdEvents.length > 0 ? (

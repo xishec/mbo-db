@@ -13,6 +13,8 @@ function findSexConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, bird
 
   // Iterate through each band
   for (const bandId in bandIdToBirdEventIdsMap) {
+    if (bandId == "999999999") continue; // Skip test band
+
     const eventIds = bandIdToBirdEventIdsMap[bandId];
 
     // Check consecutive events for this band
@@ -59,7 +61,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   }, [bandIdToBirdEventIdsMap, birdEventsMap]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} onClose={onClose} className={`!max-w-[calc(100%-8rem)]`} scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
@@ -71,11 +73,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
         </ModalHeader>
 
         <ModalBody>
-          <BirdEventsTable
-            birdEvents={conflictingBirdEvents}
-            maxTableHeight={600}
-            allowInspectBandId
-          />
+          <BirdEventsTable birdEvents={conflictingBirdEvents} maxTableHeight={600} allowInspectBandId />
         </ModalBody>
 
         <ModalFooter className="gap-4 p-8 pt-4">
