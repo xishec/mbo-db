@@ -1,4 +1,5 @@
 import { type SpeciesRange, type CaptureFormData, BirdEventType } from "../../../../types";
+import { DEFAULT_BIRD_STATUS } from "../../../../types/birdStatus";
 
 import type { CaptureColumn } from "../../../../types";
 
@@ -76,7 +77,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     tableClassName: "w-[75px]",
     inputClassName: "w-[75px]",
   },
-  { key: "net", label: "Net", maxLength: 2, minLength: 2, tableClassName: "w-[50px]", inputClassName: "w-[50px]" },
+  { key: "net", label: "Net", maxLength: 2, minLength: 2, tableClassName: "w-[50px]", inputClassName: "w-[75px]" },
   {
     key: "birdStatus",
     label: "Status",
@@ -188,7 +189,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     scribe: "",
     net: "",
     birdEventType: BirdEventType.None,
-    birdStatus: "300",
+    birdStatus: DEFAULT_BIRD_STATUS,
     notes: "",
   };
 }

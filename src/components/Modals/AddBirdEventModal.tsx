@@ -19,6 +19,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
+import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
+import BirdStatusModal from "./BirdStatusModal";
 import { getSortedColumns } from "../PageContent/Programs/Captures/helpers";
 import {
   formatFieldValue,
@@ -60,6 +62,7 @@ export default function AddBirdEventModal({
   const [useCurrentTime, setUseCurrentTime] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
+  const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
 
   // Get sorted columns based on capture type
   const sortedColumns = useMemo(
@@ -373,17 +376,20 @@ export default function AddBirdEventModal({
     sortedColumns,
   ]);
 
-  const focusNextInput = useCallback((currentField: keyof CaptureFormData) => {
-    const currentIndex = sortedColumns.findIndex((col) => col.key === currentField);
-    if (currentIndex < sortedColumns.length - 1) {
-      const nextKey = sortedColumns
-        .slice(currentIndex + 1)
-        .find((col) => !["birdEventType", "date", "time"].includes(col.key))?.key;
-      if (!nextKey) return;
+  const focusNextInput = useCallback(
+    (currentField: keyof CaptureFormData) => {
+      const currentIndex = sortedColumns.findIndex((col) => col.key === currentField);
+      if (currentIndex < sortedColumns.length - 1) {
+        const nextKey = sortedColumns
+          .slice(currentIndex + 1)
+          .find((col) => !["birdEventType", "date", "time", "birdStatus"].includes(col.key))?.key;
+        if (!nextKey) return;
 
-      inputRefs.current.get(nextKey)?.focus();
-    }
-  }, [sortedColumns]);
+        inputRefs.current.get(nextKey)?.focus();
+      }
+    },
+    [sortedColumns]
+  );
 
   const focusPrevInput = useCallback(
     (currentField: keyof CaptureFormData) => {
@@ -392,7 +398,7 @@ export default function AddBirdEventModal({
         const prevKey = sortedColumns
           .slice(0, currentIndex)
           .reverse()
-          .find((col) => !["birdEventType", "date", "time"].includes(col.key))?.key;
+          .find((col) => !["birdEventType", "date", "time", "birdStatus"].includes(col.key))?.key;
         if (!prevKey) return;
 
         inputRefs.current.get(prevKey)?.focus();
@@ -486,37 +492,40 @@ export default function AddBirdEventModal({
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);
   const handleSaveAndNext = useCallback(() => handleSave(true), [handleSave]);
 
-  const getInputColor = (columnKey: keyof CaptureFormData) => {
-    // Check wing range validation
-    if (columnKey === "wing") {
-      if (rangeValidation.wing.pyle === false) return "danger";
-      if (rangeValidation.wing.mbo === false) return "warning";
-    }
+  const getInputColor = useCallback(
+    (columnKey: keyof CaptureFormData) => {
+      // Check wing range validation
+      if (columnKey === "wing") {
+        if (rangeValidation.wing.pyle === false) return "danger";
+        if (rangeValidation.wing.mbo === false) return "warning";
+      }
 
-    // Check weight range validation
-    if (columnKey === "weight") {
-      if (rangeValidation.weight.pyle === false) return "danger";
-      if (rangeValidation.weight.mbo === false) return "warning";
-    }
+      // Check weight range validation
+      if (columnKey === "weight") {
+        if (rangeValidation.weight.pyle === false) return "danger";
+        if (rangeValidation.weight.mbo === false) return "warning";
+      }
 
-    // Check if sex is valid based on existing captures
-    if (columnKey === "sex" && pastBirdEvents.length > 0 && formData.sex.length > 0) {
-      const capturesWithDefinedSex = pastBirdEvents.filter((capture) => ["4", "5"].includes(capture.sex));
-      if (capturesWithDefinedSex.length > 0) {
-        const allSexMatch = capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
-        if (!allSexMatch) {
-          return "danger";
+      // Check if sex is valid based on existing captures
+      if (columnKey === "sex" && pastBirdEvents.length > 0 && formData.sex.length > 0) {
+        const capturesWithDefinedSex = pastBirdEvents.filter((capture) => ["4", "5"].includes(capture.sex));
+        if (capturesWithDefinedSex.length > 0) {
+          const allSexMatch = capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
+          if (!allSexMatch) {
+            return "danger";
+          }
         }
       }
-    }
 
-    const column = sortedColumns.find((col) => col.key === columnKey);
-    const value = formData[columnKey];
-    const isIncomplete = column?.minLength && value.length > 0 && value.length < column.minLength;
-    return isIncomplete ? "warning" : null;
-  };
+      const column = sortedColumns.find((col) => col.key === columnKey);
+      const value = formData[columnKey];
+      const isIncomplete = column?.minLength && value.length > 0 && value.length < column.minLength;
+      return isIncomplete ? "warning" : null;
+    },
+    [rangeValidation, pastBirdEvents, formData, sortedColumns]
+  );
 
-  const getBorderClass = (color: "danger" | "warning" | null) => {
+  const getBorderClass = useCallback((color: "danger" | "warning" | null) => {
     if (color === "danger") {
       return "!border-danger data-[hover=true]:!border-danger group-data-[focus=true]:!border-danger";
     }
@@ -524,7 +533,106 @@ export default function AddBirdEventModal({
       return "!border-warning data-[hover=true]:!border-warning group-data-[focus=true]:!border-warning";
     }
     return "";
-  };
+  }, []);
+
+  const renderTableCell = useCallback(
+    (column: { key: string; label: string; type?: string; maxLength?: number }) => {
+      const columnKey = column.key as keyof CaptureFormData;
+      const inputColor = getInputColor(columnKey);
+
+      // Determine readonly value
+      const readonlyValue = (() => {
+        if (column.key === "programId") return selectedProgram?.displayName;
+        if (useCurrentTime && (columnKey === "date" || columnKey === "time")) return formData[columnKey];
+        if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
+          return formData[columnKey];
+        return null;
+      })();
+
+      // Readonly field with optional edit icon
+      if (readonlyValue) {
+        return (
+          <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border-medium border-default-200 whitespace-nowrap">
+            {readonlyValue}
+          </div>
+        );
+      }
+
+      if (column.key === "birdStatus") {
+        return (
+          <Button
+            fullWidth
+            variant="ghost"
+            onPress={() => setIsBirdStatusModalOpen(true)}
+            isDisabled={isSaving}
+            className="border-medium border-default-200 min-w-[0px]"
+          >
+            {formData[columnKey]}
+          </Button>
+        );
+      }
+
+      // Bird event type selector
+      if (column.key === "birdEventType") {
+        return (
+          <Select
+            variant="bordered"
+            aria-label={column.label}
+            selectedKeys={[formData.birdEventType]}
+            onSelectionChange={(keys) => {
+              const value = Array.from(keys)[0] as string;
+              setFormData((prev) => ({ ...prev, birdEventType: value }));
+            }}
+            isDisabled={isSaving}
+            classNames={{
+              trigger: "min-h-unit-10 h-unit-10",
+              value: "text-sm",
+            }}
+          >
+            {Object.values(BirdEventType).map((type) => (
+              <SelectItem key={type}>{type}</SelectItem>
+            ))}
+          </Select>
+        );
+      }
+
+      // Standard input field
+      return (
+        <Input
+          ref={(el) => {
+            if (el) inputRefs.current.set(columnKey, el);
+          }}
+          variant="bordered"
+          color={inputColor || "default"}
+          aria-label={column.label}
+          type={column.type || "text"}
+          maxLength={column.maxLength}
+          validationBehavior="aria"
+          value={formData[columnKey]}
+          onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
+          onKeyDown={(e) => handleKeyDown(e, columnKey)}
+          onFocus={(e) => e.target.select()}
+          isDisabled={isSaving}
+          classNames={{
+            input:
+              "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            inputWrapper: getBorderClass(inputColor),
+          }}
+        />
+      );
+    },
+    [
+      formData,
+      selectedProgram,
+      useCurrentTime,
+      birdEventToModify,
+      isSaving,
+      getInputColor,
+      getBorderClass,
+      handleInputChange,
+      handleKeyDown,
+    ]
+  );
 
   const shouldShowPastBirdEvents = pastBirdEvents.length > 0 && !birdEventToModify;
 
@@ -576,73 +684,11 @@ export default function AddBirdEventModal({
                   <TableRow key="new-capture">
                     {sortedColumns
                       .filter((column) => column.key !== "actions")
-                      .map((column) => {
-                        const columnKey = column.key as keyof CaptureFormData;
-                        const inputColor = getInputColor(columnKey);
-
-                        const getReadonlyValue = () => {
-                          if (column.key === "programId") return selectedProgram?.displayName;
-                          if (useCurrentTime && (columnKey === "date" || columnKey === "time"))
-                            return formData[columnKey];
-                          // Make band fields readonly when prefilled from birdEventToModify
-                          if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
-                            return formData[columnKey];
-                          return null;
-                        };
-
-                        const readonlyValue = getReadonlyValue();
-
-                        return (
-                          <TableCell key={column.key} className="p-1">
-                            {readonlyValue ? (
-                              <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border whitespace-nowrap">
-                                {readonlyValue}
-                              </div>
-                            ) : column.key === "birdEventType" ? (
-                              <Select
-                                variant="bordered"
-                                aria-label={column.label}
-                                selectedKeys={[formData.birdEventType]}
-                                onSelectionChange={(keys) => {
-                                  const value = Array.from(keys)[0] as string;
-                                  setFormData((prev) => ({ ...prev, birdEventType: value }));
-                                }}
-                                isDisabled={isSaving}
-                                classNames={{
-                                  trigger: "min-h-unit-10 h-unit-10",
-                                  value: "text-sm",
-                                }}
-                              >
-                                {Object.values(BirdEventType).map((type) => (
-                                  <SelectItem key={type}>{type}</SelectItem>
-                                ))}
-                              </Select>
-                            ) : (
-                              <Input
-                                ref={(el) => {
-                                  if (el) inputRefs.current.set(columnKey, el);
-                                }}
-                                variant="bordered"
-                                color={inputColor || "default"}
-                                aria-label={column.label}
-                                type={column.type || "text"}
-                                maxLength={column.maxLength}
-                                validationBehavior="aria"
-                                value={formData[columnKey]}
-                                onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
-                                onKeyDown={(e) => handleKeyDown(e, columnKey)}
-                                onFocus={(e) => e.target.select()}
-                                isDisabled={isSaving}
-                                classNames={{
-                                  input:
-                                    "text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                  inputWrapper: getBorderClass(inputColor),
-                                }}
-                              />
-                            )}
-                          </TableCell>
-                        );
-                      })}
+                      .map((column) => (
+                        <TableCell key={column.key} className="p-1">
+                          {renderTableCell(column)}
+                        </TableCell>
+                      ))}
                   </TableRow>
                 </TableBody>
               </Table>
@@ -693,6 +739,12 @@ export default function AddBirdEventModal({
           </>
         )}
       </ModalContent>
+      <BirdStatusModal
+        isOpen={isBirdStatusModalOpen}
+        onOpenChange={setIsBirdStatusModalOpen}
+        currentStatus={formData.birdStatus || DEFAULT_BIRD_STATUS}
+        onStatusChange={(status) => setFormData((prev) => ({ ...prev, birdStatus: status }))}
+      />
     </Modal>
   );
 }
