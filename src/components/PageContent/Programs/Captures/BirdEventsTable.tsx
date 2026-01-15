@@ -8,6 +8,36 @@ import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 import { useData } from "../../../../services/useData";
 
+// Helper to format updatedAt as "x days ago"
+function formatUpdatedAt(updatedAt: string | undefined): string {
+  if (!updatedAt) return "";
+  
+  // updatedAt is stored as a timestamp string (milliseconds since epoch)
+  const timestamp = parseInt(updatedAt, 10);
+  
+  // Check if the timestamp is valid
+  if (isNaN(timestamp)) {
+    return updatedAt; // Return the raw value if it can't be parsed
+  }
+  
+  const updatedDate = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - updatedDate.getTime();
+  
+  // Handle future dates
+  if (diffMs < 0) return "Recently";
+  
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes} ${diffMinutes === 1 ? "minute" : "minutes"} ago`;
+  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
+  if (diffDays === 1) return "1 day ago";
+  return `${diffDays} days ago`;
+}
+
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
   return {
@@ -33,10 +63,11 @@ function birdEventToRow(event: BirdEvent): TableRow {
     notes: event.notes,
     modifiedEventId: event.modifiedEventId,
     previousEventId: event.previousEventId,
+    updatedAt: event.updatedAt,
   };
 }
 
-type TableRow = CaptureFormData & { id: string; modifiedEventId?: string | null; previousEventId?: string | null };
+type TableRow = CaptureFormData & { id: string; modifiedEventId?: string | null; previousEventId?: string | null; updatedAt?: string };
 
 interface BirdEventsTableProps {
   programId?: string;
@@ -204,6 +235,10 @@ export default function BirdEventsTable({
 
       if (columnKey === "programId") {
         return programsMap[item.programId]?.displayName;
+      }
+
+      if (columnKey === "updatedAt") {
+        return formatUpdatedAt(item.updatedAt);
       }
 
       const cellValue = item[columnKey as keyof TableRow];

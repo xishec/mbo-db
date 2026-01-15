@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
-import { getBirdEventHistory, clearBirdEventHistory, type BirdEventHistoryEntry } from "../../services/indexedDB";
+import { useData } from "../../services/useData";
 
 interface BirdEventHistoryModalProps {
   isOpen: boolean;
@@ -9,45 +9,21 @@ interface BirdEventHistoryModalProps {
 }
 
 export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModalProps) {
-  const [historyEntries, setHistoryEntries] = useState<BirdEventHistoryEntry[]>([]);
-  const [isClearing, setIsClearing] = useState(false);
+  const { birdEventsMap } = useData();
 
-  // Load history when modal opens
-  useEffect(() => {
-    if (!isOpen) return;
-
-    loadHistory();
-  }, [isOpen]);
-
-  const loadHistory = async () => {
-    try {
-      const entries = await getBirdEventHistory();
-      setHistoryEntries(entries);
-    } catch (error) {
-      console.error("Failed to load bird event history:", error);
-    }
-  };
-
-  const handleClearHistory = async () => {
-    if (!confirm("Are you sure you want to clear all bird event history? This cannot be undone.")) {
-      return;
-    }
-
-    setIsClearing(true);
-    try {
-      await clearBirdEventHistory();
-      setHistoryEntries([]);
-    } catch (error) {
-      console.error("Failed to clear history:", error);
-    } finally {
-      setIsClearing(false);
-    }
-  };
-
-  // Convert history entries to bird events for display, with latest event highlighted
+  // Get the 10 most recent bird events based on updatedAt timestamp
   const birdEvents = useMemo(() => {
-    return historyEntries.sort((a, b) => b.timestamp - a.timestamp).map((entry) => entry.birdEvent);
-  }, [historyEntries]);
+    const allBirdEvents = Object.values(birdEventsMap);
+    
+    // Sort by updatedAt timestamp (descending - newest first) and take top 10
+    return allBirdEvents
+      .sort((a, b) => {
+        const dateA = new Date(a.updatedAt).getTime();
+        const dateB = new Date(b.updatedAt).getTime();
+        return dateB - dateA;
+      })
+      .slice(0, 10);
+  }, [birdEventsMap]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className={`!max-w-[calc(100%-8rem)]`} scrollBehavior="inside">
@@ -57,27 +33,46 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
             <div>
               <h2 className="text-xl font-bold">Bird Event History</h2>
               <p className="text-sm text-default-500">
-                Local history of all bird events added or modified in this session
+                Showing the 10 most recently updated bird events
               </p>
             </div>
           </div>
         </ModalHeader>
 
         <ModalBody>
-          {historyEntries.length === 0 ? (
+          {birdEvents.length === 0 ? (
             <div className="flex justify-center items-center py-8">
-              <p className="text-default-500">No bird events in history</p>
+              <p className="text-default-500">No bird events found</p>
             </div>
           ) : (
             <>
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-md font-semibold">All Events ({historyEntries.length})</h3>
-                <Button size="sm" color="danger" variant="flat" onPress={handleClearHistory} isLoading={isClearing}>
-                  Clear History
-                </Button>
+                <h3 className="text-md font-semibold">Recent Events ({birdEvents.length})</h3>
               </div>
 
-              <BirdEventsTable birdEvents={birdEvents} maxTableHeight={600} sortDescriptors={[]} allowInspectBandId />
+              <BirdEventsTable
+                birdEvents={birdEvents}
+                maxTableHeight={600}
+                sortDescriptors={[]}
+                allowInspectBandId
+                hiddenColumns={[
+                  "birdEventType",
+                  "wing",
+                  "age",
+                  "howAged",
+                  "sex",
+                  "howSexed",
+                  "fat",
+                  "net",
+                  "weight",
+                  "notes",
+                  "bander",
+                  "scribe",
+                  "birdStatus",
+                  "date",
+                  "time",
+                ]}
+              />
             </>
           )}
         </ModalBody>

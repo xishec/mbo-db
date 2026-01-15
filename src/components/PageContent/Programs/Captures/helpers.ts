@@ -86,12 +86,12 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     tableClassName: "w-[75px]",
     inputClassName: "w-[75px]",
   },
+  { key: "updatedAt", label: "Updated", tableClassName: "w-[125px]" },
   { key: "notes", label: "Notes", tableClassName: "w-[1000px]", inputClassName: "w-[1000px]" },
 ];
 
 // Column order for re-captures (isNewCapture = false)
 export const RE_CAPTURE_COLUMN_ORDER: string[] = [
-  "actions",
   "programId",
   "birdEventType",
   "bander",

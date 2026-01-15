@@ -231,7 +231,7 @@ export interface CaptureFormData {
 }
 
 export interface CaptureColumn {
-  key: keyof CaptureFormData | "actions";
+  key: keyof CaptureFormData | "actions" | "updatedAt";
   label: string;
   type?: string;
   tableClassName?: string;

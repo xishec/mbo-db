@@ -673,7 +673,7 @@ export default function AddBirdEventModal({
                   table: "table-fixed",
                 }}
               >
-                <TableHeader columns={sortedColumns.filter((column) => column.key !== "actions")}>
+                <TableHeader columns={sortedColumns.filter((column) => !["actions", "updatedAt"].includes(column.key))}>
                   {(column) => (
                     <TableColumn key={column.key} className={column.inputClassName || ""}>
                       {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
@@ -683,7 +683,7 @@ export default function AddBirdEventModal({
                 <TableBody>
                   <TableRow key="new-capture">
                     {sortedColumns
-                      .filter((column) => column.key !== "actions")
+                      .filter((column) => !["actions", "updatedAt"].includes(column.key))
                       .map((column) => (
                         <TableCell key={column.key} className="p-1">
                           {renderTableCell(column)}
