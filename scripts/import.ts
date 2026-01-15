@@ -17,6 +17,59 @@ import {
   generateBirdEventId,
 } from "../src/types";
 
+/**
+ * Parse the Pyle magic table CSV
+ */
+function parsePyleMagicTable(csvContent: string): Record<string, SpeciesRange> {
+  csvContent = csvContent.replace(/^\uFEFF/, "");
+  const lines = csvContent.trim().split("\n");
+  const pyleMagicTable: Record<string, SpeciesRange> = {};
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(",");
+    if (values.length < 9) continue;
+
+    const speciesCode = values[8].trim();
+    if (!speciesCode) continue;
+
+    const fWeightLower = Number(values[0]) || 0;
+    const fWeightUpper = Number(values[1]) || 0;
+    const fWingLower = Number(values[2]) || 0;
+    const fWingUpper = Number(values[3]) || 0;
+    const mWeightLower = Number(values[4]) || 0;
+    const mWeightUpper = Number(values[5]) || 0;
+    const mWingLower = Number(values[6]) || 0;
+    const mWingUpper = Number(values[7]) || 0;
+
+    pyleMagicTable[speciesCode] = {
+      fWeightLower,
+      fWeightUpper,
+      fWingLower,
+      fWingUpper,
+      mWeightLower,
+      mWeightUpper,
+      mWingLower,
+      mWingUpper,
+      unknownWeightLower: Math.min(fWeightLower, mWeightLower),
+      unknownWeightUpper: Math.max(fWeightUpper, mWeightUpper),
+      unknownWingLower: Math.min(fWingLower, mWingLower),
+      unknownWingUpper: Math.max(fWingUpper, mWingUpper),
+    };
+  }
+
+  return pyleMagicTable;
+}
+
+/**
+ * Check if a measurement is within 20% tolerance of the Pyle range
+ */
+function isWithinTolerance(value: number, pyleLower: number, pyleUpper: number): boolean {
+  if (value <= 0 || pyleLower <= 0) return true; // Skip validation if no valid data
+  const lowerBound = pyleLower * 0.8;
+  const upperBound = pyleUpper * 1.2;
+  return value >= lowerBound && value <= upperBound;
+}
+
 async function main() {
   try {
     console.log("Reading CSV file...");
@@ -220,6 +273,12 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   const bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap = {};
   const mboMagicTable: Record<string, SpeciesRange> = {};
 
+  // Load Pyle magic table for validation
+  console.log("Loading Pyle magic table for validation...");
+  const pyleCsvPath = join(process.cwd(), "public", "data", "magic_table.csv");
+  const pyleCsvContent = readFileSync(pyleCsvPath, "utf-8");
+  const pyleMagicTable = parsePyleMagicTable(pyleCsvContent);
+
   for (const birdEvent of birdEvents) {
     // birdEventsMap
     const birdEventId = birdEvent.id;
@@ -272,7 +331,43 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
     // BandIdToBirdEventIdsMap
     (bandIdToBirdEventIdsMap[birdEvent.band.id] ??= []).push(birdEventId);
 
-    // mboMagicTable
+    // mboMagicTable - only include if within 20% of Pyle ranges
+    const pyleRange = pyleMagicTable[birdEvent.species];
+    let includeInMbo = true;
+
+    if (pyleRange) {
+      // Check if measurements are within 20% of Pyle ranges
+      if (birdEvent.sex === "4") {
+        // Male
+        if (!isWithinTolerance(birdEvent.weight, pyleRange.mWeightLower, pyleRange.mWeightUpper)) {
+          includeInMbo = false;
+        }
+        if (!isWithinTolerance(birdEvent.wing, pyleRange.mWingLower, pyleRange.mWingUpper)) {
+          includeInMbo = false;
+        }
+      } else if (birdEvent.sex === "5") {
+        // Female
+        if (!isWithinTolerance(birdEvent.weight, pyleRange.fWeightLower, pyleRange.fWeightUpper)) {
+          includeInMbo = false;
+        }
+        if (!isWithinTolerance(birdEvent.wing, pyleRange.fWingLower, pyleRange.fWingUpper)) {
+          includeInMbo = false;
+        }
+      } else {
+        // Unknown sex
+        if (!isWithinTolerance(birdEvent.weight, pyleRange.unknownWeightLower, pyleRange.unknownWeightUpper)) {
+          includeInMbo = false;
+        }
+        if (!isWithinTolerance(birdEvent.wing, pyleRange.unknownWingLower, pyleRange.unknownWingUpper)) {
+          includeInMbo = false;
+        }
+      }
+    }
+
+    if (!includeInMbo) {
+      continue; // Skip this bird event for mboMagicTable
+    }
+
     if (mboMagicTable[birdEvent.species] === undefined) {
       mboMagicTable[birdEvent.species] = {
         fWeightLower: 1000000,

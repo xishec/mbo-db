@@ -10,13 +10,13 @@ interface ErrorsModalProps {
 }
 
 export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
-  const { birdEventsMap, bandIdToBirdEventIdsMap } = useData();
+  const { birdEventsMap, bandIdToBirdEventIdsMap, magicTable } = useData();
 
   // Find all bird events with sex conflicts (4 -> 5 or 5 -> 4) or species conflicts
   const conflictingBirdEvents = useMemo(() => {
-    const conflicts = findConflicts(bandIdToBirdEventIdsMap, birdEventsMap);
+    const conflicts = findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
     return conflicts.map(c => c.birdEvent);
-  }, [bandIdToBirdEventIdsMap, birdEventsMap]);
+  }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className={`!max-w-[calc(100%-8rem)]`} scrollBehavior="inside">

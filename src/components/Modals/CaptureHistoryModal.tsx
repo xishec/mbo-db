@@ -88,8 +88,8 @@ export default function CaptureHistoryModal({
   }, [birdInfo, magicTable]);
 
   const conflicts = useMemo(() => {
-    return findConflictsInEvents(birdEvents);
-  }, [birdEvents]);
+    return findConflictsInEvents(birdEvents, magicTable);
+  }, [birdEvents, magicTable]);
 
   return (
     <Modal

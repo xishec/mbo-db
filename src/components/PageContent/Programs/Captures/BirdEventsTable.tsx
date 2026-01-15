@@ -112,30 +112,34 @@ export default function BirdEventsTable({
   const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
   const [isModificationHistoryModalOpen, setIsModificationHistoryModalOpen] = useState(false);
 
-  // Convert BirdEvents to table rows (exclude events that have been modified)
-  const rows = useMemo(
-    () =>
-      birdEvents.filter((birdEvent) => (showHistory ? true : birdEvent.modifiedEventId == null)).map(birdEventToRow),
-    [birdEvents, showHistory]
-  );
-
-  // Filter birdEvents based on showOtherPrograms
-  const filteredRows = useMemo(() => {
-    if (programId === undefined || showOtherPrograms === undefined) {
-      return rows;
+  // Create a map for O(1) lookups and deduplicate/filter/map in single pass
+  const { birdEventsMap, rows } = useMemo(() => {
+    const eventsMap = new Map<string, BirdEvent>();
+    const tableRows: TableRow[] = [];
+    
+    for (const event of birdEvents) {
+      // Skip duplicates
+      if (eventsMap.has(event.id)) continue;
+      
+      eventsMap.set(event.id, event);
+      
+      // Skip modified events unless showHistory is true
+      if (!showHistory && event.modifiedEventId != null) continue;
+      
+      // Skip events from other programs if needed
+      if (programId !== undefined && showOtherPrograms !== undefined && !showOtherPrograms && event.programId !== programId) continue;
+      
+      tableRows.push(birdEventToRow(event));
     }
-    if (showOtherPrograms) {
-      return rows;
-    } else {
-      return rows.filter((row) => row.programId === programId);
-    }
-  }, [rows, showOtherPrograms, programId]);
+    
+    return { birdEventsMap: eventsMap, rows: tableRows };
+  }, [birdEvents, showHistory, programId, showOtherPrograms]);
 
   // Sort birdEvents based on multiple sortDescriptors (cascading sort)
   const sortedRows = useMemo(() => {
-    if (sortDescriptors.length === 0) return filteredRows;
+    if (sortDescriptors.length === 0) return rows;
 
-    return [...filteredRows].sort((a, b) => {
+    return [...rows].sort((a, b) => {
       for (const descriptor of sortDescriptors) {
         const column = descriptor.column as keyof TableRow;
         const first = a[column];
@@ -162,7 +166,7 @@ export default function BirdEventsTable({
       }
       return 0;
     });
-  }, [filteredRows, sortDescriptors]);
+  }, [rows, sortDescriptors]);
 
   const handleSortChange = useCallback((descriptor: SortDescriptor) => {
     setSortDescriptors((prev) => {
@@ -183,36 +187,36 @@ export default function BirdEventsTable({
 
   const handleInspectBandId = useCallback(
     (eventId: string) => {
-      const event = birdEvents.find((e) => e.id === eventId);
-      if (event && event.band) {
+      const event = birdEventsMap.get(eventId);
+      if (event?.band) {
         setSelectedBirdEvent(event);
         setSelectedBandId(event.band.id);
         setIsCaptureHistoryModalOpen(true);
       }
     },
-    [birdEvents]
+    [birdEventsMap]
   );
 
   const handleInspectHistory = useCallback(
     (eventId: string) => {
-      const event = birdEvents.find((e) => e.id === eventId);
+      const event = birdEventsMap.get(eventId);
       if (event) {
         setSelectedBirdEvent(event);
         setIsModificationHistoryModalOpen(true);
       }
     },
-    [birdEvents]
+    [birdEventsMap]
   );
 
   const handleEdit = useCallback(
     (eventId: string) => {
-      const event = birdEvents.find((e) => e.id === eventId);
+      const event = birdEventsMap.get(eventId);
       if (event) {
         setSelectedBirdEvent(event);
         setIsEditModalOpen(true);
       }
     },
-    [birdEvents]
+    [birdEventsMap]
   );
 
   const renderCell = useCallback(
@@ -266,26 +270,18 @@ export default function BirdEventsTable({
   const primarySortDescriptor = sortDescriptors[0];
 
   // Filter columns based on hiddenColumns prop
-  const displayColumns = TABLE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key));
-
-  // Create a stable key that changes when programsMap changes (for program name updates)
-  const tableKey = useMemo(() => {
-    // Include a hash of program display names to trigger re-render when they change
-    const programNames = Object.values(programsMap)
-      .map((p) => p.displayName)
-      .sort()
-      .join(",");
-    return `table-${programNames}`;
-  }, [programsMap]);
+  const displayColumns = useMemo(
+    () => TABLE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key)),
+    [hiddenColumns]
+  );
 
   return (
     <>
       <div className="w-full flex flex-col gap-4">
         <div className="text-sm">
-          {filteredRows.length} of {rows.length} {rows.length === 1 ? "capture" : "birdEvents"}
+          {rows.length} {rows.length === 1 ? "capture" : "birdEvents"}
         </div>
         <Table
-          key={tableKey}
           isHeaderSticky
           aria-label="birdEvents table"
           sortDescriptor={primarySortDescriptor}
@@ -317,8 +313,9 @@ export default function BirdEventsTable({
           <TableBody items={sortedRows} emptyContent="No birdEvents found">
             {(item) => {
               const isLowOpacity = (programId && item.programId !== programId) || !!item.modifiedEventId;
+              const rowKey = item.id;
               return (
-                <TableRow key={item.id}>
+                <TableRow key={rowKey}>
                   {(columnKey) => (
                     <TableCell
                       className={`whitespace-nowrap select-text ${
