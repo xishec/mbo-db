@@ -18,8 +18,9 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
     // Sort by updatedAt timestamp (descending - newest first) and take top 10
     return allBirdEvents
       .sort((a, b) => {
-        const dateA = new Date(a.updatedAt).getTime();
-        const dateB = new Date(b.updatedAt).getTime();
+        // updatedAt is stored as a string timestamp, convert directly to number
+        const dateA = Number(a.updatedAt);
+        const dateB = Number(b.updatedAt);
         return dateB - dateA;
       })
       .slice(0, 10);
