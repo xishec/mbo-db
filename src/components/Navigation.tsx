@@ -112,7 +112,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
           className="cursor-pointer"
           onClick={() => {
             selectProgram(null);
-            onPageChange("programs");
+            onPageChange("home");
           }}
         >
           <img src={mboLogo} alt="MBO Logo" className="h-8 w-8 mr-2" />
@@ -145,6 +145,21 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
           </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">
+          <NavbarItem isActive={activePage === "home"} className="w-24">
+            <Link
+              aria-current={activePage === "home" ? "page" : undefined}
+              color={activePage === "home" ? "primary" : "foreground"}
+              href="#"
+              className="inline-block w-full text-center"
+              onClick={(e) => {
+                e.preventDefault();
+                selectProgram(null);
+                onPageChange("home");
+              }}
+            >
+              Home
+            </Link>
+          </NavbarItem>
           <NavbarItem isActive={activePage === "programs"} className="w-24">
             <Link
               aria-current={activePage === "programs" ? "page" : undefined}

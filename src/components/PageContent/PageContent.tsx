@@ -1,5 +1,6 @@
 import Programs from "./Programs/Programs";
 import Search from "./Search";
+import Home from "./Home";
 
 interface PageContentProps {
   activePage: string;
@@ -9,6 +10,7 @@ export default function PageContent({ activePage }: PageContentProps) {
   return (
     <div className="h-full">
       <div className="mx-auto h-full">
+        {activePage === "home" && <Home />}
         {activePage === "programs" && <Programs />}
         {activePage === "search" && <Search />}
         {activePage === "DET" && (

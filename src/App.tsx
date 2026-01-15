@@ -5,7 +5,7 @@ import OfflineIndicator from "./components/OfflineIndicator";
 import { DataProvider } from "./services/DataService";
 
 function App() {
-  const [activePage, setActivePage] = useState("programs");
+  const [activePage, setActivePage] = useState("home");
   return (
     <DataProvider>
       <Navigation activePage={activePage} onPageChange={setActivePage} />
