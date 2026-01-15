@@ -293,7 +293,8 @@ export default function BirdEventsTable({
           isVirtualized
           maxTableHeight={maxTableHeight}
           selectionMode="single"
-          selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
+          // selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
+          selectedKeys={birdEventIdToHighlight ? new Set([]) : new Set()}
           disallowEmptySelection
           color="secondary"
           classNames={{

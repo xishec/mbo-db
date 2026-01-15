@@ -37,7 +37,7 @@ import mboLogo from "../assets/mbo-logo.svg";
 /**
  * Scans through bands to find conflicting changes.
  */
-function findSexConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, birdEventsMap: BirdEventsMap): BirdEvent[] {
+function findConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, birdEventsMap: BirdEventsMap): BirdEvent[] {
   const conflicts: BirdEvent[] = [];
 
   for (const bandId in bandIdToBirdEventIdsMap) {
@@ -86,7 +86,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
 
   // Calculate error count
   const errorCount = useMemo(() => {
-    return findSexConflicts(bandIdToBirdEventIdsMap, birdEventsMap).length;
+    return findConflicts(bandIdToBirdEventIdsMap, birdEventsMap).length;
   }, [bandIdToBirdEventIdsMap, birdEventsMap]);
 
   useEffect(() => {
