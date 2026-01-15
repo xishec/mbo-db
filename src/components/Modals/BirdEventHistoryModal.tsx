@@ -14,9 +14,10 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
   // Get the 10 most recent bird events based on updatedAt timestamp
   const birdEvents = useMemo(() => {
     const allBirdEvents = Object.values(birdEventsMap);
-    
-    // Sort by updatedAt timestamp (descending - newest first) and take top 10
+
+    // Filter out events without valid updatedAt and sort by timestamp (descending - newest first)
     return allBirdEvents
+      .filter((event) => event.updatedAt && !isNaN(Number(event.updatedAt)))
       .sort((a, b) => {
         // updatedAt is stored as a string timestamp, convert directly to number
         const dateA = Number(a.updatedAt);
@@ -33,9 +34,7 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-bold">Bird Event History</h2>
-              <p className="text-sm text-default-500">
-                Showing the 10 most recently updated bird events
-              </p>
+              <p className="text-sm text-default-500">Showing the 10 most recently updated bird events</p>
             </div>
           </div>
         </ModalHeader>
