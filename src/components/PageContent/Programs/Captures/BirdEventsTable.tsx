@@ -295,10 +295,11 @@ export default function BirdEventsTable({
           selectionMode="single"
           selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
           disallowEmptySelection
-          color="default"
+          color="secondary"
           classNames={{
             base: "table-fixed",
             table: "table-fixed",
+            td: "data-[selected=true]:!text-black",
           }}
         >
           <TableHeader columns={displayColumns}>

@@ -61,21 +61,8 @@ export default function CaptureHistoryModal({
 
       if (spanDays === 0) {
         captureSpan = "Same day";
-      } else if (spanDays < 30) {
-        captureSpan = `${spanDays} day${spanDays !== 1 ? "s" : ""}`;
-      } else if (spanDays < 365) {
-        const spanMonths = Math.floor(spanDays / 30);
-        captureSpan = `${spanMonths} month${spanMonths !== 1 ? "s" : ""}`;
       } else {
-        const spanYears = Math.floor(spanDays / 365);
-        const remainingMonths = Math.floor((spanDays % 365) / 30);
-        if (remainingMonths > 0) {
-          captureSpan = `${spanYears} year${spanYears !== 1 ? "s" : ""}, ${remainingMonths} month${
-            remainingMonths !== 1 ? "s" : ""
-          }`;
-        } else {
-          captureSpan = `${spanYears} year${spanYears !== 1 ? "s" : ""}`;
-        }
+        captureSpan = `${spanDays} day${spanDays !== 1 ? "s" : ""}`;
       }
     }
 
@@ -108,29 +95,28 @@ export default function CaptureHistoryModal({
                   <h3 className="text-lg font-semibold mb-3">Bird Information</h3>
                   <div className="grid grid-cols-5 gap-4 text-sm">
                     <div>
-                      <span className="text-default-700">Band ID:</span>{" "}
-                      <span className="font-medium">{bandId}</span>
+                      <span className="text-default-700">Band ID :</span> <span className="font-medium">{bandId}</span>
                     </div>
                     <div>
-                      <span className="text-default-700">Species:</span>{" "}
+                      <span className="text-default-700">Species :</span>{" "}
                       <span className="font-medium">{birdInfo.species}</span>
                     </div>
                     <div>
-                      <span className="text-default-700">Capture Span:</span>{" "}
-                      <span className="font-medium">{birdInfo.captureSpan}</span>
-                    </div>
-                    <div>
-                      <span className="text-default-700">Total Captures:</span>{" "}
+                      <span className="text-default-700">Total Captures :</span>{" "}
                       <span className="font-medium">{birdInfo.totalCaptures}</span>
                     </div>
                     <div>
-                      <span className="text-default-700">Latest Recapture:</span>{" "}
+                      <span className="text-default-700">Capture Span :</span>{" "}
+                      <span className="font-medium">{birdInfo.captureSpan}</span>
+                    </div>
+                    <div>
+                      <span className="text-default-700">Latest Recapture :</span>{" "}
                       {birdInfo.latestRecapture === "never" ? (
                         <span className="font-medium text-default-400">Never</span>
                       ) : birdInfo.latestRecapture === "< 6 months" ? (
-                        <span className="font-medium text-success">{`< 6 months`}</span>
+                        <span className="font-medium">{`< 6 months`}</span>
                       ) : (
-                        <span className="font-medium text-warning">{`> 6 months`}</span>
+                        <span className="font-medium">{`> 6 months`}</span>
                       )}
                     </div>
                   </div>
