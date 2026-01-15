@@ -118,8 +118,8 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xl font-bold">Developer Mode</h2>
-              <p className="text-sm text-default-500">
+              <h2 className="text-xl">Developer Mode</h2>
+              <p className="text-sm text-default-600 font-light">
                 {filteredLogs.length} of {logs.length} logs
               </p>
             </div>

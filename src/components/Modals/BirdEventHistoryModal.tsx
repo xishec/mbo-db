@@ -33,8 +33,8 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xl font-bold">Bird Event History</h2>
-              <p className="text-sm text-default-500">Showing the 10 most recently updated bird events</p>
+              <h2 className="text-xl">Bird Event History</h2>
+              <p className="text-sm text-default-600 font-light">Showing the 10 most recently updated bird events</p>
             </div>
           </div>
         </ModalHeader>

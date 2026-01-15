@@ -30,8 +30,8 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
         <ModalHeader className="flex flex-col gap-1">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xl font-bold">Sync Queue</h2>
-              <p className="text-sm text-default-500">Pending bird events waiting to sync to Firebase</p>
+              <h2 className="text-xl">Sync Queue</h2>
+              <p className="text-sm text-default-600 font-light">Pending bird events waiting to sync to Firebase</p>
             </div>
           </div>
         </ModalHeader>

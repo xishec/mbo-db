@@ -29,7 +29,6 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
       }
     }
 
-    console.log(events)
     return events.sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
   }, [birdEvent.id, birdEventsMap]);
 

@@ -552,7 +552,7 @@ export default function AddBirdEventModal({
       // Readonly field with optional edit icon
       if (readonlyValue) {
         return (
-          <div className="px-3 py-2 text-sm text-default-600 bg-default-50 rounded-lg border-medium border-default-200 whitespace-nowrap">
+          <div className="px-3 py-2 text-sm text-default-600 font-light bg-default-50 rounded-lg border-medium border-default-200 whitespace-nowrap">
             {readonlyValue}
           </div>
         );

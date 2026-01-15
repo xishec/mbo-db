@@ -15,12 +15,7 @@ import {
   Chip,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-import {
-  CodeBracketIcon,
-  ExclamationTriangleIcon,
-  ArrowPathIcon,
-  ClockIcon,
-} from "@heroicons/react/24/outline";
+import { CodeBracketIcon, ExclamationTriangleIcon, ArrowPathIcon, ClockIcon } from "@heroicons/react/24/outline";
 import { useState, useEffect, useMemo } from "react";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import type { User as FirebaseUser } from "firebase/auth";
@@ -31,43 +26,8 @@ import { ErrorsModal } from "./Modals/ErrorsModal";
 import { SyncQueueModal } from "./Modals/SyncQueueModal";
 import { BirdEventHistoryModal } from "./Modals/BirdEventHistoryModal";
 import { useData } from "../services/useData";
-import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap } from "../types";
+import { findConflicts } from "../types/conflicts";
 import mboLogo from "../assets/mbo-logo.svg";
-
-/**
- * Scans through bands to find conflicting changes.
- */
-function findConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, birdEventsMap: BirdEventsMap): BirdEvent[] {
-  const conflicts: BirdEvent[] = [];
-
-  for (const bandId in bandIdToBirdEventIdsMap) {
-    const eventIds = bandIdToBirdEventIdsMap[bandId];
-
-    for (let i = 1; i < eventIds.length; i++) {
-      const currentEvent = birdEventsMap[eventIds[i]];
-      const previousEvent = birdEventsMap[eventIds[i - 1]];
-
-      if (!currentEvent || !previousEvent) {
-        continue;
-      }
-
-      const currentSex = currentEvent.sex;
-      const previousSex = previousEvent.sex;
-      const currentSpecies = currentEvent.species;
-      const previousSpecies = previousEvent.species;
-
-      if (
-        (previousSex === "4" && currentSex === "5") ||
-        (previousSex === "5" && currentSex === "4") ||
-        currentSpecies !== previousSpecies
-      ) {
-        conflicts.push(currentEvent);
-      }
-    }
-  }
-
-  return conflicts;
-}
 
 interface NavigationProps {
   activePage: string;
@@ -82,12 +42,12 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
-  const { birdEventsMap, bandIdToBirdEventIdsMap, pendingCount, isOnline, syncQueue, selectProgram } = useData();
+  const { birdEventsMap, bandIdToBirdEventIdsMap, magicTable, pendingCount, isOnline, syncQueue, selectProgram } = useData();
 
   // Calculate error count
   const errorCount = useMemo(() => {
-    return findConflicts(bandIdToBirdEventIdsMap, birdEventsMap).length;
-  }, [bandIdToBirdEventIdsMap, birdEventsMap]);
+    return findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable).length;
+  }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
