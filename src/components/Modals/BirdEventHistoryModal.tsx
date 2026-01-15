@@ -69,8 +69,6 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
                   "bander",
                   "scribe",
                   "birdStatus",
-                  "date",
-                  "time",
                 ]}
               />
             </>

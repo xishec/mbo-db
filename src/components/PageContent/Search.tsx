@@ -299,7 +299,6 @@ export default function Search() {
             <BirdEventsTable
               birdEvents={filteredBirdEvents.slice(0, 999)}
               maxTableHeight={600}
-              sortDescriptors={[{ column: "date", direction: "descending" }]}
               allowInspectBandId
             />
           </div>

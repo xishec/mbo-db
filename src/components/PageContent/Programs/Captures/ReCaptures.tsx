@@ -24,7 +24,6 @@ export default function ReCaptures() {
     <BirdEventsTable
       birdEvents={reCaptures}
       maxTableHeight={800}
-      sortDescriptors={[{ column: "date", direction: "descending" }]}
       allowInspectBandId
     />
   );

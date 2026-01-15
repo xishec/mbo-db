@@ -45,7 +45,6 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
             <BirdEventsTable
               birdEvents={birdEvents}
               maxTableHeight={600}
-              sortDescriptors={[{ column: "date", direction: "descending" }]}
             />
           )}
         </ModalBody>

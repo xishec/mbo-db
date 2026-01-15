@@ -11,26 +11,26 @@ import { useData } from "../../../../services/useData";
 // Helper to format updatedAt as "x days ago"
 function formatUpdatedAt(updatedAt: string | undefined): string {
   if (!updatedAt) return "";
-  
+
   // updatedAt is stored as a timestamp string (milliseconds since epoch)
   const timestamp = parseInt(updatedAt, 10);
-  
+
   // Check if the timestamp is valid
   if (isNaN(timestamp)) {
     return updatedAt; // Return the raw value if it can't be parsed
   }
-  
+
   const updatedDate = new Date(timestamp);
   const now = new Date();
   const diffMs = now.getTime() - updatedDate.getTime();
-  
+
   // Handle future dates
   if (diffMs < 0) return "Recently";
-  
+
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffMinutes < 1) return "Just now";
   if (diffMinutes < 60) return `${diffMinutes} ${diffMinutes === 1 ? "minute" : "minutes"} ago`;
   if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
@@ -67,7 +67,12 @@ function birdEventToRow(event: BirdEvent): TableRow {
   };
 }
 
-type TableRow = CaptureFormData & { id: string; modifiedEventId?: string | null; previousEventId?: string | null; updatedAt?: string };
+type TableRow = CaptureFormData & {
+  id: string;
+  modifiedEventId?: string | null;
+  previousEventId?: string | null;
+  updatedAt?: string;
+};
 
 interface BirdEventsTableProps {
   programId?: string;
@@ -96,7 +101,10 @@ export default function BirdEventsTable({
 }: BirdEventsTableProps) {
   const { programsMap, isLoggedIn } = useData();
   const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>(
-    initialSortDescriptors ?? [{ column: "date", direction: "descending" }]
+    initialSortDescriptors ?? [
+      { column: "date", direction: "descending" },
+      { column: "time", direction: "descending" },
+    ]
   );
   const [selectedBirdEvent, setSelectedBirdEvent] = useState<BirdEvent | null>(null);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
@@ -311,7 +319,9 @@ export default function BirdEventsTable({
                 <TableRow key={item.id}>
                   {(columnKey) => (
                     <TableCell
-                      className={`whitespace-nowrap ${columnKey !== "actions" && isLowOpacity ? "opacity-20" : ""}`}
+                      className={`whitespace-nowrap select-text ${
+                        columnKey !== "actions" && isLowOpacity ? "opacity-20" : ""
+                      }`}
                     >
                       {renderCell(item, columnKey)}
                     </TableCell>

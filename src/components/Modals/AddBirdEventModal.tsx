@@ -710,12 +710,7 @@ export default function AddBirdEventModal({
                   <h3 className="text-lg font-normal mb-2">
                     Existing data for band <span className="font-bold">{bandId}</span> :
                   </h3>
-                  <BirdEventsTable
-                    birdEvents={pastBirdEvents}
-                    maxTableHeight={300}
-                    sortDescriptors={[{ column: "date", direction: "ascending" }]}
-                    allowInspectHistory
-                  />
+                  <BirdEventsTable birdEvents={pastBirdEvents} maxTableHeight={300} allowInspectHistory />
                 </div>
               )}
             </ModalBody>
