@@ -27,6 +27,67 @@ export default function CaptureHistoryModal({
       .filter((event) => event.modifiedEventId == null);
   }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
 
+  const birdInfo = useMemo(() => {
+    if (birdEvents.length === 0) return null;
+
+    // Sort events by date (most recent first)
+    const sortedEvents = [...birdEvents].sort((a, b) => {
+      const dateCompare = b.date.localeCompare(a.date);
+      if (dateCompare !== 0) return dateCompare;
+      return b.time.localeCompare(a.time);
+    });
+
+    const mostRecentEvent = sortedEvents[0];
+    const oldestEvent = sortedEvents[sortedEvents.length - 1];
+    const hasRecaptures = birdEvents.length > 1;
+
+    // Calculate dates upfront
+    const mostRecentDate = new Date(mostRecentEvent.date);
+    const oldestDate = new Date(oldestEvent.date);
+
+    // Determine latest recapture status
+    let latestRecapture: "never" | "< 6 months" | "> 6 months" = "never";
+    if (hasRecaptures) {
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      latestRecapture = mostRecentDate >= sixMonthsAgo ? "< 6 months" : "> 6 months";
+    }
+
+    // Calculate capture span
+    let captureSpan = "Single capture";
+    if (hasRecaptures) {
+      const spanMs = mostRecentDate.getTime() - oldestDate.getTime();
+      const spanDays = Math.floor(spanMs / (1000 * 60 * 60 * 24));
+
+      if (spanDays === 0) {
+        captureSpan = "Same day";
+      } else if (spanDays < 30) {
+        captureSpan = `${spanDays} day${spanDays !== 1 ? "s" : ""}`;
+      } else if (spanDays < 365) {
+        const spanMonths = Math.floor(spanDays / 30);
+        captureSpan = `${spanMonths} month${spanMonths !== 1 ? "s" : ""}`;
+      } else {
+        const spanYears = Math.floor(spanDays / 365);
+        const remainingMonths = Math.floor((spanDays % 365) / 30);
+        if (remainingMonths > 0) {
+          captureSpan = `${spanYears} year${spanYears !== 1 ? "s" : ""}, ${remainingMonths} month${
+            remainingMonths !== 1 ? "s" : ""
+          }`;
+        } else {
+          captureSpan = `${spanYears} year${spanYears !== 1 ? "s" : ""}`;
+        }
+      }
+    }
+
+    return {
+      captureSpan,
+      hasRecaptures,
+      latestRecapture,
+      totalCaptures: birdEvents.length,
+      species: mostRecentEvent.species,
+    };
+  }, [birdEvents]);
+
   return (
     <Modal
       isKeyboardDismissDisabled
@@ -42,6 +103,39 @@ export default function CaptureHistoryModal({
               History of band : <span className="font-bold">{bandId}</span>
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
+              {birdInfo && (
+                <div className="bg-default-100 rounded-lg p-4 mb-2">
+                  <h3 className="text-lg font-semibold mb-3">Bird Information</h3>
+                  <div className="grid grid-cols-5 gap-4 text-sm">
+                    <div>
+                      <span className="text-default-700">Band ID:</span>{" "}
+                      <span className="font-medium">{bandId}</span>
+                    </div>
+                    <div>
+                      <span className="text-default-700">Species:</span>{" "}
+                      <span className="font-medium">{birdInfo.species}</span>
+                    </div>
+                    <div>
+                      <span className="text-default-700">Capture Span:</span>{" "}
+                      <span className="font-medium">{birdInfo.captureSpan}</span>
+                    </div>
+                    <div>
+                      <span className="text-default-700">Total Captures:</span>{" "}
+                      <span className="font-medium">{birdInfo.totalCaptures}</span>
+                    </div>
+                    <div>
+                      <span className="text-default-700">Latest Recapture:</span>{" "}
+                      {birdInfo.latestRecapture === "never" ? (
+                        <span className="font-medium text-default-400">Never</span>
+                      ) : birdInfo.latestRecapture === "< 6 months" ? (
+                        <span className="font-medium text-success">{`< 6 months`}</span>
+                      ) : (
+                        <span className="font-medium text-warning">{`> 6 months`}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               {birdEvents.length > 0 ? (
                 <BirdEventsTable
                   birdEvents={birdEvents}

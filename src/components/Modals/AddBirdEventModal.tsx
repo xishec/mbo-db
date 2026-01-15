@@ -718,15 +718,17 @@ export default function AddBirdEventModal({
               <Button color="danger" variant="bordered" onPress={handleClose} isDisabled={isSaving}>
                 Cancel
               </Button>
-              <Button
-                color="primary"
-                variant="bordered"
-                onPress={handleSaveAndNext}
-                isLoading={isSaving}
-                isDisabled={isSaving}
-              >
-                Save and Next
-              </Button>
+              {!birdEventToModify && (
+                <Button
+                  color="primary"
+                  variant="bordered"
+                  onPress={handleSaveAndNext}
+                  isLoading={isSaving}
+                  isDisabled={isSaving}
+                >
+                  Save and Next
+                </Button>
+              )}
               <Button color="primary" onPress={handleSaveAndClose} isLoading={isSaving} isDisabled={isSaving}>
                 Save
               </Button>
