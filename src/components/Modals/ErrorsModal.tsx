@@ -64,6 +64,9 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                     <span className="text-default-900 w-32 flex-shrink-0">
                       {conflict.birdEvent.date} {conflict.birdEvent.time}
                     </span>
+                    <span className="text-default-900 w-12 flex-shrink-0 font-bold">
+                      {conflict.birdEvent.species}
+                    </span>
                     <span className="font-semibold text-danger-600 flex-1">{conflict.reason}</span>
                   </div>
                 </div>

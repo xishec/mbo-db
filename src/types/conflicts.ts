@@ -14,15 +14,19 @@ function checkMeasurementTolerance(
   pyleUpper: number,
   measurementType: "Weight" | "Wing",
   sexLabel: "male" | "female",
-  unit: "g" | "mm"
+  unit: "g" | "mm",
+  age?: string
 ): string | null {
   if (value <= 0 || pyleLower <= 0) return null;
   
-  const lowerBound = pyleLower * 0.8; // 20% below
+  // For Wing measurements with age 4, use 90% tolerance instead of 20%
+  const lowerBoundMultiplier = measurementType === "Wing" && age === "4" ? 0.1 : 0.8;
+  const lowerBound = pyleLower * lowerBoundMultiplier;
   const upperBound = pyleUpper * 1.2; // 20% above
   
   if (value < lowerBound) {
-    return `${measurementType} ${value}${unit} is 20% below normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
+    const percentage = measurementType === "Wing" && age === "4" ? "90%" : "20%";
+    return `${measurementType} ${value}${unit} is ${percentage} below normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
   } else if (value > upperBound) {
     return `${measurementType} ${value}${unit} is 20% above normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
   }
@@ -45,7 +49,8 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
       speciesRange.fWeightUpper,
       "Weight",
       "female",
-      "g"
+      "g",
+      event.age
     );
     if (weightReason) reasons.push(weightReason);
     
@@ -55,7 +60,8 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
       speciesRange.fWingUpper,
       "Wing",
       "female",
-      "mm"
+      "mm",
+      event.age
     );
     if (wingReason) reasons.push(wingReason);
   } else if (sex === "4") {
@@ -66,7 +72,8 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
       speciesRange.mWeightUpper,
       "Weight",
       "male",
-      "g"
+      "g",
+      event.age
     );
     if (weightReason) reasons.push(weightReason);
     
@@ -76,7 +83,8 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
       speciesRange.mWingUpper,
       "Wing",
       "male",
-      "mm"
+      "mm",
+      event.age
     );
     if (wingReason) reasons.push(wingReason);
   }
