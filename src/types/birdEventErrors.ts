@@ -236,7 +236,7 @@ function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange, mboR
 
 /**
  * Finds errors in an array of bird events.
- * Checks for sex changes (4 ↔ 5), species changes, same-day recaptures, and out-of-normal measurements.
+ * Checks for sex changes (4 ↔ 5), species changes, recaptures within 12 hours, and out-of-normal measurements.
  */
 export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable): BirdEventError[] {
   const errors: BirdEventError[] = [];
@@ -274,12 +274,16 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
       });
     }
 
-    // Check for same-day recapture
-    if (currentEvent.date === previousEvent.date) {
+    // Check for recapture within 12 hours
+    const currentDateTime = new Date(`${currentEvent.date}T${currentEvent.time}`).getTime();
+    const previousDateTime = new Date(`${previousEvent.date}T${previousEvent.time}`).getTime();
+    const timeDiffHours = (currentDateTime - previousDateTime) / (1000 * 60 * 60);
+    
+    if (timeDiffHours < 12 && timeDiffHours >= 0) {
       errors.push({
         id: `${currentEvent.id}-same-day-recapture`,
         birdEvent: currentEvent,
-        reason: "Bird was already captured today - should be released without logging",
+        reason: "Bird was recaptured within 12 hours - should be released without logging",
         severity: "danger",
       });
     }
@@ -336,6 +340,7 @@ export function validateBirdEventForm(
     sex: string;
     age: string;
     date: string;
+    time: string;
     fat: string;
   },
   pastBirdEvents: BirdEvent[],
@@ -433,12 +438,17 @@ export function validateBirdEventForm(
     }
   }
 
-  // Check if bird is being recaptured on the same day
-  if (pastBirdEvents.length > 0 && formData.date) {
-    const sameDayCapture = pastBirdEvents.some((capture) => capture.date === formData.date);
-    if (sameDayCapture) {
+  // Check if bird is being recaptured within 12 hours
+  if (pastBirdEvents.length > 0 && formData.date && formData.time) {
+    const currentDateTime = new Date(`${formData.date}T${formData.time}`).getTime();
+    const captureWithin12Hours = pastBirdEvents.some((capture) => {
+      const captureDateTime = new Date(`${capture.date}T${capture.time}`).getTime();
+      const timeDiffHours = (currentDateTime - captureDateTime) / (1000 * 60 * 60);
+      return timeDiffHours >= 0 && timeDiffHours < 12;
+    });
+    if (captureWithin12Hours) {
       messages.push({
-        text: "Bird was already captured today - should be released without logging",
+        text: "Bird was recaptured within 12 hours - should be released without logging",
         severity: "danger",
       });
     }

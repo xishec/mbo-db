@@ -10,6 +10,7 @@
     "trailingComma": "es5"
   },
   "scripts": {
+    "parse": "npm run parse:alpha && npm run parse:prod",
     "parse:alpha": "cross-env NODE_ENV=development npx tsx scripts/import.ts",
     "parse:prod": "cross-env NODE_ENV=production npx tsx scripts/import.ts",
     "dev": "vite",

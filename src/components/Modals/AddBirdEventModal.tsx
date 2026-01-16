@@ -329,6 +329,7 @@ export default function AddBirdEventModal({
         sex: formData.sex,
         age: formData.age,
         date: formData.date,
+        time: formData.time,
         fat: "",
       },
       pastBirdEvents,
