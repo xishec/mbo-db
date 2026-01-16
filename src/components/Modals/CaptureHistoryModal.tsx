@@ -4,6 +4,7 @@ import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
+import ValidationMessages from "../ValidationMessages";
 
 interface CaptureHistoryModalProps {
   isOpen: boolean;
@@ -144,18 +145,11 @@ export default function CaptureHistoryModal({
                   <SpeciesRangeTable title="MBO" speciesCode={birdInfo.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
-              {errors.length > 0 && (
-                <div className="text-sm bg-danger-50 border border-danger rounded-lg p-4">
-                  <h4 className="font-semibold text-danger mb-2">Errors Detected:</h4>
-                  <ul className="list-disc list-inside">
-                    {errors.map((error, idx) => (
-                      <li key={idx} className={error.severity === "danger" ? "text-danger" : "text-warning"}>
-                        {error.reason}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <ValidationMessages
+                messages={errors.map((e) => ({ text: e.reason, severity: e.severity }))}
+                title="Errors Detected:"
+                showBackground={true}
+              />
               {birdEvents.length > 0 ? (
                 <BirdEventsTable
                   birdEvents={birdEvents}

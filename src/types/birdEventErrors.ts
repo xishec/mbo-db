@@ -70,7 +70,8 @@ function sanitizeForFirebasePath(str: string): string {
 }
 
 /**
- * Check if a measurement is outside the Pyle range (20% tolerance for weight, 10-20% for wing based on age)
+ * Check if a measurement is outside the Pyle range (20% tolerance)
+ * Note: Low wing measurements for age 4 birds are ignored (no error reported)
  * Returns error severity: 'danger' for Pyle violations
  */
 function checkPyleMeasurementTolerance(
@@ -84,14 +85,16 @@ function checkPyleMeasurementTolerance(
 ): string | null {
   if (value <= 0 || pyleLower <= 0) return null;
 
-  // For Wing measurements with age 4, use 90% tolerance instead of 20%
-  const lowerBoundMultiplier = measurementType === "Wing" && age === "4" ? 0.1 : 0.8;
-  const lowerBound = pyleLower * lowerBoundMultiplier;
+  // Ignore low wing measurements for age 4 birds entirely
+  if (measurementType === "Wing" && age === "4" && value < pyleLower * 0.8) {
+    return null;
+  }
+
+  const lowerBound = pyleLower * 0.8; // 20% below
   const upperBound = pyleUpper * 1.2; // 20% above
 
   if (value < lowerBound) {
-    const percentage = measurementType === "Wing" && age === "4" ? "90%" : "20%";
-    return `${measurementType} ${value}${unit} is ${percentage} below normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
+    return `${measurementType} ${value}${unit} is 20% below normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
   } else if (value > upperBound) {
     return `${measurementType} ${value}${unit} is 20% above normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
   }

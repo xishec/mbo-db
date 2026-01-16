@@ -20,8 +20,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
-import { validateBirdEventForm } from "../../types/birdEventErrors";
+import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
 import BirdStatusModal from "./BirdStatusModal";
+import ValidationMessages from "../ValidationMessages";
 import { getSortedColumns } from "../PageContent/Programs/Captures/helpers";
 import {
   formatFieldValue,
@@ -269,15 +270,16 @@ export default function AddBirdEventModal({
     setLastBandId("");
   }
 
-  // Calculate range validation for wing and weight (for border coloring)
-  const rangeValidation = useMemo(() => {
+  // Consolidated validation state - all validation logic in one place
+  const validationState = useMemo(() => {
     const wingValue = formData.wing ? Number(formData.wing) : null;
     const weightValue = formData.weight ? Number(formData.weight) : null;
 
     const pyleRange = getApplicableRange(pyleSpeciesRange, sexCode);
     const mboRange = getApplicableRange(mboSpeciesRange, sexCode);
 
-    return {
+    // Range validation for wing and weight
+    const rangeValidation = {
       wing: {
         pyle: wingValue !== null && pyleRange ? isInRange(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
         mbo: wingValue !== null && mboRange ? isInRange(wingValue, mboRange.wingLower, mboRange.wingUpper) : null,
@@ -293,10 +295,28 @@ export default function AddBirdEventModal({
             : null,
       },
     };
-  }, [formData.wing, formData.weight, sexCode, pyleSpeciesRange, mboSpeciesRange]);
 
-  // Generate warning messages using shared validation logic
-  const warningMessages = useMemo(() => {
+    // Sex validation against past captures
+    const capturesWithDefinedSex = pastBirdEvents.filter((capture) => ["4", "5"].includes(capture.sex));
+    const sexConflict =
+      pastBirdEvents.length > 0 &&
+      formData.sex.length > 0 &&
+      capturesWithDefinedSex.length > 0 &&
+      !capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
+
+    // Incomplete field validation
+    const incompleteFields = new Set<string>();
+    for (const column of sortedColumns) {
+      const value = formData[column.key as keyof CaptureFormData];
+      if (column.minLength && value.length > 0 && value.length < column.minLength) {
+        incompleteFields.add(column.key);
+      }
+    }
+
+    // Existing errors from past bird events
+    const existingErrors = findErrorsInEvents(pastBirdEvents, magicTable);
+
+    // Current entry validation messages
     const messages = validateBirdEventForm(
       {
         species: formData.species,
@@ -310,16 +330,21 @@ export default function AddBirdEventModal({
       magicTable
     );
 
-    // Add incomplete field warnings
+    // Add incomplete field warnings to messages
     for (const column of sortedColumns) {
-      const value = formData[column.key as keyof CaptureFormData];
-      if (column.minLength && value.length > 0 && value.length < column.minLength) {
+      if (incompleteFields.has(column.key)) {
         messages.push({ text: `${column.label} is incomplete`, severity: "warning" });
       }
     }
 
-    return messages;
-  }, [formData, pastBirdEvents, magicTable, sortedColumns]);
+    return {
+      rangeValidation,
+      sexConflict,
+      incompleteFields,
+      existingErrors,
+      warningMessages: messages,
+    };
+  }, [formData, pastBirdEvents, magicTable, sortedColumns, sexCode, pyleSpeciesRange, mboSpeciesRange]);
 
   const focusNextInput = useCallback(
     (currentField: keyof CaptureFormData) => {
@@ -438,36 +463,34 @@ export default function AddBirdEventModal({
   const handleSaveAndNext = useCallback(() => handleSave(true), [handleSave]);
 
   const getInputColor = useCallback(
-    (columnKey: keyof CaptureFormData) => {
-      // Check wing range validation
+    (columnKey: keyof CaptureFormData): "danger" | "warning" | null => {
+      const { rangeValidation, sexConflict, incompleteFields } = validationState;
+
+      // Wing range validation
       if (columnKey === "wing") {
         if (rangeValidation.wing.pyle === false) return "danger";
         if (rangeValidation.wing.mbo === false) return "warning";
       }
 
-      // Check weight range validation
+      // Weight range validation
       if (columnKey === "weight") {
         if (rangeValidation.weight.pyle === false) return "danger";
         if (rangeValidation.weight.mbo === false) return "warning";
       }
 
-      // Check if sex is valid based on existing captures
-      if (columnKey === "sex" && pastBirdEvents.length > 0 && formData.sex.length > 0) {
-        const capturesWithDefinedSex = pastBirdEvents.filter((capture) => ["4", "5"].includes(capture.sex));
-        if (capturesWithDefinedSex.length > 0) {
-          const allSexMatch = capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
-          if (!allSexMatch) {
-            return "danger";
-          }
-        }
+      // Sex conflict validation
+      if (columnKey === "sex" && sexConflict) {
+        return "danger";
       }
 
-      const column = sortedColumns.find((col) => col.key === columnKey);
-      const value = formData[columnKey];
-      const isIncomplete = column?.minLength && value.length > 0 && value.length < column.minLength;
-      return isIncomplete ? "warning" : null;
+      // Incomplete field validation
+      if (incompleteFields.has(columnKey)) {
+        return "warning";
+      }
+
+      return null;
     },
-    [rangeValidation, pastBirdEvents, formData, sortedColumns]
+    [validationState]
   );
 
   const getBorderClass = useCallback((color: "danger" | "warning" | null) => {
@@ -638,17 +661,13 @@ export default function AddBirdEventModal({
                 </TableBody>
               </Table>
 
-              {warningMessages.length > 0 && (
-                <div className="text-sm">
-                  <ul className="list-disc list-inside">
-                    {warningMessages.map((msg, idx) => (
-                      <li key={idx} className={msg.severity === "danger" ? "text-danger" : "text-warning"}>
-                        {msg.text}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <ValidationMessages
+                messages={validationState.existingErrors.map((e) => ({ text: e.reason, severity: e.severity }))}
+                title="Existing Errors in Past Captures:"
+                showBackground={true}
+              />
+
+              <ValidationMessages messages={validationState.warningMessages} title="Warnings for Current Entry:" />
 
               {shouldShowPastBirdEvents && (
                 <div className="mt-4">
