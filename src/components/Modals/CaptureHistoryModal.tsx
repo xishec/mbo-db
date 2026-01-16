@@ -108,7 +108,7 @@ export default function CaptureHistoryModal({
             </ModalHeader>
             <ModalBody className="gap-4 px-8 py-4">
               {birdInfo && (
-                <div className="bg-default-100 rounded-lg p-4 mb-2">
+                <div className="bg-default-100 rounded-medium p-4 mb-2">
                   <h3 className="text-lg font-semibold mb-3">Bird Information</h3>
                   <div className="grid grid-cols-5 gap-4 text-sm">
                     <div>
@@ -148,7 +148,6 @@ export default function CaptureHistoryModal({
               <ValidationMessages
                 messages={errors.map((e) => ({ text: e.reason, severity: e.severity }))}
                 title="Errors Detected:"
-                showBackground={true}
               />
               {birdEvents.length > 0 ? (
                 <BirdEventsTable

@@ -290,9 +290,7 @@ export default function AddBirdEventModal({
             ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper)
             : null,
         mbo:
-          weightValue !== null && mboRange
-            ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper)
-            : null,
+          weightValue !== null && mboRange ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper) : null,
       },
     };
 
@@ -520,7 +518,7 @@ export default function AddBirdEventModal({
       // Readonly field with optional edit icon
       if (readonlyValue) {
         return (
-          <div className="px-3 py-2 text-sm text-default-600 font-light bg-default-50 rounded-lg border-medium border-default-200 whitespace-nowrap">
+          <div className="px-3 py-2 text-sm text-default-600 font-light bg-default-50 rounded-medium border-medium border-default-200 whitespace-nowrap">
             {readonlyValue}
           </div>
         );
@@ -664,7 +662,6 @@ export default function AddBirdEventModal({
               <ValidationMessages
                 messages={validationState.existingErrors.map((e) => ({ text: e.reason, severity: e.severity }))}
                 title="Existing Errors in Past Captures:"
-                showBackground={true}
               />
 
               <ValidationMessages messages={validationState.warningMessages} title="Warnings for Current Entry:" />

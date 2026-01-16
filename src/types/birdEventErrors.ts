@@ -94,9 +94,9 @@ function checkPyleMeasurementTolerance(
   const upperBound = pyleUpper * 1.2; // 20% above
 
   if (value < lowerBound) {
-    return `${measurementType} ${value}${unit} is 20% below normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
+    return `${measurementType} ${value}${unit} is 20% below Pyle ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
   } else if (value > upperBound) {
-    return `${measurementType} ${value}${unit} is 20% above normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
+    return `${measurementType} ${value}${unit} is 20% above Pyle ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
   }
 
   return null;
@@ -117,7 +117,7 @@ function checkMBOMeasurementRange(
   if (value <= 0 || mboLower <= 0) return null;
 
   if (value < mboLower || value > mboUpper) {
-    return `${measurementType} ${value}${unit} is outside of MBO range for sex ${sexLabel}, should be ${mboLower}-${mboUpper}${unit}`;
+    return `${measurementType} ${value}${unit} is outside of MBO ${sexLabel} range (${mboLower}-${mboUpper}${unit})`;
   }
 
   return null;

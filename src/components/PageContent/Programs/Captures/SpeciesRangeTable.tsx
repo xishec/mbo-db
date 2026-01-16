@@ -14,7 +14,7 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
 
   if (!speciesRange) {
     return (
-      <div className="flex-1 border border-default-200 rounded-lg p-3">
+      <div className="flex-1 border border-default-200 rounded-medium p-3">
         <h4 className="text-sm font-bold mb-2">
           {title}: <span className="font-normal">{speciesCode}</span>
         </h4>
@@ -37,18 +37,34 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
         <TableBody>
           <TableRow key="male">
             <TableCell>Male {speciesRange.mCounter ? ` (${speciesRange.mCounter})` : ""}</TableCell>
-            <TableCell>{formatRange(speciesRange.mWeightLower, speciesRange.mWeightUpper, speciesRange.mCounter)}</TableCell>
-            <TableCell>{formatRange(speciesRange.mWingLower, speciesRange.mWingUpper, speciesRange.mCounter)}</TableCell>
+            <TableCell>
+              {formatRange(speciesRange.mWeightLower, speciesRange.mWeightUpper, speciesRange.mCounter)}
+            </TableCell>
+            <TableCell>
+              {formatRange(speciesRange.mWingLower, speciesRange.mWingUpper, speciesRange.mCounter)}
+            </TableCell>
           </TableRow>
           <TableRow key="female">
             <TableCell>Female {speciesRange.fCounter ? ` (${speciesRange.fCounter})` : ""}</TableCell>
-            <TableCell>{formatRange(speciesRange.fWeightLower, speciesRange.fWeightUpper, speciesRange.fCounter)}</TableCell>
-            <TableCell>{formatRange(speciesRange.fWingLower, speciesRange.fWingUpper, speciesRange.fCounter)}</TableCell>
+            <TableCell>
+              {formatRange(speciesRange.fWeightLower, speciesRange.fWeightUpper, speciesRange.fCounter)}
+            </TableCell>
+            <TableCell>
+              {formatRange(speciesRange.fWingLower, speciesRange.fWingUpper, speciesRange.fCounter)}
+            </TableCell>
           </TableRow>
           <TableRow key="unknown">
             <TableCell>Unknown {speciesRange.unknownCounter ? ` (${speciesRange.unknownCounter})` : ""}</TableCell>
-            <TableCell>{formatRange(speciesRange.unknownWeightLower, speciesRange.unknownWeightUpper, speciesRange.unknownCounter)}</TableCell>
-            <TableCell>{formatRange(speciesRange.unknownWingLower, speciesRange.unknownWingUpper, speciesRange.unknownCounter)}</TableCell>
+            <TableCell>
+              {formatRange(
+                speciesRange.unknownWeightLower,
+                speciesRange.unknownWeightUpper,
+                speciesRange.unknownCounter
+              )}
+            </TableCell>
+            <TableCell>
+              {formatRange(speciesRange.unknownWingLower, speciesRange.unknownWingUpper, speciesRange.unknownCounter)}
+            </TableCell>
           </TableRow>
         </TableBody>
       </Table>

@@ -10,7 +10,6 @@ import {
 } from "firebase/auth";
 import { app } from "../../firebase";
 
-
 interface LoginModalProps {
   isOpen: boolean;
   onOpenChange: () => void;
@@ -154,7 +153,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 <div
                   className={`${
                     error ? "bg-danger-50 border-danger-200" : "bg-success-50 border-success-200"
-                  } border rounded-lg p-3 flex items-start gap-4`}
+                  } border rounded-medium p-3 flex items-start gap-4`}
                 >
                   <span className={`${error ? "text-danger" : "text-success"} text-sm`}>{error || success}</span>
                 </div>

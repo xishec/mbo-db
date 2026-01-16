@@ -29,10 +29,12 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   // Find all errors
   const { errors, dismissedCount } = useMemo(() => {
     const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
+    // Filter out warnings - only keep severe errors
+    const severeErrors = allErrors.filter((error) => error.severity === "danger");
     // Filter out dismissed errors
-    const activeErrors = allErrors.filter((error) => !dismissedConflictsMap[error.id]);
+    const activeErrors = severeErrors.filter((error) => !dismissedConflictsMap[error.id]);
     // Calculate how many errors are actually being dismissed
-    const dismissedCount = allErrors.length - activeErrors.length;
+    const dismissedCount = severeErrors.length - activeErrors.length;
     // Sort by updatedAt (most recent first)
     const sortedErrors = activeErrors.sort((a, b) => {
       const aTime = parseInt(a.birdEvent.updatedAt || "0", 10);
@@ -81,7 +83,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
               <div>
                 <h2 className="text-xl">Data Errors</h2>
                 <p className="text-sm text-default-900 font-light">
-                  {errors.length} potential errors found
+                  {errors.length} severe errors found
                   {dismissedCount > 0 && <span> ({dismissedCount} dismissed)</span>}
                 </p>
               </div>
@@ -123,7 +125,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                   )}
                 </div>
               ))}
-              {errors.length === 0 && <div className="text-center text-default-500 py-8">No errors found</div>}
+              {errors.length === 0 && <div className="text-center text-default-500 py-8">No severe errors found</div>}
             </div>
           </ModalBody>
 

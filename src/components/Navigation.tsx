@@ -53,10 +53,11 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
     dismissedConflictsMap,
   } = useData();
 
-  // Calculate error count
+  // Calculate error count - only severe errors
   const errorCount = useMemo(() => {
     const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
-    const activeErrors = allErrors.filter((error) => !dismissedConflictsMap[error.id]);
+    const severeErrors = allErrors.filter((error) => error.severity === "danger");
+    const activeErrors = severeErrors.filter((error) => !dismissedConflictsMap[error.id]);
     return activeErrors.length;
   }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
