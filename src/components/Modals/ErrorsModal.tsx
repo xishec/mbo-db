@@ -12,7 +12,16 @@ interface ErrorsModalProps {
 }
 
 export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
-  const { birdEventsMap, bandIdToBirdEventIdsMap, magicTable, dismissedConflictsMap, dismissConflict } = useData();
+  const {
+    birdEventsMap,
+    bandIdToBirdEventIdsMap,
+    magicTable,
+    dismissedConflictsMap,
+    dismissConflict,
+    resetDismissedConflicts,
+    isLoggedIn,
+    isOnline,
+  } = useData();
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [selectedBirdEventId, setSelectedBirdEventId] = useState<string | null>(null);
   const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
@@ -38,12 +47,19 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
     }
   };
 
-  const handleDismissConflict = async (e: React.MouseEvent, conflictId: string) => {
-    e.stopPropagation(); // Prevent opening the capture history modal
+  const handleDismissConflict = async (conflictId: string) => {
     try {
       await dismissConflict(conflictId);
     } catch (error) {
       console.error("Failed to dismiss conflict:", error);
+    }
+  };
+
+  const handleResetDismissedConflicts = async () => {
+    try {
+      await resetDismissedConflicts();
+    } catch (error) {
+      console.error("Failed to reset dismissed conflicts:", error);
     }
   };
 
@@ -61,7 +77,14 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl">Data Errors</h2>
-                <p className="text-sm text-default-900 font-light">{conflicts.length} potential errors found</p>
+                <p className="text-sm text-default-900 font-light">
+                  {conflicts.length} potential errors found
+                  {Object.keys(dismissedConflictsMap).length > 0 && (
+                    <span>
+                      {" "}({Object.keys(dismissedConflictsMap).length} dismissed)
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           </ModalHeader>
@@ -69,30 +92,35 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
           <ModalBody>
             <div className="flex flex-col gap-2">
               {conflicts.map((conflict) => (
-                <div
-                  key={`${conflict.id}`}
-                  className="p-3 border border-default-200 rounded-lg hover:bg-default-100 cursor-pointer transition-colors"
-                  onClick={() => handleConflictClick(conflict)}
-                >
-                  <div className="flex items-center gap-3 text-sm">
-                    <MagnifyingGlassIcon className="w-4 h-4 text-default-900 flex-shrink-0" />
-                    <span className="font-bold text-default-900 flex-shrink-0">
-                      {conflict.birdEvent.band?.displayBandGroupId}
-                      {conflict.birdEvent.band?.last2digits}
-                    </span>
-                    <span className="text-default-900 flex-shrink-0">
-                      {conflict.birdEvent.date} {conflict.birdEvent.time}
-                    </span>
-                    <span className="text-default-900 flex-shrink-0 font-bold">{conflict.birdEvent.species}</span>
-                    <span className="font-semibold text-danger-600 flex-1">{conflict.reason}</span>
-                    <button
-                      onClick={(e) => handleDismissConflict(e, conflict.id)}
-                      className="flex-shrink-0 p-1 hover:bg-default-200 rounded-md transition-colors"
-                      title="Dismiss this error"
-                    >
-                      <XMarkIcon className="w-5 h-5 text-default-500 hover:text-default-900" />
-                    </button>
+                <div className="flex flex-row gap-2">
+                  <div
+                    key={`${conflict.id}`}
+                    className="flex-grow h-10 px-3 border border-default-200 rounded-medium hover:bg-default-100 cursor-pointer transition-colors flex items-center"
+                    onClick={() => handleConflictClick(conflict)}
+                  >
+                    <div className="flex items-center gap-3 text-sm w-full">
+                      <MagnifyingGlassIcon className="w-4 h-4 text-default-900 flex-shrink-0" />
+                      <span className="font-bold text-default-900 flex-shrink-0">
+                        {conflict.birdEvent.band?.displayBandGroupId}
+                        {conflict.birdEvent.band?.last2digits}
+                      </span>
+                      <span className="text-default-900 flex-shrink-0">
+                        {conflict.birdEvent.date} {conflict.birdEvent.time}
+                      </span>
+                      <span className="text-default-900 flex-shrink-0 font-bold">{conflict.birdEvent.species}</span>
+                      <span className="font-semibold text-danger-600 flex-1">{conflict.reason}</span>
+                    </div>
                   </div>
+                  {isLoggedIn && isOnline && (
+                    <Button
+                      onPress={() => handleDismissConflict(conflict.id)}
+                      color="danger"
+                      variant="light"
+                      isIconOnly
+                    >
+                      <XMarkIcon className="w-5 h-5" />
+                    </Button>
+                  )}
                 </div>
               ))}
               {conflicts.length === 0 && <div className="text-center text-default-500 py-8">No conflicts found</div>}
@@ -100,6 +128,11 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
           </ModalBody>
 
           <ModalFooter className="gap-4 p-8 pt-4">
+            {isLoggedIn && isOnline && Object.keys(dismissedConflictsMap).length > 0 && (
+              <Button color="primary" variant="bordered" onPress={handleResetDismissedConflicts}>
+                Reset Dismissed Conflicts
+              </Button>
+            )}
             <ExportButton
               birdEvents={conflicts.map((conflict) => conflict.birdEvent)}
               filename="conflicts.csv"

@@ -42,12 +42,24 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
   const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const auth = getAuth(app);
-  const { birdEventsMap, bandIdToBirdEventIdsMap, magicTable, pendingCount, isOnline, syncQueue, selectProgram } = useData();
+  const {
+    birdEventsMap,
+    bandIdToBirdEventIdsMap,
+    magicTable,
+    pendingCount,
+    isOnline,
+    syncQueue,
+    selectProgram,
+    dismissedConflictsMap,
+  } = useData();
 
   // Calculate error count
   const errorCount = useMemo(() => {
-    return findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable).length;
-  }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable]);
+    return (
+      findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable).length -
+      Object.keys(dismissedConflictsMap).length
+    );
+  }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {

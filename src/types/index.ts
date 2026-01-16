@@ -209,6 +209,7 @@ export interface DataContextType {
     bandLastTwoDigits: string
   ) => Promise<Record<BandSize, string>>;
   dismissConflict: (conflictId: string) => Promise<void>;
+  resetDismissedConflicts: () => Promise<void>;
 }
 
 // Form types

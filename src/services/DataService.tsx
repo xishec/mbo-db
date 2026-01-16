@@ -934,6 +934,38 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, dismissedConflictsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
+  const resetDismissedConflicts = useCallback(
+    async () => {
+      if (!user) {
+        throw new Error("Must be logged in to reset dismissed conflicts");
+      }
+
+      try {
+        // Update React state immediately
+        const emptyMap = {};
+        setDismissedConflictsMap(emptyMap);
+
+        // Save to IndexedDB
+        await saveCompleteStateToIndexedDB({ dismissedConflictsMap: emptyMap });
+
+        // Handle online vs offline sync
+        if (isOnline) {
+          // Online: clear RTDB immediately
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), null);
+          await updateLastModifiedTimestamp();
+          logger.info("ResetDismissedConflicts", "All dismissed conflicts reset and synced to RTDB");
+        } else {
+          // Offline: will be synced when back online
+          logger.info("ResetDismissedConflicts", "All dismissed conflicts reset offline - will sync when online");
+        }
+      } catch (err) {
+        logger.error("ResetDismissedConflicts", "Error resetting dismissed conflicts", err);
+        throw err;
+      }
+    },
+    [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+  );
+
   return (
     <DataContext.Provider
       value={{
@@ -962,6 +994,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         updateBandSizeMap,
         incrementBandSize,
         dismissConflict,
+        resetDismissedConflicts,
       }}
     >
       {children}
