@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
-import { findConflictsInEvents } from "../../types/conflicts";
+import { findErrorsInEvents } from "../../types/birdEventErrors";
 
 interface CaptureHistoryModalProps {
   isOpen: boolean;
@@ -87,8 +87,8 @@ export default function CaptureHistoryModal({
     return magicTable.mbo[birdInfo.species] || null;
   }, [birdInfo, magicTable]);
 
-  const conflicts = useMemo(() => {
-    return findConflictsInEvents(birdEvents, magicTable);
+  const errors = useMemo(() => {
+    return findErrorsInEvents(birdEvents, magicTable);
   }, [birdEvents, magicTable]);
 
   return (
@@ -144,13 +144,13 @@ export default function CaptureHistoryModal({
                   <SpeciesRangeTable title="MBO" speciesCode={birdInfo.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
-              {conflicts.length > 0 && (
+              {errors.length > 0 && (
                 <div className="text-sm bg-danger-50 border border-danger rounded-lg p-4">
-                  <h4 className="font-semibold text-danger mb-2">Conflicts Detected :</h4>
+                  <h4 className="font-semibold text-danger mb-2">Errors Detected:</h4>
                   <ul className="list-disc list-inside">
-                    {conflicts.map((conflict, idx) => (
-                      <li key={idx} className="text-danger">
-                        {conflict.reason}
+                    {errors.map((error, idx) => (
+                      <li key={idx} className={error.severity === "danger" ? "text-danger" : "text-warning"}>
+                        {error.reason}
                       </li>
                     ))}
                   </ul>

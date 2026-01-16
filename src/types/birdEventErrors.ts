@@ -9,6 +9,55 @@ export interface BirdEventError {
   severity: ErrorSeverity;
 }
 
+type SexLabel = "male" | "female" | "unknown";
+
+interface MeasurementRanges {
+  weightLower: number;
+  weightUpper: number;
+  wingLower: number;
+  wingUpper: number;
+}
+
+/**
+ * Get sex label from sex code
+ */
+function getSexLabel(sexCode: string): SexLabel {
+  return sexCode === "4" ? "male" : sexCode === "5" ? "female" : "unknown";
+}
+
+/**
+ * Extract sex-specific ranges from SpeciesRange
+ */
+function getRangesForSex(speciesRange: SpeciesRange | undefined, sexCode: string): MeasurementRanges | null {
+  if (!speciesRange) return null;
+
+  if (sexCode === "5") {
+    // Female
+    return {
+      weightLower: speciesRange.fWeightLower,
+      weightUpper: speciesRange.fWeightUpper,
+      wingLower: speciesRange.fWingLower,
+      wingUpper: speciesRange.fWingUpper,
+    };
+  } else if (sexCode === "4") {
+    // Male
+    return {
+      weightLower: speciesRange.mWeightLower,
+      weightUpper: speciesRange.mWeightUpper,
+      wingLower: speciesRange.mWingLower,
+      wingUpper: speciesRange.mWingUpper,
+    };
+  } else {
+    // Unknown
+    return {
+      weightLower: speciesRange.unknownWeightLower,
+      weightUpper: speciesRange.unknownWeightUpper,
+      wingLower: speciesRange.unknownWingLower,
+      wingUpper: speciesRange.unknownWingUpper,
+    };
+  }
+}
+
 /**
  * Sanitize string to be safe for Firebase paths
  * Firebase paths cannot contain: . # $ [ ]
@@ -29,7 +78,7 @@ function checkPyleMeasurementTolerance(
   pyleLower: number,
   pyleUpper: number,
   measurementType: "Weight" | "Wing",
-  sexLabel: "male" | "female" | "unknown",
+  sexLabel: SexLabel,
   unit: "g" | "mm",
   age?: string
 ): string | null {
@@ -59,7 +108,7 @@ function checkMBOMeasurementRange(
   mboLower: number,
   mboUpper: number,
   measurementType: "Weight" | "Wing",
-  sexLabel: "male" | "female" | "unknown",
+  sexLabel: SexLabel,
   unit: "g" | "mm"
 ): string | null {
   if (value <= 0 || mboLower <= 0) return null;
@@ -80,34 +129,18 @@ function checkEventMeasurements(
   mboRange?: SpeciesRange
 ): BirdEventError[] {
   const errors: BirdEventError[] = [];
-  const sex = event.sex;
-  const sexLabel = sex === "4" ? "male" : sex === "5" ? "female" : "unknown";
+  const sexLabel = getSexLabel(event.sex);
+
+  // Get sex-specific ranges
+  const pyleRanges = getRangesForSex(pyleRange, event.sex);
+  const mboRanges = getRangesForSex(mboRange, event.sex);
 
   // Check Pyle range (danger level)
-  if (pyleRange) {
-    let pyleWeightLower: number, pyleWeightUpper: number, pyleWingLower: number, pyleWingUpper: number;
-
-    if (sex === "5") {
-      pyleWeightLower = pyleRange.fWeightLower;
-      pyleWeightUpper = pyleRange.fWeightUpper;
-      pyleWingLower = pyleRange.fWingLower;
-      pyleWingUpper = pyleRange.fWingUpper;
-    } else if (sex === "4") {
-      pyleWeightLower = pyleRange.mWeightLower;
-      pyleWeightUpper = pyleRange.mWeightUpper;
-      pyleWingLower = pyleRange.mWingLower;
-      pyleWingUpper = pyleRange.mWingUpper;
-    } else {
-      pyleWeightLower = pyleRange.unknownWeightLower;
-      pyleWeightUpper = pyleRange.unknownWeightUpper;
-      pyleWingLower = pyleRange.unknownWingLower;
-      pyleWingUpper = pyleRange.unknownWingUpper;
-    }
-
+  if (pyleRanges) {
     const pyleWeightReason = checkPyleMeasurementTolerance(
       event.weight,
-      pyleWeightLower,
-      pyleWeightUpper,
+      pyleRanges.weightLower,
+      pyleRanges.weightUpper,
       "Weight",
       sexLabel,
       "g",
@@ -124,8 +157,8 @@ function checkEventMeasurements(
 
     const pyleWingReason = checkPyleMeasurementTolerance(
       event.wing,
-      pyleWingLower,
-      pyleWingUpper,
+      pyleRanges.wingLower,
+      pyleRanges.wingUpper,
       "Wing",
       sexLabel,
       "mm",
@@ -142,30 +175,11 @@ function checkEventMeasurements(
   }
 
   // Check MBO range (warning level)
-  if (mboRange) {
-    let mboWeightLower: number, mboWeightUpper: number, mboWingLower: number, mboWingUpper: number;
-
-    if (sex === "5") {
-      mboWeightLower = mboRange.fWeightLower;
-      mboWeightUpper = mboRange.fWeightUpper;
-      mboWingLower = mboRange.fWingLower;
-      mboWingUpper = mboRange.fWingUpper;
-    } else if (sex === "4") {
-      mboWeightLower = mboRange.mWeightLower;
-      mboWeightUpper = mboRange.mWeightUpper;
-      mboWingLower = mboRange.mWingLower;
-      mboWingUpper = mboRange.mWingUpper;
-    } else {
-      mboWeightLower = mboRange.unknownWeightLower;
-      mboWeightUpper = mboRange.unknownWeightUpper;
-      mboWingLower = mboRange.unknownWingLower;
-      mboWingUpper = mboRange.unknownWingUpper;
-    }
-
+  if (mboRanges) {
     const mboWeightReason = checkMBOMeasurementRange(
       event.weight,
-      mboWeightLower,
-      mboWeightUpper,
+      mboRanges.weightLower,
+      mboRanges.weightUpper,
       "Weight",
       sexLabel,
       "g"
@@ -179,7 +193,14 @@ function checkEventMeasurements(
       });
     }
 
-    const mboWingReason = checkMBOMeasurementRange(event.wing, mboWingLower, mboWingUpper, "Wing", sexLabel, "mm");
+    const mboWingReason = checkMBOMeasurementRange(
+      event.wing,
+      mboRanges.wingLower,
+      mboRanges.wingUpper,
+      "Wing",
+      sexLabel,
+      "mm"
+    );
     if (mboWingReason) {
       errors.push({
         id: `${event.id}-mbo-wing-${sanitizeForFirebasePath(mboWingReason)}`,
@@ -300,8 +321,7 @@ export function validateBirdEventForm(
   magicTable?: MagicTable
 ): { text: string; severity: ErrorSeverity }[] {
   const messages: { text: string; severity: ErrorSeverity }[] = [];
-  const sexCode = formData.sex;
-  const sexLabel = sexCode === "4" ? "male" : sexCode === "5" ? "female" : "unknown";
+  const sexLabel = getSexLabel(formData.sex);
 
   const wingValue = formData.wing ? parseFloat(formData.wing) : 0;
   const weightValue = formData.weight ? parseFloat(formData.weight) : 0;
@@ -310,40 +330,16 @@ export function validateBirdEventForm(
   const pyleRange = magicTable?.pyle?.[formData.species];
   const mboRange = magicTable?.mbo?.[formData.species];
 
-  // Determine which sex-specific ranges to use
-  let pyleLower, pyleUpper, mboLower, mboUpper;
-  
-  if (sexCode === "5" && pyleRange) {
-    // Female
-    pyleLower = { weight: pyleRange.fWeightLower, wing: pyleRange.fWingLower };
-    pyleUpper = { weight: pyleRange.fWeightUpper, wing: pyleRange.fWingUpper };
-  } else if (sexCode === "4" && pyleRange) {
-    // Male
-    pyleLower = { weight: pyleRange.mWeightLower, wing: pyleRange.mWingLower };
-    pyleUpper = { weight: pyleRange.mWeightUpper, wing: pyleRange.mWingUpper };
-  } else if (pyleRange) {
-    // Unknown
-    pyleLower = { weight: pyleRange.unknownWeightLower, wing: pyleRange.unknownWingLower };
-    pyleUpper = { weight: pyleRange.unknownWeightUpper, wing: pyleRange.unknownWingUpper };
-  }
-
-  if (sexCode === "5" && mboRange) {
-    mboLower = { weight: mboRange.fWeightLower, wing: mboRange.fWingLower };
-    mboUpper = { weight: mboRange.fWeightUpper, wing: mboRange.fWingUpper };
-  } else if (sexCode === "4" && mboRange) {
-    mboLower = { weight: mboRange.mWeightLower, wing: mboRange.mWingLower };
-    mboUpper = { weight: mboRange.mWeightUpper, wing: mboRange.mWingUpper };
-  } else if (mboRange) {
-    mboLower = { weight: mboRange.unknownWeightLower, wing: mboRange.unknownWingLower };
-    mboUpper = { weight: mboRange.unknownWeightUpper, wing: mboRange.unknownWingUpper };
-  }
+  // Get sex-specific ranges
+  const pyleRanges = getRangesForSex(pyleRange, formData.sex);
+  const mboRanges = getRangesForSex(mboRange, formData.sex);
 
   // Check Pyle ranges (danger)
-  if (pyleLower && pyleUpper) {
+  if (pyleRanges) {
     const pyleWingReason = checkPyleMeasurementTolerance(
       wingValue,
-      pyleLower.wing,
-      pyleUpper.wing,
+      pyleRanges.wingLower,
+      pyleRanges.wingUpper,
       "Wing",
       sexLabel,
       "mm",
@@ -355,8 +351,8 @@ export function validateBirdEventForm(
 
     const pyleWeightReason = checkPyleMeasurementTolerance(
       weightValue,
-      pyleLower.weight,
-      pyleUpper.weight,
+      pyleRanges.weightLower,
+      pyleRanges.weightUpper,
       "Weight",
       sexLabel,
       "g",
@@ -368,11 +364,11 @@ export function validateBirdEventForm(
   }
 
   // Check MBO ranges (warning)
-  if (mboLower && mboUpper) {
+  if (mboRanges) {
     const mboWingReason = checkMBOMeasurementRange(
       wingValue,
-      mboLower.wing,
-      mboUpper.wing,
+      mboRanges.wingLower,
+      mboRanges.wingUpper,
       "Wing",
       sexLabel,
       "mm"
@@ -383,8 +379,8 @@ export function validateBirdEventForm(
 
     const mboWeightReason = checkMBOMeasurementRange(
       weightValue,
-      mboLower.weight,
-      mboUpper.weight,
+      mboRanges.weightLower,
+      mboRanges.weightUpper,
       "Weight",
       sexLabel,
       "g"

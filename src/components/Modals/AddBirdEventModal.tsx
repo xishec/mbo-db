@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
+import { validateBirdEventForm } from "../../types/birdEventErrors";
 import BirdStatusModal from "./BirdStatusModal";
 import { getSortedColumns } from "../PageContent/Programs/Captures/helpers";
 import {
@@ -268,8 +269,8 @@ export default function AddBirdEventModal({
     setLastBandId("");
   }
 
-  // Calculate range validation for wing and weight
-  const { rangeValidation, pyleRange, mboRange } = useMemo(() => {
+  // Calculate range validation for wing and weight (for border coloring)
+  const rangeValidation = useMemo(() => {
     const wingValue = formData.wing ? Number(formData.wing) : null;
     const weightValue = formData.weight ? Number(formData.weight) : null;
 
@@ -277,104 +278,48 @@ export default function AddBirdEventModal({
     const mboRange = getApplicableRange(mboSpeciesRange, sexCode);
 
     return {
-      rangeValidation: {
-        wing: {
-          pyle: wingValue !== null && pyleRange ? isInRange(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
-          mbo: wingValue !== null && mboRange ? isInRange(wingValue, mboRange.wingLower, mboRange.wingUpper) : null,
-        },
-        weight: {
-          pyle:
-            weightValue !== null && pyleRange
-              ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper)
-              : null,
-          mbo:
-            weightValue !== null && mboRange
-              ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper)
-              : null,
-        },
+      wing: {
+        pyle: wingValue !== null && pyleRange ? isInRange(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
+        mbo: wingValue !== null && mboRange ? isInRange(wingValue, mboRange.wingLower, mboRange.wingUpper) : null,
       },
-      pyleRange,
-      mboRange,
+      weight: {
+        pyle:
+          weightValue !== null && pyleRange
+            ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper)
+            : null,
+        mbo:
+          weightValue !== null && mboRange
+            ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper)
+            : null,
+      },
     };
   }, [formData.wing, formData.weight, sexCode, pyleSpeciesRange, mboSpeciesRange]);
 
-  // Generate warning messages
+  // Generate warning messages using shared validation logic
   const warningMessages = useMemo(() => {
-    const messages: { text: string; color: "danger" | "warning" }[] = [];
-    const sexLabel = sexCode === "4" ? "male" : sexCode === "5" ? "female" : "unknown";
+    const messages = validateBirdEventForm(
+      {
+        species: formData.species,
+        wing: formData.wing,
+        weight: formData.weight,
+        sex: formData.sex,
+        age: formData.age,
+        date: formData.date,
+      },
+      pastBirdEvents,
+      magicTable
+    );
 
-    if (rangeValidation.wing.pyle === false && pyleRange) {
-      messages.push({
-        text: `Wing ${formData.wing} is outside of Pyle range for sex ${sexLabel}, wing should be ${pyleRange.wingLower}-${pyleRange.wingUpper}`,
-        color: "danger",
-      });
-    }
-    if (rangeValidation.wing.mbo === false && mboRange) {
-      messages.push({
-        text: `Wing ${formData.wing} is outside of MBO range for sex ${sexLabel}, wing should be ${mboRange.wingLower}-${mboRange.wingUpper}`,
-        color: "warning",
-      });
-    }
-    if (rangeValidation.weight.pyle === false && pyleRange) {
-      messages.push({
-        text: `Weight ${formData.weight} is outside of Pyle range for sex ${sexLabel}, weight should be ${pyleRange.weightLower}-${pyleRange.weightUpper}`,
-        color: "danger",
-      });
-    }
-    if (rangeValidation.weight.mbo === false && mboRange) {
-      messages.push({
-        text: `Weight ${formData.weight} is outside of MBO range for sex ${sexLabel}, weight should be ${mboRange.weightLower}-${mboRange.weightUpper}`,
-        color: "warning",
-      });
-    }
-
-    // Check if sex matches existing captures logic
-    if (pastBirdEvents.length > 0 && formData.sex.length > 0) {
-      const capturesWithDefinedSex = pastBirdEvents.filter((capture) => ["4", "5"].includes(capture.sex));
-      if (capturesWithDefinedSex.length > 0) {
-        const allSexMatch = capturesWithDefinedSex.every((capture) => capture.sex === formData.sex);
-        if (!allSexMatch) {
-          const existingSexValues = [...new Set(capturesWithDefinedSex.map((c) => c.sex))].join(", ");
-          messages.push({
-            text: `Sex ${formData.sex} does not match existing captures (was ${existingSexValues})`,
-            color: "danger",
-          });
-        }
-      }
-    }
-
-    // Check if bird is being recaptured on the same day
-    if (pastBirdEvents.length > 0 && formData.date && useCurrentTime) {
-      const sameDayCapture = pastBirdEvents.some((capture) => capture.date === formData.date);
-      if (sameDayCapture) {
-        messages.push({
-          text: "Bird was already captured today - should be released without logging",
-          color: "danger",
-        });
-      }
-    }
-
+    // Add incomplete field warnings
     for (const column of sortedColumns) {
       const value = formData[column.key as keyof CaptureFormData];
       if (column.minLength && value.length > 0 && value.length < column.minLength) {
-        messages.push({ text: `${column.label} is incomplete`, color: "warning" });
+        messages.push({ text: `${column.label} is incomplete`, severity: "warning" });
       }
     }
 
     return messages;
-  }, [
-    sexCode,
-    rangeValidation.wing.pyle,
-    rangeValidation.wing.mbo,
-    rangeValidation.weight.pyle,
-    rangeValidation.weight.mbo,
-    pyleRange,
-    mboRange,
-    pastBirdEvents,
-    formData,
-    useCurrentTime,
-    sortedColumns,
-  ]);
+  }, [formData, pastBirdEvents, magicTable, sortedColumns]);
 
   const focusNextInput = useCallback(
     (currentField: keyof CaptureFormData) => {
@@ -697,7 +642,7 @@ export default function AddBirdEventModal({
                 <div className="text-sm">
                   <ul className="list-disc list-inside">
                     {warningMessages.map((msg, idx) => (
-                      <li key={idx} className={msg.color === "danger" ? "text-danger" : "text-warning"}>
+                      <li key={idx} className={msg.severity === "danger" ? "text-danger" : "text-warning"}>
                         {msg.text}
                       </li>
                     ))}

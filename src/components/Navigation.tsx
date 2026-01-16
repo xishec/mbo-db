@@ -26,7 +26,7 @@ import { ErrorsModal } from "./Modals/ErrorsModal";
 import { SyncQueueModal } from "./Modals/SyncQueueModal";
 import { BirdEventHistoryModal } from "./Modals/BirdEventHistoryModal";
 import { useData } from "../services/useData";
-import { findConflicts } from "../types/conflicts";
+import { findBirdEventErrors } from "../types/birdEventErrors";
 import mboLogo from "../assets/mbo-logo.svg";
 
 interface NavigationProps {
@@ -55,9 +55,9 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
 
   // Calculate error count
   const errorCount = useMemo(() => {
-    const allConflicts = findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
-    const activeConflicts = allConflicts.filter((conflict) => !dismissedConflictsMap[conflict.id]);
-    return activeConflicts.length;
+    const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
+    const activeErrors = allErrors.filter((error) => !dismissedConflictsMap[error.id]);
+    return activeErrors.length;
   }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
   useEffect(() => {

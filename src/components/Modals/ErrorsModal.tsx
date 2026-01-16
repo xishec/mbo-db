@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
 import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useData } from "../../services/useData";
-import { findConflicts } from "../../types/conflicts";
+import { findBirdEventErrors } from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../ExportButton";
 
@@ -26,43 +26,43 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   const [selectedBirdEventId, setSelectedBirdEventId] = useState<string | null>(null);
   const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
 
-  // Find all conflicts
-  const { conflicts, dismissedCount } = useMemo(() => {
-    const allConflicts = findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
-    // Filter out dismissed conflicts
-    const activeConflicts = allConflicts.filter((conflict) => !dismissedConflictsMap[conflict.id]);
-    // Calculate how many conflicts are actually being dismissed
-    const dismissedCount = allConflicts.length - activeConflicts.length;
+  // Find all errors
+  const { errors, dismissedCount } = useMemo(() => {
+    const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
+    // Filter out dismissed errors
+    const activeErrors = allErrors.filter((error) => !dismissedConflictsMap[error.id]);
+    // Calculate how many errors are actually being dismissed
+    const dismissedCount = allErrors.length - activeErrors.length;
     // Sort by updatedAt (most recent first)
-    const sortedConflicts = activeConflicts.sort((a, b) => {
+    const sortedErrors = activeErrors.sort((a, b) => {
       const aTime = parseInt(a.birdEvent.updatedAt || "0", 10);
       const bTime = parseInt(b.birdEvent.updatedAt || "0", 10);
       return bTime - aTime; // Descending order (newest first)
     });
-    return { conflicts: sortedConflicts, dismissedCount };
+    return { errors: sortedErrors, dismissedCount };
   }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
-  const handleConflictClick = (conflict: { birdEvent: { id: string; band?: { id: string } }; reason: string }) => {
-    if (conflict.birdEvent.band) {
-      setSelectedBandId(conflict.birdEvent.band.id);
-      setSelectedBirdEventId(conflict.birdEvent.id);
+  const handleErrorClick = (error: { birdEvent: { id: string; band?: { id: string } }; reason: string }) => {
+    if (error.birdEvent.band) {
+      setSelectedBandId(error.birdEvent.band.id);
+      setSelectedBirdEventId(error.birdEvent.id);
       setIsCaptureHistoryModalOpen(true);
     }
   };
 
-  const handleDismissConflict = async (conflictId: string) => {
+  const handleDismissError = async (errorId: string) => {
     try {
-      await dismissConflict(conflictId);
+      await dismissConflict(errorId);
     } catch (error) {
-      console.error("Failed to dismiss conflict:", error);
+      console.error("Failed to dismiss error:", error);
     }
   };
 
-  const handleResetDismissedConflicts = async () => {
+  const handleResetDismissedErrors = async () => {
     try {
       await resetDismissedConflicts();
     } catch (error) {
-      console.error("Failed to reset dismissed conflicts:", error);
+      console.error("Failed to reset dismissed errors:", error);
     }
   };
 
@@ -81,7 +81,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
               <div>
                 <h2 className="text-xl">Data Errors</h2>
                 <p className="text-sm text-default-900 font-light">
-                  {conflicts.length} potential errors found
+                  {errors.length} potential errors found
                   {dismissedCount > 0 && <span> ({dismissedCount} dismissed)</span>}
                 </p>
               </div>
@@ -90,28 +90,30 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
 
           <ModalBody>
             <div className="flex flex-col gap-2">
-              {conflicts.map((conflict) => (
-                <div key={conflict.id} className="flex flex-row gap-2">
+              {errors.map((error) => (
+                <div key={error.id} className="flex flex-row gap-2">
                   <div
                     className="flex-grow h-10 px-3 border border-default-200 rounded-medium hover:bg-default-100 cursor-pointer transition-colors flex items-center"
-                    onClick={() => handleConflictClick(conflict)}
+                    onClick={() => handleErrorClick(error)}
                   >
                     <div className="flex items-center gap-3 text-sm w-full">
                       <MagnifyingGlassIcon className="w-4 h-4 text-default-900 flex-shrink-0" />
                       <span className="font-bold text-default-900 flex-shrink-0">
-                        {conflict.birdEvent.band?.displayBandGroupId}
-                        {conflict.birdEvent.band?.last2digits}
+                        {error.birdEvent.band?.displayBandGroupId}
+                        {error.birdEvent.band?.last2digits}
                       </span>
                       <span className="text-default-900 flex-shrink-0">
-                        {conflict.birdEvent.date} {conflict.birdEvent.time}
+                        {error.birdEvent.date} {error.birdEvent.time}
                       </span>
-                      <span className="text-default-900 flex-shrink-0 font-bold">{conflict.birdEvent.species}</span>
-                      <span className="font-semibold text-danger-600 flex-1">{conflict.reason}</span>
+                      <span className="text-default-900 flex-shrink-0 font-bold">{error.birdEvent.species}</span>
+                      <span className={`font-semibold flex-1 ${error.severity === "danger" ? "text-danger-600" : "text-warning-600"}`}>
+                        {error.reason}
+                      </span>
                     </div>
                   </div>
                   {isLoggedIn && isOnline && (
                     <Button
-                      onPress={() => handleDismissConflict(conflict.id)}
+                      onPress={() => handleDismissError(error.id)}
                       color="danger"
                       variant="light"
                       isIconOnly
@@ -121,21 +123,21 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                   )}
                 </div>
               ))}
-              {conflicts.length === 0 && <div className="text-center text-default-500 py-8">No conflicts found</div>}
+              {errors.length === 0 && <div className="text-center text-default-500 py-8">No errors found</div>}
             </div>
           </ModalBody>
 
           <ModalFooter className="gap-4 p-8 pt-4">
             {isLoggedIn && isOnline && dismissedCount > 0 && (
-              <Button color="primary" variant="bordered" onPress={handleResetDismissedConflicts}>
-                Reset Dismissed Conflicts
+              <Button color="primary" variant="bordered" onPress={handleResetDismissedErrors}>
+                Reset Dismissed Errors
               </Button>
             )}
             <ExportButton
-              birdEvents={conflicts.map((conflict) => conflict.birdEvent)}
-              filename="conflicts.csv"
-              additionalComments={conflicts.reduce((acc, conflict) => {
-                acc[conflict.birdEvent.id] = conflict.reason;
+              birdEvents={errors.map((error) => error.birdEvent)}
+              filename="errors.csv"
+              additionalComments={errors.reduce((acc, error) => {
+                acc[error.birdEvent.id] = error.reason;
                 return acc;
               }, {} as Record<string, string>)}
             />
