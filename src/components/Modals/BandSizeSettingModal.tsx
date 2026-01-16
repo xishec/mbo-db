@@ -27,14 +27,14 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
     // Only allow digits
     const numericValue = value.replace(/\D/g, "");
     const currentBandId = bandSizeMap[bandSize] || "";
-    const currentBandGroup = currentBandId.slice(0, 7);
+    const currentInternalBandGroup = currentBandId.slice(0, 7); // Internal storage format
     const currentLastTwo = currentBandId.slice(7, 9);
 
     let newBandId: string;
     if (field === "bandGroup") {
       newBandId = numericValue + currentLastTwo;
     } else {
-      newBandId = currentBandGroup + numericValue;
+      newBandId = currentInternalBandGroup + numericValue;
     }
 
     setBandSizeMap((prev) => ({
@@ -89,7 +89,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
                 .filter((bandSize) => bandSize !== BandSize.Other)
                 .map((bandSize) => {
                   const bandId = bandSizeMap[bandSize] || "";
-                  const bandGroup = bandId.slice(0, 7);
+                  const bandGroup = bandId ? bandId.slice(0, 7) : "";
                   const lastTwo = bandId.slice(7, 9);
                   const bandGroupColor = getInputColor(bandSize, "bandGroup");
                   const bandLastTwoColor = getInputColor(bandSize, "bandLastTwoDigits");

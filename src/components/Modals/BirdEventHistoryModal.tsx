@@ -82,7 +82,7 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
                     <div className="grid grid-cols-[25px_100px_170px_80px_100px_170px] gap-3 text-sm w-full items-center">
                       <MagnifyingGlassIcon className="w-4 h-4 text-default-900 flex-shrink-0" />
                       <span className="font-bold text-default-900">
-                        {event.band?.displayBandGroupId}
+                        {event.band?.bandGroupId}
                         {event.band?.last2digits}
                       </span>
                       <span className="text-default-900">

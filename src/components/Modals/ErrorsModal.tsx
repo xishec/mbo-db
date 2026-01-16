@@ -101,7 +101,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                     <div className="grid grid-cols-[auto_100px_170px_80px_1fr] gap-3 text-sm w-full items-center">
                       <MagnifyingGlassIcon className="w-4 h-4 text-default-900" />
                       <span className="font-bold text-default-900">
-                        {error.birdEvent.band?.displayBandGroupId}
+                        {error.birdEvent.band?.bandGroupId}
                         {error.birdEvent.band?.last2digits}
                       </span>
                       <span className="text-default-900">

@@ -22,24 +22,30 @@ export class Band {
   bandSuffix: string;
 
   constructor(bandPrefix: string, bandSuffix: string) {
-    this.last2digits = bandSuffix.slice(-2);
-    let bandGroupIdNumber = parseInt(bandPrefix + bandSuffix.slice(0, -2), 10);
-    if (this.last2digits === "00") {
-      bandGroupIdNumber -= 1;
-    }
-    this.bandGroupId = bandGroupIdNumber.toString();
     this.bandPrefix = bandPrefix;
     this.bandSuffix = bandSuffix;
-    this.id = `${this.bandGroupId}${this.last2digits}`;
+    this.last2digits = bandSuffix.slice(-2);
+    // Band group is always the first 7 digits (no adjustment)
+    this.bandGroupId = bandPrefix + bandSuffix.slice(0, 3);
+    this.id = this.bandGroupId + this.last2digits;
   }
+}
 
-  // 1462068-00 should be the same Band Group as 1462067-99
-  get displayBandGroupId(): string {
-    if (this.last2digits === "00") {
-      return (parseInt(this.bandGroupId, 10) + 1).toString();
-    }
-    return this.bandGroupId;
-  }
+/**
+ * Get the correct bandGroupsMap key for a band
+ * 
+ * Business rule: -00 bands belong to the PREVIOUS band group
+ * - 2991468-00 and 2991467-99 should be in the SAME group
+ * - Both stored under bandGroupsMap["2991467"]
+ * 
+ * Examples:
+ * - Band 2991468-00: bandGroupId="2991468" → map key "2991467"
+ * - Band 2991467-99: bandGroupId="2991467" → map key "2991467"
+ */
+export function getBandGroupMapKey(band: Band): string {
+  return band.last2digits === "00"
+    ? (parseInt(band.bandGroupId, 10) - 1).toString()
+    : band.bandGroupId;
 }
 
 export interface BandGroup {

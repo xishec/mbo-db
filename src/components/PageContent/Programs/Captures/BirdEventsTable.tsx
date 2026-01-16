@@ -13,7 +13,7 @@ function birdEventToRow(event: BirdEvent): TableRow {
   return {
     id: event.id,
     programId: event.programId,
-    bandGroup: event.band?.displayBandGroupId ?? "",
+    bandGroup: event.band?.bandGroupId ?? "",
     bandLastTwoDigits: event.band?.last2digits ?? "",
     species: event.species,
     wing: String(event.wing),

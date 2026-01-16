@@ -14,7 +14,7 @@ import {
   type DismissedConflictsMap,
   BandSize,
 } from "../types";
-import { Band, BirdEventType, generateBirdEventId, type Program } from "../types";
+import { Band, BirdEventType, generateBirdEventId, type Program, getBandGroupMapKey } from "../types";
 import { DataContext } from "./DataContext";
 import {
   saveDataToIndexedDB,
@@ -261,16 +261,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       // 4. Update band group map (only for new captures)
       if (isNewCapture) {
-        const existingBandGroup = state.bandGroupsMap[band.bandGroupId];
+        const bandGroupMapKey = getBandGroupMapKey(band);
+        const existingBandGroup = state.bandGroupsMap[bandGroupMapKey];
         if (!existingBandGroup) {
           // Create new band group
-          await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}`), {
-            id: band.bandGroupId,
+          await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}`), {
+            id: bandGroupMapKey,
             newCaptureIds: [birdEventId],
           });
         } else if (!existingBandGroup.newCaptureIds.includes(birdEventId)) {
           // Append to existing band group
-          await set(ref(db, `${environment}/bandGroupsMap/${band.bandGroupId}/newCaptureIds`), [
+          await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}/newCaptureIds`), [
             ...existingBandGroup.newCaptureIds,
             birdEventId,
           ]);
@@ -280,13 +281,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // 5. Update program map
       const existingProgram = state.programsMap[programId];
       if (existingProgram) {
+        const bandGroupMapKey = getBandGroupMapKey(band);
         // Update band group IDs for new captures
         if (isNewCapture) {
           const existingBandGroupIds = existingProgram.bandGroupIds || [];
-          if (!existingBandGroupIds.includes(band.bandGroupId)) {
+          if (!existingBandGroupIds.includes(bandGroupMapKey)) {
             await set(ref(db, `${environment}/programsMap/${programId}/bandGroupIds`), [
               ...existingBandGroupIds,
-              band.bandGroupId,
+              bandGroupMapKey,
             ]);
           }
         }
@@ -516,6 +518,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       try {
         // 1. Create Band and BirdEvent objects
         const birdEventType = captureData.birdEventType as BirdEventType;
+        
         const bandPrefix = captureData.bandGroup.substring(0, 4);
         const bandSuffix = captureData.bandGroup.substring(4) + captureData.bandLastTwoDigits;
         const band = new Band(bandPrefix, bandSuffix);
@@ -586,11 +589,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // New bandGroupsMap
         let newBandGroupsMap = bandGroupsMap;
         if (isNewCapture) {
+          const bandGroupMapKey = getBandGroupMapKey(band);
           newBandGroupsMap = {
             ...bandGroupsMap,
-            [band.bandGroupId]: {
-              id: band.bandGroupId,
-              newCaptureIds: [...(bandGroupsMap[band.bandGroupId]?.newCaptureIds || []), newBirdEvent.id],
+            [bandGroupMapKey]: {
+              id: bandGroupMapKey,
+              newCaptureIds: [...(bandGroupsMap[bandGroupMapKey]?.newCaptureIds || []), newBirdEvent.id],
             },
           };
         }
@@ -603,9 +607,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // New programsMap
         const existingProgram = programsMap[captureData.programId];
+        const bandGroupMapKey = getBandGroupMapKey(band);
         let newBandGroupIds = existingProgram?.bandGroupIds || [];
-        if (isNewCapture && !newBandGroupIds.includes(band.bandGroupId)) {
-          newBandGroupIds = [...newBandGroupIds, band.bandGroupId];
+        if (isNewCapture && !newBandGroupIds.includes(bandGroupMapKey)) {
+          newBandGroupIds = [...newBandGroupIds, bandGroupMapKey];
         }
 
         let newRecaptureIds = existingProgram?.recaptureIds || [];

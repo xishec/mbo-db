@@ -295,17 +295,19 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
       }
     }
 
-    // bandGroupsMap
-    const bandGroupId = birdEvent.band.bandGroupId;
+    // bandGroupsMap - use map key helper for -00 bands
+    const bandGroupMapKey = birdEvent.band.last2digits === "00"
+      ? (parseInt(birdEvent.band.bandGroupId, 10) - 1).toString()
+      : birdEvent.band.bandGroupId;
     const birdEventType = birdEvent.birdEventType;
-    if (bandGroupId && (birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None)) {
-      if (!bandGroupsMap[bandGroupId]) {
-        bandGroupsMap[bandGroupId] = {
-          id: bandGroupId,
+    if (bandGroupMapKey && (birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None)) {
+      if (!bandGroupsMap[bandGroupMapKey]) {
+        bandGroupsMap[bandGroupMapKey] = {
+          id: bandGroupMapKey,
           newCaptureIds: [],
         } as BandGroup;
       }
-      bandGroupsMap[bandGroupId].newCaptureIds.push(birdEventId);
+      bandGroupsMap[bandGroupMapKey].newCaptureIds.push(birdEventId);
     }
 
     // programsMap
@@ -320,8 +322,8 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
         };
       }
       const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
-      if (isNewCapture && !programsMap[programId].bandGroupIds.includes(bandGroupId)) {
-        programsMap[programId].bandGroupIds.push(bandGroupId);
+      if (isNewCapture && !programsMap[programId].bandGroupIds.includes(bandGroupMapKey)) {
+        programsMap[programId].bandGroupIds.push(bandGroupMapKey);
       }
       if (!isNewCapture && !programsMap[programId].recaptureIds.includes(birdEventId)) {
         programsMap[programId].recaptureIds.push(birdEventId);

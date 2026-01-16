@@ -83,8 +83,8 @@ export default function AddBirdEventModal({
 
     // If modifying an existing bird event, use its data
     if (birdEventToModify) {
-      const bandGroup = birdEventToModify.band.id.slice(0, 7);
-      const bandLastTwoDigits = birdEventToModify.band.id.slice(7, 9);
+      const bandGroup = birdEventToModify.band.bandGroupId;
+      const bandLastTwoDigits = birdEventToModify.band.last2digits;
 
       defaultData.programId = birdEventToModify.programId;
       defaultData.bandGroup = bandGroup;
@@ -198,7 +198,7 @@ export default function AddBirdEventModal({
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
     if (formData.bandGroup.length === 7 && formData.bandLastTwoDigits.length === 2) {
-      return `${formData.bandGroup}${formData.bandLastTwoDigits}`;
+      return formData.bandGroup + formData.bandLastTwoDigits;
     }
     return "";
   }, [formData.bandGroup, formData.bandLastTwoDigits]);
@@ -216,11 +216,17 @@ export default function AddBirdEventModal({
 
   // Compute suggested capture type (doesn't auto-update formData)
   const suggestedBirdEventType = useMemo(() => {
-    if (formData.bandGroup.length !== 7) return BirdEventType.None;
+    if (!bandId) return BirdEventType.None;
     if (birdEventToModify) return birdEventToModify.birdEventType;
     if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
     if (pastBirdEvents.length === 0) {
-      if (bandGroupsMap[formData.bandGroup] || isNewCapture) return BirdEventType.Banded;
+      // For -00 bands, check the previous band group (business rule)
+      const last2digits = bandId.slice(7, 9);
+      const bandGroupId = bandId.slice(0, 7);
+      const bandGroupMapKey = last2digits === "00" 
+        ? (parseInt(bandGroupId, 10) - 1).toString()
+        : bandGroupId;
+      if (bandGroupsMap[bandGroupMapKey] || isNewCapture) return BirdEventType.Banded;
       else return BirdEventType.Alien;
     } else {
       const currentDate = new Date(formData.date);
@@ -232,9 +238,9 @@ export default function AddBirdEventModal({
       return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
     }
   }, [
+    bandId,
     bandGroupsMap,
     birdEventToModify,
-    formData.bandGroup,
     formData.date,
     formData.species,
     pastBirdEvents,
@@ -323,6 +329,7 @@ export default function AddBirdEventModal({
         sex: formData.sex,
         age: formData.age,
         date: formData.date,
+        fat: "",
       },
       pastBirdEvents,
       magicTable
