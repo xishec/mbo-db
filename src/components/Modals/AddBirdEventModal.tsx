@@ -605,7 +605,7 @@ export default function AddBirdEventModal({
           variant="bordered"
           color={inputColor || "default"}
           aria-label={column.label}
-          type={column.type || "text"}
+          type={column.type}
           maxLength={column.maxLength}
           validationBehavior="aria"
           value={formData[columnKey]}
