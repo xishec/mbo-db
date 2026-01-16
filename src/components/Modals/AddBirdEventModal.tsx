@@ -428,18 +428,20 @@ export default function AddBirdEventModal({
 
   const handleModalOpenChange = useCallback(
     (isOpen: boolean) => {
-      if (!isOpen && isSaving) {
-        // Prevent closing modal while saving
-        return;
-      }
       onOpenChange(isOpen);
     },
-    [isSaving, onOpenChange]
+    [onOpenChange]
   );
 
   const handleSave = useCallback(
     async (shouldContinue: boolean = false) => {
       setIsSaving(true);
+      
+      // Close modal immediately for better UX (optimistic UI)
+      if (!shouldContinue) {
+        handleClose();
+      }
+
       try {
         const bandSizeToSend =
           formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None
@@ -454,7 +456,6 @@ export default function AddBirdEventModal({
           focusTo("species");
         } else {
           setIsSaving(false);
-          handleClose();
         }
       } catch (err) {
         console.error("Failed to save capture:", err);
@@ -684,7 +685,7 @@ export default function AddBirdEventModal({
               )}
             </ModalBody>
             <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="danger" variant="bordered" onPress={handleClose} isDisabled={isSaving}>
+              <Button color="danger" variant="bordered" onPress={handleClose}>
                 Cancel
               </Button>
               {!birdEventToModify && (
@@ -692,13 +693,11 @@ export default function AddBirdEventModal({
                   color="primary"
                   variant="bordered"
                   onPress={handleSaveAndNext}
-                  isLoading={isSaving}
-                  isDisabled={isSaving}
                 >
                   Save and Next
                 </Button>
               )}
-              <Button color="primary" onPress={handleSaveAndClose} isLoading={isSaving} isDisabled={isSaving}>
+              <Button color="primary" onPress={handleSaveAndClose}>
                 Save
               </Button>
             </ModalFooter>
