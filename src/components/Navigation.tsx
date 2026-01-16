@@ -32,9 +32,10 @@ import mboLogo from "../assets/mbo-logo.svg";
 interface NavigationProps {
   activePage: string;
   onPageChange: (page: string) => void;
+  isLoading: boolean;
 }
 
-export default function Navigation({ activePage, onPageChange }: NavigationProps) {
+export default function Navigation({ activePage, onPageChange, isLoading }: NavigationProps) {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
@@ -52,6 +53,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
     selectProgram,
     dismissedConflictsMap,
   } = useData();
+
+  // Wrapper functions to prevent modal opens during loading
+  const handleLogsOpen = () => !isLoading && onLogsOpen();
+  const handleErrorsOpen = () => !isLoading && onErrorsOpen();
+  const handleSyncQueueOpen = () => !isLoading && onSyncQueueOpen();
+  const handleHistoryOpen = () => !isLoading && onHistoryOpen();
+  const handleLoginOpen = () => !isLoading && onOpen();
 
   // Calculate error count - only severe errors
   const errorCount = useMemo(() => {
@@ -104,7 +112,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
                 variant="flat"
                 color={isOnline ? "primary" : "secondary"}
                 className="cursor-pointer"
-                onClick={onSyncQueueOpen}
+                onClick={handleSyncQueueOpen}
               >
                 {isOnline ? "Online" : "Offline"}
               </Chip>
@@ -122,11 +130,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               aria-current={activePage === "home" ? "page" : undefined}
               color={activePage === "home" ? "primary" : "foreground"}
               href="#"
-              className="inline-block text-center"
+              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
               onClick={(e) => {
                 e.preventDefault();
-                selectProgram(null);
-                onPageChange("home");
+                if (!isLoading) {
+                  selectProgram(null);
+                  onPageChange("home");
+                }
               }}
             >
               Home
@@ -137,11 +147,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               aria-current={activePage === "programs" ? "page" : undefined}
               color={activePage === "programs" ? "primary" : "foreground"}
               href="#"
-              className="inline-block text-center"
+              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
               onClick={(e) => {
                 e.preventDefault();
-                selectProgram(null);
-                onPageChange("programs");
+                if (!isLoading) {
+                  selectProgram(null);
+                  onPageChange("programs");
+                }
               }}
             >
               Programs
@@ -152,11 +164,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               aria-current={activePage === "search" ? "page" : undefined}
               color={activePage === "search" ? "primary" : "foreground"}
               href="#"
-              className="inline-block text-center"
+              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
               onClick={(e) => {
                 e.preventDefault();
-                selectProgram(null);
-                onPageChange("search");
+                if (!isLoading) {
+                  selectProgram(null);
+                  onPageChange("search");
+                }
               }}
             >
               Search
@@ -167,11 +181,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               aria-current={activePage === "customers" ? "page" : undefined}
               color={activePage === "customers" ? "primary" : "foreground"}
               href="#"
-              className="inline-block text-center"
+              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
               onClick={(e) => {
                 e.preventDefault();
-                selectProgram(null);
-                onPageChange("customers");
+                if (!isLoading) {
+                  selectProgram(null);
+                  onPageChange("customers");
+                }
               }}
             >
               DET
@@ -181,11 +197,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
             <Link
               color={activePage === "integrations" ? "primary" : "foreground"}
               href="#"
-              className="inline-block text-center"
+              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
               onClick={(e) => {
                 e.preventDefault();
-                selectProgram(null);
-                onPageChange("integrations");
+                if (!isLoading) {
+                  selectProgram(null);
+                  onPageChange("integrations");
+                }
               }}
             >
               Reports
@@ -194,19 +212,19 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
         </NavbarContent>
         <NavbarContent justify="end">
           <NavbarItem>
-            <Button isIconOnly variant="light" onPress={onHistoryOpen} aria-label="View bird event history">
+            <Button isIconOnly variant="light" onPress={handleHistoryOpen} aria-label="View bird event history" isDisabled={isLoading}>
               <ClockIcon className="w-5 h-5" />
             </Button>
           </NavbarItem>
           <NavbarItem>
             <Badge content={errorCount} color="danger" size="sm" showOutline={false} isInvisible={errorCount === 0}>
-              <Button isIconOnly variant="light" onPress={onErrorsOpen} aria-label="View errors">
+              <Button isIconOnly variant="light" onPress={handleErrorsOpen} aria-label="View errors" isDisabled={isLoading}>
                 <ExclamationTriangleIcon className="w-5 h-5" />
               </Button>
             </Badge>
           </NavbarItem>
           <NavbarItem>
-            <Button isIconOnly variant="light" onPress={onLogsOpen} aria-label="View logs">
+            <Button isIconOnly variant="light" onPress={handleLogsOpen} aria-label="View logs" isDisabled={isLoading}>
               <CodeBracketIcon className="w-5 h-5" />
             </Button>
           </NavbarItem>
@@ -235,7 +253,7 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
                 </DropdownMenu>
               </Dropdown>
             ) : (
-              <Button color="primary" onPress={onOpen}>
+              <Button color="primary" onPress={handleLoginOpen} isDisabled={isLoading}>
                 Login
               </Button>
             )}
