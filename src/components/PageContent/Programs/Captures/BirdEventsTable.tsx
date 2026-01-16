@@ -145,6 +145,9 @@ export default function BirdEventsTable({
   const sortedRows = useMemo(() => {
     if (sortDescriptors.length === 0) return rows;
 
+    // Numeric columns that should be sorted numerically - determined by column type
+    const numericColumns = new Set<string>(TABLE_COLUMNS.filter(col => col.type === 'number').map(col => col.key));
+
     return [...rows].sort((a, b) => {
       for (const descriptor of sortDescriptors) {
         const column = descriptor.column as keyof TableRow;
@@ -153,14 +156,18 @@ export default function BirdEventsTable({
 
         let cmp: number;
 
-        // Special handling for bandLastTwoDigits: 00 should come after 99
-        if (column === "bandLastTwoDigits") {
-          const firstNum = parseInt(String(first), 10);
-          const secondNum = parseInt(String(second), 10);
-          // Treat 00 as 100 so it sorts last
-          const firstVal = firstNum || 100;
-          const secondVal = secondNum || 100;
-          cmp = firstVal - secondVal;
+        if (numericColumns.has(column)) {
+          const firstNum = parseFloat(String(first)) || 0;
+          const secondNum = parseFloat(String(second)) || 0;
+          
+          // Special handling for bandLastTwoDigits: 00 should come after 99
+          if (column === "bandLastTwoDigits") {
+            const firstVal = firstNum || 100;
+            const secondVal = secondNum || 100;
+            cmp = firstVal - secondVal;
+          } else {
+            cmp = firstNum - secondNum;
+          }
         } else {
           // String comparison works for date (YYYY-MM-DD), time, and other text columns
           cmp = String(first).localeCompare(String(second));
