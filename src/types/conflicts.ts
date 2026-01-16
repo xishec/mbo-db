@@ -1,6 +1,7 @@
 import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap, MagicTable, SpeciesRange } from ".";
 
 export interface Conflict {
+  id: string;
   birdEvent: BirdEvent;
   reason: string;
 }
@@ -18,19 +19,19 @@ function checkMeasurementTolerance(
   age?: string
 ): string | null {
   if (value <= 0 || pyleLower <= 0) return null;
-  
+
   // For Wing measurements with age 4, use 90% tolerance instead of 20%
   const lowerBoundMultiplier = measurementType === "Wing" && age === "4" ? 0.1 : 0.8;
   const lowerBound = pyleLower * lowerBoundMultiplier;
   const upperBound = pyleUpper * 1.2; // 20% above
-  
+
   if (value < lowerBound) {
     const percentage = measurementType === "Wing" && age === "4" ? "90%" : "20%";
     return `${measurementType} ${value}${unit} is ${percentage} below normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
   } else if (value > upperBound) {
     return `${measurementType} ${value}${unit} is 20% above normal ${sexLabel} range (${pyleLower}-${pyleUpper}${unit})`;
   }
-  
+
   return null;
 }
 
@@ -40,7 +41,7 @@ function checkMeasurementTolerance(
 function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): string[] {
   const reasons: string[] = [];
   const sex = event.sex;
-  
+
   if (sex === "5") {
     // Female
     const weightReason = checkMeasurementTolerance(
@@ -53,7 +54,7 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
       event.age
     );
     if (weightReason) reasons.push(weightReason);
-    
+
     const wingReason = checkMeasurementTolerance(
       event.wing,
       speciesRange.fWingLower,
@@ -76,7 +77,7 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
       event.age
     );
     if (weightReason) reasons.push(weightReason);
-    
+
     const wingReason = checkMeasurementTolerance(
       event.wing,
       speciesRange.mWingLower,
@@ -99,7 +100,7 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
       event.age
     );
     if (weightReason) reasons.push(weightReason);
-    
+
     const wingReason = checkMeasurementTolerance(
       event.wing,
       speciesRange.unknownWingLower,
@@ -111,22 +112,22 @@ function checkEventMeasurements(event: BirdEvent, speciesRange: SpeciesRange): s
     );
     if (wingReason) reasons.push(wingReason);
   }
-  
+
   return reasons;
 }
 
 /**
  * Finds conflicts in an array of bird events.
- * Checks for sex changes (4↔5), species changes, and out-of-normal measurements.
+ * Checks for sex changes (4 ↔ 5), species changes, and out-of-normal measurements.
  */
 export function findConflictsInEvents(events: BirdEvent[], magicTable?: MagicTable): Conflict[] {
   const conflicts: Conflict[] = [];
-  
+
   // Check consecutive events for sex/species changes
   for (let i = 1; i < events.length; i++) {
     const currentEvent = events[i];
     const previousEvent = events[i - 1];
-    
+
     const currentSex = currentEvent.sex;
     const previousSex = previousEvent.sex;
     const currentSpecies = currentEvent.species;
@@ -134,38 +135,42 @@ export function findConflictsInEvents(events: BirdEvent[], magicTable?: MagicTab
 
     if (previousSex === "4" && currentSex === "5") {
       conflicts.push({
+        id: `${currentEvent.id}-sex-change-4-to-5`,
         birdEvent: currentEvent,
-        reason: "Sex changed from 4 to 5"
+        reason: "Sex changed from 4 to 5",
       });
     } else if (previousSex === "5" && currentSex === "4") {
       conflicts.push({
+        id: `${currentEvent.id}-sex-change-5-to-4`,
         birdEvent: currentEvent,
-        reason: "Sex changed from 5 to 4"
+        reason: "Sex changed from 5 to 4",
       });
     } else if (currentSpecies !== previousSpecies) {
       conflicts.push({
+        id: `${currentEvent.id}-species-change`,
         birdEvent: currentEvent,
-        reason: `Species changed from ${previousSpecies} to ${currentSpecies}`
+        reason: `Species changed from ${previousSpecies} to ${currentSpecies}`,
       });
     }
   }
-  
+
   // Check all events for out-of-normal measurements
   if (magicTable?.pyle) {
     for (const event of events) {
       const speciesRange = magicTable.pyle[event.species];
       if (!speciesRange) continue;
-      
+
       const reasons = checkEventMeasurements(event, speciesRange);
       for (const reason of reasons) {
         conflicts.push({
+          id: `${event.id}-measurement-out-of-range-${reason.replace(/\s+/g, "-")}`,
           birdEvent: event,
-          reason
+          reason,
         });
       }
     }
   }
-  
+
   return conflicts;
 }
 
@@ -173,7 +178,11 @@ export function findConflictsInEvents(events: BirdEvent[], magicTable?: MagicTab
  * Scans through bands to find conflicting changes.
  * Returns bird events where sex changed from "4" to "5" or from "5" to "4" or species changed for the same band.
  */
-export function findConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, birdEventsMap: BirdEventsMap, magicTable?: MagicTable): Conflict[] {
+export function findConflicts(
+  bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap,
+  birdEventsMap: BirdEventsMap,
+  magicTable?: MagicTable
+): Conflict[] {
   const conflicts: Conflict[] = [];
 
   // Iterate through each band
@@ -181,10 +190,8 @@ export function findConflicts(bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap, 
     if (bandId == "999999999") continue; // Skip test band
 
     const eventIds = bandIdToBirdEventIdsMap[bandId];
-    const events = eventIds
-      .map(id => birdEventsMap[id])
-      .filter(Boolean);
-    
+    const events = eventIds.map((id) => birdEventsMap[id]).filter(Boolean);
+
     conflicts.push(...findConflictsInEvents(events, magicTable));
   }
 

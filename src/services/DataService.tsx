@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
-  type AlphaData,
+  type DatabaseData,
   type YearToProgramMap,
   type ProgramsMap,
   type BandIdToBirdEventIdsMap,
@@ -11,6 +11,7 @@ import {
   type MagicTable,
   type CaptureFormData,
   type BirdEvent,
+  type DismissedConflictsMap,
   BandSize,
 } from "../types";
 import { Band, BirdEventType, generateBirdEventId, type Program } from "../types";
@@ -52,6 +53,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [bandSizeToBandIdMap, setBandSizeToBandIdMap] = useState<Record<BandSize, string>>(
     {} as Record<BandSize, string>
   );
+  const [dismissedConflictsMap, setDismissedConflictsMap] = useState<DismissedConflictsMap>({});
 
   // Load entire alpha/ on mount
   useEffect(() => {
@@ -96,7 +98,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         if (snapshot.exists()) {
-          const data = snapshot.val() as AlphaData;
+          const data = snapshot.val() as DatabaseData;
 
           // Save to IndexedDB
           await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
@@ -132,7 +134,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    const populateStateFromData = (data: AlphaData) => {
+    const populateStateFromData = (data: DatabaseData) => {
       setYearsToProgramMap(data.yearsToProgramMap ?? {});
       setProgramsMap(data.programsMap ?? {});
       setBandIdToBirdEventIdsMap(data.bandIdToBirdEventIdsMap ?? {});
@@ -147,6 +149,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setBandGroupsMap(data.bandGroupsMap ?? {});
       setMagicTable(data.magicTable ?? { pyle: {}, mbo: {} });
       setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
+      setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
     };
 
     loadAlphaData();
@@ -351,7 +354,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * This is the single source of truth for offline data.
    */
   const saveCompleteStateToIndexedDB = useCallback(
-    async (overrides?: Partial<AlphaData>): Promise<void> => {
+    async (overrides?: Partial<DatabaseData>): Promise<void> => {
       await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
         yearsToProgramMap,
         programsMap,
@@ -360,6 +363,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandGroupsMap,
         magicTable,
         bandSizeToBandIdMap,
+        dismissedConflictsMap,
         ...overrides,
       });
     },
@@ -371,6 +375,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       bandGroupsMap,
       magicTable,
       bandSizeToBandIdMap,
+      dismissedConflictsMap,
     ]
   );
 
@@ -819,7 +824,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         };
 
         // Update IndexedDB first
-        const updatedAlphaData = {
+        const updatedDatabaseData = {
           yearsToProgramMap,
           programsMap: newProgramsMap,
           bandIdToBirdEventIdsMap,
@@ -827,8 +832,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupsMap,
           magicTable,
           bandSizeToBandIdMap,
+          dismissedConflictsMap,
         };
-        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, updatedAlphaData);
+        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, updatedDatabaseData);
 
         // Update lastModified timestamp in RTDB and IndexedDB
         await updateLastModifiedTimestamp();
@@ -858,6 +864,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       bandGroupsMap,
       magicTable,
       bandSizeToBandIdMap,
+      dismissedConflictsMap,
       updateLastModifiedTimestamp,
     ]
   );
@@ -895,6 +902,38 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
+  const dismissConflict = useCallback(
+    async (conflictId: string) => {
+      if (!user) {
+        throw new Error("Must be logged in to dismiss conflicts");
+      }
+
+      try {
+        // Update React state immediately
+        const newDismissedConflictsMap = { ...dismissedConflictsMap, [conflictId]: true };
+        setDismissedConflictsMap(newDismissedConflictsMap);
+
+        // Save to IndexedDB
+        await saveCompleteStateToIndexedDB({ dismissedConflictsMap: newDismissedConflictsMap });
+
+        // Handle online vs offline sync
+        if (isOnline) {
+          // Online: sync to RTDB immediately
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap/${conflictId}`), true);
+          await updateLastModifiedTimestamp();
+          logger.info("DismissConflict", `Conflict ${conflictId} dismissed and synced to RTDB`);
+        } else {
+          // Offline: will be synced when back online
+          logger.info("DismissConflict", `Conflict ${conflictId} dismissed offline - will sync when online`);
+        }
+      } catch (err) {
+        logger.error("DismissConflict", `Error dismissing conflict ${conflictId}`, err);
+        throw err;
+      }
+    },
+    [user, isOnline, dismissedConflictsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+  );
+
   return (
     <DataContext.Provider
       value={{
@@ -911,6 +950,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandGroupsMap,
         magicTable,
         bandSizeToBandIdMap,
+        dismissedConflictsMap,
         isOnline,
         pendingCount,
         forceOffline,
@@ -921,6 +961,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         syncQueue,
         updateBandSizeMap,
         incrementBandSize,
+        dismissConflict,
       }}
     >
       {children}

@@ -1,4 +1,4 @@
-import type { AlphaData, PendingEvent } from "../types";
+import type { DatabaseData, PendingEvent } from "../types";
 import { db, CURRENT_ENVIRONMENT } from "../firebase";
 import { ref, get } from "firebase/database";
 
@@ -118,7 +118,7 @@ export async function clearAllIndexedDB(): Promise<void> {
 /**
  * Save complete environment data to IndexedDB
  */
-export async function saveDataToIndexedDB(environment: string, data: AlphaData): Promise<void> {
+export async function saveDataToIndexedDB(environment: string, data: DatabaseData): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction([DATA_STORE], "readwrite");
   const store = transaction.objectStore(DATA_STORE);
@@ -140,7 +140,7 @@ export async function saveDataToIndexedDB(environment: string, data: AlphaData):
 /**
  * Get complete environment data from IndexedDB
  */
-export async function getDataFromIndexedDB(environment: string): Promise<AlphaData | null> {
+export async function getDataFromIndexedDB(environment: string): Promise<DatabaseData | null> {
   const db = await openDB();
   const transaction = db.transaction([DATA_STORE], "readonly");
   const store = transaction.objectStore(DATA_STORE);

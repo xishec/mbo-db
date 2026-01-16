@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useData } from "../../services/useData";
 import { findConflicts } from "../../types/conflicts";
 import CaptureHistoryModal from "./CaptureHistoryModal";
@@ -12,7 +12,7 @@ interface ErrorsModalProps {
 }
 
 export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
-  const { birdEventsMap, bandIdToBirdEventIdsMap, magicTable } = useData();
+  const { birdEventsMap, bandIdToBirdEventIdsMap, magicTable, dismissedConflictsMap, dismissConflict } = useData();
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [selectedBirdEventId, setSelectedBirdEventId] = useState<string | null>(null);
   const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
@@ -20,19 +20,30 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   // Find all conflicts
   const conflicts = useMemo(() => {
     const allConflicts = findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
+    // Filter out dismissed conflicts
+    const activeConflicts = allConflicts.filter((conflict) => !dismissedConflictsMap[conflict.id]);
     // Sort by updatedAt (most recent first)
-    return allConflicts.sort((a, b) => {
+    return activeConflicts.sort((a, b) => {
       const aTime = parseInt(a.birdEvent.updatedAt || "0", 10);
       const bTime = parseInt(b.birdEvent.updatedAt || "0", 10);
       return bTime - aTime; // Descending order (newest first)
     });
-  }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable]);
+  }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
   const handleConflictClick = (conflict: { birdEvent: { id: string; band?: { id: string } }; reason: string }) => {
     if (conflict.birdEvent.band) {
       setSelectedBandId(conflict.birdEvent.band.id);
       setSelectedBirdEventId(conflict.birdEvent.id);
       setIsCaptureHistoryModalOpen(true);
+    }
+  };
+
+  const handleDismissConflict = async (e: React.MouseEvent, conflictId: string) => {
+    e.stopPropagation(); // Prevent opening the capture history modal
+    try {
+      await dismissConflict(conflictId);
+    } catch (error) {
+      console.error("Failed to dismiss conflict:", error);
     }
   };
 
@@ -50,16 +61,16 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl">Data Errors</h2>
-                <p className="text-sm text-default-900 font-light">{conflicts.length} conflicts found</p>
+                <p className="text-sm text-default-900 font-light">{conflicts.length} potential errors found</p>
               </div>
             </div>
           </ModalHeader>
 
           <ModalBody>
             <div className="flex flex-col gap-2">
-              {conflicts.map((conflict, index) => (
+              {conflicts.map((conflict) => (
                 <div
-                  key={`${conflict.birdEvent.id}-${index}`}
+                  key={`${conflict.id}`}
                   className="p-3 border border-default-200 rounded-lg hover:bg-default-100 cursor-pointer transition-colors"
                   onClick={() => handleConflictClick(conflict)}
                 >
@@ -74,6 +85,13 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                     </span>
                     <span className="text-default-900 flex-shrink-0 font-bold">{conflict.birdEvent.species}</span>
                     <span className="font-semibold text-danger-600 flex-1">{conflict.reason}</span>
+                    <button
+                      onClick={(e) => handleDismissConflict(e, conflict.id)}
+                      className="flex-shrink-0 p-1 hover:bg-default-200 rounded-md transition-colors"
+                      title="Dismiss this error"
+                    >
+                      <XMarkIcon className="w-5 h-5 text-default-500 hover:text-default-900" />
+                    </button>
                   </div>
                 </div>
               ))}

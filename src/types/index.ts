@@ -5,6 +5,7 @@ export type BandGroupsMap = Record<string, BandGroup>;
 export type BirdEventsMap = Record<string, BirdEvent>;
 export type BandIdToBirdEventIdsMap = Record<string, string[]>;
 export type BandSizeToBandIdMap = Record<BandSize, string>;
+export type DismissedConflictsMap = Record<string, boolean>;
 
 export interface Program {
   id: string;
@@ -150,8 +151,8 @@ export interface MagicTable {
   mbo: Record<string, SpeciesRange>;
 }
 
-// Database root type (loaded from alpha/)
-export interface AlphaData {
+// Database root type
+export interface DatabaseData {
   yearsToProgramMap: YearToProgramMap;
   programsMap: ProgramsMap;
   bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
@@ -159,6 +160,7 @@ export interface AlphaData {
   bandGroupsMap: BandGroupsMap;
   magicTable: MagicTable;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
+  dismissedConflictsMap: DismissedConflictsMap;
 }
 
 // Service types
@@ -183,6 +185,7 @@ export interface DataContextType {
   bandGroupsMap: BandGroupsMap;
   magicTable: MagicTable;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
+  dismissedConflictsMap: DismissedConflictsMap;
 
   // Offline support
   isOnline: boolean;
@@ -205,6 +208,7 @@ export interface DataContextType {
     bandGroup: string,
     bandLastTwoDigits: string
   ) => Promise<Record<BandSize, string>>;
+  dismissConflict: (conflictId: string) => Promise<void>;
 }
 
 // Form types
