@@ -1,6 +1,5 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { ref, set } from "firebase/database";
 import { db as database } from "./firebase-node";
 import { SpeciesRange } from "../src/types";
 
@@ -62,8 +61,12 @@ export async function importMagicTable(): Promise<void> {
   const pyleMagicTable = parseCSV(csvContent);
   console.log(`Parsed ${Object.keys(pyleMagicTable).length} species entries`);
 
-  console.log(`Uploading ${Object.keys(pyleMagicTable).length} species records to 'magicTable'...`);
-  await set(ref(database, "alpha/magicTable/pyle"), pyleMagicTable);
+  // Update all environments
+  const environments = ["alpha", "prod"];
+  for (const env of environments) {
+    console.log(`Uploading ${Object.keys(pyleMagicTable).length} species records to '${env}/magicTable/pyle'...`);
+    await database.ref(`${env}/magicTable/pyle`).set(pyleMagicTable);
+  }
 
-  console.log(`✅ Import to 'magicTable' complete!`);
+  console.log(`✅ Import to all environments complete!`);
 }

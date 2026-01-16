@@ -37,7 +37,13 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
 
   return (
     <>
-      <Modal isDismissable isOpen={isOpen} onClose={onClose} className={`!max-w-[calc(100%-8rem)]`} scrollBehavior="inside">
+      <Modal
+        isDismissable
+        isOpen={isOpen}
+        onClose={onClose}
+        className={`!max-w-[calc(100%-8rem)]`}
+        scrollBehavior="inside"
+      >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex justify-between items-center">
@@ -58,22 +64,19 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                 >
                   <div className="flex items-center gap-3 text-sm">
                     <MagnifyingGlassIcon className="w-4 h-4 text-default-900 flex-shrink-0" />
-                    <span className="font-bold text-default-900 w-20 flex-shrink-0">
-                      {conflict.birdEvent.band?.displayBandGroupId}{conflict.birdEvent.band?.last2digits}
+                    <span className="font-bold text-default-900 flex-shrink-0">
+                      {conflict.birdEvent.band?.displayBandGroupId}
+                      {conflict.birdEvent.band?.last2digits}
                     </span>
-                    <span className="text-default-900 w-32 flex-shrink-0">
+                    <span className="text-default-900 flex-shrink-0">
                       {conflict.birdEvent.date} {conflict.birdEvent.time}
                     </span>
-                    <span className="text-default-900 w-12 flex-shrink-0 font-bold">
-                      {conflict.birdEvent.species}
-                    </span>
+                    <span className="text-default-900 flex-shrink-0 font-bold">{conflict.birdEvent.species}</span>
                     <span className="font-semibold text-danger-600 flex-1">{conflict.reason}</span>
                   </div>
                 </div>
               ))}
-              {conflicts.length === 0 && (
-                <div className="text-center text-default-500 py-8">No conflicts found</div>
-              )}
+              {conflicts.length === 0 && <div className="text-center text-default-500 py-8">No conflicts found</div>}
             </div>
           </ModalBody>
 
