@@ -104,13 +104,13 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
             )}
           </div>
         </NavbarBrand>
-        <NavbarContent className="hidden sm:flex gap-4" justify="center">
-          <NavbarItem isActive={activePage === "home"} className="w-24">
+        <NavbarContent className="hidden sm:flex gap-16" justify="center">
+          <NavbarItem isActive={activePage === "home"}>
             <Link
               aria-current={activePage === "home" ? "page" : undefined}
               color={activePage === "home" ? "primary" : "foreground"}
               href="#"
-              className="inline-block w-full text-center"
+              className="inline-block text-center"
               onClick={(e) => {
                 e.preventDefault();
                 selectProgram(null);
@@ -120,12 +120,12 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               Home
             </Link>
           </NavbarItem>
-          <NavbarItem isActive={activePage === "programs"} className="w-24">
+          <NavbarItem isActive={activePage === "programs"}>
             <Link
               aria-current={activePage === "programs" ? "page" : undefined}
               color={activePage === "programs" ? "primary" : "foreground"}
               href="#"
-              className="inline-block w-full text-center"
+              className="inline-block text-center"
               onClick={(e) => {
                 e.preventDefault();
                 selectProgram(null);
@@ -135,12 +135,12 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               Programs
             </Link>
           </NavbarItem>
-          <NavbarItem isActive={activePage === "search"} className="w-24">
+          <NavbarItem isActive={activePage === "search"}>
             <Link
               aria-current={activePage === "search" ? "page" : undefined}
               color={activePage === "search" ? "primary" : "foreground"}
               href="#"
-              className="inline-block w-full text-center"
+              className="inline-block text-center"
               onClick={(e) => {
                 e.preventDefault();
                 selectProgram(null);
@@ -150,12 +150,12 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               Search
             </Link>
           </NavbarItem>
-          <NavbarItem isActive={activePage === "customers"} className="w-24">
+          <NavbarItem isActive={activePage === "customers"}>
             <Link
               aria-current={activePage === "customers" ? "page" : undefined}
               color={activePage === "customers" ? "primary" : "foreground"}
               href="#"
-              className="inline-block w-full text-center"
+              className="inline-block text-center"
               onClick={(e) => {
                 e.preventDefault();
                 selectProgram(null);
@@ -165,11 +165,11 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
               DET
             </Link>
           </NavbarItem>
-          <NavbarItem isActive={activePage === "integrations"} className="w-24">
+          <NavbarItem isActive={activePage === "integrations"}>
             <Link
               color={activePage === "integrations" ? "primary" : "foreground"}
               href="#"
-              className="inline-block w-full text-center"
+              className="inline-block text-center"
               onClick={(e) => {
                 e.preventDefault();
                 selectProgram(null);
