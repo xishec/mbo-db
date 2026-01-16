@@ -27,16 +27,19 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
 
   // Find all conflicts
-  const conflicts = useMemo(() => {
+  const { conflicts, dismissedCount } = useMemo(() => {
     const allConflicts = findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
     // Filter out dismissed conflicts
     const activeConflicts = allConflicts.filter((conflict) => !dismissedConflictsMap[conflict.id]);
+    // Calculate how many conflicts are actually being dismissed
+    const dismissedCount = allConflicts.length - activeConflicts.length;
     // Sort by updatedAt (most recent first)
-    return activeConflicts.sort((a, b) => {
+    const sortedConflicts = activeConflicts.sort((a, b) => {
       const aTime = parseInt(a.birdEvent.updatedAt || "0", 10);
       const bTime = parseInt(b.birdEvent.updatedAt || "0", 10);
       return bTime - aTime; // Descending order (newest first)
     });
+    return { conflicts: sortedConflicts, dismissedCount };
   }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
   const handleConflictClick = (conflict: { birdEvent: { id: string; band?: { id: string } }; reason: string }) => {
@@ -79,11 +82,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                 <h2 className="text-xl">Data Errors</h2>
                 <p className="text-sm text-default-900 font-light">
                   {conflicts.length} potential errors found
-                  {Object.keys(dismissedConflictsMap).length > 0 && (
-                    <span>
-                      {" "}({Object.keys(dismissedConflictsMap).length} dismissed)
-                    </span>
-                  )}
+                  {dismissedCount > 0 && <span> ({dismissedCount} dismissed)</span>}
                 </p>
               </div>
             </div>
@@ -92,9 +91,8 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
           <ModalBody>
             <div className="flex flex-col gap-2">
               {conflicts.map((conflict) => (
-                <div className="flex flex-row gap-2">
+                <div key={conflict.id} className="flex flex-row gap-2">
                   <div
-                    key={`${conflict.id}`}
                     className="flex-grow h-10 px-3 border border-default-200 rounded-medium hover:bg-default-100 cursor-pointer transition-colors flex items-center"
                     onClick={() => handleConflictClick(conflict)}
                   >
@@ -128,7 +126,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
           </ModalBody>
 
           <ModalFooter className="gap-4 p-8 pt-4">
-            {isLoggedIn && isOnline && Object.keys(dismissedConflictsMap).length > 0 && (
+            {isLoggedIn && isOnline && dismissedCount > 0 && (
               <Button color="primary" variant="bordered" onPress={handleResetDismissedConflicts}>
                 Reset Dismissed Conflicts
               </Button>

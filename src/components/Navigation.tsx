@@ -55,10 +55,9 @@ export default function Navigation({ activePage, onPageChange }: NavigationProps
 
   // Calculate error count
   const errorCount = useMemo(() => {
-    return (
-      findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable).length -
-      Object.keys(dismissedConflictsMap).length
-    );
+    const allConflicts = findConflicts(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
+    const activeConflicts = allConflicts.filter((conflict) => !dismissedConflictsMap[conflict.id]);
+    return activeConflicts.length;
   }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
   useEffect(() => {

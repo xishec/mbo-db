@@ -7,6 +7,17 @@ export interface Conflict {
 }
 
 /**
+ * Sanitize string to be safe for Firebase paths
+ * Firebase paths cannot contain: . # $ [ ]
+ */
+function sanitizeForFirebasePath(str: string): string {
+  return str
+    .replace(/\s+/g, "-")
+    .replace(/[.#$[\]]/g, "")
+    .replace(/[()]/g, "");
+}
+
+/**
  * Check if a measurement is outside the 20% tolerance of Pyle range
  */
 function checkMeasurementTolerance(
@@ -163,7 +174,7 @@ export function findConflictsInEvents(events: BirdEvent[], magicTable?: MagicTab
       const reasons = checkEventMeasurements(event, speciesRange);
       for (const reason of reasons) {
         conflicts.push({
-          id: `${event.id}-measurement-out-of-range-${reason.replace(/\s+/g, "-")}`,
+          id: `${event.id}-measurement-out-of-range-${sanitizeForFirebasePath(reason)}`,
           birdEvent: event,
           reason,
         });
@@ -190,7 +201,8 @@ export function findConflicts(
     if (bandId == "999999999") continue; // Skip test band
 
     const eventIds = bandIdToBirdEventIdsMap[bandId];
-    const events = eventIds.map((id) => birdEventsMap[id]).filter(Boolean);
+    // Filter out modified events (events that have been superseded by newer versions)
+    const events = eventIds.map((id) => birdEventsMap[id]).filter((event) => event && !event.modifiedEventId);
 
     conflicts.push(...findConflictsInEvents(events, magicTable));
   }
