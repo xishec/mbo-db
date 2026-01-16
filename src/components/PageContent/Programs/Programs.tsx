@@ -65,9 +65,9 @@ export default function Programs() {
 
   return (
     <div className="h-full w-full flex flex-col items-center pt-4 p-8 gap-4">
-      <div className="w-full flex justify-between items-center">
+      <div className="w-full flex justify-between items-center h-[40px]">
         <div className="flex items-center gap-2">
-          <Breadcrumbs>
+          <Breadcrumbs >
             <BreadcrumbItem
               onPress={() => {
                 setSelectedYear("");
