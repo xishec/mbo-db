@@ -136,11 +136,7 @@ function checkFatValue(fat: number): string | null {
 /**
  * Check a single event for out-of-range measurements against both Pyle and MBO ranges
  */
-function checkEventMeasurements(
-  event: BirdEvent,
-  pyleRange?: SpeciesRange,
-  mboRange?: SpeciesRange
-): BirdEventError[] {
+function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange, mboRange?: SpeciesRange): BirdEventError[] {
   const errors: BirdEventError[] = [];
   const sexLabel = getSexLabel(event.sex);
 
@@ -294,7 +290,7 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     for (const event of events) {
       const pyleRange = magicTable.pyle?.[event.species];
       const mboRange = magicTable.mbo?.[event.species];
-      
+
       const measurementErrors = checkEventMeasurements(event, pyleRange, mboRange);
       errors.push(...measurementErrors);
     }

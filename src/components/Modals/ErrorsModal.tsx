@@ -98,17 +98,17 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                     className="flex-grow h-10 px-3 border border-default-200 rounded-medium hover:bg-default-100 cursor-pointer transition-colors flex items-center"
                     onClick={() => handleErrorClick(error)}
                   >
-                    <div className="flex items-center gap-3 text-sm w-full">
-                      <MagnifyingGlassIcon className="w-4 h-4 text-default-900 flex-shrink-0" />
-                      <span className="font-bold text-default-900 flex-shrink-0">
+                    <div className="grid grid-cols-[auto_100px_170px_80px_1fr] gap-3 text-sm w-full items-center">
+                      <MagnifyingGlassIcon className="w-4 h-4 text-default-900" />
+                      <span className="font-bold text-default-900">
                         {error.birdEvent.band?.displayBandGroupId}
                         {error.birdEvent.band?.last2digits}
                       </span>
-                      <span className="text-default-900 flex-shrink-0">
+                      <span className="text-default-900">
                         {error.birdEvent.date} {error.birdEvent.time}
                       </span>
-                      <span className="text-default-900 flex-shrink-0 font-bold">{error.birdEvent.species}</span>
-                      <span className={`font-semibold flex-1 ${error.severity === "danger" ? "text-danger-600" : "text-warning-600"}`}>
+                      <span className="text-default-900 font-bold">{error.birdEvent.species}</span>
+                      <span className={`font-semibold ${error.severity === "danger" ? "text-danger-600" : "text-warning-600"}`}>
                         {error.reason}
                       </span>
                     </div>

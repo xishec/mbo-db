@@ -152,7 +152,7 @@ export default function CaptureHistoryModal({
               {birdEvents.length > 0 ? (
                 <BirdEventsTable
                   birdEvents={birdEvents}
-                  maxTableHeight={500}
+                  maxTableHeight={300}
                   allowInspectHistory
                   hiddenColumns={["bandGroup", "bandLastTwoDigits"]}
                   birdEventIdToHighlight={birdEventIdToHighlight}

@@ -294,3 +294,33 @@ export function formatFieldValue(field: keyof CaptureFormData, value: string): s
       return value;
   }
 }
+
+// Helper to format updatedAt as "x days ago"
+export function formatUpdatedAt(updatedAt: string | undefined): string {
+  if (!updatedAt) return "";
+
+  // updatedAt is stored as a timestamp string (milliseconds since epoch)
+  const timestamp = parseInt(updatedAt, 10);
+
+  // Check if the timestamp is valid
+  if (isNaN(timestamp)) {
+    return updatedAt; // Return the raw value if it can't be parsed
+  }
+
+  const updatedDate = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - updatedDate.getTime();
+
+  // Handle future dates
+  if (diffMs < 0) return "Recently";
+
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes} ${diffMinutes === 1 ? "minute" : "minutes"} ago`;
+  if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
+  if (diffDays === 1) return "1 day ago";
+  return `${diffDays} days ago`;
+}
