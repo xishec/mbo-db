@@ -4,6 +4,7 @@ import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useData } from "../../services/useData";
 import { findConflicts } from "../../types/conflicts";
 import CaptureHistoryModal from "./CaptureHistoryModal";
+import ExportButton from "../ExportButton";
 
 interface ErrorsModalProps {
   isOpen: boolean;
@@ -81,6 +82,14 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
           </ModalBody>
 
           <ModalFooter className="gap-4 p-8 pt-4">
+            <ExportButton
+              birdEvents={conflicts.map((conflict) => conflict.birdEvent)}
+              filename="conflicts.csv"
+              additionalComments={conflicts.reduce((acc, conflict) => {
+                acc[conflict.birdEvent.id] = conflict.reason;
+                return acc;
+              }, {} as Record<string, string>)}
+            />
             <Button color="primary" onPress={onClose}>
               Close
             </Button>
