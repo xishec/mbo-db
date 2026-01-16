@@ -124,6 +124,16 @@ function checkMBOMeasurementRange(
 }
 
 /**
+ * Check if fat value is within valid range (0-7)
+ */
+function checkFatValue(fat: number): string | null {
+  if (fat < 0 || fat > 7) {
+    return `Fat ${fat} is out of valid range (0-7)`;
+  }
+  return null;
+}
+
+/**
  * Check a single event for out-of-range measurements against both Pyle and MBO ranges
  */
 function checkEventMeasurements(
@@ -133,6 +143,17 @@ function checkEventMeasurements(
 ): BirdEventError[] {
   const errors: BirdEventError[] = [];
   const sexLabel = getSexLabel(event.sex);
+
+  // Check fat value
+  const fatReason = checkFatValue(event.fat);
+  if (fatReason) {
+    errors.push({
+      id: `${event.id}-fat-${sanitizeForFirebasePath(fatReason)}`,
+      birdEvent: event,
+      reason: fatReason,
+      severity: "danger",
+    });
+  }
 
   // Get sex-specific ranges
   const pyleRanges = getRangesForSex(pyleRange, event.sex);
@@ -319,6 +340,7 @@ export function validateBirdEventForm(
     sex: string;
     age: string;
     date: string;
+    fat: string;
   },
   pastBirdEvents: BirdEvent[],
   magicTable?: MagicTable
@@ -328,6 +350,13 @@ export function validateBirdEventForm(
 
   const wingValue = formData.wing ? parseFloat(formData.wing) : 0;
   const weightValue = formData.weight ? parseFloat(formData.weight) : 0;
+  const fatValue = formData.fat ? parseFloat(formData.fat) : 0;
+
+  // Check fat value
+  const fatReason = checkFatValue(fatValue);
+  if (fatReason) {
+    messages.push({ text: fatReason, severity: "danger" });
+  }
 
   // Get species ranges
   const pyleRange = magicTable?.pyle?.[formData.species];
