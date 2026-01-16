@@ -615,7 +615,7 @@ export default function AddBirdEventModal({
       isDismissable
       isOpen={isOpen}
       onOpenChange={handleModalOpenChange}
-      className={`${birdEventToModify ? "!max-w-[calc(100%-12rem)]" : "!max-w-[calc(100%-8rem)]"} ${
+      className={`${birdEventToModify ? "!max-w-[calc(100%-8rem)]" : "!max-w-[calc(100%-8rem)]"} ${
         shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""
       }`}
       scrollBehavior="inside"

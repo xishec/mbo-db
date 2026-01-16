@@ -217,7 +217,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             </Button>
           </NavbarItem>
           <NavbarItem>
-            <Badge content={errorCount} color="danger" size="sm" showOutline={false} isInvisible={errorCount === 0}>
+            <Badge content={errorCount} color="danger" size="sm" showOutline={false} disableAnimation isInvisible={errorCount === 0}>
               <Button isIconOnly variant="light" onPress={handleErrorsOpen} aria-label="View errors" isDisabled={isLoading}>
                 <ExclamationTriangleIcon className="w-5 h-5" />
               </Button>
