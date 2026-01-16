@@ -519,8 +519,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // 1. Create Band and BirdEvent objects
         const birdEventType = captureData.birdEventType as BirdEventType;
         
-        const bandPrefix = captureData.bandGroup.substring(0, 4);
-        const bandSuffix = captureData.bandGroup.substring(4) + captureData.bandLastTwoDigits;
+        // Ensure inputs have correct padding (defensive)
+        const bandGroup = captureData.bandGroup.padStart(7, "0");
+        const bandLastTwoDigits = captureData.bandLastTwoDigits.padStart(2, "0");
+        
+        const bandPrefix = bandGroup.substring(0, 4);
+        const bandSuffix = bandGroup.substring(4) + bandLastTwoDigits;
         const band = new Band(bandPrefix, bandSuffix);
         const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
 

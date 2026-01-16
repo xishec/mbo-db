@@ -241,6 +241,10 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
     }
   });
 
+  // Ensure bandPrefix and bandSuffix have correct padding
+  bandPrefix = bandPrefix.padStart(4, "0");
+  bandSuffix = bandSuffix.padStart(5, "0");
+  
   birdEvent.band = new Band(bandPrefix, bandSuffix);
   birdEvent.id = generateBirdEventId(
     birdEvent.band.id,
@@ -297,7 +301,7 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
 
     // bandGroupsMap - use map key helper for -00 bands
     const bandGroupMapKey = birdEvent.band.last2digits === "00"
-      ? (parseInt(birdEvent.band.bandGroupId, 10) - 1).toString()
+      ? (parseInt(birdEvent.band.bandGroupId, 10) - 1).toString().padStart(7, "0")
       : birdEvent.band.bandGroupId;
     const birdEventType = birdEvent.birdEventType;
     if (bandGroupMapKey && (birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None)) {

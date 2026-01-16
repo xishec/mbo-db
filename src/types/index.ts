@@ -43,9 +43,11 @@ export class Band {
  * - Band 2991467-99: bandGroupId="2991467" → map key "2991467"
  */
 export function getBandGroupMapKey(band: Band): string {
-  return band.last2digits === "00"
-    ? (parseInt(band.bandGroupId, 10) - 1).toString()
-    : band.bandGroupId;
+  if (band.last2digits !== "00") return band.bandGroupId;
+  
+  // Subtract 1 and preserve leading zeros (7 digits)
+  const numericValue = parseInt(band.bandGroupId, 10) - 1;
+  return numericValue.toString().padStart(7, "0");
 }
 
 export interface BandGroup {

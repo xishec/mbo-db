@@ -224,7 +224,7 @@ export default function AddBirdEventModal({
       const last2digits = bandId.slice(7, 9);
       const bandGroupId = bandId.slice(0, 7);
       const bandGroupMapKey = last2digits === "00" 
-        ? (parseInt(bandGroupId, 10) - 1).toString()
+        ? (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0")
         : bandGroupId;
       if (bandGroupsMap[bandGroupMapKey] || isNewCapture) return BirdEventType.Banded;
       else return BirdEventType.Alien;
