@@ -4,6 +4,7 @@ import { useData } from "../../services/useData";
 import type { BirdEvent, CaptureColumn } from "../../types";
 import { TABLE_COLUMNS } from "./Programs/Captures/helpers";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
+import ExportButton from "../ExportButton";
 
 // Operators for filtering
 const STRING_OPERATORS = [
@@ -121,6 +122,8 @@ export default function Search() {
       case "fat":
       case "weight":
         return event[propertyKey];
+      case "birdStatus":
+        return event.birdStatus;
       case "birdEventType":
         return event.birdEventType;
       default:
@@ -293,9 +296,23 @@ export default function Search() {
 
         {!isLoading && filters.length > 0 && filteredBirdEvents.length > 0 && (
           <div className="w-full">
-            <h3 className="text-lg font-normal mb-2">
-              Filtered results ({filteredBirdEvents.length} of {allBirdEvents.length}):
-            </h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-normal">
+                Filtered results ({filteredBirdEvents.length} of {allBirdEvents.length}):
+              </h3>
+              <ExportButton
+                birdEvents={filteredBirdEvents}
+                filename={`filtered_bird_events_${new Date().toISOString().split('T')[0]}.csv`}
+              />
+            </div>
+            {filteredBirdEvents.length > 999 && (
+              <div className="my-4 p-2 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg">
+                <p className="text-sm text-warning-800 dark:text-warning-200">
+                  <strong>Too many results:</strong> Showing first 999 of {filteredBirdEvents.length} results. 
+                  Please add more filters to narrow down your search. Export will include all {filteredBirdEvents.length} results.
+                </p>
+              </div>
+            )}
             <BirdEventsTable
               birdEvents={filteredBirdEvents.slice(0, 999)}
               maxTableHeight={600}

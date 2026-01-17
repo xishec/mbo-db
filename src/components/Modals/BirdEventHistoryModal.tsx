@@ -4,6 +4,7 @@ import { useData } from "../../services/useData";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import { formatUpdatedAt } from "../PageContent/Programs/Captures/helpers";
 import { MagnifyingGlassIcon } from "@heroicons/react/16/solid";
+import SpeciesPopover from "../SpeciesPopover";
 
 enum ModificationType {
   Addition = "Added",
@@ -88,7 +89,9 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
                       <span className="text-default-900">
                         {event.date} {event.time}
                       </span>
-                      <span className="text-default-900 font-bold">{event.species}</span>
+                      <span className="text-default-900 font-bold">
+                        <SpeciesPopover speciesCode={event.species}>{event.species}</SpeciesPopover>
+                      </span>
                       <Chip
                         size="sm"
                         variant="flat"

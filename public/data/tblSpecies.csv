@@ -1,0 +1,241 @@
+﻿Species,PseudoSpeciesType,SpeciesDescriptionMBO,SpeciesDescriptionCMMN,SpeciesFrench,SpeciesScientific,AOUOrder,AOSCode,MBOBandingList,DETOrder,MBOMasterDETList,DETTempOrder,WingMaxMale,WingMinMale,WingMaxFemale,WingMinFemale,WeightMaxMale,WeightMinMale,WeightMaxFemale,WeightMinFemale,WingValidate,WeightValidate,MaxMultiCaptureSpan,SpeciesCategoryID,SpeciesDescriptionMBOPrefix,BandingSummaryOrder,SpeciesEnglish,SpeciesFrenchEx,SpeciesScientificEx,AOUTempOrder,PriorityCategory,SpeciesGroupID,SpeciesEnglishShort,SpeciesCode,SpeciesGroupsMBOChecklistID,SpeciesGroupSpeciesObservedAtMBOID
+ABDU,Species,American Black Duck,American Black Duck,Canard noir,Anas rubripes,17,1330,FALSE,10,TRUE,10,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,17,,1,,,1,1
+AGWT,Species,(American) Green-winged Teal,Green-winged (American) Teal,Sarcelle d'hiver,Anas crecca carolinensis,18,1390,FALSE,12,TRUE,12,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,Green-winged Teal,,Anas crecca,18,,1,,GWTE,1,1
+ALFL,Species,Alder Flycatcher,Alder Flycatcher,Moucherolle des aulnes,Empidonax alnorum,114,4661,TRUE,82,TRUE,82,77,68,74,66,0,0,0,0,FALSE,FALSE,,8,*,31,,,,114,A,5,,,18,10
+AMBI,Species,American Bittern,American Bittern,Butor d'Amérique,Botaurus lentiginosus,69,1900,FALSE,48,TRUE,48,0,0,0,0,0,0,0,0,FALSE,FALSE,0,,*,,,,,69,,2,,,4,2
+AMCR,Species,American Crow,American Crow,Corneille d'Amérique,Corvus brachyrhynchos,126,4880,TRUE,95,TRUE,95,341,277,327,272,0,0,0,0,FALSE,FALSE,0,10,**,,,,,126,D,8,,,20,12
+AMGO,Species,American Goldfinch,American Goldfinch,Chardonneret jaune,Spinus tristis,176,5290,TRUE,139,TRUE,139,76,67,73,65,18,10,17,10,TRUE,FALSE,2780,22,**,128,,,,176,,13,,,33,19
+AMKE,Species,American Kestrel,American Kestrel,Crécerelle d'Amérique,Falco sparverius,105,3600,FALSE,76,TRUE,76,198,161,204,167,153,82,168,90,FALSE,FALSE,0,29,,6,,,,105,,4,,,17,6
+AMPI,Species,American Pipit,American Pipit,Pipit d'Amérique,Anthus rubescens,166,6970,FALSE,131,TRUE,131,94,77,87,73,24,17,24,17,FALSE,FALSE,,17,,,,,,166,,,,,37,21
+AMRE,Species,American Redstart,American Redstart,Paruline flamboyante,Setophaga ruticilla,214,6870,TRUE,170,TRUE,170,66,56,63,55,13,6,13,6,TRUE,FALSE,1494,18,**,80,,,,214,C,11,,,29,17
+AMRO,Species,American Robin,American Robin,Merle d'Amérique,Turdus migratorius,158,7610,TRUE,127,TRUE,127,137,119,133,115,95,65,93,63,TRUE,FALSE,1734,15,**,61,,,,158,D,10,,,25,16
+AMWI,Species,American Wigeon,American Wigeon,Canard d'Amérique,Mareca americana,15,1370,FALSE,8,TRUE,8,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,15,,1,,,1,1
+AMWO,Species,American Woodcock,American Woodcock,Bécasse d'Amérique,Scolopax minor,53,2280,TRUE,36,TRUE,36,129,118,142,129,186,105,233,128,FALSE,FALSE,0,3,**,8,,,,53,,2,,,9,3
+ATBR,Species,Atlantic Brant,Atlantic Brant,Bernache cravant,Branta bernicla,6,1730,FALSE,193,TRUE,193,342,300,330,283,0,0,0,0,FALSE,FALSE,,,,,Brant,,,6,,1,,BRAN,1,1
+ATSP,Species,American Tree Sparrow,American Tree Sparrow,Bruant hudsonien,Spizelloides arborea,183,5590,TRUE,143,TRUE,143,78,67,78,67,27,10,24,15,TRUE,FALSE,2281,20,,101,,,,183,B,12,Am. Tree Sparrow,,30,18
+BAEA,Species,Bald Eagle,Bald Eagle,Pygargue à tête blanche,Haliaeetus leucocephalus,82,3520,FALSE,60,TRUE,60,629,509,678,551,0,0,0,0,FALSE,FALSE,,,,,,,,82,,4,,,6,6
+BANS,Species,Bank Swallow,Bank Swallow,Hirondelle de rivage,Riparia riparia,130,6160,TRUE,103,TRUE,103,106,95,105,94,19,13,18,12,FALSE,FALSE,0,11,,,,,,130,,6,,,21,13
+BAOR,Species,Baltimore Oriole,Baltimore Oriole,Oriole de Baltimore,Icterus galbula,196,5070,TRUE,156,TRUE,156,98,86,94,82,45,28,42,25,TRUE,FALSE,3251,21,**,117,,,,196,,14,,,32,20
+BARS,Species,Barn Swallow,Barn Swallow,Hirondelle rustique,Hirundo rustica,134,6130,TRUE,104,TRUE,104,127,115,123,113,23,15,23,14,FALSE,FALSE,,11,,44,,,,134,C,6,,,21,13
+BAWW,Species,Black-and-white Warbler,Black-and-white Warbler,Paruline noir et blanc,Mniotilta varia,206,6360,TRUE,163,TRUE,163,72,59,70,59,17,8,17,8,TRUE,FALSE,765,18,,73,,,,206,C,11,Blk-and-white Warbler,,29,17
+BBCU,Species,Black-billed Cuckoo,Black-billed Cuckoo,Coulicou à bec noir,Coccyzus erythropthalmus,37,3880,TRUE,27,TRUE,27,144,133,147,137,76,31,76,31,FALSE,FALSE,5,4,**,10,,,,37,,4,,,12,9
+BBPL,Species,Black-bellied Plover,Black-bellied Plover,Pluvier argenté,Pluvialis squatarola,46,2700,FALSE,192,TRUE,192,208,179,208,179,0,0,0,0,FALSE,FALSE,,,,,,,,46,,2,,,9,3
+BBWA,Species,Bay-breasted Warbler,Bay-breasted Warbler,Paruline à poitrine baie,Setophaga castanea,218,6600,TRUE,174,TRUE,174,77,70,74,65,16,10,15,9,TRUE,FALSE,25,18,,84,,,,218,A,11,,,29,17
+BBWO,Species,Black-backed Woodpecker,Black-backer Woodpecker,Pic à dos noir,Picoides arcticus,99,,FALSE,230,TRUE,230,,,,,,,,,FALSE,FALSE,,7,,19.5,,,,99,,3,,,16,8
+BCCH,Species,Black-capped Chickadee,Black-capped Chickadee,Mésange à tête noire,Poecile atricapillus,136,7350,TRUE,97,TRUE,97,69,59,69,59,13,10,14,9,TRUE,FALSE,3382,12,**,45,,,,136,D,9,Black-cap. Chickadee,,22,14
+BCNH,Species,Black-crowned Night-Heron,Black-crowned Night-Heron,Bihoreau gris,Nycticorax nycticorax,74,2020,FALSE,52,TRUE,52,0,0,0,0,0,0,0,0,FALSE,FALSE,0,,,,,,,74,,2,,,4,2
+BDOW,Species,Barred Owl,Barred Owl,Chouette rayée,Strix varia,91,3680,FALSE,67,TRUE,67,340,308,357,330,0,0,0,0,FALSE,FALSE,0,6,,15,,,,91,,4,,,13,7
+BEKI,Species,Belted Kingfisher,Belted Kingfisher,Martin-pêcheur d'Amérique,Megaceryle alcyon,97,3900,TRUE,69,TRUE,69,169,145,171,149,195,110,187,105,FALSE,FALSE,,27,,18.5,,,,97,D,4,,,36,9
+BGGN,Species,Blue-gray Gnatcatcher,Blue-gray Gnatcatcher,Gobemoucheron gris-bleu,Polioptila caerulea,147,7510,FALSE,111,TRUE,111,56,49,53,46,7,5,7,5,FALSE,FALSE,,,,,,,,147,,9,,,24,14
+BHCO,Species,Brown-headed Cowbird,Brown-headed Cowbird,Vacher à tête brune,Molothrus ater,198,4950,TRUE,158,TRUE,158,114,104,101,92,68,31,51,30,TRUE,FALSE,1431,21,**,116,,,,198,,14,Brown-head. Cowbird,,32,20
+BHVI,Species,Blue-headed Vireo,Blue-headed Vireo,Viréo à tête bleue,Vireo solitarius,121,6290,TRUE,89,TRUE,89,76,62,76,62,20,12,20,12,TRUE,FALSE,30,9,*,37,,,,121,C,7,,,19,11
+BITH,Species,Bicknell's Thrush,Bicknell's Thrush,Grive de Bicknell,Catharus bicknelli,154,7571,TRUE,123,TRUE,123,95,89,95,89,0,0,0,0,TRUE,FALSE,8,15,,57,,,,154,,10,,,25,16
+BLBW,Species,Blackburnian Warbler,Blackburnian Warbler,Paruline à gorge orangée,Setophaga fusca,219,6620,TRUE,175,TRUE,175,70,64,66,61,16,7,13,7,TRUE,FALSE,,18,,85,,,,219,,11,,,29,17
+BLJA,Species,Blue Jay,Blue Jay,Geai bleu,Cyanocitta cristata,125,4770,TRUE,94,TRUE,94,140,123,141,123,112,70,104,68,TRUE,FALSE,4067,10,**,41,,,,125,,8,,,20,12
+BLPW,Species,Blackpoll Warbler,Blackpoll Warbler,Paruline rayée,Setophaga striata,222,6610,TRUE,178,TRUE,178,77,66,76,66,21,10,21,9,TRUE,FALSE,12,18,,88,,,,222,A,11,,,29,17
+BLSC,Species,Black Scoter,Black Scoter,Macreuse à bec jaune,Melanitta americana,25,1630,FALSE,17,TRUE,17,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,25,,,,,1,1
+BLTE,Species,Black Tern,Black Tern,Guifette noire,Chlidonias niger,64,0770,FALSE,197,TRUE,197,224,196,218,190,78,0,78,0,FALSE,FALSE,,,,,,,,64,,2,,,10,4
+BOBO,Species,Bobolink,Bobolink,Goglu des prés,Dolichonyx oryzivorus,193,4940,TRUE,154,TRUE,154,105,91,93,80,56,30,45,22,FALSE,FALSE,0,21,,112,,,,193,,14,,,32,20
+BOCH,Species,Boreal Chickadee,Boreal Chickadee,Mésange à tête brune,Poecile hudsonicus,137,7400,TRUE,212,TRUE,212,70,58,69,52,12,8,12,8,FALSE,FALSE,,,,,,,,137,,9,,,22,14
+BOOW,Species,Boreal Owl,Boreal Owl,Nyctale de Tengmalm,Aegolius funereus,95,3710,TRUE,201,TRUE,201,179,163,198,173,113,90,194,126,FALSE,FALSE,0,6,,17,,,,95,,4,,,13,7
+BOWA,Species,Bohemian Waxwing,Bohemian Waxwing,Jaseur boréal,Bombycilla garrulus,163,6180,TRUE,128,TRUE,128,122,105,122,105,0,0,0,0,TRUE,FALSE,0,17,,67,,,,163,,10,,,27,21
+BRCR,Species,Brown Creeper,Brown Creeper,Grimpereau brun,Certhia americana,141,7260,TRUE,110,TRUE,110,69,59,69,59,10,6,11,6,TRUE,FALSE,25,13,*,48,,,,141,D,9,,,23,14
+BRTH,Species,Brown Thrasher,Brown Thrasher,Moqueur roux,Toxostoma rufum,160,7050,TRUE,118,TRUE,118,110,94,110,94,95,57,103,56,FALSE,FALSE,996,16,**,63,,,,160,,10,,,26,16
+BRWA,Hybrid,Brewster's Warbler,Brewster's Warbler,Paruline de Brewster,,,,TRUE,233,TRUE,233,,,,,,,,,FALSE,FALSE,362,18,,,,,,,,11,,,,
+BTBW,Species,Black-throated Blue Warbler,Black-throated Blue Warbler,Paruline bleue,Setophaga caerulescens,223,6540,TRUE,179,TRUE,179,68,60,63,57,14,8,14,7,TRUE,FALSE,1495,18,**,89,,,,223,,11,Blk-thr. Blue Warbler,,29,17
+BTNW,Species,Black-throated Green Warbler,Black-throated Green Warbler,Paruline à gorge noire,Setophaga virens,229,6670,TRUE,184,TRUE,184,67,58,64,55,11,8,10,7,TRUE,FALSE,1429,18,,95,,,,229,C,11,Blk-thr. Green Warbler,,29,17
+BUFF,Species,Bufflehead,Bufflehead,Petit Garrot,Bucephala albeola,26,,FALSE,231,TRUE,231,,,,,,,,,FALSE,FALSE,,1,,,,,,26,,1,,,1,1
+BWHA,Species,Broad-winged Hawk,Broad-winged Hawk,Petite Buse,Buteo platypterus,84,3430,TRUE,62,TRUE,62,282,246,296,258,387,295,559,381,FALSE,FALSE,,2,,5,,,,84,,4,,,6,6
+BWTE,Species,Blue-winged Teal,Blue-winged Teal,Sarcelle à ailes bleues,Spatula discors,11,1400,FALSE,5,TRUE,5,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,11,,1,,,1,1
+BWWA,Species,Blue-winged Warbler,Blue-winged Warbler,Paruline à ailes bleues,Vermivora cyanoptera,205,6410,TRUE,217,TRUE,217,64,55,61,50,11,6,10,6,FALSE,FALSE,11,18,,72,,,,205,,11,,,29,17
+CACG,Species,Cackling Goose,Cackling Goose,Bernache de Hutchins,Branta hutchinsii,7,1722,FALSE,2,TRUE,2,400,351,384,335,0,0,0,0,FALSE,FALSE,,,,,,,,7,,1,,,1,1
+CANG,Species,Canada Goose,Canada Goose,Bernache du Canada,Branta canadensis,8,1720,FALSE,3,TRUE,3,548,422,525,400,0,0,0,0,FALSE,FALSE,0,,**,,,,,8,,1,,,1,1
+CARW,Species,Carolina Wren,Carolina Wren,Troglodyte de Caroline,Thryothorus ludovicianus,146,7180,TRUE,115,TRUE,115,67,56,62,52,23,16,20,15,FALSE,FALSE,0,13,,52,,,,146,,9,,,23,15
+CATE,Species,Caspian Tern,Caspian Tern,Sterne caspienne,Hydroprogne caspia,63,0640,FALSE,195,TRUE,195,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,63,,2,,,10,4
+CAWA,Species,Canada Warbler,Canada Warbler,Paruline du Canada,Cardellina canadensis,230,6860,TRUE,185,TRUE,185,68,58,66,58,15,8,13,8,TRUE,FALSE,11,18,,96,,,,230,C,11,,,29,17
+CCSP,Species,Clay-colored Sparrow,Clay-colored Sparrow,Bruant des plaines,Spizella pallida,180,5610,FALSE,216,TRUE,216,67,59,62,56,14,9,14,9,FALSE,FALSE,,20,,,,,,180,,12,,,30,18
+CEDW,Species,Cedar Waxwing,Cedar Waxwing,Jaseur d'Amérique,Bombycilla cedrorum,164,6190,TRUE,129,TRUE,129,99,85,99,85,40,26,46,27,TRUE,FALSE,1080,17,**,66,,,,164,D,10,,,27,21
+CHSP,Species,Chipping Sparrow,Chipping Sparrow,Bruant familier,Spizella passerina,179,5600,TRUE,141,TRUE,141,73,62,73,62,15,10,15,11,TRUE,FALSE,994,20,**,102,,,,179,C,12,,,30,18
+CHSW,Species,Chimney Swift,Chimney Swift,Martinet ramoneur,Chaetura pelagica,40,4230,TRUE,29,TRUE,29,134,122,136,123,29,17,29,17,FALSE,FALSE,0,,,,,,,40,,4,,,14,9
+CLSW,Species,Cliff Swallow,Cliff Swallow,Hirondelle à front blanc,Petrochelidon pyrrhonota,135,6120,TRUE,105,TRUE,105,117,99,114,96,24,17,24,17,FALSE,FALSE,0,11,,,,,,135,C,6,,,21,13
+CMWA,Species,Cape May Warbler,Cape May Warbler,Paruline tigrée,Setophaga tigrina,215,6500,TRUE,171,TRUE,171,70,64,68,59,17,6,17,8,TRUE,FALSE,18,18,,81,,,,215,A,11,,,29,17
+COGA,Species,Common Gallinule,Common Gallinule,Gallinule d'Amérique,Gallinula galeata,44,2190,FALSE,226,TRUE,226,182,167,171,157,0,0,0,0,FALSE,FALSE,,,,,,,,44,,2,,,7,2
+COGO,Species,Common Goldeneye,Common Goldeneye,Garrot à oeil d'or,Bucephala clangula,27,1510,FALSE,225,TRUE,225,,,,,,,,,FALSE,FALSE,,,,,,,,27,,1,,,1,1
+COGR,Species,Common Grackle,Common Grackle,Quiscale bronzé,Quiscalus quiscula,200,5110,TRUE,160,TRUE,160,147,129,135,117,152,90,125,73,TRUE,FALSE,2569,21,**,115,,,,200,D,14,,,32,20
+COHA,Species,Cooper's Hawk,Cooper's Hawk,Épervier de Cooper,Accipiter cooperii,80,3330,TRUE,58,TRUE,58,248,215,283,244,457,272,666,349,FALSE,FALSE,0,2,*,3,,,,80,,4,,,6,6
+COLO,Species,Common Loon,Common Loon,Plongeon huard,Gavia immer,66,0070,FALSE,46,TRUE,46,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,66,,2,,,35,5
+COME,Species,Common Merganser,Common Merganser,Grand Harle,Mergus merganser,29,1290,FALSE,19,TRUE,19,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,29,,1,,,1,1
+CONI,Species,Common Nighthawk,Common Nighthawk,Engoulevent d'Amérique,Chordeiles minor,38,4200,TRUE,28,TRUE,28,210,178,203,173,0,0,0,0,FALSE,FALSE,0,,,,,,,38,,4,,,14,9
+CONW,Species,Connecticut Warbler,Connecticut Warbler,Paruline à gorge grise,Oporornis agilis,210,6780,TRUE,167,TRUE,167,75,65,73,63,22,10,21,10,FALSE,FALSE,9,18,,77,,,,210,,11,,,29,17
+CORA,Species,Common Raven,Common Raven,Grand Corbeau,Corvus corax,128,4860,TRUE,96,TRUE,96,468,386,438,383,1400,1100,1300,1050,FALSE,FALSE,0,10,,,,,,128,,8,,,20,12
+CORE,Species,Common Redpoll,Common Redpoll,Sizerin flammé,Acanthis flammea,171,5280,TRUE,136,TRUE,136,81,67,81,67,18,12,17,11,TRUE,FALSE,114,22,,125,,,,171,,13,,,33,19
+COTE,Species,Common Tern,Common Tern,Sterne pierregarin,Sterna hirundo,65,0700,FALSE,45,TRUE,45,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,65,,2,,,10,4
+COYE,Species,Common Yellowthroat,Common Yellowthroat,Paruline masquée,Geothlypis trichas,212,6810,TRUE,169,TRUE,169,59,50,56,49,15,8,15,7,TRUE,FALSE,3259,18,**,79,,,,212,C,11,,,29,17
+CSWA,Species,Chestnut-sided Warbler,Chestnut-sided Warbler,Paruline à flancs marron,Setophaga pensylvanica,221,6590,TRUE,177,TRUE,177,67,57,65,56,15,8,13,7,TRUE,FALSE,1846,18,*,87,,,,221,,11,Chest.-sided Warbler,,29,17
+DCCO,Species,Double-crested Cormorant,Double-crested Cormorant,Cormoran à aigrettes,Phalacrocorax auritus,68,1200,FALSE,47,TRUE,47,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,68,,2,,,4,5
+DOWO,Species,Downy Woodpecker,Downy Woodpecker,Pic mineur,Dryobates pubescens,101,3940,TRUE,72,TRUE,72,100,84,101,86,39,22,37,21,TRUE,FALSE,3525,7,**,21,,,,101,D,3,,,16,8
+DUNL,Species,Dunlin,Dunlin,Bécasseau variable,Calidris alpina,49,2430,FALSE,224,TRUE,224,125,102,128,106,72,40,72,40,FALSE,FALSE,,,,,,,,49,,2,,,9,3
+EABL,Species,Eastern Bluebird,Eastern Bluebird,Merlebleu de l'Est,Sialia sialis,150,7660,TRUE,120,TRUE,120,109,95,104,91,40,25,35,24,FALSE,FALSE,0,15,**,62,,,,150,,10,,,25,16
+EAKI,Species,Eastern Kingbird,Eastern Kingbird,Tyran tritri,Tyrannus tyrannus,109,4440,TRUE,88,TRUE,88,123,108,123,108,0,0,0,0,TRUE,FALSE,1827,8,**,29,,,,109,C,5,,,18,10
+EAME,Species,Eastern Meadowlark,Eastern Meadowlark,Sturnelle des prés,Sturnella magna,194,5010,TRUE,155,TRUE,155,130,109,116,96,139,99,107,70,FALSE,FALSE,,21,,,,,,194,,14,,,32,20
+EAPH,Species,Eastern Phoebe,Eastern Phoebe,Moucherolle phébi,Sayornis phoebe,117,4560,TRUE,86,TRUE,86,89,74,89,74,25,17,23,15,TRUE,FALSE,1089,8,**,27,,,,117,D,5,,,18,10
+EASO,Species,Eastern Screech-Owl,Eastern Screech-Owl,Petit-duc maculé,Megascops asio,87,3730,TRUE,65,TRUE,65,174,134,181,140,221,140,221,140,FALSE,FALSE,385,6,*,14,,,,87,,4,,,13,7
+EATO,Species,Eastern Towhee,Eastern Towhee,Tohi à flancs roux,Pipilo erythrophthalmus,192,5870,TRUE,153,TRUE,153,94,76,87,72,52,30,51,27,FALSE,FALSE,375,20,,100,,,,192,,12,,,30,18
+EAWP,Species,Eastern Wood-Pewee,Eastern Wood-Pewee,Pioui de l'Est,Contopus virens,111,4610,TRUE,80,TRUE,80,88,77,88,77,18,12,17,11,TRUE,FALSE,0,8,*,26,,,,111,,5,,,18,10
+EUST,Species,European Starling,European Starling,Étourneau sansonnet,Sturnus vulgaris,162,4930,TRUE,116,TRUE,116,129,119,129,119,96,65,93,61,TRUE,FALSE,35,17,*,65,,,,162,D,14,,,27,21
+EVGR,Species,Evening Grosbeak,Evening Grosbeak,Gros-bec errant,Coccothraustes vespertinus,167,5140,TRUE,132,TRUE,132,117,105,114,100,86,39,73,43,FALSE,FALSE,,22,,121,,,,167,,13,,,33,19
+EWCS,Species,(Eastern) White-crowned Sparrow,White-crowned Sparrow (Eastern),Bruant à couronne blanche,Zonotrichia leucophrys leucophrys,185,5541,TRUE,146,TRUE,146,83,71,83,71,33,24,31,22,TRUE,FALSE,23,20,,110,White-crowned Sparrow,,Zonotrichia leucophrys,185,B,12,White-cr. Sparrow,WCSP,30,18
+EWPW,Species,Eastern Whip-poor-will,Eastern Whip-poor-will,Engoulevent bois-pourri,Antrostomus vociferus,39,,FALSE,229,TRUE,229,,,,,,,,,FALSE,FALSE,,,,,,,,39,,4,,,14,9
+FICR,Species,Fish Crow,Fish Crow,Corneille de rivage,Corvus ossifragus,127,4900,FALSE,203,TRUE,203,310,260,288,254,332,260,304,195,FALSE,FALSE,,,,,,,,127,,8,,,20,12
+FISP,Species,Field Sparrow,Field Sparrow,Bruant des champs,Spizella pusilla,181,5630,TRUE,142,TRUE,142,72,61,66,54,16,10,16,10,FALSE,FALSE,6,20,,103,,,,181,,12,,,30,18
+FOSP,Species,Fox Sparrow,Fox Sparrow,Bruant fauve,Passerella iliaca,182,5850,TRUE,144,TRUE,144,91,79,91,79,49,28,49,28,TRUE,FALSE,28,20,,104,,,,182,B,12,,,30,18
+GADW,Species,Gadwall,Gadwall,Canard chipeau,Mareca strepera,14,1350,FALSE,7,TRUE,7,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,14,,1,,,1,1
+GBBG,Species,Great Black-backed Gull,Great Black-backed Gull,Goéland marin,Larus marinus,62,0470,FALSE,44,TRUE,44,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,62,,2,,,10,4
+GBHE,Species,Great Blue Heron,Great Blue Heron,Grand Héron,Ardea herodias,71,1940,TRUE,49,TRUE,49,0,0,0,0,0,0,0,0,FALSE,FALSE,0,1,,,,,,71,,2,,,4,2
+GCFL,Species,Great Crested Flycatcher,Great Crested Flycatcher,Tyran huppé,Myiarchus crinitus,108,4520,TRUE,87,TRUE,87,107,92,107,92,0,0,0,0,TRUE,FALSE,1165,8,**,28,,,,108,,5,Great Crest. Flycatcher,,18,10
+GCKI,Species,Golden-crowned Kinglet,Golden-crowned Kinglet,Roitelet à couronne dorée,Regulus satrapa,148,7480,TRUE,107,TRUE,107,61,54,59,52,9,5,8,5,TRUE,FALSE,5,14,,53,,,,148,D,9,Golden-cr. Kinglet,,24,14
+GCTH,Species,Gray-cheeked Thrush,Gray-cheeked Thrush,Grive à joues grises,Catharus minimus,153,7570,TRUE,122,TRUE,122,110,93,110,93,50,17,50,17,TRUE,FALSE,13,15,,56,,,,153,A,10,,,25,16
+GGOW,Species,Great Gray Owl,Great Gray Owl,Chouette lapone,Strix nebulosa,92,3700,FALSE,199,TRUE,199,447,402,465,419,0,0,0,0,FALSE,FALSE,,6,,,,,,92,,4,,,13,7
+GHOW,Species,Great Horned Owl,Great Horned Owl,Grand-duc d'Amérique,Bubo virginianus,88,3750,TRUE,66,TRUE,66,384,313,408,331,0,0,0,0,FALSE,FALSE,,6,*,,,,,88,,4,,,13,7
+GOEA,Species,Golden Eagle,Golden Eagle,Aigle royal,Aquila chrysaetos,77,3490,FALSE,55,TRUE,55,631,551,680,595,0,0,0,0,FALSE,FALSE,,2,,,,,,77,,4,,,6,6
+GRCA,Species,Gray Catbird,Gray Catbird,Moqueur chat,Dumetella carolinensis,159,7040,TRUE,117,TRUE,117,94,82,94,82,50,30,46,28,TRUE,FALSE,2633,16,**,64,,,,159,,10,,,26,16
+GREG,Species,Great Egret,Great Egret,Grande Aigrette,Ardea alba,72,1960,FALSE,50,TRUE,50,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,72,,2,,,4,2
+GRHE,Species,Green Heron,Green Heron,Héron vert,Butorides virescens,73,2010,FALSE,51,TRUE,51,0,0,0,0,0,0,0,0,FALSE,FALSE,,28,*,9.5,,,,73,,2,,,4,2
+GRSC,Species,Greater Scaup,Greater Scaup,Fuligule milouinan,Aythya marila,21,1480,FALSE,14,TRUE,14,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,21,,1,,,1,1
+GRSP,Species,Grasshopper Sparrow,Grasshopper Sparrow,Bruant sauterelle,Ammodramus savannarum,,,FALSE,234,TRUE,234,,,,,,,,,FALSE,FALSE,,,,,,,,,,,,,,
+GRYE,Species,Greater Yellowlegs,Greater Yellowlegs,Grand Chevalier,Tringa melanoleuca,58,2540,FALSE,40,TRUE,40,198,177,200,179,0,0,0,0,FALSE,FALSE,,,,,,,,58,,2,,,9,3
+GSGO,Subspecies,Greater Snow Goose,Greater Snow Goose,Grande Oie des neiges,Anser caerulescens atlanticus,2,1699,FALSE,1,TRUE,1,479,412,471,397,0,0,0,0,FALSE,FALSE,,,,,,,,2,,1,,,1,1
+GWFG,Species,Greater White-fronted Goose,Greater White-fronted Goose,Oie rieuse,Anser albifrons,5,1710,FALSE,194,TRUE,194,465,367,450,351,0,0,0,0,FALSE,FALSE,,,,,,,,5,,1,,,1,1
+GWWA,Species,Golden-winged Warbler,Golden-winged Warbler,Paruline à ailes dorées,Vermivora chrysoptera,204,6420,TRUE,218,TRUE,218,67,57,63,54,12,7,11,7,FALSE,FALSE,731,18,,71,,,,204,,11,,,29,17
+HAWO,Species,Hairy Woodpecker,Hairy Woodpecker,Pic chevelu,Dryobates villosus,102,3930,TRUE,73,TRUE,73,127,117,126,114,89,62,79,56,TRUE,FALSE,3584,7,**,22,,,,102,D,3,,,16,8
+HERG,Species,Herring Gull,Herring Gull,Goéland argenté,Larus argentatus,60,0510,FALSE,43,TRUE,43,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,60,,2,,,10,4
+HETH,Species,Hermit Thrush,Hermit Thrush,Grive solitaire,Catharus guttatus,156,7590,TRUE,125,TRUE,125,97,82,97,82,37,26,33,24,TRUE,FALSE,367,15,,59,,,,156,D,10,,,25,16
+HOFI,Species,House Finch,House Finch,Roselin familier,Haemorhous mexicanus,169,5190,TRUE,134,TRUE,134,82,72,80,71,26,18,26,18,TRUE,FALSE,1092,22,,123,,,,169,,13,,,33,19
+HOLA,Species,Horned Lark,Horned Lark,Alouette hausse-col,Eremophila alpestris,129,4740,FALSE,99,TRUE,99,113,103,111,99,44,26,44,26,TRUE,FALSE,41,11,,,,,,129,,,,,21,21
+HOME,Species,Hooded Merganser,Hooded Merganser,Harle couronné,Lophodytes cucullatus,28,1310,FALSE,18,TRUE,18,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,28,,1,,,1,1
+HORE,Species,Hoary Redpoll,Hoary Redpoll,Sizerin blanchâtre,Acanthis hornemanni,172,5270,TRUE,191,TRUE,191,90,68,87,67,16,10,16,10,FALSE,FALSE,1,22,,126,,,,172,,13,,,33,19
+HOSP,Species,House Sparrow,House Sparrow,Moineau domestique,Passer domesticus,165,6882,TRUE,130,TRUE,130,85,71,81,67,35,20,35,21,FALSE,FALSE,489,23,**,129,,,,165,,12,,,34,21
+HOWA,Species,Hooded Warbler,Hooded Warbler,Paruline à capuchon,Setophaga citrina,213,,TRUE,213,TRUE,213,,,,,,,,,FALSE,FALSE,,18,,79.5,,,,213,,11,,,29,17
+HOWR,Species,House Wren,House Wren,Troglodyte familier,Troglodytes aedon,142,7210,TRUE,112,TRUE,112,54,48,53,46,13,9,12,8,TRUE,FALSE,2282,13,**,49,,,,142,,9,,,23,15
+HYWA,Hybrid,Hybrid Warbler,,Paruline hybride,Hybrid Warbler,232,6366,TRUE,214,TRUE,214,,,,,,,,,FALSE,FALSE,,18,,98,,,,232,,11,,,29,17
+ICGU,Species,Iceland Gull,Iceland Gull,Goéland arctique,Larus glaucoides,61,0430,FALSE,223,TRUE,223,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,61,,2,,,10,4
+INBU,Species,Indigo Bunting,Indigo Bunting,Passerin indigo,Passerina cyanea,236,5980,TRUE,190,TRUE,190,70,59,65,58,22,12,20,10,TRUE,FALSE,2887,30,**,120,,,,236,,13,,,31,22
+KILL,Species,Killdeer,Killdeer,Pluvier kildir,Charadrius vociferus,47,2730,TRUE,34,TRUE,34,167,151,170,154,130,30,130,30,FALSE,FALSE,0,,,,,,,47,,2,,,9,3
+LALO,Species,Lapland Longspur,,Plectrophane lapon,Calcarius lapponicus,177,5360,FALSE,222,FALSE,222,99,87,95,85,,,,,TRUE,FALSE,24,,,,,,,177,,,,,,
+LAWA,Hybrid,Lawrence's Warbler,Lawrence's Warbler,Paruline de Lawrence,,,,TRUE,232,TRUE,232,,,,,,,,,FALSE,FALSE,,18,,,,,,,,11,,,,
+LEBI,Species,Least Bittern,Least Bittern,Petit Blongios,,70,,FALSE,228,TRUE,228,,,,,,,,,FALSE,FALSE,,,,,,,,70,,2,,,4,2
+LEFL,Species,Least Flycatcher,Least Flycatcher,Moucherolle tchébec,Empidonax minimus,116,4670,TRUE,85,TRUE,85,67,56,67,56,16,8,15,7,TRUE,FALSE,5,8,*,34,,,,116,C,5,,,18,10
+LEOW,Species,Long-eared Owl,Long-eared Owl,Hibou moyen-duc,Asio otus,93,3660,TRUE,202,TRUE,202,302,265,308,272,368,226,368,226,FALSE,FALSE,0,6,,16,,,,93,,4,,,13,7
+LESA,Species,Least Sandpiper,Least Sandpiper,Bécasseau minuscule,Calidris minutilla,50,2420,FALSE,35,TRUE,35,90,81,94,84,42,15,31,19,FALSE,FALSE,,,,,,,,50,,2,,,9,3
+LESC,Species,Lesser Scaup,Lesser Scaup,Petit Fuligule,Aythya affinis,22,1490,FALSE,15,TRUE,15,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,22,,1,,,1,1
+LEYE,Species,Lesser Yellowlegs,Lesser Yellowlegs,Petit Chevalier,Tringa flavipes,57,2550,FALSE,41,TRUE,41,163,145,167,148,108,47,108,47,FALSE,FALSE,,,,,,,,57,,2,,,9,3
+LISP,Species,Lincoln's Sparrow,Lincoln's Sparrow,Bruant de Lincoln,Melospiza lincolnii,190,5830,TRUE,151,TRUE,151,65,55,65,55,21,12,21,12,TRUE,FALSE,9,20,,107,,,,190,A,12,,,30,18
+LSGO,Subspecies,Lesser Snow Goose,Lesser Snow Goose,Petite Oie des neiges,Anser caerulescens caerulescens,3,1690,FALSE,205,TRUE,205,461,403,449,377,0,0,0,0,FALSE,FALSE,,,,,,,,3,,1,,,,1
+MALL,Species,Mallard,Mallard,Canard colvert,Anas platyrhynchos,16,1320,TRUE,9,TRUE,9,0,0,0,0,0,0,0,0,FALSE,FALSE,0,1,**,,,,,16,,1,,,1,1
+MAWA,Species,Magnolia Warbler,Magnolia Warbler,Paruline à tête cendrée,Setophaga magnolia,217,6570,TRUE,173,TRUE,173,63,54,62,52,12,6,11,5,TRUE,FALSE,1086,18,,83,,,,217,A,11,,,29,17
+MAWR,Species,Marsh Wren,Marsh Wren,Troglodyte des marais,Cistothorus palustris,145,7250,TRUE,114,TRUE,114,57,45,54,42,14,8,14,8,FALSE,FALSE,0,13,,51,,,,145,,9,,,23,15
+MERL,Species,Merlin,Merlin,Faucon émerillon,Falco columbarius,106,3570,TRUE,77,TRUE,77,209,178,227,199,216,122,281,165,FALSE,FALSE,0,29,,7,,,,106,,4,,,17,6
+MODO,Species,Mourning Dove,Mourning Dove,Tourterelle triste,Zenaida macroura,35,3160,TRUE,25,TRUE,25,152,137,149,134,166,105,155,111,TRUE,FALSE,16,5,**,12,,,,35,,4,,,11,9
+MOWA,Species,Mourning Warbler,Mourning Warbler,Paruline triste,Geothlypis philadelphia,211,6790,TRUE,168,TRUE,168,64,56,63,55,18,10,15,9,TRUE,FALSE,7,18,,78,,,,211,C,11,,,29,17
+MYWA,Species,Yellow-rumped (Myrtle) Warbler,Myrtle Warbler,Paruline à croupion jaune,Setophaga coronata coronata,228,6550,TRUE,183,TRUE,183,78,70,75,62,19,10,17,9,FALSE,FALSE,721,18,,94,Yellow-rumped Warbler,,Setophaga coronata,228,B,11,Myrtle Warbler,YRWA,29,17
+NAWA,Species,Nashville Warbler,Nashville Warbler,Paruline à joues grises,Leiothlypis ruficapilla,209,6450,TRUE,166,TRUE,166,63,54,62,51,11,6,11,6,TRUE,FALSE,1145,18,,76,,,,209,,11,,,29,17
+NHOW,Species,Northern Hawk Owl,,Chouette épervière,Surnia ulula,90,3770,FALSE,,FALSE,,,,,,,,,,FALSE,FALSE,,,,,,,,90,,,,,,
+NOCA,Species,Northern Cardinal,Northern Cardinal,Cardinal rouge,Cardinalis cardinalis,234,5930,TRUE,188,TRUE,188,97,85,95,83,52,34,52,34,TRUE,FALSE,3202,30,**,118,,,,234,,13,,,31,22
+NOGA,Species,Northern Gannet,Northern Gannet,Fou de Bassan,Morus bassanus,67,1170,FALSE,227,TRUE,227,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,67,,2,,,4,5
+NOGO,Species,Northern Goshawk,Northern Goshawk,Autour des palombes,Accipiter gentilis,81,3340,FALSE,59,TRUE,59,346,302,387,336,1075,607,1301,734,FALSE,FALSE,,2,,,,,,81,,4,,,6,6
+NOHA,Species,Northern Harrier,Northern Harrier,Busard des marais,Circus hudsonius,78,3310,FALSE,56,TRUE,56,360,322,400,362,481,270,664,303,FALSE,FALSE,,,,,,,,78,,4,,,6,6
+NOMO,Species,Northern Mockingbird,Northern Mockingbird,Moqueur polyglotte,Mimus polyglottos,161,7030,FALSE,119,TRUE,119,122,103,118,99,62,42,58,39,FALSE,FALSE,,16,,,,,,161,,10,,,26,16
+NOPA,Species,Northern Parula,Northern Parula,Paruline à collier,Setophaga americana,216,6480,TRUE,172,TRUE,172,62,54,59,53,12,6,12,6,TRUE,FALSE,32,18,,82,,,,216,,11,,,29,17
+NOPI,Species,Northern Pintail,Northern Pintail,Canard pilet,Anas acuta,13,1430,FALSE,11,TRUE,11,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,13,,1,,,1,1
+NOWA,Species,Northern Waterthrush,Northern Waterthrush,Paruline des ruisseaux,Parkesia noveboracensis,203,6750,TRUE,162,TRUE,162,81,68,81,68,26,14,26,14,TRUE,FALSE,23,18,*,70,,,,203,A,11,,,29,17
+NRWS,Species,Northern Rough-winged Swallow,Northern Rough-winged Swallow,Hirondelle à ailes hérissées,Stelgidopteryx serripennis,132,6170,TRUE,100,TRUE,100,118,105,112,100,20,14,0,0,FALSE,FALSE,0,11,,43,,,,132,,6,,,21,13
+NSHO,Species,Northern Shoveler,Northern Shoveler,Canard souchet,Spatula clypeata,12,1420,FALSE,6,TRUE,6,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,12,,1,,,1,1
+NSHR,Species,Northern Shrike,Northern Shrike,Pie-grièche boréale,Lanius borealis,118,6210,TRUE,93,TRUE,93,121,110,117,106,75,47,75,47,FALSE,FALSE,23,9,,35,,,,118,,7,,,19,21
+NSWO,Species,Northern Saw-whet Owl,Northern Saw-whet Owl,Petite Nyctale,Aegolius acadicus,96,3720,TRUE,68,TRUE,68,137,122,147,129,101,54,162,65,TRUE,FALSE,1100,6,,18,,,,96,,4,,,13,7
+OCWA,Species,Orange-crowned Warbler,Orange-crowned Warbler,Paruline verdâtre,Leiothlypis celata,208,6460,TRUE,165,TRUE,165,62,56,61,53,11,7,12,7,TRUE,FALSE,9,18,,75,,,,208,A,11,Orange-cr. Warbler,,29,17
+OROR,Species,Orchard Oriole,Orchard Oriole,Oriole des vergers,Icterus spurius,195,5060,FALSE,206,TRUE,206,83,73,79,69,26,18,26,16,FALSE,FALSE,,,,,,,,195,,,,,32,20
+OSFL,Species,Olive-sided Flycatcher,Olive-sided Flycatcher,Moucherolle à côtés olive,Contopus cooperi,110,4590,TRUE,79,TRUE,79,117,103,110,96,0,0,0,0,FALSE,FALSE,0,8,,25,,,,110,,5,,,18,10
+OSPR,Species,Osprey,Osprey,Balbuzard pêcheur,Pandion haliaetus,76,3640,FALSE,54,TRUE,54,492,433,526,453,0,0,0,0,FALSE,FALSE,,,,,,,,76,,4,,,6,6
+OVEN,Species,Ovenbird,Ovenbird,Paruline couronnée,Seiurus aurocapilla,201,6740,TRUE,161,TRUE,161,78,67,78,67,28,16,23,15,TRUE,FALSE,1107,18,**,68,,,,201,C,11,,,29,17
+REDH,Species,Redhead,Redhead,Fuligule à tête rouge,Aythya americana,19,,FALSE,215,TRUE,215,,,,,,,,,FALSE,FALSE,,,,,Redhead,,,19,,1,,REDH,1,1
+REVI,Species,Red-eyed Vireo,Red-eyed Vireo,Viréo aux yeux rouges,Vireo olivaceus,124,6240,TRUE,92,TRUE,92,84,72,84,72,28,14,25,13,TRUE,FALSE,2560,9,**,40,,,,124,C,7,,,19,11
+RLHA,Species,Rough-legged Hawk,Rough-legged Hawk,Buse pattue,Buteo lagopus,86,3470,FALSE,64,TRUE,64,425,378,448,420,0,0,0,0,FALSE,FALSE,,2,,,,,,86,,4,,,6,6
+RNDU,Species,Ring-necked Duck,Ring-necked Duck,Fuligule à collier,Aythya collaris,20,1500,FALSE,13,TRUE,13,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,20,,1,,,1,1
+ROGO,Species,Ross's Goose,Ross's Goose,Oie de Ross,Anser rossii,4,1700,FALSE,196,TRUE,196,396,346,380,330,0,0,0,0,FALSE,FALSE,,,,,,,,4,,1,,,1,1
+ROPI,Species,Rock Pigeon,Rock Pigeon,Pigeon biset,Columba livia,34,3131,FALSE,24,TRUE,24,,,,,,,,,FALSE,FALSE,,5,,,,,,34,,4,,,11,9
+RSHA,Species,Red-shouldered Hawk,Red-shouldered Hawk,Buse à épaulettes,Buteo lineatus,83,3390,TRUE,61,TRUE,61,341,272,360,287,895,439,895,439,FALSE,FALSE,0,2,*,4,,,,83,,4,,,6,6
+RTHA,Species,Red-tailed Hawk,Red-tailed Hawk,Buse à queue rousse,Buteo jamaicensis,85,3370,FALSE,63,TRUE,63,430,321,455,339,1726,641,1726,641,FALSE,FALSE,,2,,,,,,85,,4,,,6,6
+RTHU,Species,Ruby-throated Hummingbird,Ruby-throated Hummingbird,Colibri à gorge rubis,Archilochus colubris,41,4280,TRUE,30,TRUE,30,46,38,48,43,4,2,5,3,FALSE,FALSE,758,25,**,13,,,,41,,4,Ruby-th. Hummingbird,,15,9
+RUBL,Species,Rusty Blackbird,Rusty Blackbird,Quiscale rouilleux,Euphagus carolinus,199,5090,TRUE,159,TRUE,159,118,110,110,101,80,45,77,46,TRUE,FALSE,2,21,,114,,,,199,B,14,,,32,20
+RUGR,Species,Ruffed Grouse,Ruffed Grouse,Gélinotte huppée,Bonasa umbellus,31,3000,FALSE,21,TRUE,21,,,,,,,,,FALSE,FALSE,,,*,,,,,31,,4,,,2,9
+RWBL,Species,Red-winged Blackbird,Red-winged Blackbird,Carouge à épaulettes,Agelaius phoeniceus,197,4980,TRUE,157,TRUE,157,127,110,104,91,87,42,55,29,TRUE,FALSE,2940,21,**,113,,,,197,D,14,Red-wing. Blackbird,,32,20
+SACR,Species,Sandhill Crane,Sandhill Crane,Grue du Canada,Antigone canadensis,45,2060,FALSE,33,TRUE,33,573,443,554,421,0,0,0,0,FALSE,FALSE,,,,,,,,45,,2,,,8,2
+SAVS,Species,Savannah Sparrow,Savannah Sparrow,Bruant des prés,Passerculus sandwichensis,188,5420,TRUE,149,TRUE,149,72,62,72,62,21,17,19,15,TRUE,FALSE,,20,,105,,,,188,A,12,,,30,18
+SBDO,Species,Short-billed Dowhitcher,Short-billed Dowhitcher,Bécassin roux,Limnodromus griseus,52,,FALSE,235,TRUE,235,,,,,,,,,FALSE,FALSE,,,,,,,,52,,2,,,9,3
+SCJU,Species,Dark-eyed (Slate-colored) Junco,Slate-colored Junco,Junco ardoisé,Junco hyemalis hyemalis,184,5670,TRUE,145,TRUE,145,81,71,77,68,30,14,25,14,TRUE,FALSE,2533,20,,111,Dark-eyed Junco,,Junco hyemalis,184,B,12,,DEJU,30,18
+SCTA,Species,Scarlet Tanager,Scarlet Tanager,Piranga écarlate,Piranga olivacea,233,6080,TRUE,187,TRUE,187,97,88,95,87,38,23,36,22,TRUE,FALSE,12,30,*,99,,,,233,,13,,,31,22
+PAWA,Species,Palm Warbler,Palm Warbler,Paruline à couronne rousse,Setophaga palmarum,224,,FALSE,221,TRUE,221,,,,,,,,,FALSE,FALSE,,18,,92,,,,224,B,11,,,29,17
+PBGR,Species,Pied-billed Grebe,Pied-billed Grebe,Grèbe à bec bigarré,Podilymbus podiceps,33,0060,FALSE,23,TRUE,23,0,0,0,0,0,0,0,0,FALSE,FALSE,,,**,,,,,33,,2,,,3,5
+PEFA,Species,Peregrine Falcon,Peregrine Falcon,Faucon pèlerin,Falco peregrinus,107,3560,TRUE,78,TRUE,78,330,291,376,331,788,423,1063,590,FALSE,FALSE,,2,,,,,,107,,4,,,17,6
+PHVI,Species,Philadelphia Vireo,Philadelphia Vireo,Viréo de Philadelphie,Vireo philadelphicus,122,6260,TRUE,90,TRUE,90,74,60,74,60,18,8,18,8,TRUE,FALSE,19,9,,39,,,,122,C,7,,,19,11
+PIGR,Species,Pine Grosbeak,Pine Grosbeak,Durbec des sapins,Pinicola enucleator,168,5150,TRUE,133,TRUE,133,125,104,120,101,63,49,63,49,FALSE,FALSE,,22,,,,,,168,,13,,,33,19
+PISI,Species,Pine Siskin,Pine Siskin,Tarin des pins,Spinus pinus,175,5330,TRUE,138,TRUE,138,75,67,75,67,18,12,17,11,TRUE,FALSE,94,22,**,127,,,,175,,13,,,33,19
+PIWA,Species,Pine Warbler,Pine Warbler,Paruline des pins,Setophaga pinus,227,6710,TRUE,182,TRUE,182,78,68,74,64,14,10,14,9,FALSE,FALSE,0,18,,93,,,,227,,11,,,29,17
+PIWO,Species,Pileated Woodpecker,Pileated Woodpecker,Grand Pic,Dryocopus pileatus,104,4050,TRUE,74,TRUE,74,255,220,243,210,0,0,0,0,FALSE,FALSE,3634,7,**,24,,,,104,,3,,,16,8
+PUFI,Species,Purple Finch,Purple Finch,Roselin pourpré,Haemorhous purpureus,170,5170,TRUE,135,TRUE,135,85,75,81,71,33,20,31,18,TRUE,FALSE,1825,22,**,122,,,,170,D,13,,,33,19
+PUMA,Species,Purple Martin,Purple Martin,Hirondelle noire,Progne subis,133,6110,TRUE,101,TRUE,101,156,133,154,131,62,42,62,47,FALSE,FALSE,738,11,,,,,,133,,6,,,21,13
+RBGR,Species,Rose-breasted Grosbeak,Rose-breasted Grosbeak,Cardinal à poitrine rose,Pheucticus ludovicianus,235,5950,TRUE,189,TRUE,189,105,94,105,92,65,37,64,34,TRUE,FALSE,2553,30,**,119,,,,235,,13,Rose-breast. Grosbeak,,31,22
+RBGU,Species,Ring-billed Gull,Ring-billed Gull,Goéland à bec cerclé,Larus delawarensis,59,0540,TRUE,42,TRUE,42,392,346,369,330,496,381,496,381,FALSE,FALSE,0,,,,,,,59,,2,,,10,4
+RBME,Species,Red-breasted Merganser,Red-breasted Merganser,Harle huppé,Mergus serrator,30,1300,FALSE,20,TRUE,20,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,30,,1,,,1,1
+RBNU,Species,Red-breasted Nuthatch,Red-breasted Nuthatch,Sittelle à poitrine rousse,Sitta canadensis,139,7280,TRUE,108,TRUE,108,70,65,68,63,15,6,13,8,TRUE,FALSE,208,12,,47,,,,139,D,9,,,22,14
+RBWO,Species,Red-bellied Woodpecker,Red-bellied Woodpecker,Pic à ventre roux,Melanerpes carolinus,98,4090,TRUE,71,TRUE,71,139,122,133,118,86,65,83,61,FALSE,FALSE,154,7,,19,,,,98,,3,,,16,8
+RCKI,Species,Ruby-crowned Kinglet,Ruby-crowned Kinglet,Roitelet à couronne rubis,Regulus calendula,149,7490,TRUE,106,TRUE,106,62,55,59,52,9,5,9,5,TRUE,FALSE,43,14,,54,,,,149,B,9,Ruby-cr. Kinglet,,24,14
+RECR,Species,Red Crossbill,Red Crossbill,Bec-croisé des sapins,Loxia curvirostra,173,5210,FALSE,210,TRUE,210,,,,,,,,,FALSE,FALSE,,22,,,,,,173,,13,,,33,19
+SEOW,Species,Short-eared Owl,Short-eared Owl,Hibou des marais,Asio flammeus,94,3670,TRUE,,FALSE,,326,298,331,305,0,0,0,0,FALSE,FALSE,0,,,,,,,94,,,,,,
+SEPL,Species,Semipalmated Plover,Semipalmated Plover,Pluvier semipalmé,Charadrius semipalmatus,48,2740,FALSE,220,TRUE,220,130,110,131,111,64,27,64,27,FALSE,FALSE,,,,,,,,48,,2,,,9,3
+SESA,Species,Semipalmated Sandpiper,Semipalmated Sandpiper,Bécasseau semipalmé,Calidris pusilla,51,2460,FALSE,211,TRUE,211,,,,,,,,,FALSE,FALSE,,,,,,,,51,,2,,,,3
+SEWR,Species,Sedge Wren,Sedge Wren,Troglodyte à bec court,Cistothorus platensis,144,7240,FALSE,207,TRUE,207,48,42,46,40,10,8,10,8,FALSE,FALSE,,,,,,,,144,,9,,,23,15
+SNBU,Species,Snow Bunting,Snow Bunting,Plectrophane des neiges,Plectrophenax nivalis,178,5340,TRUE,140,TRUE,140,114,97,106,93,45,29,40,27,TRUE,FALSE,2184,24,,,,,,178,,12,,,28,21
+SNGO,Species,Snow Goose,Snow Goose,Oie des neiges,Anser caerulescens,1,,FALSE,204,TRUE,204,,,,,,,,,FALSE,FALSE,,,,,,,,1,,1,,,1,1
+SNOW,Species,Snowy Owl,,Harfang des neiges,Bubo scandiacus,89,3760,FALSE,,FALSE,,,,,,,,,,FALSE,FALSE,657,,,,,,,89,,,,,,
+SORA,Species,Sora,Sora,Marouette de Caroline,Porzana carolina,43,2140,FALSE,32,TRUE,32,115,101,109,96,84,53,84,53,FALSE,FALSE,,,**,,,,,43,,2,,,7,2
+SOSA,Species,Solitary Sandpiper,Solitary Sandpiper,Chevalier solitaire,Tringa solitaria,56,2560,TRUE,39,TRUE,39,140,121,147,126,61,40,61,40,FALSE,FALSE,,3,,9,,,,56,,2,,,9,3
+SOSP,Species,Song Sparrow,Song Sparrow,Bruant chanteur,Melospiza melodia,189,5810,TRUE,150,TRUE,150,69,60,66,57,26,17,25,15,TRUE,FALSE,2812,20,**,106,,,,189,D,12,,,30,18
+SPSA,Species,Spotted Sandpiper,Spotted Sandpiper,Chevalier grivelé,Actitis macularius,55,2630,TRUE,38,TRUE,38,105,95,110,99,58,31,61,34,FALSE,FALSE,0,3,*,,,,,55,,2,,,9,3
+SSHA,Species,Sharp-shinned Hawk,Sharp-shinned Hawk,Épervier brun,Accipiter striatus,79,3320,TRUE,57,TRUE,57,177,159,207,191,140,75,232,128,TRUE,FALSE,2,2,,2,,,,79,,4,,,6,6
+SWSP,Species,Swamp Sparrow,Swamp Sparrow,Bruant des marais,Melospiza georgiana,191,5840,TRUE,152,TRUE,152,64,56,61,52,20,15,19,13,TRUE,FALSE,1840,20,**,108,,,,191,B,12,,,30,18
+SWTH,Species,Swainson's Thrush,Swainson's Thrush,Grive à dos olive,Catharus ustulatus,155,7580,TRUE,124,TRUE,124,102,88,102,88,46,24,44,22,TRUE,FALSE,1506,15,,58,,,,155,A,10,,,25,16
+TEWA,Species,Tennessee Warbler,Tennessee Warbler,Paruline obscure,Leiothlypis peregrina,207,6470,TRUE,164,TRUE,164,68,58,66,56,15,8,13,7,TRUE,FALSE,1129,18,,74,,,,207,A,11,,,29,17
+TOSO,Species,Townsend's Solitaire,Townsend's Solitaire,Solitaire de Townsend,Myadestes townsendi,151,7540,FALSE,219,TRUE,219,123,109,117,107,0,0,0,0,FALSE,FALSE,,,,,,,,151,,10,,,25,16
+TRES,Species,Tree Swallow,Tree Swallow,Hirondelle bicolore,Tachycineta bicolor,131,6140,TRUE,102,TRUE,102,123,111,119,105,25,17,25,17,TRUE,FALSE,1455,11,**,42,,,,131,C,6,,,21,13
+TRFL,Superspecies,Traill's Flycatcher,Traill's Flycatcher (Willow or Alder),Moucherolle des saules ou M. des aulnes,Empidonax traillii or alnorum,113,4669,TRUE,83,TRUE,83,76,64,76,64,17,10,17,10,TRUE,FALSE,1508,8,####,33,,,,113,,5,,,,10
+TUSW,Species,Tundra Swan,Tundra Swan,Cygne siffleur,Cygnus columbianus,9,1800,FALSE,198,TRUE,198,,,,,,,,,FALSE,FALSE,,,,,,,,9,,1,,,1,1
+TUTI,Species,Tufted Titmouse,Tufted Titmouse,Mésange bicolore,Baeolophus bicolor,138,7310,TRUE,98,TRUE,98,,,,,,,,,FALSE,FALSE,5,12,,,,,,138,,9,,,22,14
+TUVU,Species,Turkey Vulture,Turkey Vulture,Urubu à tête rouge,Cathartes aura,75,3250,FALSE,53,TRUE,53,544,461,553,464,0,0,0,0,FALSE,FALSE,,,**,,,,,75,,4,,,5,6
+USCA,Superspecies,Unidentified Scaup sp.,Unidentified Scaup,Aythya sp.,Aythya sp.,23,,FALSE,,TRUE,,,,,,,,,,FALSE,FALSE,,,,,,,,23,,1,,,,1
+VEER,Species,Veery,Veery,Grive fauve,Catharus fuscescens,152,7560,TRUE,121,TRUE,121,100,88,100,88,46,26,44,26,TRUE,FALSE,2232,15,**,55,,,,152,,10,,,25,16
+VESP,Species,Vesper Sparrow,Vesper Sparrow,Bruant vespéral,Pooecetes gramineus,187,5400,FALSE,148,TRUE,148,87,74,84,72,31,20,31,20,FALSE,FALSE,,20,,,,,,187,,12,,,30,18
+VIRA,Species,Virginia Rail,Virginia Rail,Râle de Virginie,Rallus limicola,42,2120,FALSE,31,TRUE,31,113,99,107,93,114,68,114,68,FALSE,FALSE,0,,**,,,,,42,,2,,,7,2
+WAVI,Species,Warbling Vireo,Warbling Vireo,Viréo mélodieux,Vireo gilvus,123,6270,TRUE,91,TRUE,91,77,65,77,65,18,11,18,11,TRUE,FALSE,2157,9,**,38,,,,123,C,7,,,19,11
+WBNU,Species,White-breasted Nuthatch,White-breasted Nuthatch,Sittelle à poitrine blanche,Sitta carolinensis,140,7270,TRUE,109,TRUE,109,93,86,91,85,30,17,30,16,TRUE,FALSE,1613,12,**,46,,,,140,,9,White-breast. Nuthatch,,22,14
+WEVI,Species,White-eyed Vireo,White-eyed Vireo,Viréo aux yeux blancs,Vireo griseus,119,6310,FALSE,200,TRUE,200,65,55,63,54,16,10,16,10,FALSE,FALSE,36,9,,,,,,119,,7,,,19,11
+WEWA,Species,Worm-eating Warbler,Worm-eating Warbler,Paruline vermivore,Helmitheros vermivorum,202,6390,TRUE,209,TRUE,209,,,,,,,,,FALSE,FALSE,,18,,69,,,,202,,11,,,29,17
+WIFL,Species,Willow Flycatcher,Willow Flycatcher,Moucherolle des saules,Empidonax traillii,115,4660,TRUE,84,TRUE,84,74,67,71,63,0,0,0,0,FALSE,FALSE,0,8,,32,,,,115,,5,,,18,10
+WISN,Species,Wilson's Snipe,Wilson's Snipe,Bécassine de Wilson,Gallinago delicata,54,2300,FALSE,37,TRUE,37,,,,,,,,,FALSE,FALSE,,3,,,,,,54,,2,,,9,3
+WITU,Species,Wild Turkey,Wild Turkey,Dindon sauvage,Meleagris gallopavo,32,3100,FALSE,22,TRUE,22,,,,,,,,,FALSE,FALSE,,,,,,,,32,,4,,,2,9
+WIWA,Species,Wilson's Warbler,Wilson's Warbler,Paruline à calotte noire,Cardellina pusilla,231,6850,TRUE,186,TRUE,186,57,50,55,50,11,6,12,5,TRUE,FALSE,8,18,,97,,,,231,A,11,,,29,17
+WIWR,Species,Winter Wren,Winter Wren,Troglodyte des forêts,Troglodytes hiemalis,143,7220,TRUE,113,TRUE,113,51,42,51,42,13,7,13,7,TRUE,FALSE,8,13,,50,,,,143,D,9,,,23,15
+WODU,Species,Wood Duck,Wood Duck,Canard branchu,Aix sponsa,10,1440,FALSE,4,TRUE,4,0,0,0,0,0,0,0,0,FALSE,FALSE,0,1,**,1,,,,10,,1,,,1,1
+WOTH,Species,Wood Thrush,Wood Thrush,Grive des bois,Hylocichla mustelina,157,7550,TRUE,126,TRUE,126,110,97,110,97,61,40,60,40,TRUE,FALSE,1094,15,**,60,,,,157,,10,,,25,16
+WPWA,Subspecies,Western Palm Warbler,Western Palm Warbler,Paruline à couronne rousse (forme de l'Ouest),Setophaga palmarum palmarum,225,6720,TRUE,180,TRUE,180,68,58,68,58,13,8,13,8,TRUE,FALSE,19,18,,90,,,,225,,11,West. Palm Warbler,,,17
+WTSP,Species,White-throated Sparrow,White-throated Sparrow,Bruant à gorge blanche,Zonotrichia albicollis,186,5580,TRUE,147,TRUE,147,78,69,72,64,36,22,30,19,FALSE,FALSE,757,20,*,109,,,,186,B,12,White-thr. Sparrow,,30,18
+WWCR,Species,White-winged Crossbill,White-winged Crossbill,Bec-croisé bifascié,Loxia leucoptera,174,5220,FALSE,137,TRUE,137,93,83,90,80,0,0,0,0,FALSE,FALSE,0,22,,124,,,,174,,13,,,33,19
+WWSC,Species,White-winged Scoter,White-winged Scoter,Macreuse brune,Melanitta deglandi,24,1650,FALSE,16,TRUE,16,0,0,0,0,0,0,0,0,FALSE,FALSE,,,,,,,,24,,1,,,1,1
+YBCU,Species,Yellow-billed Cuckoo,Yellow-billed Cuckoo,Coulicou à bec jaune,Coccyzus americanus,36,3870,TRUE,26,TRUE,26,154,131,159,135,85,38,85,38,FALSE,FALSE,0,4,,11,,,,36,,4,,,12,9
+YBFL,Species,Yellow-bellied Flycatcher,Yellow-bellied Flycatcher,Moucherolle à ventre jaune,Empidonax flaviventris,112,4630,TRUE,81,TRUE,81,69,59,69,59,14,9,14,9,TRUE,FALSE,7,8,,30,,,,112,A,5,Yellow-bel. Flycatcher,,18,10
+YBSA,Species,Yellow-bellied Sapsucker,Yellow-bellied Sapsucker,Pic maculé,Sphyrapicus varius,100,4020,TRUE,70,TRUE,70,126,115,124,113,60,37,59,36,TRUE,FALSE,1123,7,**,20,,,,100,A,3,Yellow-bel. Sapsucker,,16,8
+YEWA,Species,Yellow Warbler,Yellow Warbler,Paruline jaune,Setophaga petechia,220,6520,TRUE,176,TRUE,176,66,56,64,55,15,9,13,9,TRUE,FALSE,2864,18,**,86,,,,220,C,11,,,29,17
+YPWA,Subspecies,Yellow Palm Warbler,Yellow Palm Warbler,Paruline à couronne rousse (forme de l'Est),Setophaga palmarum hypochrysea,226,6729,TRUE,181,TRUE,181,68,59,68,59,13,9,13,9,TRUE,FALSE,9,18,,91,,,,226,,11,,,,17
+YSFL,Species,Yellow-shafted Flicker,Yellow-shafted Flicker,Pic flamboyant,Colaptes auratus auratus,103,4120,TRUE,75,TRUE,75,158,140,164,151,167,104,157,99,TRUE,FALSE,711,7,**,23,Northern Flicker,,Colaptes auratus,103,D,3,,NOFL,16,8
+YTVI,Species,Yellow-throated Vireo,Yellow-throated Vireo,Viréo à gorge jaune,Vireo flavifrons,120,6280,TRUE,208,TRUE,208,81,71,79,70,21,16,21,16,FALSE,FALSE,0,9,,36,,,,120,,,,,19,11
+HUWH,Species,Hudsonian Whimbrel,Hudsonian Whimbrel,Courlis hudsonien,Numenius hudsonicus,,,FALSE,236,TRUE,236,,,,,,,,,FALSE,FALSE,,,,,,,,,,2,,,,3

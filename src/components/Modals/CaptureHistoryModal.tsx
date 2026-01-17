@@ -5,6 +5,7 @@ import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../ValidationMessages";
+import SpeciesPopover from "../SpeciesPopover";
 
 interface CaptureHistoryModalProps {
   isOpen: boolean;
@@ -116,7 +117,9 @@ export default function CaptureHistoryModal({
                     </div>
                     <div>
                       <span className="text-default-700">Species :</span>{" "}
-                      <span className="font-medium">{birdInfo.species}</span>
+                      <span className="font-medium">
+                        <SpeciesPopover speciesCode={birdInfo.species}>{birdInfo.species}</SpeciesPopover>
+                      </span>
                     </div>
                     <div>
                       <span className="text-default-700">Total Captures :</span>{" "}
@@ -129,7 +132,7 @@ export default function CaptureHistoryModal({
                     <div>
                       <span className="text-default-700">Latest Recapture :</span>{" "}
                       {birdInfo.latestRecapture === "never" ? (
-                        <span className="font-medium text-default-400">Never</span>
+                        <span className="font-medium">None</span>
                       ) : birdInfo.latestRecapture === "< 6 months" ? (
                         <span className="font-medium">{`< 6 months`}</span>
                       ) : (
