@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { DET, Net } from "../src/types/DET.js";
+import { db, ENVIRONMENT } from "./firebase-node.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -154,29 +155,49 @@ netsByDate.forEach((nets, date) => {
   }
 });
 
-// Generate TypeScript output
-const entries: string[] = [];
+// Remove undefined values from an object (Firebase doesn't accept undefined)
+function removeUndefined(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefined);
+  }
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const key in obj) {
+      if (obj[key] !== undefined) {
+        cleaned[key] = removeUndefined(obj[key]);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
 
-// Sort by date
-const sortedDates = Array.from(detsMap.keys()).sort();
-
-sortedDates.forEach((date) => {
-  const det = detsMap.get(date);
+// Upload to RTDB
+async function uploadDETsToRTDB() {
+  console.log("Uploading DETs to RTDB...");
   
-  const entry = `  "${date}": ${JSON.stringify(det, null, 4).replace(/"([^"]+)":/g, "$1:")}`;
-  entries.push(entry);
+  // Convert Map to object and remove undefined values
+  const detsObject: Record<string, DET> = {};
+  detsMap.forEach((det, date) => {
+    detsObject[date] = removeUndefined(det);
+  });
+
+  // Write to Firebase
+  await db.ref(`${ENVIRONMENT}/DETsMap`).set(detsObject);
+  
+  console.log(`✅ Uploaded ${detsMap.size} DET records to RTDB at ${ENVIRONMENT}/DETsMap`);
+  
+  // Update metadata
+  await db.ref(`${ENVIRONMENT}/metadata/detsLastModified`).set(Date.now());
+  
+  console.log("✅ All DETs uploaded successfully!");
+  process.exit(0);
+}
+
+uploadDETsToRTDB().catch((error) => {
+  console.error("❌ Upload failed:", error);
+  process.exit(1);
 });
-
-const outputContent = `import { DET } from "../types/det";
-
-export const DETs_MAP: Record<string, DET> = {
-${entries.join(",\n")}
-};
-`;
-
-// Write to output file
-const outputPath = path.join(__dirname, "../src/types/detsMap.ts");
-fs.writeFileSync(outputPath, outputContent, "utf-8");
-
-console.log(`✅ Generated DETs map with ${detsMap.size} entries`);
-console.log(`📝 Written to ${outputPath}`);
