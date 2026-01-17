@@ -224,14 +224,12 @@ export default function DETs() {
           </CardBody>
         </Card>
 
-        {DETDisplay}
+        {DETDisplay || (
+          <div className="flex-1 text-center text-gray-500">
+            <p className="text-lg">Please select a date from the calendar to view DET information</p>
+          </div>
+        )}
       </div>
-
-      {!selectedDET && (
-        <div className="text-center text-gray-500 py-12">
-          <p className="text-lg">Please select a date from the calendar to view DET information</p>
-        </div>
-      )}
     </div>
   );
 }
