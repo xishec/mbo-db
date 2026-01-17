@@ -152,25 +152,138 @@ export default function DETs() {
           {renderSpeciesSection("DET", selectedDET.DETSpeciesCount, "warning", "No DET species")}
         </CardBody>
       </Card>
-      {/* // Additional Information Card */}
+      {/* // Census Card */}
       <Card className="">
         <CardHeader>
-          <p className="text-lg font-semibold">Additional Information</p>
+          <p className="text-lg font-semibold">Census</p>
         </CardHeader>
         <Divider />
         <CardBody className="gap-3">
-          <div>
-            <p className="text-sm text-gray-500">Injuries</p>
-            <p className="font-medium">{selectedDET.injuries?.length || "None"}</p>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Censuser</p>
+              <p className="font-medium">{selectedDET.census?.censuser || <span className="text-gray-400">-</span>}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Start</p>
+              <p className="font-medium">{selectedDET.census?.start || <span className="text-gray-400">-</span>}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">End</p>
+              <p className="font-medium">{selectedDET.census?.end || <span className="text-gray-400">-</span>}</p>
+            </div>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Released</p>
-            <p className="font-medium">{selectedDET.released?.length || "None"}</p>
+            {renderSpeciesSection("Census Species", selectedDET.census?.speciesCount || {}, "primary", "No census data")}
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Visitors</p>
-            <p className="font-medium">{selectedDET.visitors?.length || "None"}</p>
-          </div>
+        </CardBody>
+      </Card>
+      {/* // Injuries Card */}
+      <Card className="">
+        <CardHeader>
+          <p className="text-lg font-semibold">Injuries : {selectedDET.injuries?.length || 0}</p>
+        </CardHeader>
+        <Divider />
+        <CardBody className="gap-3">
+          {selectedDET.injuries && selectedDET.injuries.length > 0 ? (
+            selectedDET.injuries.map((injury, idx) => (
+              <div key={idx} className="border-b pb-2 last:border-b-0">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Species</p>
+                    <SpeciesPopover speciesCode={injury.specie}>
+                      <p className="font-medium cursor-pointer hover:text-blue-600">{injury.specie}</p>
+                    </SpeciesPopover>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Band ID</p>
+                    <p className="font-medium">{injury.bandId || <span className="text-gray-400">undefined</span>}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Net</p>
+                    <p className="font-medium">{injury.net || <span className="text-gray-400">undefined</span>}</p>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500">Description</p>
+                  <p className="text-sm">{injury.description}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500">No injuries recorded</p>
+          )}
+        </CardBody>
+      </Card>
+      {/* // Released Card */}
+      <Card className="">
+        <CardHeader>
+          <p className="text-lg font-semibold">Released : {selectedDET.released?.length || 0}</p>
+        </CardHeader>
+        <Divider />
+        <CardBody className="gap-3">
+          {selectedDET.released && selectedDET.released.length > 0 ? (
+            selectedDET.released.map((bird, idx) => (
+              <div key={idx} className="border-b pb-2 last:border-b-0">
+                <div className="grid grid-cols-4 gap-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Species</p>
+                    <SpeciesPopover speciesCode={bird.specie}>
+                      <p className="font-medium cursor-pointer hover:text-blue-600">{bird.specie}</p>
+                    </SpeciesPopover>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Age</p>
+                    <p className="font-medium">{bird.age || <span className="text-gray-400">undefined</span>}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">How Aged</p>
+                    <p className="font-medium">{bird.howAged || <span className="text-gray-400">undefined</span>}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Sex</p>
+                    <p className="font-medium">{bird.sex || <span className="text-gray-400">undefined</span>}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div>
+                    <p className="text-xs text-gray-500">How Sexed</p>
+                    <p className="font-medium">{bird.howSexed || <span className="text-gray-400">undefined</span>}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Net</p>
+                    <p className="font-medium">{bird.net || <span className="text-gray-400">undefined</span>}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Description</p>
+                    <p className="font-medium">{bird.description || <span className="text-gray-400">undefined</span>}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500">No birds released</p>
+          )}
+        </CardBody>
+      </Card>
+      {/* // Visitors Card */}
+      <Card className="">
+        <CardHeader>
+          <p className="text-lg font-semibold">Visitors : {selectedDET.visitors?.length || 0}</p>
+        </CardHeader>
+        <Divider />
+        <CardBody>
+          {selectedDET.visitors && selectedDET.visitors.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {selectedDET.visitors.map((visitor, idx) => (
+                <Chip key={idx} variant="flat" color="default">
+                  {visitor}
+                </Chip>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No visitors recorded</p>
+          )}
         </CardBody>
       </Card>
       {/* // Notes Card */}
