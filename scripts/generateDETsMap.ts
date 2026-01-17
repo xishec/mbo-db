@@ -67,7 +67,7 @@ dailyRecords.forEach((record) => {
     netHours: {
       nets: [],
       hummingbirdTrapTotal: "",
-      total: "",
+      total: record.SongbirdNets || "",
     },
     coverageCode: parseInt(record.CoverageCode) || 0,
     narrative: "",
@@ -149,9 +149,11 @@ netsByDate.forEach((nets, date) => {
     const dMap = DETsMap.get(date)!;
     dMap.netHours.nets = nets;
 
-    // Calculate total net hours
-    const total = nets.reduce((sum, net) => sum + (parseFloat(net.hours || "0") || 0), 0);
-    dMap.netHours.total = total.toString();
+    // Calculate total net hours if there are nets, otherwise keep SongbirdNets value
+    if (nets.length > 0) {
+      const total = nets.reduce((sum, net) => sum + (parseFloat(net.total || "0") || 0), 0);
+      dMap.netHours.total = (Math.round(total * 100) / 100).toString();
+    }
   }
 });
 
