@@ -101,16 +101,18 @@ export default function DETs() {
         </CardHeader>
         <Divider />
         <CardBody className="gap-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-gray-500">Bander in Charge</p>
-              <p className="font-medium">{selectedDET.banderInCharge || "—"}</p>
+              <p className="font-medium">{selectedDET.banderInCharge || <span className="text-gray-400">—</span>}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Time</p>
-              <p className="font-medium">
-                {selectedDET.start && selectedDET.end ? `${selectedDET.start} - ${selectedDET.end}` : "—"}
-              </p>
+              <p className="text-sm text-gray-500">Start</p>
+              <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">End</p>
+              <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
             </div>
           </div>
         </CardBody>
