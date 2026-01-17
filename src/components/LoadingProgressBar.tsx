@@ -3,25 +3,39 @@ import { useState, useEffect } from "react";
 
 export default function LoadingProgressBar() {
   const [progress, setProgress] = useState(0);
+  const [isIndeterminate, setIsIndeterminate] = useState(true);
 
   useEffect(() => {
-    const duration = 40000; // 40 seconds
-    const intervalTime = 100; // Update every 100ms
-    const maxProgress = 99; // Stop at 99%
-    const increment = (maxProgress / duration) * intervalTime;
+    // Show infinite loading for 5 seconds
+    const indeterminateTimeout = setTimeout(() => {
+      setIsIndeterminate(false);
+    }, 5000);
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + increment;
-        if (next >= maxProgress) {
-          clearInterval(interval);
-          return maxProgress;
-        }
-        return next;
-      });
-    }, intervalTime);
+    // Start progress bar after 5 seconds
+    const startProgressTimeout = setTimeout(() => {
+      const duration = 40000; // 40 seconds
+      const intervalTime = 100; // Update every 100ms
+      const maxProgress = 99; // Stop at 99%
+      const increment = (maxProgress / duration) * intervalTime;
 
-    return () => clearInterval(interval);
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          const next = prev + increment;
+          if (next >= maxProgress) {
+            clearInterval(interval);
+            return maxProgress;
+          }
+          return next;
+        });
+      }, intervalTime);
+
+      return () => clearInterval(interval);
+    }, 5000);
+
+    return () => {
+      clearTimeout(indeterminateTimeout);
+      clearTimeout(startProgressTimeout);
+    };
   }, []);
 
   return (
@@ -29,6 +43,7 @@ export default function LoadingProgressBar() {
       <Progress
         size="sm"
         value={progress}
+        isIndeterminate={isIndeterminate}
         aria-label="Loading database..."
         className="w-full"
         classNames={{
