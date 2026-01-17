@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useData } from "../../../services/useData";
 import type { DET } from "../../../types/DET";
-import { Calendar, Card, CardBody, CardHeader, Divider, Chip, Button, Input, Textarea } from "@heroui/react";
+import { Calendar, Card, CardBody, CardHeader, Divider, Chip, Button } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
 import SpeciesPopover from "../../SpeciesPopover";
 import { fetchWeatherForDate } from "../../../services/weatherService";
+import AddDETModal from "../../Modals/AddDETModal";
 
 export default function DETs() {
   const { DETsMap, isAdmin, saveDET } = useData();
@@ -12,7 +13,8 @@ export default function DETs() {
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedDET, setEditedDET] = useState<DET | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
 
   // Get available dates as a Set for quick lookup
   const availableDatesSet = new Set(Object.keys(DETsMap));
@@ -59,35 +61,21 @@ export default function DETs() {
   const handleEdit = () => {
     if (selectedDET) {
       setEditedDET({ ...selectedDET });
-      setIsEditing(true);
+      setModalMode("edit");
+      setIsModalOpen(true);
     }
   };
 
-  const handleCancelEdit = () => {
-    setIsEditing(false);
+  const handleAddNew = () => {
     setEditedDET(null);
+    setModalMode("create");
+    setIsModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!editedDET) return;
-
-    try {
-      setIsSaving(true);
-      await saveDET(editedDET);
-      setSelectedDET(editedDET);
-      setIsEditing(false);
-      setEditedDET(null);
-    } catch (error) {
-      console.error("Failed to save DET:", error);
-      alert("Failed to save DET. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const updateField = <K extends keyof DET>(field: K, value: DET[K]) => {
-    if (editedDET) {
-      setEditedDET({ ...editedDET, [field]: value });
+  const handleModalSave = async (det: DET) => {
+    await saveDET(det);
+    if (modalMode === "edit") {
+      setSelectedDET(det);
     }
   };
 
@@ -144,22 +132,9 @@ export default function DETs() {
             </div>
           </div>
           {isAdmin && (
-            <div className="flex gap-2">
-              {isEditing ? (
-                <>
-                  <Button color="default" variant="flat" onPress={handleCancelEdit} isDisabled={isSaving}>
-                    Cancel
-                  </Button>
-                  <Button color="primary" onPress={handleSave} isLoading={isSaving}>
-                    Save
-                  </Button>
-                </>
-              ) : (
-                <Button color="primary" variant="flat" onPress={handleEdit}>
-                  Edit
-                </Button>
-              )}
-            </div>
+            <Button color="primary" variant="flat" onPress={handleEdit}>
+              Edit
+            </Button>
           )}
         </CardHeader>
         <Divider />
@@ -167,44 +142,15 @@ export default function DETs() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-gray-500">Bander in Charge</p>
-              {isEditing && editedDET ? (
-                <Input
-                  value={editedDET.banderInCharge || ""}
-                  onValueChange={(value) => updateField("banderInCharge", value)}
-                  size="sm"
-                  variant="bordered"
-                />
-              ) : (
-                <p className="font-medium">{selectedDET.banderInCharge || <span className="text-gray-400">—</span>}</p>
-              )}
+              <p className="font-medium">{selectedDET.banderInCharge || <span className="text-gray-400">—</span>}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Start</p>
-              {isEditing && editedDET ? (
-                <Input
-                  value={editedDET.start || ""}
-                  onValueChange={(value) => updateField("start", value)}
-                  size="sm"
-                  variant="bordered"
-                  placeholder="HH:MM"
-                />
-              ) : (
-                <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
-              )}
+              <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">End</p>
-              {isEditing && editedDET ? (
-                <Input
-                  value={editedDET.end || ""}
-                  onValueChange={(value) => updateField("end", value)}
-                  size="sm"
-                  variant="bordered"
-                  placeholder="HH:MM"
-                />
-              ) : (
-                <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
-              )}
+              <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
             </div>
           </div>
         </CardBody>
@@ -262,8 +208,11 @@ export default function DETs() {
               <div>
                 <p className="text-sm text-gray-500">Temperature</p>
                 <p className="font-medium">
-                  {selectedDET.weather.temperatureMin !== undefined && selectedDET.weather.temperatureMax !== undefined ? (
-                    `${selectedDET.weather.temperatureMin.toFixed(1)}°C - ${selectedDET.weather.temperatureMax.toFixed(1)}°C`
+                  {selectedDET.weather.temperatureMin !== undefined &&
+                  selectedDET.weather.temperatureMax !== undefined ? (
+                    `${selectedDET.weather.temperatureMin.toFixed(1)}°C - ${selectedDET.weather.temperatureMax.toFixed(
+                      1
+                    )}°C`
                   ) : (
                     <span className="text-gray-400">undefined</span>
                   )}
@@ -472,42 +421,15 @@ export default function DETs() {
         <CardBody className="gap-3">
           <div>
             <p className="text-sm font-medium mb-1">Narrative</p>
-            {isEditing && editedDET ? (
-              <Textarea
-                value={editedDET.narrative || ""}
-                onValueChange={(value) => updateField("narrative", value)}
-                variant="bordered"
-                minRows={3}
-              />
-            ) : (
-              <p className="text-sm text-gray-700">{selectedDET.narrative || "—"}</p>
-            )}
+            <p className="text-sm text-gray-700">{selectedDET.narrative || "—"}</p>
           </div>
           <div>
             <p className="text-sm font-medium mb-1">Deviations</p>
-            {isEditing && editedDET ? (
-              <Textarea
-                value={editedDET.deviations || ""}
-                onValueChange={(value) => updateField("deviations", value)}
-                variant="bordered"
-                minRows={3}
-              />
-            ) : (
-              <p className="text-sm text-gray-700">{selectedDET.deviations || "—"}</p>
-            )}
+            <p className="text-sm text-gray-700">{selectedDET.deviations || "—"}</p>
           </div>
           <div>
             <p className="text-sm font-medium mb-1">Station Management</p>
-            {isEditing && editedDET ? (
-              <Textarea
-                value={editedDET.stationManagement || ""}
-                onValueChange={(value) => updateField("stationManagement", value)}
-                variant="bordered"
-                minRows={3}
-              />
-            ) : (
-              <p className="text-sm text-gray-700">{selectedDET.stationManagement || "—"}</p>
-            )}
+            <p className="text-sm text-gray-700">{selectedDET.stationManagement || "—"}</p>
           </div>
         </CardBody>
       </Card>
@@ -516,9 +438,16 @@ export default function DETs() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Daily Effort Table (DETs)</h1>
-        <p className="text-sm text-gray-500">{availableDatesSet.size} DET entries available</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">Daily Effort Table (DETs)</h1>
+          <p className="text-sm text-gray-500">{availableDatesSet.size} DET entries available</p>
+        </div>
+        {isAdmin && (
+          <Button color="primary" onPress={handleAddNew}>
+            Add DET
+          </Button>
+        )}
       </div>
 
       <div className="mb-6 flex gap-8 items-start">
@@ -547,6 +476,14 @@ export default function DETs() {
           </div>
         )}
       </div>
+
+      <AddDETModal
+        isOpen={isModalOpen}
+        onOpenChange={() => setIsModalOpen(!isModalOpen)}
+        onSave={handleModalSave}
+        existingDET={modalMode === "edit" ? editedDET : null}
+        mode={modalMode}
+      />
     </div>
   );
 }

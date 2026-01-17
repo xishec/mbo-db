@@ -95,31 +95,31 @@ speciesRecords.forEach((record) => {
   const date = record.DateEx;
   if (!date || !DETsMap.has(date)) return;
 
-  const dMap = DETsMap.get(date)!;
+  const detMap = DETsMap.get(date)!;
   const species = record.Species;
 
   if (record.Observed && parseInt(record.Observed) > 0) {
-    dMap.observedSpeciesCount[species] = parseInt(record.Observed);
+    detMap.observedSpeciesCount[species] = parseInt(record.Observed);
   }
 
   if (record.Census && parseInt(record.Census) > 0) {
-    dMap.census.speciesCount[species] = parseInt(record.Census);
+    detMap.census.speciesCount[species] = parseInt(record.Census);
   }
 
   if (record.Banded && parseInt(record.Banded) > 0) {
-    dMap.bandedSpeciesCount[species] = parseInt(record.Banded);
+    detMap.bandedSpeciesCount[species] = parseInt(record.Banded);
   }
 
   if (record.Repeats && parseInt(record.Repeats) > 0) {
-    dMap.repeatSpeciesCount[species] = parseInt(record.Repeats);
+    detMap.repeatSpeciesCount[species] = parseInt(record.Repeats);
   }
 
   if (record.Returns && parseInt(record.Returns) > 0) {
-    dMap.returnSpeciesCount[species] = parseInt(record.Returns);
+    detMap.returnSpeciesCount[species] = parseInt(record.Returns);
   }
 
   if (record.DET && parseInt(record.DET) > 0) {
-    dMap.DETSpeciesCount[species] = parseInt(record.DET);
+    detMap.DETSpeciesCount[species] = parseInt(record.DET);
   }
 });
 
@@ -146,13 +146,13 @@ netHoursRecords.forEach((record) => {
 // Add net hours to DETs
 netsByDate.forEach((nets, date) => {
   if (DETsMap.has(date)) {
-    const dMap = DETsMap.get(date)!;
-    dMap.netHours.nets = nets;
+    const detMap = DETsMap.get(date)!;
+    detMap.netHours.nets = nets;
 
     // Calculate total net hours if there are nets, otherwise keep SongbirdNets value
     if (nets.length > 0) {
       const total = nets.reduce((sum, net) => sum + (parseFloat(net.total || "0") || 0), 0);
-      dMap.netHours.total = (Math.round(total * 100) / 100).toString();
+      detMap.netHours.total = (Math.round(total * 100) / 100).toString();
     }
   }
 });
@@ -284,8 +284,8 @@ async function uploadDETsToRTDB() {
 
   // Convert Map to object and remove undefined values
   const DETsObject: Record<string, DET> = {};
-  DETsMap.forEach((dMap, date) => {
-    DETsObject[date] = removeUndefined(dMap);
+  DETsMap.forEach((detMap, date) => {
+    DETsObject[date] = removeUndefined(detMap);
   });
 
   // Write to Firebase

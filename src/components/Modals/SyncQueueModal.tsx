@@ -19,9 +19,11 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
     getQueuedEvents().then(setQueuedEvents).catch(console.error);
   }, [isOpen]);
 
-  // Convert pending events to bird events for display
+  // Convert pending events to bird events for display (filter out DET events)
   const birdEvents = useMemo(() => {
-    return queuedEvents.map((pending) => pending.pendingEvent);
+    return queuedEvents
+      .filter((pending): pending is PendingEvent & { type: "bird-event" } => pending.type === "bird-event")
+      .map((pending) => pending.pendingEvent);
   }, [queuedEvents]);
 
   return (
@@ -31,7 +33,9 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl">Sync Queue</h2>
-              <p className="text-sm text-default-600 font-light">Pending bird events waiting to sync to Firebase</p>
+              <p className="text-sm text-default-600 font-light">
+                {queuedEvents.length} pending item{queuedEvents.length !== 1 ? "s" : ""} waiting to sync to Firebase
+              </p>
             </div>
           </div>
         </ModalHeader>
