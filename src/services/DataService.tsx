@@ -14,8 +14,10 @@ import {
   type DismissedConflictsMap,
   type DETsMap,
   BandSize,
+  type PendingBirdEvent,
+  type PendingDETEvent,
 } from "../types";
-import { Band, BirdEventType, generateBirdEventId, type Program, getBandGroupMapKey } from "../types";
+import { Band, BirdEventType, generateBirdEventId, type Program, getBandGroupMapKey, type DET } from "../types";
 import { DataContext } from "./DataContext";
 import {
   saveDataToIndexedDB,
@@ -26,6 +28,7 @@ import {
   getQueuedEvents,
   removeFromQueue,
   getQueueCount,
+  updateDETInCache,
 } from "./indexedDB";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
@@ -432,16 +435,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       let successCount = 0;
       for (const pending of pendingEvents) {
         try {
-          const birdEvent = pending.pendingEvent as BirdEvent;
-          await syncBirdEventToRTDB(birdEvent, pending.environment, state);
+          if (pending.type === "bird-event") {
+            // Handle BirdEvent sync
+            const birdEvent = pending.pendingEvent as BirdEvent;
+            await syncBirdEventToRTDB(birdEvent, pending.environment, state);
+
+            logger.sync("SyncQueue", `Synced bird event ${successCount + 1}/${pendingEvents.length}`, {
+              eventId: birdEvent.id,
+            });
+          } else if (pending.type === "det") {
+            // Handle DET sync
+            await set(ref(db, `${pending.environment}/DETsMap/${pending.det.date}`), pending.det);
+            
+            logger.sync("SyncQueue", `Synced DET ${successCount + 1}/${pendingEvents.length}`, {
+              date: pending.det.date,
+            });
+          }
 
           // Remove from queue only after successful sync
           await removeFromQueue(pending.id);
           successCount++;
-
-          logger.sync("SyncQueue", `Synced bird event ${successCount}/${pendingEvents.length}`, {
-            eventId: birdEvent.id,
-          });
         } catch (err) {
           logger.error("SyncQueue", `Failed to sync event ${pending.id}`, err);
           // Leave in queue to retry later - continue with remaining events
@@ -566,13 +579,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         };
 
         // 2. Queue the bird event for sync
-        await addToQueue({
+        const pendingBirdEvent: PendingBirdEvent = {
           id: crypto.randomUUID(),
+          type: "bird-event",
           pendingEvent: newBirdEvent,
           timestamp: Date.now(),
           environment: CURRENT_ENVIRONMENT,
           action: previousEventId ? "modified" : "added",
-        });
+        };
+        await addToQueue(pendingBirdEvent);
 
         // 3. Calculate all new state values first
         const year = captureData.date.substring(0, 4);
@@ -948,6 +963,55 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, dismissedConflictsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
+  /**
+   * Save DET (Daily Effort Table)
+   * Follows three-tier sync architecture:
+   * 1. Update React state immediately (optimistic UI)
+   * 2. Save to IndexedDB
+   * 3. Online: sync to RTDB | Offline: queue for later sync
+   */
+  const saveDET = useCallback(
+    async (det: DET) => {
+      if (!user) {
+        throw new Error("Must be logged in to save DET");
+      }
+
+      try {
+        // Update React state immediately
+        setDETsMap((prev) => ({ ...prev, [det.date]: det }));
+
+        // Save to IndexedDB
+        await updateDETInCache(CURRENT_ENVIRONMENT, det);
+        logger.info("SaveDET", `DET for ${det.date} saved to IndexedDB`);
+
+        // Handle online vs offline sync
+        if (isOnline) {
+          // Online: sync to RTDB immediately
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`), det);
+          await updateLastModifiedTimestamp();
+          logger.info("SaveDET", `DET for ${det.date} synced to RTDB`);
+        } else {
+          // Offline: add to queue for later sync
+          const pendingDET: PendingDETEvent = {
+            id: `det-${det.date}-${Date.now()}`,
+            type: "det",
+            det,
+            timestamp: Date.now(),
+            environment: CURRENT_ENVIRONMENT,
+          };
+          await addToQueue(pendingDET);
+          const newCount = await getQueueCount();
+          setPendingCount(newCount);
+          logger.info("SaveDET", `DET for ${det.date} queued for sync (offline)`);
+        }
+      } catch (err) {
+        logger.error("SaveDET", `Error saving DET for ${det.date}`, err);
+        throw err;
+      }
+    },
+    [user, isOnline, updateLastModifiedTimestamp]
+  );
+
   const resetDismissedConflicts = useCallback(
     async () => {
       if (!user) {
@@ -1010,6 +1074,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         incrementBandSize,
         dismissConflict,
         resetDismissedConflicts,
+        saveDET,
       }}
     >
       {children}

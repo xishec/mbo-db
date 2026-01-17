@@ -1,5 +1,8 @@
 import type { DET } from "./DET";
 
+// Re-export DET type
+export type { DET } from "./DET";
+
 // Database structure types
 export type YearToProgramMap = Record<string, string[]>;
 export type ProgramsMap = Record<string, Program>;
@@ -223,6 +226,7 @@ export interface DataContextType {
   ) => Promise<Record<BandSize, string>>;
   dismissConflict: (conflictId: string) => Promise<void>;
   resetDismissedConflicts: () => Promise<void>;
+  saveDET: (det: DET) => Promise<void>;
 }
 
 // Form types
@@ -259,10 +263,21 @@ export interface CaptureColumn {
 }
 
 // Queue types for offline support
-export interface PendingEvent {
+export interface PendingBirdEvent {
   id: string;
+  type: "bird-event";
   pendingEvent: BirdEvent;
   timestamp: number;
   environment: string;
   action: "added" | "modified";
 }
+
+export interface PendingDETEvent {
+  id: string;
+  type: "det";
+  det: DET;
+  timestamp: number;
+  environment: string;
+}
+
+export type PendingEvent = PendingBirdEvent | PendingDETEvent;

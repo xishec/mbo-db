@@ -1,4 +1,4 @@
-import type { DatabaseData, PendingEvent } from "../types";
+import type { DatabaseData, PendingEvent, DET } from "../types";
 import { db, CURRENT_ENVIRONMENT } from "../firebase";
 import { ref, get } from "firebase/database";
 
@@ -286,6 +286,50 @@ export async function getQueueCount(): Promise<number> {
     request.onerror = () => {
       db.close();
       reject(request.error);
+    };
+  });
+}
+
+/**
+ * Update DET in IndexedDB cache
+ */
+export async function updateDETInCache(environment: string, det: DET): Promise<void> {
+  const db = await openDB();
+  
+  // Get existing data
+  const getData = db.transaction([DATA_STORE], "readonly");
+  const data = await new Promise<DatabaseData | null>((resolve, reject) => {
+    const request = getData.objectStore(DATA_STORE).get(environment);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+  
+  if (!data) {
+    db.close();
+    throw new Error(`No cached data found for environment: ${environment}`);
+  }
+  
+  // Update DET
+  const updatedData = {
+    ...data,
+    DETsMap: {
+      ...(data.DETsMap || {}),
+      [det.date]: det,
+    },
+  };
+  
+  // Save back to IndexedDB
+  const putData = db.transaction([DATA_STORE], "readwrite");
+  putData.objectStore(DATA_STORE).put(updatedData, environment);
+  
+  return new Promise((resolve, reject) => {
+    putData.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    putData.onerror = () => {
+      db.close();
+      reject(putData.error);
     };
   });
 }

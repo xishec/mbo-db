@@ -1,20 +1,29 @@
 import { useState } from "react";
 import { useData } from "../../../services/useData";
 import type { DET } from "../../../types/DET";
-import { Calendar, Card, CardBody, CardHeader, Divider, Chip } from "@heroui/react";
+import { Calendar, Card, CardBody, CardHeader, Divider, Chip, Button, Input, Textarea } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
 import SpeciesPopover from "../../SpeciesPopover";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 
 export default function DETs() {
-  const { DETsMap } = useData();
+  const { DETsMap, isAdmin, saveDET } = useData();
   const [selectedDET, setSelectedDET] = useState<DET | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDET, setEditedDET] = useState<DET | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get available dates as a Set for quick lookup
   const availableDatesSet = new Set(Object.keys(DETsMap));
 
   const handleDateChange = async (value: DateValue | null) => {
+    // Cancel edit mode when changing dates
+    if (isEditing) {
+      setIsEditing(false);
+      setEditedDET(null);
+    }
+
     if (!value) {
       setSelectedDET(null);
       return;
@@ -44,6 +53,42 @@ export default function DETs() {
   const isDateUnavailable = (date: DateValue) => {
     const dateStr = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
     return !availableDatesSet.has(dateStr);
+  };
+
+  // Edit mode handlers
+  const handleEdit = () => {
+    if (selectedDET) {
+      setEditedDET({ ...selectedDET });
+      setIsEditing(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedDET(null);
+  };
+
+  const handleSave = async () => {
+    if (!editedDET) return;
+
+    try {
+      setIsSaving(true);
+      await saveDET(editedDET);
+      setSelectedDET(editedDET);
+      setIsEditing(false);
+      setEditedDET(null);
+    } catch (error) {
+      console.error("Failed to save DET:", error);
+      alert("Failed to save DET. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateField = <K extends keyof DET>(field: K, value: DET[K]) => {
+    if (editedDET) {
+      setEditedDET({ ...editedDET, [field]: value });
+    }
   };
 
   // Render species count section
@@ -83,8 +128,8 @@ export default function DETs() {
     <div className="flex-1 space-y-4">
       {/* // DET Overview Card */}
       <Card className="">
-        <CardHeader className="flex gap-3">
-          <div className="flex flex-col">
+        <CardHeader className="flex gap-3 justify-between items-start">
+          <div className="flex flex-col flex-1">
             <p className="text-2xl font-semibold">DET for {selectedDET.date}</p>
             <div className="flex gap-2 mt-2">
               <Chip color="primary" variant="flat">
@@ -98,21 +143,68 @@ export default function DETs() {
               </Chip>
             </div>
           </div>
+          {isAdmin && (
+            <div className="flex gap-2">
+              {isEditing ? (
+                <>
+                  <Button color="default" variant="flat" onPress={handleCancelEdit} isDisabled={isSaving}>
+                    Cancel
+                  </Button>
+                  <Button color="primary" onPress={handleSave} isLoading={isSaving}>
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <Button color="primary" variant="flat" onPress={handleEdit}>
+                  Edit
+                </Button>
+              )}
+            </div>
+          )}
         </CardHeader>
         <Divider />
         <CardBody className="gap-4">
           <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-gray-500">Bander in Charge</p>
-              <p className="font-medium">{selectedDET.banderInCharge || <span className="text-gray-400">—</span>}</p>
+              {isEditing && editedDET ? (
+                <Input
+                  value={editedDET.banderInCharge || ""}
+                  onValueChange={(value) => updateField("banderInCharge", value)}
+                  size="sm"
+                  variant="bordered"
+                />
+              ) : (
+                <p className="font-medium">{selectedDET.banderInCharge || <span className="text-gray-400">—</span>}</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-gray-500">Start</p>
-              <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
+              {isEditing && editedDET ? (
+                <Input
+                  value={editedDET.start || ""}
+                  onValueChange={(value) => updateField("start", value)}
+                  size="sm"
+                  variant="bordered"
+                  placeholder="HH:MM"
+                />
+              ) : (
+                <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-gray-500">End</p>
-              <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
+              {isEditing && editedDET ? (
+                <Input
+                  value={editedDET.end || ""}
+                  onValueChange={(value) => updateField("end", value)}
+                  size="sm"
+                  variant="bordered"
+                  placeholder="HH:MM"
+                />
+              ) : (
+                <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
+              )}
             </div>
           </div>
         </CardBody>
@@ -380,15 +472,42 @@ export default function DETs() {
         <CardBody className="gap-3">
           <div>
             <p className="text-sm font-medium mb-1">Narrative</p>
-            <p className="text-sm text-gray-700">{selectedDET.narrative || "—"}</p>
+            {isEditing && editedDET ? (
+              <Textarea
+                value={editedDET.narrative || ""}
+                onValueChange={(value) => updateField("narrative", value)}
+                variant="bordered"
+                minRows={3}
+              />
+            ) : (
+              <p className="text-sm text-gray-700">{selectedDET.narrative || "—"}</p>
+            )}
           </div>
           <div>
             <p className="text-sm font-medium mb-1">Deviations</p>
-            <p className="text-sm text-gray-700">{selectedDET.deviations || "—"}</p>
+            {isEditing && editedDET ? (
+              <Textarea
+                value={editedDET.deviations || ""}
+                onValueChange={(value) => updateField("deviations", value)}
+                variant="bordered"
+                minRows={3}
+              />
+            ) : (
+              <p className="text-sm text-gray-700">{selectedDET.deviations || "—"}</p>
+            )}
           </div>
           <div>
             <p className="text-sm font-medium mb-1">Station Management</p>
-            <p className="text-sm text-gray-700">{selectedDET.stationManagement || "—"}</p>
+            {isEditing && editedDET ? (
+              <Textarea
+                value={editedDET.stationManagement || ""}
+                onValueChange={(value) => updateField("stationManagement", value)}
+                variant="bordered"
+                minRows={3}
+              />
+            ) : (
+              <p className="text-sm text-gray-700">{selectedDET.stationManagement || "—"}</p>
+            )}
           </div>
         </CardBody>
       </Card>
