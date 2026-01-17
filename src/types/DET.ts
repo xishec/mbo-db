@@ -32,7 +32,20 @@ export interface DET {
   DETSpeciesCount: Record<string, number>;
 
   // weather
+  weather?: Weather;
   // Other Flora and Fauna: (Select from Dropdown list)
+}
+
+export interface Weather {
+  temperature?: number; // Celsius
+  temperatureMin?: number;
+  temperatureMax?: number;
+  cloudCoverage?: number; // percentage 0-100
+  precipitation?: number; // mm
+  windSpeed?: number; // km/h
+  windDirection?: string; // N, NE, E, SE, S, SW, W, NW
+  humidity?: number; // percentage
+  description?: string; // Clear, Cloudy, Rain, etc.
 }
 
 export interface Census {

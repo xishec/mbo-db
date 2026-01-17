@@ -4,15 +4,17 @@ import type { DET } from "../../../types/DET";
 import { Calendar, Card, CardBody, CardHeader, Divider, Chip } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
 import SpeciesPopover from "../../SpeciesPopover";
+import { fetchWeatherForDate } from "../../../services/weatherService";
 
 export default function DETs() {
   const { DETsMap } = useData();
   const [selectedDET, setSelectedDET] = useState<DET | null>(null);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(false);
 
   // Get available dates as a Set for quick lookup
   const availableDatesSet = new Set(Object.keys(DETsMap));
 
-  const handleDateChange = (value: DateValue | null) => {
+  const handleDateChange = async (value: DateValue | null) => {
     if (!value) {
       setSelectedDET(null);
       return;
@@ -20,7 +22,22 @@ export default function DETs() {
 
     // Convert the date value to YYYY-MM-DD format
     const dateStr = `${value.year}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
-    setSelectedDET(availableDatesSet.has(dateStr) ? DETsMap[dateStr] : null);
+    const det = availableDatesSet.has(dateStr) ? DETsMap[dateStr] : null;
+
+    if (det && !det.weather) {
+      // Fetch weather data if not already present
+      setIsLoadingWeather(true);
+      const weather = await fetchWeatherForDate(dateStr);
+      if (weather) {
+        // Create a new DET object with weather data
+        setSelectedDET({ ...det, weather });
+      } else {
+        setSelectedDET(det);
+      }
+      setIsLoadingWeather(false);
+    } else {
+      setSelectedDET(det);
+    }
   };
 
   // Function to check if a date is unavailable
@@ -138,6 +155,65 @@ export default function DETs() {
           )}
         </CardBody>
       </Card>
+      {/* // Weather Card */}
+      <Card className="">
+        <CardHeader>
+          <p className="text-lg font-semibold">Weather at MBO</p>
+          {isLoadingWeather && <span className="text-sm text-gray-500 ml-2">Loading...</span>}
+        </CardHeader>
+        <Divider />
+        <CardBody>
+          {selectedDET.weather ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Temperature</p>
+                <p className="font-medium">
+                  {selectedDET.weather.temperatureMin !== undefined && selectedDET.weather.temperatureMax !== undefined ? (
+                    `${selectedDET.weather.temperatureMin.toFixed(1)}°C - ${selectedDET.weather.temperatureMax.toFixed(1)}°C`
+                  ) : (
+                    <span className="text-gray-400">undefined</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Cloud Coverage</p>
+                <p className="font-medium">
+                  {selectedDET.weather.cloudCoverage !== undefined ? (
+                    `${selectedDET.weather.cloudCoverage.toFixed(0)}%`
+                  ) : (
+                    <span className="text-gray-400">undefined</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Precipitation</p>
+                <p className="font-medium">
+                  {selectedDET.weather.precipitation !== undefined ? (
+                    `${selectedDET.weather.precipitation.toFixed(1)} mm`
+                  ) : (
+                    <span className="text-gray-400">undefined</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Wind</p>
+                <p className="font-medium">
+                  {selectedDET.weather.windSpeed !== undefined ? (
+                    <>
+                      {selectedDET.weather.windSpeed.toFixed(1)} km/h
+                      {selectedDET.weather.windDirection && ` ${selectedDET.weather.windDirection}`}
+                    </>
+                  ) : (
+                    <span className="text-gray-400">undefined</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-500">No weather data available</p>
+          )}
+        </CardBody>
+      </Card>
       {/* // Species Counts Card */}
       <Card className="">
         <CardHeader>
@@ -174,7 +250,12 @@ export default function DETs() {
             </div>
           </div>
           <div>
-            {renderSpeciesSection("Census Species", selectedDET.census?.speciesCount || {}, "primary", "No census data")}
+            {renderSpeciesSection(
+              "Census Species",
+              selectedDET.census?.speciesCount || {},
+              "primary",
+              "No census data"
+            )}
           </div>
         </CardBody>
       </Card>
@@ -256,7 +337,9 @@ export default function DETs() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Description</p>
-                    <p className="font-medium">{bird.description || <span className="text-gray-400">undefined</span>}</p>
+                    <p className="font-medium">
+                      {bird.description || <span className="text-gray-400">undefined</span>}
+                    </p>
                   </div>
                 </div>
               </div>
