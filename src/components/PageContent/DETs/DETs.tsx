@@ -1,21 +1,9 @@
 import { useState } from "react";
 import { useData } from "../../../services/useData";
 import type { DET } from "../../../types/DET";
-import {
-  Calendar,
-  Card,
-  CardBody,
-  CardHeader,
-  Divider,
-  Chip,
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "@heroui/react";
+import { Calendar, Card, CardBody, CardHeader, Divider, Chip } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
+import SpeciesPopover from "../../SpeciesPopover";
 
 export default function DETs() {
   const { DETsMap } = useData();
@@ -39,6 +27,39 @@ export default function DETs() {
   const isDateUnavailable = (date: DateValue) => {
     const dateStr = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
     return !availableDatesSet.has(dateStr);
+  };
+
+  // Render species count section
+  const renderSpeciesSection = (
+    title: string,
+    speciesCount: Record<string, number>,
+    chipColor: "default" | "success" | "warning" | "secondary" | "primary",
+    emptyMessage: string
+  ) => {
+    const total = Object.values(speciesCount || {}).reduce((sum, count) => sum + count, 0);
+    const totalSpecies = Object.keys(speciesCount || {}).length;
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-2">
+          <p className="text-sm font-medium">
+            {title}: {totalSpecies} species, {total} individuals
+          </p>
+        </div>
+        {Object.keys(speciesCount || {}).length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(speciesCount || {}).map(([species, count]) => (
+              <SpeciesPopover key={species} speciesCode={species}>
+                <Chip variant="flat" color={chipColor}>
+                  {species}: {count}
+                </Chip>
+              </SpeciesPopover>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">{emptyMessage}</p>
+        )}
+      </div>
+    );
   };
 
   const DETDisplay = selectedDET && (
@@ -79,36 +100,18 @@ export default function DETs() {
       </Card>
       {/* // Net Hours Card */}
       <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Net Hours</p>
+        <CardHeader className="flex justify-between items-center">
+          <p className="text-lg font-semibold">Net Hours : {selectedDET.netHours.total} </p>
         </CardHeader>
         <Divider />
         <CardBody>
           {selectedDET.netHours?.nets && selectedDET.netHours.nets.length > 0 ? (
-            <div className="space-y-2">
-              <Table aria-label="Net hours table" removeWrapper>
-                <TableHeader>
-                  <TableColumn>NET ID</TableColumn>
-                  <TableColumn>HOURS</TableColumn>
-                  <TableColumn>TOTAL</TableColumn>
-                </TableHeader>
-                <TableBody>
-                  {selectedDET.netHours.nets.map((net, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>{net.id}</TableCell>
-                      <TableCell>{net.hours || "—"}</TableCell>
-                      <TableCell>{net.total}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <Divider />
-              <div className="flex justify-between items-center pt-2">
-                <p className="font-semibold">Total Net Hours:</p>
-                <Chip color="success" variant="flat" size="lg">
-                  {selectedDET.netHours.total}
+            <div className="flex flex-wrap gap-2">
+              {selectedDET.netHours.nets.map((net, idx) => (
+                <Chip key={idx} variant="flat" color="primary">
+                  {net.id}: {net.total}
                 </Chip>
-              </div>
+              ))}
             </div>
           ) : (
             <p className="text-gray-500">No net hours recorded</p>
@@ -117,17 +120,22 @@ export default function DETs() {
       </Card>
       {/* // Observer Hours Card */}
       <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Observer Hours</p>
+        <CardHeader className="flex justify-between items-center">
+          <p className="text-lg font-semibold">Observer Hours : {selectedDET.observerHours.total}</p>
         </CardHeader>
         <Divider />
         <CardBody>
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500">Total Observer Hours</p>
-            <Chip color="primary" variant="flat" size="lg">
-              {selectedDET.observerHours.total}
-            </Chip>
-          </div>
+          {selectedDET.observerHours?.observers && selectedDET.observerHours.observers.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {selectedDET.observerHours.observers.map((observer, idx) => (
+                <Chip key={idx} variant="flat" color="secondary">
+                  {observer.name}: {observer.totalHours}
+                </Chip>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No observer info</p>
+          )}
         </CardBody>
       </Card>
       {/* // Species Counts Card */}
@@ -136,35 +144,12 @@ export default function DETs() {
           <p className="text-lg font-semibold">Species Counts</p>
         </CardHeader>
         <Divider />
-        <CardBody className="gap-3">
-          <div>
-            <p className="text-sm font-medium mb-1">Observed</p>
-            <Chip variant="flat">{Object.keys(selectedDET.observedSpeciesCount || {}).length} species</Chip>
-          </div>
-          <div>
-            <p className="text-sm font-medium mb-1">Banded</p>
-            <Chip variant="flat" color="success">
-              {Object.keys(selectedDET.bandedSpeciesCount || {}).length} species
-            </Chip>
-          </div>
-          <div>
-            <p className="text-sm font-medium mb-1">DET</p>
-            <Chip variant="flat" color="warning">
-              {Object.keys(selectedDET.DETSpeciesCount || {}).length} species
-            </Chip>
-          </div>
-          <div>
-            <p className="text-sm font-medium mb-1">Repeats</p>
-            <Chip variant="flat" color="secondary">
-              {Object.keys(selectedDET.repeatSpeciesCount || {}).length} species
-            </Chip>
-          </div>
-          <div>
-            <p className="text-sm font-medium mb-1">Returns</p>
-            <Chip variant="flat" color="primary">
-              {Object.keys(selectedDET.returnSpeciesCount || {}).length} species
-            </Chip>
-          </div>
+        <CardBody className="gap-4">
+          {renderSpeciesSection("Observed", selectedDET.observedSpeciesCount, "default", "No species observed")}
+          {renderSpeciesSection("Banded", selectedDET.bandedSpeciesCount, "success", "No species banded")}
+          {renderSpeciesSection("Repeats", selectedDET.repeatSpeciesCount, "secondary", "No repeat species")}
+          {renderSpeciesSection("Returns", selectedDET.returnSpeciesCount, "primary", "No return species")}
+          {renderSpeciesSection("DET", selectedDET.DETSpeciesCount, "warning", "No DET species")}
         </CardBody>
       </Card>
       {/* // Additional Information Card */}
