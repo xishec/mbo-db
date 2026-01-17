@@ -62,7 +62,7 @@ export default function ExportButton({
     // Convert bird events to CSV rows
     const rows = birdEvents.map((event) => [
       event.programId,
-      event.band?.displayBandGroupId || "",
+      event.band?.bandGroupId || "",
       event.band?.last2digits || "",
       event.species,
       event.date,
