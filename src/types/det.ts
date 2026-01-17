@@ -44,11 +44,11 @@ export interface Census {
 }
 
 export interface Net {
-  name: string;
-  open: string;
-  closed: string;
-  hours: string;
-  multiplier: number;
+  id: string;
+  open?: string;
+  closed?: string;
+  hours?: string;
+  multiplier?: number;
   total: string;
 }
 

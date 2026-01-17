@@ -12,14 +12,14 @@ function parseCSV(content: string): Record<string, string>[] {
   const lines = content.split("\n");
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(",").map(h => h.trim());
+  const headers = lines[0].split(",").map((h) => h.trim());
   const data: Record<string, string>[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
 
-    const values = line.split(",").map(v => v.trim());
+    const values = line.split(",").map((v) => v.trim());
     const row: Record<string, string> = {};
 
     headers.forEach((header, idx) => {
@@ -46,14 +46,14 @@ const speciesRecords = parseCSV(speciesContent);
 const netHoursRecords = parseCSV(netHoursContent);
 
 // Build DETsMap
-const detsMap = new Map<string, DET>();
+const DETsMap = new Map<string, DET>();
 
 // Process daily records
 dailyRecords.forEach((record) => {
   const date = record.DateEx;
   if (!date) return;
 
-  detsMap.set(date, {
+  DETsMap.set(date, {
     date: date,
     programId: record.Program || "",
     location: record.Location || "",
@@ -93,33 +93,33 @@ dailyRecords.forEach((record) => {
 // Process species records
 speciesRecords.forEach((record) => {
   const date = record.DateEx;
-  if (!date || !detsMap.has(date)) return;
+  if (!date || !DETsMap.has(date)) return;
 
-  const det = detsMap.get(date)!;
+  const dMap = DETsMap.get(date)!;
   const species = record.Species;
 
   if (record.Observed && parseInt(record.Observed) > 0) {
-    det.observedSpeciesCount[species] = parseInt(record.Observed);
+    dMap.observedSpeciesCount[species] = parseInt(record.Observed);
   }
 
   if (record.Census && parseInt(record.Census) > 0) {
-    det.census.speciesCount[species] = parseInt(record.Census);
+    dMap.census.speciesCount[species] = parseInt(record.Census);
   }
 
   if (record.Banded && parseInt(record.Banded) > 0) {
-    det.bandedSpeciesCount[species] = parseInt(record.Banded);
+    dMap.bandedSpeciesCount[species] = parseInt(record.Banded);
   }
 
   if (record.Repeats && parseInt(record.Repeats) > 0) {
-    det.repeatSpeciesCount[species] = parseInt(record.Repeats);
+    dMap.repeatSpeciesCount[species] = parseInt(record.Repeats);
   }
 
   if (record.Returns && parseInt(record.Returns) > 0) {
-    det.returnSpeciesCount[species] = parseInt(record.Returns);
+    dMap.returnSpeciesCount[species] = parseInt(record.Returns);
   }
 
   if (record.DET && parseInt(record.DET) > 0) {
-    det.DETSpeciesCount[species] = parseInt(record.DET);
+    dMap.DETSpeciesCount[species] = parseInt(record.DET);
   }
 });
 
@@ -134,43 +134,43 @@ netHoursRecords.forEach((record) => {
   }
 
   netsByDate.get(date)!.push({
-    name: record.NetID || "",
-    open: "",
-    closed: "",
-    hours: record.NetHours || "",
-    multiplier: 1,
+    id: record.NetID || "",
+    open: undefined,
+    closed: undefined,
+    hours: undefined,
+    multiplier: undefined,
     total: record.NetHours || "",
   });
 });
 
 // Add net hours to DETs
 netsByDate.forEach((nets, date) => {
-  if (detsMap.has(date)) {
-    const det = detsMap.get(date)!;
-    det.netHours.nets = nets;
-    
+  if (DETsMap.has(date)) {
+    const dMap = DETsMap.get(date)!;
+    dMap.netHours.nets = nets;
+
     // Calculate total net hours
-    const total = nets.reduce((sum, net) => sum + (parseFloat(net.hours) || 0), 0);
-    det.netHours.total = total.toString();
+    const total = nets.reduce((sum, net) => sum + (parseFloat(net.hours || "0") || 0), 0);
+    dMap.netHours.total = total.toString();
   }
 });
 
 // Remove undefined values from an object (Firebase doesn't accept undefined)
-function removeUndefined(obj: any): any {
+function removeUndefined<T>(obj: T): T {
   if (obj === null || obj === undefined) {
-    return null;
+    return obj as T;
   }
   if (Array.isArray(obj)) {
-    return obj.map(removeUndefined);
+    return obj.map(removeUndefined) as T;
   }
-  if (typeof obj === 'object') {
-    const cleaned: any = {};
+  if (typeof obj === "object") {
+    const cleaned: Record<string, unknown> = {};
     for (const key in obj) {
-      if (obj[key] !== undefined) {
-        cleaned[key] = removeUndefined(obj[key]);
+      if ((obj as Record<string, unknown>)[key] !== undefined) {
+        cleaned[key] = removeUndefined((obj as Record<string, unknown>)[key]);
       }
     }
-    return cleaned;
+    return cleaned as T;
   }
   return obj;
 }
@@ -178,21 +178,21 @@ function removeUndefined(obj: any): any {
 // Upload to RTDB
 async function uploadDETsToRTDB() {
   console.log("Uploading DETs to RTDB...");
-  
+
   // Convert Map to object and remove undefined values
-  const detsObject: Record<string, DET> = {};
-  detsMap.forEach((det, date) => {
-    detsObject[date] = removeUndefined(det);
+  const DETsObject: Record<string, DET> = {};
+  DETsMap.forEach((dMap, date) => {
+    DETsObject[date] = removeUndefined(dMap);
   });
 
   // Write to Firebase
-  await db.ref(`${ENVIRONMENT}/DETsMap`).set(detsObject);
-  
-  console.log(`✅ Uploaded ${detsMap.size} DET records to RTDB at ${ENVIRONMENT}/DETsMap`);
-  
-  // Update metadata
-  await db.ref(`${ENVIRONMENT}/metadata/detsLastModified`).set(Date.now());
-  
+  await db.ref(`${ENVIRONMENT}/DETsMap`).set(DETsObject);
+
+  console.log(`✅ Uploaded ${DETsMap.size} DET records to RTDB at ${ENVIRONMENT}/DETsMap`);
+
+  // Update metadata - triggers DataService to fetch fresh data
+  await db.ref(`${ENVIRONMENT}/metadata/lastModified`).set(Date.now());
+
   console.log("✅ All DETs uploaded successfully!");
   process.exit(0);
 }

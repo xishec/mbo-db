@@ -176,21 +176,21 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               Search
             </Link>
           </NavbarItem>
-          <NavbarItem isActive={activePage === "customers"}>
+          <NavbarItem isActive={activePage === "DETs"}>
             <Link
-              aria-current={activePage === "customers" ? "page" : undefined}
-              color={activePage === "customers" ? "primary" : "foreground"}
+              aria-current={activePage === "DETs" ? "page" : undefined}
+              color={activePage === "DETs" ? "primary" : "foreground"}
               href="#"
               className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
               onClick={(e) => {
                 e.preventDefault();
                 if (!isLoading) {
                   selectProgram(null);
-                  onPageChange("customers");
+                  onPageChange("DETs");
                 }
               }}
             >
-              DET
+              DETs
             </Link>
           </NavbarItem>
           <NavbarItem isActive={activePage === "integrations"}>

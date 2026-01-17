@@ -1,3 +1,5 @@
+import type { DET } from "./DET";
+
 // Database structure types
 export type YearToProgramMap = Record<string, string[]>;
 export type ProgramsMap = Record<string, Program>;
@@ -6,6 +8,7 @@ export type BirdEventsMap = Record<string, BirdEvent>;
 export type BandIdToBirdEventIdsMap = Record<string, string[]>;
 export type BandSizeToBandIdMap = Record<BandSize, string>;
 export type DismissedConflictsMap = Record<string, boolean>;
+export type DETsMap = Record<string, DET>;
 
 export interface Program {
   id: string;
@@ -33,18 +36,18 @@ export class Band {
 
 /**
  * Get the correct bandGroupsMap key for a band
- * 
+ *
  * Business rule: -00 bands belong to the PREVIOUS band group
  * - 2991468-00 and 2991467-99 should be in the SAME group
  * - Both stored under bandGroupsMap["2991467"]
- * 
+ *
  * Examples:
  * - Band 2991468-00: bandGroupId="2991468" → map key "2991467"
  * - Band 2991467-99: bandGroupId="2991467" → map key "2991467"
  */
 export function getBandGroupMapKey(band: Band): string {
   if (band.last2digits !== "00") return band.bandGroupId;
-  
+
   // Subtract 1 and preserve leading zeros (7 digits)
   const numericValue = parseInt(band.bandGroupId, 10) - 1;
   return numericValue.toString().padStart(7, "0");
@@ -169,6 +172,7 @@ export interface DatabaseData {
   magicTable: MagicTable;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
+  DETsMap?: DETsMap;
 }
 
 // Service types
@@ -194,6 +198,7 @@ export interface DataContextType {
   magicTable: MagicTable;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
+  DETsMap: DETsMap;
 
   // Offline support
   isOnline: boolean;

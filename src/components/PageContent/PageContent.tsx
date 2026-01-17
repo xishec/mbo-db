@@ -1,6 +1,7 @@
 import Programs from "./Programs/Programs";
 import Search from "./Search";
 import Home from "./Home";
+import DETs from "./DETs/DETs";
 
 interface PageContentProps {
   activePage: string;
@@ -13,12 +14,7 @@ export default function PageContent({ activePage }: PageContentProps) {
         {activePage === "home" && <Home />}
         {activePage === "programs" && <Programs />}
         {activePage === "search" && <Search />}
-        {activePage === "DET" && (
-          <div className="text-center">
-            <h2 className="text-3xl font-bold mb-4">DET</h2>
-            <p>DET content coming soon...</p>
-          </div>
-        )}
+        {activePage === "DETs" && <DETs />}
         {activePage === "Reports" && (
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-4">Reports</h2>

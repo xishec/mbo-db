@@ -12,6 +12,7 @@ import {
   type CaptureFormData,
   type BirdEvent,
   type DismissedConflictsMap,
+  type DETsMap,
   BandSize,
 } from "../types";
 import { Band, BirdEventType, generateBirdEventId, type Program, getBandGroupMapKey } from "../types";
@@ -54,6 +55,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     {} as Record<BandSize, string>
   );
   const [dismissedConflictsMap, setDismissedConflictsMap] = useState<DismissedConflictsMap>({});
+  const [DETsMap, setDETsMap] = useState<DETsMap>({});
 
   // Load entire alpha/ on mount
   useEffect(() => {
@@ -114,6 +116,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             bandIdToBirdEventIdsMap: Object.keys(data.bandIdToBirdEventIdsMap ?? {}).length,
             birdEventsMap: Object.keys(data.birdEventsMap ?? {}).length,
             bandGroupsMap: Object.keys(data.bandGroupsMap ?? {}).length,
+            DETsMap: Object.keys(data.DETsMap ?? {}).length,
             hasMagicTable: !!data.magicTable,
           };
           logger.info("DataLoad", `Loaded ${CURRENT_ENVIRONMENT}/ data`, loadStats);
@@ -148,6 +151,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       );
       setBandGroupsMap(data.bandGroupsMap ?? {});
       setMagicTable(data.magicTable ?? { pyle: {}, mbo: {} });
+      setDETsMap(data.DETsMap ?? {});
+      console.log("DETsMap loaded:", Object.keys(data.DETsMap ?? {}).length, "entries");
       setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
     };
@@ -992,6 +997,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         magicTable,
         bandSizeToBandIdMap,
         dismissedConflictsMap,
+        DETsMap,
         isOnline,
         pendingCount,
         forceOffline,
