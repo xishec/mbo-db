@@ -15,6 +15,13 @@ export interface DET {
   injuries: Injury[];
   released: Released[];
 
+
+  observedSpeciesCount: Record<string, number>;
+  bandedSpeciesCount: Record<string, number>;
+  repeatSpeciesCount: Record<string, number>;
+  returnSpeciesCount: Record<string, number>;
+  DETSpeciesCount: Record<string, number>;
+
   // weather
   // Other Flora and Fauna: (Select from Dropdown list)
 }
@@ -23,6 +30,7 @@ export interface Census {
   censuser: string;
   start: string;
   end: string;
+  speciesCount: Record<string, number>;
 }
 
 export interface Net {
