@@ -90,9 +90,9 @@ export default function DETs() {
     const totalSpecies = Object.keys(speciesCount || {}).length;
     return (
       <div>
-        <div className="flex justify-between items-center mb-2">
-          <p className="text-sm font-medium">
-            {title}: {totalSpecies} species, {total} individuals
+        <div className="flex justify-between items-center mb-3">
+          <p className="text-sm">
+            {title} ({totalSpecies} species, {total} individuals) :
           </p>
         </div>
         {Object.keys(speciesCount || {}).length > 0 ? (
@@ -113,23 +113,15 @@ export default function DETs() {
   };
 
   const DETDisplay = selectedDET && (
-    <div className="flex-1 space-y-4">
-      {/* // DET Overview Card */}
+    <div className="flex-1">
       <Card className="">
+        {/* Header */}
         <CardHeader className="flex gap-3 justify-between items-start">
           <div className="flex flex-col flex-1">
             <p className="text-2xl font-semibold">DET for {selectedDET.date}</p>
-            <div className="flex gap-2 mt-2">
-              <Chip color="primary" variant="flat">
-                {selectedDET.programId}
-              </Chip>
-              <Chip color="secondary" variant="flat">
-                {selectedDET.location}
-              </Chip>
-              <Chip color="default" variant="flat">
-                Coverage: {selectedDET.coverageCode}
-              </Chip>
-            </div>
+            <p className="text-sm mt-4 mb-2">
+              {selectedDET.programId} - {selectedDET.location} - Coverage: {selectedDET.coverageCode}
+            </p>
           </div>
           {isAdmin && (
             <Button color="primary" variant="flat" onPress={handleEdit}>
@@ -137,31 +129,32 @@ export default function DETs() {
             </Button>
           )}
         </CardHeader>
+
         <Divider />
-        <CardBody className="gap-4">
+
+        {/* Basic Info */}
+        <CardBody className="py-4">
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-gray-500">Bander in Charge</p>
+              <p className="text-sm mb-3">Bander in Charge</p>
               <p className="font-medium">{selectedDET.banderInCharge || <span className="text-gray-400">—</span>}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Start</p>
+              <p className="text-sm mb-3">Start</p>
               <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">End</p>
+              <p className="text-sm mb-3">End</p>
               <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
             </div>
           </div>
         </CardBody>
-      </Card>
-      {/* // Net Hours Card */}
-      <Card className="">
-        <CardHeader className="flex justify-between items-center">
-          <p className="text-lg font-semibold">Net Hours : {selectedDET.netHours.total} </p>
-        </CardHeader>
+
         <Divider />
-        <CardBody>
+
+        {/* Net Hours */}
+        <CardBody className="py-4">
+          <p className="text-lg font-semibold mb-3">Net Hours : {selectedDET.netHours.total}</p>
           {selectedDET.netHours?.nets && selectedDET.netHours.nets.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {selectedDET.netHours.nets.map((net, idx) => (
@@ -174,14 +167,12 @@ export default function DETs() {
             <p className="text-gray-500">No net hours recorded</p>
           )}
         </CardBody>
-      </Card>
-      {/* // Observer Hours Card */}
-      <Card className="">
-        <CardHeader className="flex justify-between items-center">
-          <p className="text-lg font-semibold">Observer Hours : {selectedDET.observerHours.total}</p>
-        </CardHeader>
+
         <Divider />
-        <CardBody>
+
+        {/* Observer Hours */}
+        <CardBody className="py-4">
+          <p className="text-lg font-semibold mb-3">Observer Hours : {selectedDET.observerHours.total}</p>
           {selectedDET.observerHours?.observers && selectedDET.observerHours.observers.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {selectedDET.observerHours.observers.map((observer, idx) => (
@@ -194,19 +185,19 @@ export default function DETs() {
             <p className="text-gray-500">No observer info</p>
           )}
         </CardBody>
-      </Card>
-      {/* // Weather Card */}
-      <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Weather at MBO</p>
-          {isLoadingWeather && <span className="text-sm text-gray-500 ml-2">Loading...</span>}
-        </CardHeader>
+
         <Divider />
-        <CardBody>
+
+        {/* Weather */}
+        <CardBody className="py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <p className="text-lg font-semibold">Weather at MBO</p>
+            {isLoadingWeather && <span className="text-sm text-gray-500">Loading...</span>}
+          </div>
           {selectedDET.weather ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Temperature</p>
+                <p className="text-sm text-gray-500 mb-1">Temperature</p>
                 <p className="font-medium">
                   {selectedDET.weather.temperatureMin !== undefined &&
                   selectedDET.weather.temperatureMax !== undefined ? (
@@ -219,7 +210,7 @@ export default function DETs() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Cloud Coverage</p>
+                <p className="text-sm text-gray-500 mb-1">Cloud Coverage</p>
                 <p className="font-medium">
                   {selectedDET.weather.cloudCoverage !== undefined ? (
                     `${selectedDET.weather.cloudCoverage.toFixed(0)}%`
@@ -229,7 +220,7 @@ export default function DETs() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Precipitation</p>
+                <p className="text-sm text-gray-500 mb-1">Precipitation</p>
                 <p className="font-medium">
                   {selectedDET.weather.precipitation !== undefined ? (
                     `${selectedDET.weather.precipitation.toFixed(1)} mm`
@@ -239,7 +230,7 @@ export default function DETs() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Wind</p>
+                <p className="text-sm text-gray-500 mb-1">Wind</p>
                 <p className="font-medium">
                   {selectedDET.weather.windSpeed !== undefined ? (
                     <>
@@ -256,80 +247,67 @@ export default function DETs() {
             <p className="text-gray-500">No weather data available</p>
           )}
         </CardBody>
-      </Card>
-      {/* // Species Counts Card */}
-      <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Species Counts</p>
-        </CardHeader>
+
         <Divider />
-        <CardBody className="gap-4">
-          {renderSpeciesSection("Observed", selectedDET.observedSpeciesCount, "default", "No species observed")}
-          {renderSpeciesSection("Banded", selectedDET.bandedSpeciesCount, "success", "No species banded")}
-          {renderSpeciesSection("Repeats", selectedDET.repeatSpeciesCount, "secondary", "No repeat species")}
-          {renderSpeciesSection("Returns", selectedDET.returnSpeciesCount, "primary", "No return species")}
-          {renderSpeciesSection("DET", selectedDET.DETSpeciesCount, "warning", "No DET species")}
+
+        {/* Species Counts */}
+        <CardBody className="py-4 space-y-3">
+          <p className="text-lg font-semibold mb-1">Species Counts</p>
+          {renderSpeciesSection("Observed", selectedDET.observedSpeciesCount, "default", "-")}
+          {renderSpeciesSection("Banded", selectedDET.bandedSpeciesCount, "success", "-")}
+          {renderSpeciesSection("Repeats", selectedDET.repeatSpeciesCount, "secondary", "-")}
+          {renderSpeciesSection("Returns", selectedDET.returnSpeciesCount, "primary", "-")}
+          {renderSpeciesSection("DET", selectedDET.DETSpeciesCount, "warning", "-")}
         </CardBody>
-      </Card>
-      {/* // Census Card */}
-      <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Census</p>
-        </CardHeader>
+
         <Divider />
-        <CardBody className="gap-3">
+
+        {/* Census */}
+        <CardBody className="py-4 space-y-3">
+          <p className="text-lg font-semibold mb-1">Census</p>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-gray-500">Censuser</p>
+              <p className="text-sm mb-3">Censuser</p>
               <p className="font-medium">{selectedDET.census?.censuser || <span className="text-gray-400">-</span>}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Start</p>
+              <p className="text-sm mb-3">Start</p>
               <p className="font-medium">{selectedDET.census?.start || <span className="text-gray-400">-</span>}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">End</p>
+              <p className="text-sm mb-3">End</p>
               <p className="font-medium">{selectedDET.census?.end || <span className="text-gray-400">-</span>}</p>
             </div>
           </div>
-          <div>
-            {renderSpeciesSection(
-              "Census Species",
-              selectedDET.census?.speciesCount || {},
-              "primary",
-              "No census data"
-            )}
-          </div>
+          <div>{renderSpeciesSection("Census Species", selectedDET.census?.speciesCount || {}, "primary", "-")}</div>
         </CardBody>
-      </Card>
-      {/* // Injuries Card */}
-      <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Injuries : {selectedDET.injuries?.length || 0}</p>
-        </CardHeader>
+
         <Divider />
-        <CardBody className="gap-3">
+
+        {/* Injuries */}
+        <CardBody className="py-4 space-y-3">
+          <p className="text-lg font-semibold mb-1">Injuries : {selectedDET.injuries?.length || 0}</p>
           {selectedDET.injuries && selectedDET.injuries.length > 0 ? (
             selectedDET.injuries.map((injury, idx) => (
               <div key={idx} className="border-b pb-2 last:border-b-0">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <p className="text-xs text-gray-500">Species</p>
+                    <p className="text-xs text-gray-500 mb-1">Species</p>
                     <SpeciesPopover speciesCode={injury.specie}>
                       <p className="font-medium cursor-pointer hover:text-blue-600">{injury.specie}</p>
                     </SpeciesPopover>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Band ID</p>
+                    <p className="text-xs text-gray-500 mb-1">Band ID</p>
                     <p className="font-medium">{injury.bandId || <span className="text-gray-400">undefined</span>}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Net</p>
+                    <p className="text-xs text-gray-500 mb-1">Net</p>
                     <p className="font-medium">{injury.net || <span className="text-gray-400">undefined</span>}</p>
                   </div>
                 </div>
                 <div className="mt-2">
-                  <p className="text-xs text-gray-500">Description</p>
+                  <p className="text-xs text-gray-500 mb-1">Description</p>
                   <p className="text-sm">{injury.description}</p>
                 </div>
               </div>
@@ -338,48 +316,46 @@ export default function DETs() {
             <p className="text-gray-500">No injuries recorded</p>
           )}
         </CardBody>
-      </Card>
-      {/* // Released Card */}
-      <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Released : {selectedDET.released?.length || 0}</p>
-        </CardHeader>
+
         <Divider />
-        <CardBody className="gap-3">
+
+        {/* Released */}
+        <CardBody className="py-4 space-y-3">
+          <p className="text-lg font-semibold mb-1">Released : {selectedDET.released?.length || 0}</p>
           {selectedDET.released && selectedDET.released.length > 0 ? (
             selectedDET.released.map((bird, idx) => (
               <div key={idx} className="border-b pb-2 last:border-b-0">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <p className="text-xs text-gray-500">Species</p>
+                    <p className="text-xs text-gray-500 mb-1">Species</p>
                     <SpeciesPopover speciesCode={bird.specie}>
                       <p className="font-medium cursor-pointer hover:text-blue-600">{bird.specie}</p>
                     </SpeciesPopover>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Age</p>
+                    <p className="text-xs text-gray-500 mb-1">Age</p>
                     <p className="font-medium">{bird.age || <span className="text-gray-400">undefined</span>}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">How Aged</p>
+                    <p className="text-xs text-gray-500 mb-1">How Aged</p>
                     <p className="font-medium">{bird.howAged || <span className="text-gray-400">undefined</span>}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Sex</p>
+                    <p className="text-xs text-gray-500 mb-1">Sex</p>
                     <p className="font-medium">{bird.sex || <span className="text-gray-400">undefined</span>}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 mt-2">
+                <div className="grid grid-cols-3 gap-3 mt-2">
                   <div>
-                    <p className="text-xs text-gray-500">How Sexed</p>
+                    <p className="text-xs text-gray-500 mb-1">How Sexed</p>
                     <p className="font-medium">{bird.howSexed || <span className="text-gray-400">undefined</span>}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Net</p>
+                    <p className="text-xs text-gray-500 mb-1">Net</p>
                     <p className="font-medium">{bird.net || <span className="text-gray-400">undefined</span>}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Description</p>
+                    <p className="text-xs text-gray-500 mb-1">Description</p>
                     <p className="font-medium">
                       {bird.description || <span className="text-gray-400">undefined</span>}
                     </p>
@@ -391,14 +367,12 @@ export default function DETs() {
             <p className="text-gray-500">No birds released</p>
           )}
         </CardBody>
-      </Card>
-      {/* // Visitors Card */}
-      <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Visitors : {selectedDET.visitors?.length || 0}</p>
-        </CardHeader>
+
         <Divider />
-        <CardBody>
+
+        {/* Visitors */}
+        <CardBody className="py-4">
+          <p className="text-lg font-semibold mb-3">Visitors : {selectedDET.visitors?.length || 0}</p>
           {selectedDET.visitors && selectedDET.visitors.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {selectedDET.visitors.map((visitor, idx) => (
@@ -411,25 +385,23 @@ export default function DETs() {
             <p className="text-gray-500">No visitors recorded</p>
           )}
         </CardBody>
-      </Card>
-      {/* // Notes Card */}
-      <Card className="">
-        <CardHeader>
-          <p className="text-lg font-semibold">Notes</p>
-        </CardHeader>
+
         <Divider />
-        <CardBody className="gap-3">
+
+        {/* Notes */}
+        <CardBody className="py-4 space-y-3">
+          <p className="text-lg font-semibold mb-1">Notes</p>
           <div>
-            <p className="text-sm font-medium mb-1">Narrative</p>
-            <p className="text-sm text-gray-700">{selectedDET.narrative || "—"}</p>
+            <p className="text-sm mb-3">Narrative</p>
+            <p className="text-sm">{selectedDET.narrative || "—"}</p>
           </div>
           <div>
-            <p className="text-sm font-medium mb-1">Deviations</p>
-            <p className="text-sm text-gray-700">{selectedDET.deviations || "—"}</p>
+            <p className="text-sm mb-3">Deviations</p>
+            <p className="text-sm">{selectedDET.deviations || "—"}</p>
           </div>
           <div>
-            <p className="text-sm font-medium mb-1">Station Management</p>
-            <p className="text-sm text-gray-700">{selectedDET.stationManagement || "—"}</p>
+            <p className="text-sm mb-3">Station Management</p>
+            <p className="text-sm">{selectedDET.stationManagement || "—"}</p>
           </div>
         </CardBody>
       </Card>
@@ -437,8 +409,8 @@ export default function DETs() {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="p-4 max-w-7xl mx-auto">
+      <div className="mb-4 flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-bold mb-2">Daily Effort Table (DETs)</h1>
           <p className="text-sm text-gray-500">{availableDatesSet.size} DET entries available</p>
@@ -450,7 +422,7 @@ export default function DETs() {
         )}
       </div>
 
-      <div className="mb-6 flex gap-8 items-start">
+      <div className="mb-4 flex gap-4 items-start">
         <Card className="">
           <CardBody className="p-0">
             <Calendar
