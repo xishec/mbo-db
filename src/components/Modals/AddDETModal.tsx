@@ -125,6 +125,23 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setReturnSpeciesCount({});
       setDETSpeciesCount({});
       setWeather(undefined);
+      
+      // Fetch weather for today when modal opens
+      if (isOpen) {
+        setIsLoadingWeather(true);
+        fetchWeatherForDate(today)
+          .then((fetchedWeather) => {
+            if (fetchedWeather) {
+              setWeather(fetchedWeather);
+            }
+          })
+          .catch((err) => {
+            console.error("Failed to fetch weather:", err);
+          })
+          .finally(() => {
+            setIsLoadingWeather(false);
+          });
+      }
     }
     setError("");
   }, [mode, existingDET, isOpen]);
