@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Modal,
   ModalContent,
@@ -15,6 +15,15 @@ import {
   TableCell,
 } from "@heroui/react";
 import { SPECIES_MAP } from "../../types/species";
+import { DETSpecies } from "../../types/DET";
+
+// Calculate DET species list once outside component - it never changes
+const DET_SPECIES_CODES_SET = new Set(Object.values(DETSpecies) as string[]);
+const DET_SPECIES_LIST = Array.from(DET_SPECIES_CODES_SET)
+  .map((code) => SPECIES_MAP[code])
+  .filter((species): species is NonNullable<typeof species> => species !== undefined)
+  .sort((a, b) => a.code.localeCompare(b.code));
+
 
 interface DETUnifiedSpeciesModalProps {
   isOpen: boolean;
@@ -50,13 +59,40 @@ export default function DETUnifiedSpeciesModal({
     initialReturnSpeciesCount
   );
   const [DETSpeciesCount, setDETSpeciesCount] = useState<Record<string, number>>(initialDETSpeciesCount);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [customSpeciesCodes, setCustomSpeciesCodes] = useState<Set<string>>(new Set());
+  const [newSpeciesCode, setNewSpeciesCode] = useState("");
+  const processedInitialDataRef = useRef(false);
 
   useEffect(() => {
+    if (!isOpen) {
+      processedInitialDataRef.current = false;
+      return;
+    }
+
     setObservedSpeciesCount(initialObservedSpeciesCount);
     setCensusSpeciesCount(initialCensusSpeciesCount);
     setReturnSpeciesCount(initialReturnSpeciesCount);
     setDETSpeciesCount(initialDETSpeciesCount);
+
+    // Only process initial data once when modal opens
+    if (!processedInitialDataRef.current) {
+      // Collect all species codes from the counts to identify custom species
+      const allSpeciesCodes = new Set<string>();
+      Object.keys(initialObservedSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+      Object.keys(initialCensusSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+      Object.keys(initialReturnSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+      Object.keys(initialDETSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+
+      // Find custom species (not in DET enum)
+      const custom = new Set<string>();
+      allSpeciesCodes.forEach((code) => {
+        if (!DET_SPECIES_CODES_SET.has(code)) {
+          custom.add(code);
+        }
+      });
+      setCustomSpeciesCodes(custom);
+      processedInitialDataRef.current = true;
+    }
   }, [
     initialObservedSpeciesCount,
     initialCensusSpeciesCount,
@@ -65,64 +101,114 @@ export default function DETUnifiedSpeciesModal({
     isOpen,
   ]);
 
-  // Get all species and filter by search query
+  // Memoize custom species list - only recalculates when customSpeciesCodes changes
+  const customSpeciesList = useMemo(() => {
+    return Array.from(customSpeciesCodes)
+      .map((code) => {
+        // If it exists in SPECIES_MAP, use that data
+        if (SPECIES_MAP[code]) {
+          return SPECIES_MAP[code];
+        }
+        // Otherwise, create a minimal species object
+        return {
+          code,
+          pseudoSpeciesType: "Species",
+          speciesDescriptionMBO: code,
+          speciesDescriptionCMMN: code,
+          speciesFrench: "",
+          speciesScientific: "",
+        };
+      })
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }, [customSpeciesCodes]);
+
+  // Get all species (DET enum + custom) - only recalculates when custom list changes
   const filteredSpecies = useMemo(() => {
-    const allSpecies = Object.values(SPECIES_MAP);
-    if (!searchQuery.trim()) {
-      return allSpecies;
-    }
-    const query = searchQuery.toLowerCase();
-    return allSpecies.filter(
-      (species) =>
-        species.code.toLowerCase().includes(query) ||
-        species.speciesDescriptionMBO.toLowerCase().includes(query) ||
-        species.speciesDescriptionCMMN.toLowerCase().includes(query)
-    );
-  }, [searchQuery]);
+    return [...DET_SPECIES_LIST, ...customSpeciesList];
+  }, [customSpeciesList]);
 
-  const updateObservedCount = (speciesCode: string, value: string) => {
+  // Memoized function to add custom species
+  const addCustomSpeciesIfNeeded = useCallback((speciesCode: string) => {
+    if (!DET_SPECIES_CODES_SET.has(speciesCode)) {
+      setCustomSpeciesCodes((prev) => {
+        if (!prev.has(speciesCode)) {
+          return new Set([...prev, speciesCode]);
+        }
+        return prev;
+      });
+    }
+  }, []);
+
+  const updateObservedCount = useCallback((speciesCode: string, value: string) => {
     const numValue = value === "" ? 0 : Number(value) || 0;
     if (numValue === 0) {
-      const updated = { ...observedSpeciesCount };
-      delete updated[speciesCode];
-      setObservedSpeciesCount(updated);
+      setObservedSpeciesCount((prev) => {
+        const updated = { ...prev };
+        delete updated[speciesCode];
+        return updated;
+      });
     } else {
-      setObservedSpeciesCount({ ...observedSpeciesCount, [speciesCode]: numValue });
+      setObservedSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
+      addCustomSpeciesIfNeeded(speciesCode);
     }
-  };
+  }, [addCustomSpeciesIfNeeded]);
 
-  const updateCensusCount = (speciesCode: string, value: string) => {
+  const updateCensusCount = useCallback((speciesCode: string, value: string) => {
     const numValue = value === "" ? 0 : Number(value) || 0;
     if (numValue === 0) {
-      const updated = { ...censusSpeciesCount };
-      delete updated[speciesCode];
-      setCensusSpeciesCount(updated);
+      setCensusSpeciesCount((prev) => {
+        const updated = { ...prev };
+        delete updated[speciesCode];
+        return updated;
+      });
     } else {
-      setCensusSpeciesCount({ ...censusSpeciesCount, [speciesCode]: numValue });
+      setCensusSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
+      addCustomSpeciesIfNeeded(speciesCode);
     }
-  };
+  }, [addCustomSpeciesIfNeeded]);
 
-  const updateReturnCount = (speciesCode: string, value: string) => {
+  const updateReturnCount = useCallback((speciesCode: string, value: string) => {
     const numValue = value === "" ? 0 : Number(value) || 0;
     if (numValue === 0) {
-      const updated = { ...returnSpeciesCount };
-      delete updated[speciesCode];
-      setReturnSpeciesCount(updated);
+      setReturnSpeciesCount((prev) => {
+        const updated = { ...prev };
+        delete updated[speciesCode];
+        return updated;
+      });
     } else {
-      setReturnSpeciesCount({ ...returnSpeciesCount, [speciesCode]: numValue });
+      setReturnSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
+      addCustomSpeciesIfNeeded(speciesCode);
     }
-  };
+  }, [addCustomSpeciesIfNeeded]);
 
-  const updateDETCount = (speciesCode: string, value: string) => {
+  const updateDETCount = useCallback((speciesCode: string, value: string) => {
     const numValue = value === "" ? 0 : Number(value) || 0;
     if (numValue === 0) {
-      const updated = { ...DETSpeciesCount };
-      delete updated[speciesCode];
-      setDETSpeciesCount(updated);
+      setDETSpeciesCount((prev) => {
+        const updated = { ...prev };
+        delete updated[speciesCode];
+        return updated;
+      });
     } else {
-      setDETSpeciesCount({ ...DETSpeciesCount, [speciesCode]: numValue });
+      setDETSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
+      addCustomSpeciesIfNeeded(speciesCode);
     }
-  };
+  }, [addCustomSpeciesIfNeeded]);
+
+  const handleAddCustomSpecies = useCallback(() => {
+    const code = newSpeciesCode.trim().toUpperCase();
+    if (!code) return;
+
+    // Check if already exists
+    if (DET_SPECIES_CODES_SET.has(code) || customSpeciesCodes.has(code)) {
+      setNewSpeciesCode("");
+      return;
+    }
+
+    // Add to custom species
+    setCustomSpeciesCodes((prev) => new Set([...prev, code]));
+    setNewSpeciesCode("");
+  }, [newSpeciesCode, customSpeciesCodes]);
 
   const handleSave = () => {
     onSave({
@@ -135,29 +221,50 @@ export default function DETUnifiedSpeciesModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl">
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader>Edit Species Data</ModalHeader>
-            <ModalBody>
+            <ModalHeader className="flex flex-row items-center justify-between p-8 pb-0 font-normal">
+              Edit Species Data
+            </ModalHeader>
+            <ModalBody className="gap-4 px-8 pt-4">
               <div className="flex flex-col gap-4">
-                {/* Search */}
-                <Input
-                  label="Search Species"
-                  value={searchQuery}
-                  onValueChange={setSearchQuery}
-                  variant="bordered"
-                  placeholder="Search by code or name..."
-                  size="sm"
-                />
+                {/* Add Custom Species */}
+                <div className="flex gap-2 items-end">
+                  <Input
+                    value={newSpeciesCode}
+                    onValueChange={setNewSpeciesCode}
+                    variant="bordered"
+                    labelPlacement="outside"
+                    placeholder="Enter custom species code"
+                    size="md"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleAddCustomSpecies();
+                      }
+                    }}
+                  />
+                  <Button
+                    color="primary"
+                    variant="flat"
+                    onPress={handleAddCustomSpecies}
+                    isDisabled={!newSpeciesCode.trim()}
+                    size="md"
+                  >
+                    Add
+                  </Button>
+                </div>
 
                 {/* Table */}
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="p-2 bg-gray-50 border-b text-xs text-gray-600">
-                    Note: Band and Repeat columns are auto-generated and cannot be edited.
-                  </div>
-                  <Table aria-label="Species data entry table" removeWrapper>
+                <div style={{ height: "600px" }}>
+                  <Table
+                    aria-label="Species data entry table"
+                    isVirtualized
+                    maxTableHeight={600}
+                    rowHeight={50}
+                    isHeaderSticky
+                  >
                     <TableHeader>
                       <TableColumn width={200}>Species</TableColumn>
                       <TableColumn width={100}>Obs</TableColumn>
@@ -167,107 +274,112 @@ export default function DETUnifiedSpeciesModal({
                       <TableColumn width={100}>Ret</TableColumn>
                       <TableColumn width={100}>DET</TableColumn>
                     </TableHeader>
-                    <TableBody>
-                      {filteredSpecies.map((species) => (
-                        <TableRow key={species.code}>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-sm">{species.code}</span>
-                              <span className="text-xs text-gray-500">{species.speciesDescriptionMBO}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={String(observedSpeciesCount[species.code] || "")}
-                              onValueChange={(val) => updateObservedCount(species.code, val)}
-                              variant="bordered"
-                              size="sm"
-                              min={0}
-                              classNames={{
-                                input: "text-center",
-                                inputWrapper: "h-9",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={String(censusSpeciesCount[species.code] || "")}
-                              onValueChange={(val) => updateCensusCount(species.code, val)}
-                              variant="bordered"
-                              size="sm"
-                              min={0}
-                              classNames={{
-                                input: "text-center",
-                                inputWrapper: "h-9",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value=""
-                              variant="bordered"
-                              size="sm"
-                              isDisabled
-                              placeholder="—"
-                              classNames={{
-                                input: "text-center",
-                                inputWrapper: "h-9",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value=""
-                              variant="bordered"
-                              size="sm"
-                              isDisabled
-                              placeholder="—"
-                              classNames={{
-                                input: "text-center",
-                                inputWrapper: "h-9",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={String(returnSpeciesCount[species.code] || "")}
-                              onValueChange={(val) => updateReturnCount(species.code, val)}
-                              variant="bordered"
-                              size="sm"
-                              min={0}
-                              classNames={{
-                                input: "text-center",
-                                inputWrapper: "h-9",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={String(DETSpeciesCount[species.code] || "")}
-                              onValueChange={(val) => updateDETCount(species.code, val)}
-                              variant="bordered"
-                              size="sm"
-                              min={0}
-                              classNames={{
-                                input: "text-center",
-                                inputWrapper: "h-9",
-                              }}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                    <TableBody items={filteredSpecies}>
+                      {(species) => {
+                        const code = species.code;
+                        return (
+                          <TableRow key={code}>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-medium text-sm">{code}</span>
+                                {species.speciesDescriptionMBO !== code && (
+                                  <span className="text-xs text-gray-500">{species.speciesDescriptionMBO}</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={String(observedSpeciesCount[code] || "")}
+                                onValueChange={(val) => updateObservedCount(code, val)}
+                                variant="bordered"
+                                size="sm"
+                                min={0}
+                                classNames={{
+                                  input: "text-center",
+                                  inputWrapper: "h-9",
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={String(censusSpeciesCount[code] || "")}
+                                onValueChange={(val) => updateCensusCount(code, val)}
+                                variant="bordered"
+                                size="sm"
+                                min={0}
+                                classNames={{
+                                  input: "text-center",
+                                  inputWrapper: "h-9",
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value=""
+                                variant="bordered"
+                                size="sm"
+                                isDisabled
+                                placeholder="—"
+                                classNames={{
+                                  input: "text-center",
+                                  inputWrapper: "h-9",
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value=""
+                                variant="bordered"
+                                size="sm"
+                                isDisabled
+                                placeholder="—"
+                                classNames={{
+                                  input: "text-center",
+                                  inputWrapper: "h-9",
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={String(returnSpeciesCount[code] || "")}
+                                onValueChange={(val) => updateReturnCount(code, val)}
+                                variant="bordered"
+                                size="sm"
+                                min={0}
+                                classNames={{
+                                  input: "text-center",
+                                  inputWrapper: "h-9",
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={String(DETSpeciesCount[code] || "")}
+                                onValueChange={(val) => updateDETCount(code, val)}
+                                variant="bordered"
+                                size="sm"
+                                min={0}
+                                classNames={{
+                                  input: "text-center",
+                                  inputWrapper: "h-9",
+                                }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }}
                     </TableBody>
                   </Table>
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter>
+            <ModalFooter className="gap-4 p-8 pt-4">
               <Button color="default" variant="flat" onPress={onClose}>
                 Cancel
               </Button>
