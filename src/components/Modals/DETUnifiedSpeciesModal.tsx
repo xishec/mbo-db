@@ -271,7 +271,7 @@ export default function DETUnifiedSpeciesModal({
                     aria-label="Species data entry table"
                     isVirtualized
                     maxTableHeight={600}
-                    rowHeight={50}
+                    rowHeight={60}
                     isHeaderSticky
                     removeWrapper
                     classNames={{
