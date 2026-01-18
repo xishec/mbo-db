@@ -6,6 +6,7 @@ import type { DateValue } from "@internationalized/date";
 import SpeciesPopover from "../../SpeciesPopover";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/AddDETModal";
+import { PencilIcon } from "@heroicons/react/24/outline";
 
 export default function DETs() {
   const { DETsMap, isAdmin, saveDET } = useData();
@@ -124,8 +125,8 @@ export default function DETs() {
             </p>
           </div>
           {isAdmin && (
-            <Button color="primary" variant="flat" onPress={handleEdit}>
-              Edit
+            <Button isIconOnly size="sm" variant="light" onPress={handleEdit}>
+              <PencilIcon className="h-5 w-5" />
             </Button>
           )}
         </CardHeader>
