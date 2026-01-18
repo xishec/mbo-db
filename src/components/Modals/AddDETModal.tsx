@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea, Chip } from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea } from "@heroui/react";
 import type { DET, ObserverHours, NetHours, Injury, Released, Census, Weather } from "../../types/DET";
-import { PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDate } from "../../services/weatherService";
 import DETObserverHoursModal from "./DETObserverHoursModal";
 import DETNetHoursModal from "./DETNetHoursModal";
@@ -215,7 +215,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                 {mode === "create" ? "Add New DET" : "Edit DET"}
               </ModalHeader>
               <ModalBody>
-                <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-4">
                   {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
 
                   {/* Basic Information */}
@@ -259,7 +259,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         placeholder="e.g., 1"
                       />
                       <Input
-                        label="Bander in sCharge"
+                        label="Bander in Charge"
                         value={banderInCharge}
                         onValueChange={setBanderInCharge}
                         variant="bordered"
@@ -442,9 +442,9 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
                   {/* Weather */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">
-                      Weather {isLoadingWeather && <span className="text-sm text-gray-500">(Loading...)</span>}
-                    </h3>
+                    <p className="text-xs text-default-600">
+                      Weather {isLoadingWeather && <span className="text-gray-500">(Loading...)</span>}
+                    </p>
                     <div className="grid grid-cols-3 gap-4">
                       <Input
                         label="Temperature (°C)"
