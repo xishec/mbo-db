@@ -411,10 +411,10 @@ export default function DETs() {
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
-      <div className="mb-4 flex justify-between items-center">
+      <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-bold mb-2">Daily Effort Table (DETs)</h1>
-          <p className="text-sm text-gray-500">{availableDatesSet.size} DET entries available</p>
+          <h1 className="text-2xl font-bold">Daily Effort Tables</h1>
+          <p className="text-xs text-gray-500">{availableDatesSet.size} DET entries available</p>
         </div>
         {isAdmin && (
           <Button color="primary" onPress={handleAddNew}>
