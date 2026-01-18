@@ -6,6 +6,7 @@ import { findBirdEventErrors } from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../ExportButton";
 import SpeciesPopover from "../SpeciesPopover";
+import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface ErrorsModalProps {
   isOpen: boolean;
@@ -79,7 +80,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
         scrollBehavior="inside"
       >
         <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
+          <ModalHeader className={modalHeaderClass}>
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl">Data Errors</h2>
@@ -91,7 +92,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             </div>
           </ModalHeader>
 
-          <ModalBody>
+          <ModalBody className={modalBodyClass}>
             <div className="flex flex-col gap-2">
               {errors.map((error) => (
                 <div key={error.id} className="flex flex-row gap-2">
@@ -132,7 +133,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             </div>
           </ModalBody>
 
-          <ModalFooter className="gap-4 p-8 pt-4">
+          <ModalFooter className={modalFooterClass}>
             {isLoggedIn && isOnline && dismissedCount > 0 && (
               <Button color="primary" variant="bordered" onPress={handleResetDismissedErrors}>
                 Reset Dismissed Errors
@@ -146,7 +147,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                 return acc;
               }, {} as Record<string, string>)}
             />
-            <Button color="primary" onPress={onClose}>
+            <Button {...modalPrimaryButtonProps} onPress={onClose}>
               Close
             </Button>
           </ModalFooter>

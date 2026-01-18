@@ -32,6 +32,14 @@ import {
 } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface AddBirdEventModalProps {
   isOpen: boolean;
@@ -577,7 +585,7 @@ export default function AddBirdEventModal({
           ref={(el) => {
             if (el) inputRefs.current.set(columnKey, el);
           }}
-          variant="bordered"
+          {...modalInputProps}
           color={inputColor || "default"}
           aria-label={column.label}
           type={column.type}
@@ -624,17 +632,19 @@ export default function AddBirdEventModal({
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-row items-center justify-between p-8 pb-0 font-normal">
-              <div className="flex flex-row items-center gap-1 font-bold">
-                {birdEventToModify ? "Modify" : "Add"} Capture
+            <ModalHeader className={modalHeaderClass}>
+              <div className="flex w-full items-center justify-between">
+                <div className="flex flex-row items-center gap-1 font-bold">
+                  {birdEventToModify ? "Modify" : "Add"} Capture
+                </div>
+                {!birdEventToModify && (
+                  <Switch isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
+                    Use current time
+                  </Switch>
+                )}
               </div>
-              {!birdEventToModify && (
-                <Switch isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
-                  Use current time
-                </Switch>
-              )}
             </ModalHeader>
-            <ModalBody className="gap-4 px-8 py-4">
+            <ModalBody className={modalBodyClass}>
               {formData.species.length === 4 && (pyleSpeciesRange || mboSpeciesRange) && (
                 <div className="flex gap-4">
                   <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />
@@ -684,20 +694,20 @@ export default function AddBirdEventModal({
                 </div>
               )}
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="danger" variant="bordered" onPress={handleClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={handleClose}>
                 Cancel
               </Button>
               {!birdEventToModify && (
                 <Button
-                  color="primary"
+                  {...modalPrimaryButtonProps}
                   variant="bordered"
                   onPress={handleSaveAndNext}
                 >
                   Save and Next
                 </Button>
               )}
-              <Button color="primary" onPress={handleSaveAndClose}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSaveAndClose}>
                 Save
               </Button>
             </ModalFooter>

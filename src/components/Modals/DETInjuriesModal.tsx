@@ -11,6 +11,14 @@ import {
 } from "@heroui/react";
 import type { Injury } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface DETInjuriesModalProps {
   isOpen: boolean;
@@ -28,6 +36,7 @@ export default function DETInjuriesModal({
   const [injuries, setInjuries] = useState<Injury[]>(initialInjuries);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInjuries(initialInjuries);
   }, [initialInjuries, isOpen]);
 
@@ -59,8 +68,8 @@ export default function DETInjuriesModal({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader>Edit Injuries</ModalHeader>
-            <ModalBody>
+            <ModalHeader className={modalHeaderClass}>Edit Injuries</ModalHeader>
+            <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
                 <Button
                   startContent={<PlusIcon className="h-4 w-4" />}
@@ -91,29 +100,26 @@ export default function DETInjuriesModal({
                         label="Species"
                         value={injury.specie}
                         onValueChange={(val) => updateInjury(index, "specie", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Band ID"
                         value={injury.bandId || ""}
                         onValueChange={(val) => updateInjury(index, "bandId", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Net"
                         value={injury.net || ""}
                         onValueChange={(val) => updateInjury(index, "net", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Textarea
                         label="Description"
                         value={injury.description}
                         onValueChange={(val) => updateInjury(index, "description", val)}
+                        labelPlacement="outside"
                         variant="bordered"
-                        size="sm"
                         minRows={2}
                       />
                     </div>
@@ -124,11 +130,11 @@ export default function DETInjuriesModal({
                 )}
               </div>
             </ModalBody>
-            <ModalFooter>
-              <Button color="default" variant="flat" onPress={onClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import type { BirdEvent } from "../../types";
+import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface ModificationHistoryModalProps {
   isOpen: boolean;
@@ -43,10 +44,12 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-row items-center gap-1 p-8 pb-0 font-normal">
-              Modification history of band <span className="font-bold">{birdEvent.band?.id}</span>
+            <ModalHeader className={modalHeaderClass}>
+              <div className="flex flex-row items-center gap-1">
+                Modification history of band <span className="font-bold">{birdEvent.band?.id}</span>
+              </div>
             </ModalHeader>
-            <ModalBody className="gap-4 px-8 py-4">
+            <ModalBody className={modalBodyClass}>
               {birdEvents.length > 0 ? (
                 <BirdEventsTable
                   birdEvents={birdEvents}
@@ -59,8 +62,8 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
                 <p>No history found for this band.</p>
               )}
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="primary" onPress={onClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalPrimaryButtonProps} onPress={onClose}>
                 Close
               </Button>
             </ModalFooter>

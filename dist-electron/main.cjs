@@ -2,10 +2,10 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
+import { app, BrowserWindow } from "electron";
+import path from "path";
 var require_main = __commonJS({
-  "main.cjs"(exports, module) {
-    const { app, BrowserWindow } = require("electron");
-    const path = require("path");
+  "main.cjs"() {
     const isDev = process.env.NODE_ENV === "development";
     function createWindow() {
       const mainWindow = new BrowserWindow({
@@ -39,7 +39,6 @@ var require_main = __commonJS({
         app.quit();
       }
     });
-    module.exports = {};
   }
 });
 require_main();

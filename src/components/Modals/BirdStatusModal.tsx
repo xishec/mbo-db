@@ -1,6 +1,13 @@
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from "@heroui/react";
 import { useMemo, useState } from "react";
 import { BIRD_STATUS_CODES, BIRD_STATUS_GROUPS, getCodesForGroup } from "../../types/birdStatus";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface BirdStatusModalProps {
   isOpen: boolean;
@@ -62,10 +69,12 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-row items-center justify-between p-8 pb-0 font-normal">
-              <div className="flex flex-row items-center gap-1 font-bold">Select Bird Status</div>
+            <ModalHeader className={modalHeaderClass}>
+              <div className="flex w-full items-center justify-between">
+                <div className="flex flex-row items-center gap-1 font-bold">Select Bird Status</div>
+              </div>
             </ModalHeader>
-            <ModalBody className="gap-4 px-8 py-4">
+            <ModalBody className={modalBodyClass}>
               {/* Select Group */}
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-foreground-600">Status Category</label>
@@ -74,6 +83,7 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
                   onChange={(e) => handleGroupChange(e.target.value)}
                   placeholder="Select a category"
                   variant="bordered"
+                  size="md"
                   disallowEmptySelection
                   classNames={{
                     value: "text-sm",
@@ -98,6 +108,7 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
                   onChange={(e) => setSelectedStatus(e.target.value)}
                   placeholder="Select a status code"
                   variant="bordered"
+                  size="md"
                   disallowEmptySelection
                   classNames={{
                     value: "text-sm",
@@ -117,11 +128,11 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
                 </Select>
               </div>
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="danger" variant="bordered" onPress={handleCancel}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={handleCancel}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

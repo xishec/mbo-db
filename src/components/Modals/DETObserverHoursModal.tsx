@@ -16,6 +16,14 @@ import {
 } from "@heroui/react";
 import type { ObserverHours, Observer } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface DETObserverHoursModalProps {
   isOpen: boolean;
@@ -117,8 +125,8 @@ export default function DETObserverHoursModal({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader>Edit Observer Hours</ModalHeader>
-            <ModalBody>
+            <ModalHeader className={modalHeaderClass}>Edit Observer Hours</ModalHeader>
+            <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
                 {/* Summary Row */}
                 <div className="border rounded-lg p-3 ">
@@ -131,8 +139,8 @@ export default function DETObserverHoursModal({
                       <Input
                         type="number"
                         value={grandTotal.toFixed(1)}
+                        {...modalInputProps}
                         variant="flat"
-                        size="md"
                         isReadOnly
                         classNames={{
                           input: "text-right",
@@ -159,12 +167,10 @@ export default function DETObserverHoursModal({
                             <Input
                               value={observer.name}
                               onValueChange={(val) => updateObserver(index, "name", val)}
-                              variant="bordered"
-                              size="sm"
+                              {...modalInputProps}
                               placeholder="Enter name"
                               classNames={{
                                 input: "text-sm",
-                                inputWrapper: "h-9",
                               }}
                             />
                           </TableCell>
@@ -172,13 +178,11 @@ export default function DETObserverHoursModal({
                             <Input
                               value={observer.initials}
                               onValueChange={(val) => updateObserver(index, "initials", val.toUpperCase())}
-                              variant="bordered"
-                              size="sm"
+                              {...modalInputProps}
                               placeholder="ABC"
                               maxLength={3}
                               classNames={{
                                 input: "text-sm",
-                                inputWrapper: "h-9",
                               }}
                             />
                           </TableCell>
@@ -187,14 +191,12 @@ export default function DETObserverHoursModal({
                               type="number"
                               value={String(observer.hoursObserved || "")}
                               onValueChange={(val) => updateObserver(index, "hoursObserved", Number(val) || 0)}
-                              variant="bordered"
-                              size="sm"
+                              {...modalInputProps}
                               placeholder="0"
                               step="0.5"
                               min="0"
                               classNames={{
                                 input: "text-sm",
-                                inputWrapper: "h-9",
                               }}
                             />
                           </TableCell>
@@ -209,14 +211,13 @@ export default function DETObserverHoursModal({
                                     updateObserver(index, "class", classVal);
                                   }
                                 }}
-                                variant="bordered"
-                                size="sm"
+                                {...modalInputProps}
                                 placeholder="1-3"
                                 min="1"
                                 max="3"
                                 classNames={{
                                   input: "text-sm text-center",
-                                  inputWrapper: "h-9 w-16",
+                                  inputWrapper: "w-16",
                                 }}
                               />
                               <span className="text-gray-400 text-sm whitespace-nowrap pl-4">=</span>
@@ -226,12 +227,10 @@ export default function DETObserverHoursModal({
                             <Input
                               type="number"
                               value={observer.totalHours.toFixed(1)}
-                              variant="bordered"
-                              size="sm"
+                              {...modalInputProps}
                               isReadOnly
                               classNames={{
                                 input: "text-sm bg-gray-50",
-                                inputWrapper: "h-9",
                               }}
                             />
                           </TableCell>
@@ -265,11 +264,11 @@ export default function DETObserverHoursModal({
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter>
-              <Button color="default" variant="flat" onPress={onClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

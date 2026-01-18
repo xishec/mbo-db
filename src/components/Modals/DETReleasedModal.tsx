@@ -11,6 +11,14 @@ import {
 } from "@heroui/react";
 import type { Released } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface DETReleasedModalProps {
   isOpen: boolean;
@@ -28,6 +36,7 @@ export default function DETReleasedModal({
   const [released, setReleased] = useState<Released[]>(initialReleased);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReleased(initialReleased);
   }, [initialReleased, isOpen]);
 
@@ -58,8 +67,8 @@ export default function DETReleasedModal({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader>Edit Released</ModalHeader>
-            <ModalBody>
+            <ModalHeader className={modalHeaderClass}>Edit Released</ModalHeader>
+            <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
                 <Button
                   startContent={<PlusIcon className="h-4 w-4" />}
@@ -90,50 +99,44 @@ export default function DETReleasedModal({
                         label="Species"
                         value={item.specie}
                         onValueChange={(val) => updateReleased(index, "specie", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Age"
                         value={item.age || ""}
                         onValueChange={(val) => updateReleased(index, "age", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="How Aged"
                         value={item.howAged || ""}
                         onValueChange={(val) => updateReleased(index, "howAged", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Sex"
                         value={item.sex || ""}
                         onValueChange={(val) => updateReleased(index, "sex", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="How Sexed"
                         value={item.howSexed || ""}
                         onValueChange={(val) => updateReleased(index, "howSexed", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Net"
                         value={item.net || ""}
                         onValueChange={(val) => updateReleased(index, "net", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Textarea
                         label="Description"
                         value={item.description || ""}
                         onValueChange={(val) => updateReleased(index, "description", val)}
+                        labelPlacement="outside"
                         variant="bordered"
-                        size="sm"
                         minRows={2}
                       />
                     </div>
@@ -144,11 +147,11 @@ export default function DETReleasedModal({
                 )}
               </div>
             </ModalBody>
-            <ModalFooter>
-              <Button color="default" variant="flat" onPress={onClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

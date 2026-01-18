@@ -1,6 +1,14 @@
 import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
 import { useState } from "react";
 import { useData } from "../../services/useData";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface AddProgramModalProps {
   isOpen: boolean;
@@ -43,17 +51,16 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
   return (
     <Modal isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
+        <ModalHeader className={modalHeaderClass}>
           <h2 className="text-2xl font-bold">Add New Program</h2>
           <p className="text-sm font-normal">Enter a display name and year for the new program</p>
         </ModalHeader>
-        <ModalBody className="gap-4 px-8 py-4">
+        <ModalBody className={modalBodyClass}>
           <Input
             label="Year"
             placeholder="Enter year"
-            variant="bordered"
             value={year}
-            labelPlacement="outside"
+            {...modalInputProps}
             onChange={(e) => setYear(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && displayName.trim() && year.trim()) {
@@ -66,9 +73,8 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
           <Input
             label="Display Name"
             placeholder="Enter display name (e.g., MBO Fall Migration)"
-            variant="bordered"
             value={displayName}
-            labelPlacement="outside"
+            {...modalInputProps}
             onChange={(e) => {
               setDisplayName(e.target.value);
               setError("");
@@ -84,10 +90,9 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
             errorMessage={error}
           />
         </ModalBody>
-        <ModalFooter className="gap-4 p-8 pt-4">
+        <ModalFooter className={modalFooterClass}>
           <Button
-            color="danger"
-            variant="bordered"
+            {...modalCancelButtonProps}
             onPress={() => onOpenChange(false)}
             className="flex-1"
             isDisabled={isLoading}
@@ -95,7 +100,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
             Cancel
           </Button>
           <Button
-            color="primary"
+            {...modalPrimaryButtonProps}
             onPress={handleSubmit}
             isDisabled={!displayName.trim() || !year.trim()}
             isLoading={isLoading}

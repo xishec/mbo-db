@@ -1,5 +1,5 @@
-const { app, BrowserWindow } = require("electron");
-const path = require("path");
+import { app, BrowserWindow } from "electron";
+import path from "path";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -44,5 +44,4 @@ app.on("window-all-closed", () => {
   }
 });
 
-// Prevent default export in CJS build
-module.exports = {};
+export {};

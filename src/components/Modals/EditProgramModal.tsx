@@ -2,6 +2,14 @@ import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader
 import { useState, useEffect, useMemo } from "react";
 import { useData } from "../../services/useData";
 import type { Program } from "../../types";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface EditProgramModalProps {
   isOpen: boolean;
@@ -62,7 +70,7 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
   return (
     <Modal isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
+        <ModalHeader className={modalHeaderClass}>
           <h2 className="text-2xl font-bold">Edit Program</h2>
           <p className="text-sm font-normal">Update the display name for this program</p>
           {program && (
@@ -71,13 +79,12 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
             </p>
           )}
         </ModalHeader>
-        <ModalBody className="gap-4 px-8 py-4">
+        <ModalBody className={modalBodyClass}>
           <Input
             label="Display Name"
             placeholder="Enter display name (e.g., MBO Fall Migration)"
-            variant="bordered"
             value={displayName}
-            labelPlacement="outside"
+            {...modalInputProps}
             onChange={(e) => {
               setDisplayName(e.target.value);
               setError("");
@@ -93,12 +100,12 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
             errorMessage={error || (isDuplicate ? "A program with this display name already exists" : "")}
           />
         </ModalBody>
-        <ModalFooter className="gap-4 p-8 pt-4">
-          <Button color="danger" variant="bordered" onPress={handleClose} className="flex-1" isDisabled={isLoading}>
+        <ModalFooter className={modalFooterClass}>
+          <Button {...modalCancelButtonProps} onPress={handleClose} className="flex-1" isDisabled={isLoading}>
             Cancel
           </Button>
           <Button
-            color="primary"
+            {...modalPrimaryButtonProps}
             onPress={handleSubmit}
             isDisabled={!displayName.trim() || !hasChanged || isDuplicate || !isOnline}
             isLoading={isLoading}

@@ -20,6 +20,13 @@ import {
 } from "@heroui/react";
 import { logger, LogLevel, type LogEntry } from "../../services/logger";
 import { useData } from "../../services/useData";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface DeveloperModalProps {
   isOpen: boolean;
@@ -115,7 +122,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
   return (
     <Modal isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
+        <ModalHeader className={modalHeaderClass}>
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl">Developer Mode</h2>
@@ -138,18 +145,18 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
           </div>
         </ModalHeader>
 
-        <ModalBody>
+        <ModalBody className={modalBodyClass}>
           <div className="flex gap-2 mb-4">
             <Input
               placeholder="Search logs..."
               value={searchQuery}
               onValueChange={setSearchQuery}
               className="flex-1"
-              size="sm"
+              {...modalInputProps}
             />
             <Select
               label="Level"
-              size="sm"
+              size="md"
               className="w-40"
               selectedKeys={levelFilter}
               onSelectionChange={(keys) => setLevelFilter(keys as Set<string>)}
@@ -163,7 +170,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
             </Select>
             <Select
               label="Category"
-              size="sm"
+              size="md"
               className="w-48"
               selectedKeys={categoryFilter}
               onSelectionChange={(keys) => setCategoryFilter(keys as Set<string>)}
@@ -263,14 +270,14 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
           </Tabs>
         </ModalBody>
 
-        <ModalFooter className="gap-4 p-8 pt-4">
-          <Button color="danger" variant="light" onPress={handleClearLogs}>
+        <ModalFooter className={modalFooterClass}>
+          <Button color="danger" variant="bordered" size="md" onPress={handleClearLogs}>
             Clear Logs
           </Button>
-          <Button color="primary" variant="light" onPress={handleExportLogs}>
+          <Button color="primary" variant="flat" size="md" onPress={handleExportLogs}>
             Export JSON
           </Button>
-          <Button color="primary" onPress={onClose}>
+          <Button {...modalPrimaryButtonProps} onPress={onClose}>
             Close
           </Button>
         </ModalFooter>

@@ -16,6 +16,14 @@ import {
 } from "@heroui/react";
 import { SPECIES_MAP } from "../../types/species";
 import { DETSpecies } from "../../types/DET";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 // Calculate DET species list once outside component - it never changes
 const DET_SPECIES_CODES_SET = new Set(Object.values(DETSpecies) as string[]);
@@ -69,10 +77,12 @@ export default function DETUnifiedSpeciesModal({
       return;
     }
 
+    /* eslint-disable react-hooks/set-state-in-effect */
     setObservedSpeciesCount(initialObservedSpeciesCount);
     setCensusSpeciesCount(initialCensusSpeciesCount);
     setReturnSpeciesCount(initialReturnSpeciesCount);
     setDETSpeciesCount(initialDETSpeciesCount);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Only process initial data once when modal opens
     if (!processedInitialDataRef.current) {
@@ -225,20 +235,18 @@ export default function DETUnifiedSpeciesModal({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-row items-center justify-between p-8 pb-0 font-normal">
+            <ModalHeader className={modalHeaderClass}>
               Edit Species Data
             </ModalHeader>
-            <ModalBody className="gap-4 px-8 pt-4">
+            <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
                 {/* Add Custom Species */}
                 <div className="flex gap-2 items-end">
                   <Input
                     value={newSpeciesCode}
                     onValueChange={setNewSpeciesCode}
-                    variant="bordered"
-                    labelPlacement="outside"
+                    {...modalInputProps}
                     placeholder="Enter custom species code"
-                    size="md"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         handleAddCustomSpecies();
@@ -292,12 +300,10 @@ export default function DETUnifiedSpeciesModal({
                                 type="number"
                                 value={String(observedSpeciesCount[code] || "")}
                                 onValueChange={(val) => updateObservedCount(code, val)}
-                                variant="bordered"
-                                size="sm"
+                                {...modalInputProps}
                                 min={0}
                                 classNames={{
                                   input: "text-center",
-                                  inputWrapper: "h-9",
                                 }}
                               />
                             </TableCell>
@@ -306,12 +312,10 @@ export default function DETUnifiedSpeciesModal({
                                 type="number"
                                 value={String(censusSpeciesCount[code] || "")}
                                 onValueChange={(val) => updateCensusCount(code, val)}
-                                variant="bordered"
-                                size="sm"
+                                {...modalInputProps}
                                 min={0}
                                 classNames={{
                                   input: "text-center",
-                                  inputWrapper: "h-9",
                                 }}
                               />
                             </TableCell>
@@ -319,13 +323,11 @@ export default function DETUnifiedSpeciesModal({
                               <Input
                                 type="number"
                                 value=""
-                                variant="bordered"
-                                size="sm"
+                                {...modalInputProps}
                                 isDisabled
                                 placeholder="—"
                                 classNames={{
                                   input: "text-center",
-                                  inputWrapper: "h-9",
                                 }}
                               />
                             </TableCell>
@@ -333,13 +335,11 @@ export default function DETUnifiedSpeciesModal({
                               <Input
                                 type="number"
                                 value=""
-                                variant="bordered"
-                                size="sm"
+                                {...modalInputProps}
                                 isDisabled
                                 placeholder="—"
                                 classNames={{
                                   input: "text-center",
-                                  inputWrapper: "h-9",
                                 }}
                               />
                             </TableCell>
@@ -348,12 +348,10 @@ export default function DETUnifiedSpeciesModal({
                                 type="number"
                                 value={String(returnSpeciesCount[code] || "")}
                                 onValueChange={(val) => updateReturnCount(code, val)}
-                                variant="bordered"
-                                size="sm"
+                                {...modalInputProps}
                                 min={0}
                                 classNames={{
                                   input: "text-center",
-                                  inputWrapper: "h-9",
                                 }}
                               />
                             </TableCell>
@@ -362,12 +360,10 @@ export default function DETUnifiedSpeciesModal({
                                 type="number"
                                 value={String(DETSpeciesCount[code] || "")}
                                 onValueChange={(val) => updateDETCount(code, val)}
-                                variant="bordered"
-                                size="sm"
+                                {...modalInputProps}
                                 min={0}
                                 classNames={{
                                   input: "text-center",
-                                  inputWrapper: "h-9",
                                 }}
                               />
                             </TableCell>
@@ -379,11 +375,11 @@ export default function DETUnifiedSpeciesModal({
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="default" variant="flat" onPress={onClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

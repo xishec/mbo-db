@@ -10,6 +10,14 @@ import {
   Textarea,
 } from "@heroui/react";
 import type { DET } from "../../types/DET";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface AddOrEditDETModalProps {
   isOpen: boolean;
@@ -131,10 +139,10 @@ export default function AddOrEditDETModal({ isOpen, onOpenChange, onSave, existi
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">
+            <ModalHeader className={modalHeaderClass}>
               {mode === "create" ? "Add New DET" : "Edit DET"}
             </ModalHeader>
-            <ModalBody>
+            <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
                 {error && (
                   <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">
@@ -144,67 +152,68 @@ export default function AddOrEditDETModal({ isOpen, onOpenChange, onSave, existi
 
                 <Input
                   label="Date"
+                  {...modalInputProps}
                   type="date"
                   value={date}
                   onValueChange={setDate}
                   isRequired
                   isDisabled={mode === "edit"} // Can't change date when editing
-                  variant="bordered"
                 />
 
                 <Input
                   label="Program ID"
+                    {...modalInputProps}
                   value={programId}
                   onValueChange={setProgramId}
                   isRequired
-                  variant="bordered"
                   placeholder="e.g., FALL2024"
                 />
 
                 <Input
                   label="Location"
+                    {...modalInputProps}
                   value={location}
                   onValueChange={setLocation}
                   isRequired
-                  variant="bordered"
                   placeholder="e.g., MBO"
                 />
 
                 <div className="grid grid-cols-3 gap-4">
                   <Input
                     label="Bander in Charge"
+                    {...modalInputProps}
                     value={banderInCharge}
                     onValueChange={setBanderInCharge}
-                    variant="bordered"
                   />
                   <Input
                     label="Start Time"
+                    {...modalInputProps}
                     type="time"
                     value={start}
                     onValueChange={setStart}
-                    variant="bordered"
                   />
                   <Input
                     label="End Time"
+                    {...modalInputProps}
                     type="time"
                     value={end}
                     onValueChange={setEnd}
-                    variant="bordered"
                   />
                 </div>
 
                 <Input
                   label="Coverage Code"
+                  {...modalInputProps}
                   type="number"
                   value={coverageCode}
                   onValueChange={setCoverageCode}
                   isRequired
-                  variant="bordered"
                   placeholder="e.g., 1"
                 />
 
                 <Textarea
                   label="Narrative"
+                  labelPlacement="outside"
                   value={narrative}
                   onValueChange={setNarrative}
                   variant="bordered"
@@ -214,6 +223,7 @@ export default function AddOrEditDETModal({ isOpen, onOpenChange, onSave, existi
 
                 <Textarea
                   label="Deviations"
+                  labelPlacement="outside"
                   value={deviations}
                   onValueChange={setDeviations}
                   variant="bordered"
@@ -223,6 +233,7 @@ export default function AddOrEditDETModal({ isOpen, onOpenChange, onSave, existi
 
                 <Textarea
                   label="Station Management"
+                  labelPlacement="outside"
                   value={stationManagement}
                   onValueChange={setStationManagement}
                   variant="bordered"
@@ -231,11 +242,11 @@ export default function AddOrEditDETModal({ isOpen, onOpenChange, onSave, existi
                 />
               </div>
             </ModalBody>
-            <ModalFooter>
-              <Button color="default" variant="flat" onPress={onClose} isDisabled={isSaving}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave} isLoading={isSaving}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave} isLoading={isSaving}>
                 {mode === "create" ? "Create DET" : "Save Changes"}
               </Button>
             </ModalFooter>

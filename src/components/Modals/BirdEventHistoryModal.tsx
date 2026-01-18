@@ -5,6 +5,7 @@ import CaptureHistoryModal from "./CaptureHistoryModal";
 import { formatUpdatedAt } from "../PageContent/Programs/Captures/helpers";
 import { MagnifyingGlassIcon } from "@heroicons/react/16/solid";
 import SpeciesPopover from "../SpeciesPopover";
+import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 enum ModificationType {
   Addition = "Added",
@@ -63,7 +64,7 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
         scrollBehavior="inside"
       >
         <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
+          <ModalHeader className={modalHeaderClass}>
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl">Recent History</h2>
@@ -72,7 +73,7 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
             </div>
           </ModalHeader>
 
-          <ModalBody>
+          <ModalBody className={modalBodyClass}>
             <div className="flex flex-col gap-2">
               {birdEvents.map((event) => (
                 <div key={event.id} className="flex flex-row gap-2">
@@ -108,8 +109,8 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
             </div>
           </ModalBody>
 
-          <ModalFooter className="gap-4 p-8 pt-4">
-            <Button color="primary" onPress={onClose}>
+          <ModalFooter className={modalFooterClass}>
+            <Button {...modalPrimaryButtonProps} onPress={onClose}>
               Close
             </Button>
           </ModalFooter>

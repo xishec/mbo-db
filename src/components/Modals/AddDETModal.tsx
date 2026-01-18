@@ -9,6 +9,14 @@ import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
 import DETInjuriesModal from "./DETInjuriesModal";
 import DETReleasedModal from "./DETReleasedModal";
 import DETVisitorsModal from "./DETVisitorsModal";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface AddDETModalProps {
   isOpen: boolean;
@@ -217,10 +225,10 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
+              <ModalHeader className={modalHeaderClass}>
                 {mode === "create" ? "Add New DET" : "Edit DET"}
               </ModalHeader>
-              <ModalBody className="gap-4 px-8 py-4">
+              <ModalBody className={modalBodyClass}>
                 <div className="flex flex-col gap-4">
                   {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
 
@@ -229,95 +237,85 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     <div className="grid grid-cols-2 gap-4">
                       <Input
                         label="Date"
-                        labelPlacement="outside"
+                        {...modalInputProps}
                         type="date"
                         value={date}
                         onValueChange={setDate}
                         isRequired
                         isDisabled={mode === "edit"}
-                        variant="bordered"
                         description={
                           isLoadingWeather ? "Loading weather data..." : weather ? "Weather data loaded" : ""
                         }
                       />
                       <Input
                         label="Program ID"
-                        labelPlacement="outside"
+                        {...modalInputProps}
                         value={programId}
                         onValueChange={setProgramId}
                         isRequired
-                        variant="bordered"
                         placeholder="e.g., FALL2024"
                       />
                       <Input
                         label="Location"
-                        labelPlacement="outside"
+                        {...modalInputProps}
                         value={location}
                         onValueChange={setLocation}
                         isRequired
-                        variant="bordered"
                         placeholder="e.g., MBO"
                       />
                       <Input
                         label="Coverage Code"
+                        {...modalInputProps}
                         type="number"
-                        labelPlacement="outside"
                         value={coverageCode}
                         onValueChange={setCoverageCode}
                         isRequired
-                        variant="bordered"
                         placeholder="e.g., 1"
                       />
                       <Input
                         label="Bander in Charge"
-                        labelPlacement="outside"
+                        {...modalInputProps}
                         value={banderInCharge}
                         onValueChange={setBanderInCharge}
-                        variant="bordered"
                         placeholder="SLS"
                       />
                       <div className="grid grid-cols-2 gap-4">
                         <Input
                           label="Start Time"
-                          labelPlacement="outside"
+                          {...modalInputProps}
                           type="time"
                           value={start}
                           onValueChange={setStart}
-                          variant="bordered"
                         />
                         <Input
                           label="End Time"
+                          {...modalInputProps}
                           type="time"
-                          labelPlacement="outside"
                           value={end}
                           onValueChange={setEnd}
-                          variant="bordered"
                         />
                       </div>
                       <Input
                         label="Censuser"
-                        labelPlacement="outside"
+                        {...modalInputProps}
                         value={censuser}
                         onValueChange={setCensuser}
-                        variant="bordered"
                         placeholder="Censuser name"
                       />
                       <div className="grid grid-cols-2 gap-4">
                         <Input
                           label="Census Start"
-                          labelPlacement="outside"
+                          {...modalInputProps}
                           type="time"
                           value={censusStart}
                           onValueChange={setCensusStart}
-                          variant="bordered"
                         />
                         <Input
                           label="Census End"
-                          labelPlacement="outside"
+                          {...modalInputProps}
                           type="time"
                           value={censusEnd}
                           onValueChange={setCensusEnd}
-                          variant="bordered"
                         />
                       </div>
                     </div>
@@ -523,11 +521,11 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   </div>
                 </div>
               </ModalBody>
-              <ModalFooter className="gap-4 p-8 pt-4">
-                <Button color="default" variant="flat" onPress={onClose} isDisabled={isSaving}>
+              <ModalFooter className={modalFooterClass}>
+                <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
                   Cancel
                 </Button>
-                <Button color="primary" onPress={handleSave} isLoading={isSaving}>
+                <Button {...modalPrimaryButtonProps} onPress={handleSave} isLoading={isSaving}>
                   {mode === "create" ? "Create DET" : "Save Changes"}
                 </Button>
               </ModalFooter>

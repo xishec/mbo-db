@@ -10,6 +10,14 @@ import {
   Chip,
 } from "@heroui/react";
 import { PlusIcon } from "@heroicons/react/24/outline";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface DETVisitorsModalProps {
   isOpen: boolean;
@@ -25,8 +33,10 @@ export default function DETVisitorsModal({ isOpen, onOpenChange, visitors, onSav
   // Sync local state with prop when modal opens
   useEffect(() => {
     if (isOpen) {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setLocalVisitors([...visitors]);
       setNewVisitor("");
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [isOpen, visitors]);
 
@@ -51,15 +61,15 @@ export default function DETVisitorsModal({ isOpen, onOpenChange, visitors, onSav
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader>Edit Visitors</ModalHeader>
-            <ModalBody>
+            <ModalHeader className={modalHeaderClass}>Edit Visitors</ModalHeader>
+            <ModalBody className={modalBodyClass}>
               <div className="space-y-4">
                 <div className="flex gap-2">
                   <Input
                     label="Add Visitor"
                     value={newVisitor}
                     onValueChange={setNewVisitor}
-                    variant="bordered"
+                    {...modalInputProps}
                     className="flex-1"
                     onKeyPress={(e) => e.key === "Enter" && addVisitor()}
                     placeholder="Enter visitor name"
@@ -89,11 +99,11 @@ export default function DETVisitorsModal({ isOpen, onOpenChange, visitors, onSav
                 </div>
               </div>
             </ModalBody>
-            <ModalFooter>
-              <Button color="default" variant="flat" onPress={onClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

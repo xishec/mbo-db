@@ -2,6 +2,14 @@ import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader
 import { useState, useMemo, useRef } from "react";
 import { useData } from "../../services/useData";
 import { BandSize } from "../../types";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface BandSizeSettingModalProps {
   isOpen: boolean;
@@ -80,11 +88,11 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
       <ModalContent>
         {(handleClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
+            <ModalHeader className={modalHeaderClass}>
               <h2 className="text-2xl font-bold">Band Size Settings</h2>
               <p className="text-sm font-normal">Configure band IDs for each band size</p>
             </ModalHeader>
-            <ModalBody className="gap-4 px-8 py-4">
+            <ModalBody className={modalBodyClass}>
               {Object.values(BandSize)
                 .filter((bandSize) => bandSize !== BandSize.Other)
                 .map((bandSize) => {
@@ -102,7 +110,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
                           if (el) inputRefs.current.set(`${bandSize}-bandGroup`, el);
                         }}
                         placeholder="Band Group"
-                        variant="bordered"
+                        {...modalInputProps}
                         color={bandGroupColor}
                         value={bandGroup}
                         onChange={(e) => handleInputChange(bandSize, "bandGroup", e.target.value)}
@@ -120,7 +128,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
                           if (el) inputRefs.current.set(`${bandSize}-bandLastTwoDigits`, el);
                         }}
                         placeholder="Last 2"
-                        variant="bordered"
+                        {...modalInputProps}
                         color={bandLastTwoColor}
                         value={lastTwo}
                         onChange={(e) => handleInputChange(bandSize, "bandLastTwoDigits", e.target.value)}
@@ -136,11 +144,11 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
                   );
                 })}
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="danger" variant="bordered" onPress={handleClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={handleClose}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

@@ -10,6 +10,14 @@ import {
 } from "@heroui/react";
 import type { Census } from "../../types/DET";
 import DETSpeciesModal from "./DETSpeciesModal";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface DETCensusModalProps {
   isOpen: boolean;
@@ -28,6 +36,7 @@ export default function DETCensusModal({
   const [isSpeciesModalOpen, setIsSpeciesModalOpen] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCensus(initialCensus);
   }, [initialCensus, isOpen]);
 
@@ -42,29 +51,29 @@ export default function DETCensusModal({
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader>Edit Census</ModalHeader>
-              <ModalBody>
+              <ModalHeader className={modalHeaderClass}>Edit Census</ModalHeader>
+              <ModalBody className={modalBodyClass}>
                 <div className="flex flex-col gap-4">
                   <div className="grid grid-cols-3 gap-4">
                     <Input
                       label="Censuser"
                       value={census.censuser || ""}
                       onValueChange={(val) => setCensus({ ...census, censuser: val })}
-                      variant="bordered"
+                      {...modalInputProps}
                     />
                     <Input
                       label="Start"
                       type="time"
                       value={census.start || ""}
                       onValueChange={(val) => setCensus({ ...census, start: val })}
-                      variant="bordered"
+                      {...modalInputProps}
                     />
                     <Input
                       label="End"
                       type="time"
                       value={census.end || ""}
                       onValueChange={(val) => setCensus({ ...census, end: val })}
-                      variant="bordered"
+                      {...modalInputProps}
                     />
                   </div>
 
@@ -93,11 +102,11 @@ export default function DETCensusModal({
                   </div>
                 </div>
               </ModalBody>
-              <ModalFooter>
-                <Button color="default" variant="flat" onPress={onClose}>
+              <ModalFooter className={modalFooterClass}>
+                <Button {...modalCancelButtonProps} onPress={onClose}>
                   Cancel
                 </Button>
-                <Button color="primary" onPress={handleSave}>
+                <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                   Save
                 </Button>
               </ModalFooter>

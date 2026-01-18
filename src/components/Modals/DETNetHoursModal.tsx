@@ -2,6 +2,14 @@ import { useState, useEffect, startTransition } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input } from "@heroui/react";
 import type { NetHours, Net } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface DETNetHoursModalProps {
   isOpen: boolean;
@@ -58,21 +66,21 @@ export default function DETNetHoursModal({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader>Edit Net Hours</ModalHeader>
-            <ModalBody className="gap-4 px-8 py-4">
+            <ModalHeader className={modalHeaderClass}>Edit Net Hours</ModalHeader>
+            <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="Hummingbird Trap Total"
                     value={netHours.hummingbirdTrapTotal}
                     onValueChange={(val) => setNetHours({ ...netHours, hummingbirdTrapTotal: val })}
-                    variant="bordered"
+                    {...modalInputProps}
                   />
                   <Input
                     label="Total"
                     value={netHours.total}
                     onValueChange={(val) => setNetHours({ ...netHours, total: val })}
-                    variant="bordered"
+                    {...modalInputProps}
                   />
                 </div>
 
@@ -102,57 +110,51 @@ export default function DETNetHoursModal({
                         label="ID"
                         value={net.id}
                         onValueChange={(val) => updateNet(index, "id", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Open"
                         type="time"
                         value={net.open || ""}
                         onValueChange={(val) => updateNet(index, "open", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Closed"
                         type="time"
                         value={net.closed || ""}
                         onValueChange={(val) => updateNet(index, "closed", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Hours"
                         value={net.hours || ""}
                         onValueChange={(val) => updateNet(index, "hours", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Multiplier"
                         type="number"
                         value={String(net.multiplier || "")}
                         onValueChange={(val) => updateNet(index, "multiplier", Number(val) || undefined)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                       <Input
                         label="Total"
                         value={net.total}
                         onValueChange={(val) => updateNet(index, "total", val)}
-                        variant="bordered"
-                        size="sm"
+                        {...modalInputProps}
                       />
                     </div>
                   </div>
                 ))}
               </div>
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="default" variant="flat" onPress={onClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleSave}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
             </ModalFooter>

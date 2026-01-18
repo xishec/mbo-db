@@ -6,6 +6,7 @@ import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTabl
 import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../ValidationMessages";
 import SpeciesPopover from "../SpeciesPopover";
+import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface CaptureHistoryModalProps {
   isOpen: boolean;
@@ -104,10 +105,12 @@ export default function CaptureHistoryModal({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-row items-center gap-1 p-8 pb-0 font-normal">
-              History of band : <span className="font-bold">{bandId}</span>
+            <ModalHeader className={modalHeaderClass}>
+              <div className="flex flex-row items-center gap-1">
+                History of band : <span className="font-bold">{bandId}</span>
+              </div>
             </ModalHeader>
-            <ModalBody className="gap-4 px-8 py-4">
+            <ModalBody className={modalBodyClass}>
               {birdInfo && (
                 <div className="bg-default-100 rounded-medium p-4 mb-2">
                   <h3 className="text-lg font-semibold mb-3">Bird Information</h3>
@@ -164,8 +167,8 @@ export default function CaptureHistoryModal({
                 <p>No captures found for this band.</p>
               )}
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="primary" onPress={onClose}>
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalPrimaryButtonProps} onPress={onClose}>
                 Close
               </Button>
             </ModalFooter>

@@ -3,6 +3,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import { getQueuedEvents } from "../../services/indexedDB";
 import type { PendingEvent } from "../../types";
+import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface SyncQueueModalProps {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
   return (
     <Modal isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
+        <ModalHeader className={modalHeaderClass}>
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl">Sync Queue</h2>
@@ -40,7 +41,7 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
           </div>
         </ModalHeader>
 
-        <ModalBody>
+        <ModalBody className={modalBodyClass}>
           {birdEvents.length === 0 ? (
             <div className="flex justify-center items-center py-8">
               <p className="text-default-500">No pending events in queue</p>
@@ -53,8 +54,8 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
           )}
         </ModalBody>
 
-        <ModalFooter className="gap-4 p-8 pt-4">
-          <Button color="primary" onPress={onClose}>
+        <ModalFooter className={modalFooterClass}>
+          <Button {...modalPrimaryButtonProps} onPress={onClose}>
             Close
           </Button>
         </ModalFooter>

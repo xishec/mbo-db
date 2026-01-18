@@ -9,6 +9,14 @@ import {
   browserSessionPersistence,
 } from "firebase/auth";
 import { app } from "../../firebase";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalInputProps,
+  modalCancelButtonProps,
+  modalPrimaryButtonProps,
+} from "./modalDefaults";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -144,11 +152,11 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1 p-8 pb-0">
+            <ModalHeader className={modalHeaderClass}>
               <h2 className="text-2xl font-bold">Log in</h2>
               <p className="text-sm font-normal">Enter your credentials to access your account</p>
             </ModalHeader>
-            <ModalBody className="gap-4 px-8 py-4">
+            <ModalBody className={modalBodyClass}>
               {(error || success) && (
                 <div
                   className={`${
@@ -161,9 +169,8 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
               <Input
                 label="Email"
                 placeholder="Enter your email"
-                variant="bordered"
+                {...modalInputProps}
                 value={email}
-                labelPlacement="outside"
                 onChange={(e) => {
                   setEmail(e.target.value.trim());
                   setEmailError("");
@@ -179,9 +186,8 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 label="Password"
                 placeholder="Enter your password"
                 type="password"
-                variant="bordered"
+                {...modalInputProps}
                 value={password}
-                labelPlacement="outside"
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setPasswordError("");
@@ -212,12 +218,12 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                 </Link>
               </div>
             </ModalBody>
-            <ModalFooter className="gap-4 p-8 pt-4">
-              <Button color="danger" variant="bordered" onPress={onClose} className="flex-1">
+            <ModalFooter className={modalFooterClass}>
+              <Button {...modalCancelButtonProps} onPress={onClose} className="flex-1">
                 Cancel
               </Button>
               <Button
-                color="primary"
+                {...modalPrimaryButtonProps}
                 onPress={handleSignIn}
                 isLoading={isLoading}
                 isDisabled={isLoading || !!emailError || !!passwordError}
