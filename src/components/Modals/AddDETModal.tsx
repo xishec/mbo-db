@@ -220,7 +220,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
               <ModalHeader className="flex flex-col gap-1">
                 {mode === "create" ? "Add New DET" : "Edit DET"}
               </ModalHeader>
-              <ModalBody>
+              <ModalBody className="gap-4 px-8 py-4">
                 <div className="flex flex-col gap-4">
                   {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
 
@@ -229,6 +229,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     <div className="grid grid-cols-2 gap-4">
                       <Input
                         label="Date"
+                        labelPlacement="outside"
                         type="date"
                         value={date}
                         onValueChange={setDate}
@@ -241,6 +242,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       />
                       <Input
                         label="Program ID"
+                        labelPlacement="outside"
                         value={programId}
                         onValueChange={setProgramId}
                         isRequired
@@ -249,6 +251,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       />
                       <Input
                         label="Location"
+                        labelPlacement="outside"
                         value={location}
                         onValueChange={setLocation}
                         isRequired
@@ -258,6 +261,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       <Input
                         label="Coverage Code"
                         type="number"
+                        labelPlacement="outside"
                         value={coverageCode}
                         onValueChange={setCoverageCode}
                         isRequired
@@ -266,6 +270,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       />
                       <Input
                         label="Bander in Charge"
+                        labelPlacement="outside"
                         value={banderInCharge}
                         onValueChange={setBanderInCharge}
                         variant="bordered"
@@ -274,15 +279,24 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       <div className="grid grid-cols-2 gap-4">
                         <Input
                           label="Start Time"
+                          labelPlacement="outside"
                           type="time"
                           value={start}
                           onValueChange={setStart}
                           variant="bordered"
                         />
-                        <Input label="End Time" type="time" value={end} onValueChange={setEnd} variant="bordered" />
+                        <Input
+                          label="End Time"
+                          type="time"
+                          labelPlacement="outside"
+                          value={end}
+                          onValueChange={setEnd}
+                          variant="bordered"
+                        />
                       </div>
                       <Input
                         label="Censuser"
+                        labelPlacement="outside"
                         value={censuser}
                         onValueChange={setCensuser}
                         variant="bordered"
@@ -291,6 +305,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       <div className="grid grid-cols-2 gap-4">
                         <Input
                           label="Census Start"
+                          labelPlacement="outside"
                           type="time"
                           value={censusStart}
                           onValueChange={setCensusStart}
@@ -298,6 +313,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         />
                         <Input
                           label="Census End"
+                          labelPlacement="outside"
                           type="time"
                           value={censusEnd}
                           onValueChange={setCensusEnd}
@@ -307,6 +323,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     </div>
                     <Textarea
                       label="Narrative"
+                      labelPlacement="outside"
                       value={narrative}
                       onValueChange={setNarrative}
                       variant="bordered"
@@ -315,6 +332,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     />
                     <Textarea
                       label="Deviations"
+                      labelPlacement="outside"
                       value={deviations}
                       onValueChange={setDeviations}
                       variant="bordered"
@@ -323,6 +341,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     />
                     <Textarea
                       label="Station Management"
+                      labelPlacement="outside"
                       value={stationManagement}
                       onValueChange={setStationManagement}
                       variant="bordered"
@@ -332,177 +351,179 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   </div>
 
                   {/* Observer Hours */}
-                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                    <div>
-                      <p className="text-xs text-default-600">Observer Hours</p>
-                      <p className="text-sm text-gray-600 pt-2">
+                  <div>
+                    <p className="text-small pb-1">Observer Hours</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
                         Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
                       </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsObserverHoursModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
                     </div>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsObserverHoursModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
                   </div>
 
                   {/* Net Hours */}
-                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                    <div>
-                      <p className="text-xs text-default-600">Net Hours</p>
-                      <p className="text-sm text-gray-600 pt-2">
+                  <div>
+                    <p className="text-small pb-1">Net Hours</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
                         Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
                         {netHours.nets.length}
                       </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsNetHoursModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
                     </div>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsNetHoursModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
                   </div>
 
                   {/* Visitors */}
-                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                    <div>
-                      <p className="text-xs text-default-600">Visitors</p>
-                      <p className="text-sm text-gray-600 pt-2">
+                  <div>
+                    <p className="text-small pb-1">Visitors</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
                         {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
                       </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsVisitorsModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
                     </div>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsVisitorsModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
                   </div>
 
                   {/* Unified Species Data Entry */}
-                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                    <div>
-                      <p className="text-xs text-default-600">Species Data (Obs, Cns, Ret, DET)</p>
-                      <div className="text-sm text-gray-600 pt-2 space-y-1">
+                  <div>
+                    <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <div className="text-sm text-gray-600 space-y-1">
                         <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
                         <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
                         <p>Return: {getSpeciesCountSummary(returnSpeciesCount)}</p>
                         <p>DET: {getSpeciesCountSummary(DETSpeciesCount)}</p>
                       </div>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsUnifiedSpeciesModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
                     </div>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsUnifiedSpeciesModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
                   </div>
 
                   {/* Injuries */}
-                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                    <div>
-                      <p className="text-xs text-default-600">Injuries</p>
-                      <p className="text-sm text-gray-600 pt-2">
+                  <div>
+                    <p className="text-small pb-1">Injuries</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
                         {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
                       </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsInjuriesModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
                     </div>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsInjuriesModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
                   </div>
 
                   {/* Released */}
-                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                    <div>
-                      <p className="text-xs text-default-600">Released</p>
-                      <p className="text-sm text-gray-600 pt-2">
+                  <div>
+                    <p className="text-small pb-1">Released</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
                         {released.length} released record{released.length !== 1 ? "s" : ""}
                       </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsReleasedModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
                     </div>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsReleasedModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
                   </div>
 
                   {/* Weather */}
-                  <div className="border rounded-medium border-medium border-default-200 py-2 px-3">
-                    <p className="text-xs text-default-600 mb-2">
+                  <div>
+                    <p className="text-small pb-1">
                       Weather {isLoadingWeather && <span className="text-gray-500">(Loading...)</span>}
                     </p>
-                    {weather ? (
-                      <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm text-gray-600">
-                        {weather.temperature !== undefined && (
-                          <div>
-                            <span className="font-medium">Temperature:</span> {weather.temperature}°C
-                          </div>
-                        )}
-                        {weather.temperatureMin !== undefined && (
-                          <div>
-                            <span className="font-medium">Min Temp:</span> {weather.temperatureMin}°C
-                          </div>
-                        )}
-                        {weather.temperatureMax !== undefined && (
-                          <div>
-                            <span className="font-medium">Max Temp:</span> {weather.temperatureMax}°C
-                          </div>
-                        )}
-                        {weather.cloudCoverage !== undefined && (
-                          <div>
-                            <span className="font-medium">Cloud Coverage:</span> {weather.cloudCoverage}%
-                          </div>
-                        )}
-                        {weather.precipitation !== undefined && (
-                          <div>
-                            <span className="font-medium">Precipitation:</span> {weather.precipitation} mm
-                          </div>
-                        )}
-                        {weather.windSpeed !== undefined && (
-                          <div>
-                            <span className="font-medium">Wind Speed:</span> {weather.windSpeed} km/h
-                          </div>
-                        )}
-                        {weather.windDirection && (
-                          <div>
-                            <span className="font-medium">Wind Direction:</span> {weather.windDirection}
-                          </div>
-                        )}
-                        {weather.humidity !== undefined && (
-                          <div>
-                            <span className="font-medium">Humidity:</span> {weather.humidity}%
-                          </div>
-                        )}
-                        {weather.description && (
-                          <div className="col-span-3">
-                            <span className="font-medium">Description:</span> {weather.description}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">No weather data available</p>
-                    )}
+                    <div className="border rounded-medium border-medium border-default-200 py-2 px-3">
+                      {weather ? (
+                        <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm text-gray-600">
+                          {weather.temperature !== undefined && (
+                            <div>
+                              <span className="font-medium">Temperature:</span> {weather.temperature}°C
+                            </div>
+                          )}
+                          {weather.temperatureMin !== undefined && (
+                            <div>
+                              <span className="font-medium">Min Temp:</span> {weather.temperatureMin}°C
+                            </div>
+                          )}
+                          {weather.temperatureMax !== undefined && (
+                            <div>
+                              <span className="font-medium">Max Temp:</span> {weather.temperatureMax}°C
+                            </div>
+                          )}
+                          {weather.cloudCoverage !== undefined && (
+                            <div>
+                              <span className="font-medium">Cloud Coverage:</span> {weather.cloudCoverage}%
+                            </div>
+                          )}
+                          {weather.precipitation !== undefined && (
+                            <div>
+                              <span className="font-medium">Precipitation:</span> {weather.precipitation} mm
+                            </div>
+                          )}
+                          {weather.windSpeed !== undefined && (
+                            <div>
+                              <span className="font-medium">Wind Speed:</span> {weather.windSpeed} km/h
+                            </div>
+                          )}
+                          {weather.windDirection && (
+                            <div>
+                              <span className="font-medium">Wind Direction:</span> {weather.windDirection}
+                            </div>
+                          )}
+                          {weather.humidity !== undefined && (
+                            <div>
+                              <span className="font-medium">Humidity:</span> {weather.humidity}%
+                            </div>
+                          )}
+                          {weather.description && (
+                            <div className="col-span-3">
+                              <span className="font-medium">Description:</span> {weather.description}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No weather data available</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </ModalBody>
-              <ModalFooter>
+              <ModalFooter className="gap-4 p-8 pt-4">
                 <Button color="default" variant="flat" onPress={onClose} isDisabled={isSaving}>
                   Cancel
                 </Button>
