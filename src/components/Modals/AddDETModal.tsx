@@ -99,7 +99,8 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setWeather(existingDET.weather);
     } else if (mode === "create") {
       // Reset form for new DET
-      setDate("");
+      const today = new Date().toISOString().split("T")[0];
+      setDate(today);
       setProgramId("");
       setLocation("");
       setBanderInCharge("");
@@ -225,9 +226,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className={modalHeaderClass}>
-                {mode === "create" ? "Add New DET" : "Edit DET"}
-              </ModalHeader>
+              <ModalHeader className={modalHeaderClass}>{mode === "create" ? "Add New DET" : "Edit DET"}</ModalHeader>
               <ModalBody className={modalBodyClass}>
                 <div className="flex flex-col gap-4">
                   {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
@@ -287,13 +286,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                           value={start}
                           onValueChange={setStart}
                         />
-                        <Input
-                          label="End Time"
-                          {...modalInputProps}
-                          type="time"
-                          value={end}
-                          onValueChange={setEnd}
-                        />
+                        <Input label="End Time" {...modalInputProps} type="time" value={end} onValueChange={setEnd} />
                       </div>
                       <Input
                         label="Censuser"
@@ -318,145 +311,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                           onValueChange={setCensusEnd}
                         />
                       </div>
-                    </div>
-                    <Textarea
-                      label="Narrative"
-                      labelPlacement="outside"
-                      value={narrative}
-                      onValueChange={setNarrative}
-                      variant="bordered"
-                      minRows={3}
-                      placeholder="Daily narrative..."
-                    />
-                    <Textarea
-                      label="Deviations"
-                      labelPlacement="outside"
-                      value={deviations}
-                      onValueChange={setDeviations}
-                      variant="bordered"
-                      minRows={3}
-                      placeholder="Any deviations from protocol..."
-                    />
-                    <Textarea
-                      label="Station Management"
-                      labelPlacement="outside"
-                      value={stationManagement}
-                      onValueChange={setStationManagement}
-                      variant="bordered"
-                      minRows={3}
-                      placeholder="Station management notes..."
-                    />
-                  </div>
-
-                  {/* Observer Hours */}
-                  <div>
-                    <p className="text-small pb-1">Observer Hours</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsObserverHoursModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Net Hours */}
-                  <div>
-                    <p className="text-small pb-1">Net Hours</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
-                        {netHours.nets.length}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsNetHoursModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Visitors */}
-                  <div>
-                    <p className="text-small pb-1">Visitors</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsVisitorsModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Unified Species Data Entry */}
-                  <div>
-                    <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
-                        <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
-                        <p>Return: {getSpeciesCountSummary(returnSpeciesCount)}</p>
-                        <p>DET: {getSpeciesCountSummary(DETSpeciesCount)}</p>
-                      </div>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsUnifiedSpeciesModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Injuries */}
-                  <div>
-                    <p className="text-small pb-1">Injuries</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsInjuriesModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Released */}
-                  <div>
-                    <p className="text-small pb-1">Released</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        {released.length} released record{released.length !== 1 ? "s" : ""}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsReleasedModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
                     </div>
                   </div>
 
@@ -517,6 +371,148 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       ) : (
                         <p className="text-sm text-gray-500">No weather data available</p>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Observer Hours */}
+                  <div>
+                    <p className="text-small pb-1">Observer Hours</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
+                        Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
+                      </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsObserverHoursModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Net Hours */}
+                  <div>
+                    <p className="text-small pb-1">Net Hours</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
+                        Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
+                        {netHours.nets.length}
+                      </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsNetHoursModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Unified Species Data Entry */}
+                  <div>
+                    <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
+                        <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
+                        <p>Return: {getSpeciesCountSummary(returnSpeciesCount)}</p>
+                        <p>DET: {getSpeciesCountSummary(DETSpeciesCount)}</p>
+                      </div>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsUnifiedSpeciesModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Textarea
+                    label="Narrative"
+                    labelPlacement="outside"
+                    value={narrative}
+                    onValueChange={setNarrative}
+                    variant="bordered"
+                    minRows={3}
+                    placeholder="Daily narrative..."
+                  />
+
+                  <Textarea
+                    label="Deviations"
+                    labelPlacement="outside"
+                    value={deviations}
+                    onValueChange={setDeviations}
+                    variant="bordered"
+                    minRows={3}
+                    placeholder="Any deviations from protocol..."
+                  />
+
+                  {/* Visitors */}
+                  <div>
+                    <p className="text-small pb-1">Visitors</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
+                        {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
+                      </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsVisitorsModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Textarea
+                    label="Station Management"
+                    labelPlacement="outside"
+                    value={stationManagement}
+                    onValueChange={setStationManagement}
+                    variant="bordered"
+                    minRows={3}
+                    placeholder="Station management notes..."
+                  />
+
+                  {/* Injuries */}
+                  <div>
+                    <p className="text-small pb-1">Injuries</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
+                        {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
+                      </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsInjuriesModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Released */}
+                  <div>
+                    <p className="text-small pb-1">Released</p>
+                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                      <p className="text-sm text-gray-600">
+                        {released.length} released record{released.length !== 1 ? "s" : ""}
+                      </p>
+                      <Button
+                        startContent={<PencilIcon className="h-4 w-4" />}
+                        onPress={() => setIsReleasedModalOpen(true)}
+                        color="primary"
+                        variant="light"
+                      >
+                        Edit
+                      </Button>
                     </div>
                   </div>
                 </div>
