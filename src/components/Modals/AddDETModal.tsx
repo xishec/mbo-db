@@ -1,16 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  Input,
-  Textarea,
-  Chip,
-  Divider,
-} from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea, Chip } from "@heroui/react";
 import type { DET, ObserverHours, NetHours, Injury, Released, Census, Weather } from "../../types/DET";
 import { PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDate } from "../../services/weatherService";
@@ -20,6 +9,7 @@ import DETSpeciesModal from "./DETSpeciesModal";
 import DETInjuriesModal from "./DETInjuriesModal";
 import DETReleasedModal from "./DETReleasedModal";
 import DETCensusModal from "./DETCensusModal";
+import DETVisitorsModal from "./DETVisitorsModal";
 
 interface AddDETModalProps {
   isOpen: boolean;
@@ -59,12 +49,12 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   // UI state
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [newVisitor, setNewVisitor] = useState("");
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
 
   // Modal states for complex objects
   const [isObserverHoursModalOpen, setIsObserverHoursModalOpen] = useState(false);
   const [isNetHoursModalOpen, setIsNetHoursModalOpen] = useState(false);
+  const [isVisitorsModalOpen, setIsVisitorsModalOpen] = useState(false);
   const [isObservedSpeciesModalOpen, setIsObservedSpeciesModalOpen] = useState(false);
   const [isBandedSpeciesModalOpen, setIsBandedSpeciesModalOpen] = useState(false);
   const [isRepeatSpeciesModalOpen, setIsRepeatSpeciesModalOpen] = useState(false);
@@ -125,7 +115,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setWeather(undefined);
     }
     setError("");
-    setNewVisitor("");
   }, [mode, existingDET, isOpen]);
 
   // Auto-populate weather when date changes (only in create mode)
@@ -210,17 +199,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   };
 
   // Helper functions
-  const addVisitor = () => {
-    if (newVisitor.trim()) {
-      setVisitors([...visitors, newVisitor.trim()]);
-      setNewVisitor("");
-    }
-  };
-
-  const removeVisitor = (index: number) => {
-    setVisitors(visitors.filter((_, i) => i !== index));
-  };
-
   const getSpeciesCountSummary = (count: Record<string, number>) => {
     const total = Object.values(count).reduce((sum, val) => sum + val, 0);
     const speciesCount = Object.keys(count).length;
@@ -242,7 +220,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
                   {/* Basic Information */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Basic Information</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <Input
                         label="Date"
@@ -325,13 +302,11 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     />
                   </div>
 
-                  <Divider />
-
                   {/* Observer Hours */}
-                  <div className="flex justify-between items-center border rounded-lg p-3">
+                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
                     <div>
-                      <p className="font-medium">Observer Hours</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs text-default-600">Observer Hours</p>
+                      <p className="text-sm text-gray-600 pt-2">
                         Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
                       </p>
                     </div>
@@ -339,73 +314,51 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       startContent={<PencilIcon className="h-4 w-4" />}
                       onPress={() => setIsObserverHoursModalOpen(true)}
                       color="primary"
-                      variant="flat"
+                      variant="light"
                     >
                       Edit
                     </Button>
                   </div>
 
-                  <Divider />
-
                   {/* Net Hours */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold">Net Hours</h3>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsNetHoursModalOpen(true)}
-                        color="primary"
-                        variant="flat"
-                      >
-                        Edits
-                      </Button>
+                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div>
+                      <p className="text-xs text-default-600">Net Hours</p>
+                      <p className="text-sm text-gray-600 pt-2">
+                        Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
+                        {netHours.nets.length}
+                      </p>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
-                      {netHours.nets.length}
-                    </div>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsNetHoursModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
                   </div>
-
-                  <Divider />
 
                   {/* Visitors */}
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold">Visitors</h3>
-                    <div className="flex gap-2">
-                      <Input
-                        label="Add Visitor"
-                        value={newVisitor}
-                        onValueChange={setNewVisitor}
-                        variant="bordered"
-                        size="sm"
-                        className="flex-1"
-                        onKeyPress={(e) => e.key === "Enter" && addVisitor()}
-                      />
-                      <Button
-                        startContent={<PlusIcon className="h-4 w-4" />}
-                        onPress={addVisitor}
-                        color="primary"
-                        className="self-end"
-                        size="sm"
-                      >
-                        Add
-                      </Button>
+                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div>
+                      <p className="text-xs text-default-600">Visitors</p>
+                      <p className="text-sm text-gray-600 pt-2">
+                        {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
+                      </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {visitors.map((visitor, index) => (
-                        <Chip key={index} onClose={() => removeVisitor(index)} variant="flat" color="primary">
-                          {visitor}
-                        </Chip>
-                      ))}
-                      {visitors.length === 0 && <p className="text-sm text-gray-500">No visitors added</p>}
-                    </div>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsVisitorsModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
                   </div>
-
-                  <Divider />
 
                   {/* Species Counts */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Species Counts</h3>
                     {[
                       { title: "Observed Species", data: observedSpeciesCount, setter: setIsObservedSpeciesModalOpen },
                       { title: "Banded Species", data: bandedSpeciesCount, setter: setIsBandedSpeciesModalOpen },
@@ -413,17 +366,19 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       { title: "Return Species", data: returnSpeciesCount, setter: setIsReturnSpeciesModalOpen },
                       { title: "DET Species", data: DETSpeciesCount, setter: setIsDETSpeciesModalOpen },
                     ].map(({ title, data, setter }) => (
-                      <div key={title} className="flex justify-between items-center border rounded-lg p-3">
+                      <div
+                        key={title}
+                        className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3"
+                      >
                         <div>
-                          <p className="font-medium">{title}</p>
-                          <p className="text-sm text-gray-600">{getSpeciesCountSummary(data)}</p>
+                          <p className="text-xs text-default-600">{title}</p>
+                          <p className="text-sm text-gray-600 pt-2">{getSpeciesCountSummary(data)}</p>
                         </div>
                         <Button
                           startContent={<PencilIcon className="h-4 w-4" />}
                           onPress={() => setter(true)}
-                          size="sm"
                           color="primary"
-                          variant="flat"
+                          variant="light"
                         >
                           Edit
                         </Button>
@@ -431,70 +386,59 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     ))}
                   </div>
 
-                  <Divider />
-
                   {/* Injuries */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold">Injuries</h3>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsInjuriesModalOpen(true)}
-                        size="sm"
-                        color="primary"
-                        variant="flat"
-                      >
-                        Edit
-                      </Button>
+                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div>
+                      <p className="text-xs text-default-600">Injuries</p>
+                      <p className="text-sm text-gray-600 pt-2">
+                        {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
+                      </p>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
-                    </div>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsInjuriesModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
                   </div>
-
-                  <Divider />
 
                   {/* Released */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold">Released</h3>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsReleasedModalOpen(true)}
-                        size="sm"
-                        color="primary"
-                        variant="flat"
-                      >
-                        Edit
-                      </Button>
+                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div>
+                      <p className="text-xs text-default-600">Released</p>
+                      <p className="text-sm text-gray-600 pt-2">
+                        {released.length} released record{released.length !== 1 ? "s" : ""}
+                      </p>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      {released.length} released record{released.length !== 1 ? "s" : ""}
-                    </div>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsReleasedModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
                   </div>
-
-                  <Divider />
 
                   {/* Census */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold">Census</h3>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsCensusModalOpen(true)}
-                        size="sm"
-                        color="primary"
-                        variant="flat"
-                      >
-                        Edit
-                      </Button>
+                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div>
+                      <p className="text-xs text-default-600">Census</p>
+                      <p className="text-sm text-gray-600 pt-2">
+                        Censuser: {census.censuser || "—"} | Species: {getSpeciesCountSummary(census.speciesCount)}
+                      </p>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      Censuser: {census.censuser || "—"} | Species: {getSpeciesCountSummary(census.speciesCount)}
-                    </div>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsCensusModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
                   </div>
-
-                  <Divider />
 
                   {/* Weather */}
                   <div className="space-y-4">
@@ -671,6 +615,13 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
         onOpenChange={() => setIsCensusModalOpen(!isCensusModalOpen)}
         census={census}
         onSave={setCensus}
+      />
+
+      <DETVisitorsModal
+        isOpen={isVisitorsModalOpen}
+        onOpenChange={() => setIsVisitorsModalOpen(!isVisitorsModalOpen)}
+        visitors={visitors}
+        onSave={setVisitors}
       />
     </>
   );
