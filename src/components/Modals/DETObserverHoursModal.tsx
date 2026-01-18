@@ -129,7 +129,7 @@ export default function DETObserverHoursModal({
             <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
                 {/* Summary Row */}
-                <div className="border rounded-lg p-3 ">
+                <div className="border rounded-medium border border-default-100 p-3 ">
                   <div className="flex items-center gap-4 w-full">
                     <div className="font-semibold text-sm whitespace-nowrap flex-shrink-0">Total Observer Hours</div>
                     <div className="text-xs text-gray-600 whitespace-nowrap text-center flex-grow min-w-0">
@@ -140,17 +140,14 @@ export default function DETObserverHoursModal({
                         type="number"
                         value={grandTotal.toFixed(1)}
                         {...modalInputProps}
-                        variant="flat"
                         isReadOnly
-                        classNames={{
-                          input: "text-right",
-                        }}
+                        classNames={{ input: "text-right", inputWrapper: "border-none" }}
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="border rounded-lg overflow-hidden">
+                <div className="rounded-medium border border-default-100 overflow-hidden">
                   <Table aria-label="Observer hours table" removeWrapper>
                     <TableHeader>
                       <TableColumn>Observer Name</TableColumn>

@@ -32,7 +32,6 @@ const DET_SPECIES_LIST = Array.from(DET_SPECIES_CODES_SET)
   .filter((species): species is NonNullable<typeof species> => species !== undefined)
   .sort((a, b) => a.code.localeCompare(b.code));
 
-
 interface DETUnifiedSpeciesModalProps {
   isOpen: boolean;
   onOpenChange: () => void;
@@ -57,15 +56,9 @@ export default function DETUnifiedSpeciesModal({
   DETSpeciesCount: initialDETSpeciesCount,
   onSave,
 }: DETUnifiedSpeciesModalProps) {
-  const [observedSpeciesCount, setObservedSpeciesCount] = useState<Record<string, number>>(
-    initialObservedSpeciesCount
-  );
-  const [censusSpeciesCount, setCensusSpeciesCount] = useState<Record<string, number>>(
-    initialCensusSpeciesCount
-  );
-  const [returnSpeciesCount, setReturnSpeciesCount] = useState<Record<string, number>>(
-    initialReturnSpeciesCount
-  );
+  const [observedSpeciesCount, setObservedSpeciesCount] = useState<Record<string, number>>(initialObservedSpeciesCount);
+  const [censusSpeciesCount, setCensusSpeciesCount] = useState<Record<string, number>>(initialCensusSpeciesCount);
+  const [returnSpeciesCount, setReturnSpeciesCount] = useState<Record<string, number>>(initialReturnSpeciesCount);
   const [DETSpeciesCount, setDETSpeciesCount] = useState<Record<string, number>>(initialDETSpeciesCount);
   const [customSpeciesCodes, setCustomSpeciesCodes] = useState<Set<string>>(new Set());
   const [newSpeciesCode, setNewSpeciesCode] = useState("");
@@ -147,61 +140,73 @@ export default function DETUnifiedSpeciesModal({
     }
   }, []);
 
-  const updateObservedCount = useCallback((speciesCode: string, value: string) => {
-    const numValue = value === "" ? 0 : Number(value) || 0;
-    if (numValue === 0) {
-      setObservedSpeciesCount((prev) => {
-        const updated = { ...prev };
-        delete updated[speciesCode];
-        return updated;
-      });
-    } else {
-      setObservedSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
-      addCustomSpeciesIfNeeded(speciesCode);
-    }
-  }, [addCustomSpeciesIfNeeded]);
+  const updateObservedCount = useCallback(
+    (speciesCode: string, value: string) => {
+      const numValue = value === "" ? 0 : Number(value) || 0;
+      if (numValue === 0) {
+        setObservedSpeciesCount((prev) => {
+          const updated = { ...prev };
+          delete updated[speciesCode];
+          return updated;
+        });
+      } else {
+        setObservedSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
+        addCustomSpeciesIfNeeded(speciesCode);
+      }
+    },
+    [addCustomSpeciesIfNeeded]
+  );
 
-  const updateCensusCount = useCallback((speciesCode: string, value: string) => {
-    const numValue = value === "" ? 0 : Number(value) || 0;
-    if (numValue === 0) {
-      setCensusSpeciesCount((prev) => {
-        const updated = { ...prev };
-        delete updated[speciesCode];
-        return updated;
-      });
-    } else {
-      setCensusSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
-      addCustomSpeciesIfNeeded(speciesCode);
-    }
-  }, [addCustomSpeciesIfNeeded]);
+  const updateCensusCount = useCallback(
+    (speciesCode: string, value: string) => {
+      const numValue = value === "" ? 0 : Number(value) || 0;
+      if (numValue === 0) {
+        setCensusSpeciesCount((prev) => {
+          const updated = { ...prev };
+          delete updated[speciesCode];
+          return updated;
+        });
+      } else {
+        setCensusSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
+        addCustomSpeciesIfNeeded(speciesCode);
+      }
+    },
+    [addCustomSpeciesIfNeeded]
+  );
 
-  const updateReturnCount = useCallback((speciesCode: string, value: string) => {
-    const numValue = value === "" ? 0 : Number(value) || 0;
-    if (numValue === 0) {
-      setReturnSpeciesCount((prev) => {
-        const updated = { ...prev };
-        delete updated[speciesCode];
-        return updated;
-      });
-    } else {
-      setReturnSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
-      addCustomSpeciesIfNeeded(speciesCode);
-    }
-  }, [addCustomSpeciesIfNeeded]);
+  const updateReturnCount = useCallback(
+    (speciesCode: string, value: string) => {
+      const numValue = value === "" ? 0 : Number(value) || 0;
+      if (numValue === 0) {
+        setReturnSpeciesCount((prev) => {
+          const updated = { ...prev };
+          delete updated[speciesCode];
+          return updated;
+        });
+      } else {
+        setReturnSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
+        addCustomSpeciesIfNeeded(speciesCode);
+      }
+    },
+    [addCustomSpeciesIfNeeded]
+  );
 
-  const updateDETCount = useCallback((speciesCode: string, value: string) => {
-    const numValue = value === "" ? 0 : Number(value) || 0;
-    if (numValue === 0) {
-      setDETSpeciesCount((prev) => {
-        const updated = { ...prev };
-        delete updated[speciesCode];
-        return updated;
-      });
-    } else {
-      setDETSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
-      addCustomSpeciesIfNeeded(speciesCode);
-    }
-  }, [addCustomSpeciesIfNeeded]);
+  const updateDETCount = useCallback(
+    (speciesCode: string, value: string) => {
+      const numValue = value === "" ? 0 : Number(value) || 0;
+      if (numValue === 0) {
+        setDETSpeciesCount((prev) => {
+          const updated = { ...prev };
+          delete updated[speciesCode];
+          return updated;
+        });
+      } else {
+        setDETSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
+        addCustomSpeciesIfNeeded(speciesCode);
+      }
+    },
+    [addCustomSpeciesIfNeeded]
+  );
 
   const handleAddCustomSpecies = useCallback(() => {
     const code = newSpeciesCode.trim().toUpperCase();
@@ -233,9 +238,7 @@ export default function DETUnifiedSpeciesModal({
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className={modalHeaderClass}>
-              Edit Species Data
-            </ModalHeader>
+            <ModalHeader className={modalHeaderClass}>Edit Species Data</ModalHeader>
             <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
                 {/* Add Custom Species */}
@@ -263,13 +266,17 @@ export default function DETUnifiedSpeciesModal({
                 </div>
 
                 {/* Table */}
-                <div style={{ height: "600px" }}>
+                <div className="overflow-hidden rounded-medium border border-default-100">
                   <Table
                     aria-label="Species data entry table"
                     isVirtualized
                     maxTableHeight={600}
                     rowHeight={50}
                     isHeaderSticky
+                    removeWrapper
+                    classNames={{
+                      wrapper: "rounded-medium",
+                    }}
                   >
                     <TableHeader>
                       <TableColumn width={200}>Species</TableColumn>

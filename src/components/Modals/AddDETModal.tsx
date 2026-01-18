@@ -336,7 +336,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     <p className="text-small pb-1">
                       Weather {isLoadingWeather && <span className="text-gray-500">(Loading...)</span>}
                     </p>
-                    <div className="border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div className="border rounded-medium border border-default-100 py-2 px-3">
                       {weather ? (
                         <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm text-gray-600">
                           {weather.temperature !== undefined && (
@@ -394,7 +394,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Observer Hours */}
                   <div>
                     <p className="text-small pb-1">Observer Hours</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
                       </p>
@@ -412,7 +412,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Net Hours */}
                   <div>
                     <p className="text-small pb-1">Net Hours</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
                         {netHours.nets.length}
@@ -431,7 +431,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Unified Species Data Entry */}
                   <div>
                     <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
                       <div className="text-sm text-gray-600 space-y-1">
                         <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
                         <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
@@ -472,7 +472,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Visitors */}
                   <div>
                     <p className="text-small pb-1">Visitors</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
                       </p>
@@ -500,7 +500,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Injuries */}
                   <div>
                     <p className="text-small pb-1">Injuries</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
                       </p>
@@ -518,7 +518,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Released */}
                   <div>
                     <p className="text-small pb-1">Released</p>
-                    <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         {released.length} released record{released.length !== 1 ? "s" : ""}
                       </p>
