@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Modal,
   ModalContent,
@@ -31,10 +31,6 @@ export default function DETObserverHoursModal({
   onSave,
 }: DETObserverHoursModalProps) {
   const [observerHours, setObserverHours] = useState<ObserverHours>(initialObserverHours);
-
-  useEffect(() => {
-    setObserverHours(initialObserverHours);
-  }, [initialObserverHours, isOpen]);
 
   const addObserver = () => {
     const newObserver: Observer = {
@@ -98,14 +94,6 @@ export default function DETObserverHoursModal({
     return (observerHours.observers || []).reduce((sum, obs) => sum + obs.totalHours, 0);
   }, [observerHours.observers]);
 
-  // Update the total when observers change
-  useEffect(() => {
-    const calculatedTotal = (observerHours.observers || []).reduce((sum, obs) => sum + obs.totalHours, 0);
-    if (calculatedTotal !== observerHours.total) {
-      setObserverHours({ ...observerHours, total: calculatedTotal });
-    }
-  }, [observerHours.observers]);
-
   const handleSave = () => {
     // Ensure total is up to date before saving
     const finalTotal = (observerHours.observers || []).reduce((sum, obs) => sum + obs.totalHours, 0);
@@ -114,20 +102,28 @@ export default function DETObserverHoursModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="4xl" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          // Reset state when modal closes
+          setObserverHours(initialObserverHours);
+        }
+        onOpenChange();
+      }}
+      size="4xl"
+      scrollBehavior="inside"
+    >
       <ModalContent>
         {(onClose) => (
           <>
             <ModalHeader>Edit Observer Hours</ModalHeader>
             <ModalBody>
               <div className="flex flex-col gap-4">
-
                 {/* Summary Row */}
                 <div className="border rounded-lg p-3 ">
                   <div className="flex items-center gap-4 w-full">
-                    <div className="font-semibold text-sm whitespace-nowrap flex-shrink-0">
-                      Total Observer Hours
-                    </div>
+                    <div className="font-semibold text-sm whitespace-nowrap flex-shrink-0">Total Observer Hours</div>
                     <div className="text-xs text-gray-600 whitespace-nowrap text-center flex-grow min-w-0">
                       (Class 1 x 1) + (Class 2 x 0.5) + (Class 3 x 0.33)
                     </div>
@@ -267,8 +263,6 @@ export default function DETObserverHoursModal({
                     Add Observer
                   </Button>
                 </div>
-
-
               </div>
             </ModalBody>
             <ModalFooter>

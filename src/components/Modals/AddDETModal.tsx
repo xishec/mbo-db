@@ -172,7 +172,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setIsSaving(true);
 
       // Clean up weather object - set to undefined if all fields are undefined
-      const cleanedWeather = weather && Object.values(weather).some(val => val !== undefined) ? weather : undefined;
+      const cleanedWeather = weather && Object.values(weather).some((val) => val !== undefined) ? weather : undefined;
 
       // Build complete DET object with all fields
       const det: DET = {
@@ -238,11 +238,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
               </ModalHeader>
               <ModalBody>
                 <div className="flex flex-col gap-6">
-                  {error && (
-                    <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">
-                      {error}
-                    </div>
-                  )}
+                  {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
 
                   {/* Basic Information */}
                   <div className="space-y-4">
@@ -256,7 +252,9 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         isRequired
                         isDisabled={mode === "edit"}
                         variant="bordered"
-                        description={isLoadingWeather ? "Loading weather data..." : weather ? "Weather data loaded" : ""}
+                        description={
+                          isLoadingWeather ? "Loading weather data..." : weather ? "Weather data loaded" : ""
+                        }
                       />
                       <Input
                         label="Program ID"
@@ -298,13 +296,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                           onValueChange={setStart}
                           variant="bordered"
                         />
-                        <Input
-                          label="End Time"
-                          type="time"
-                          value={end}
-                          onValueChange={setEnd}
-                          variant="bordered"
-                        />
+                        <Input label="End Time" type="time" value={end} onValueChange={setEnd} variant="bordered" />
                       </div>
                     </div>
                     <Textarea
@@ -336,21 +328,21 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   <Divider />
 
                   {/* Observer Hours */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold">Observer Hours</h3>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsObserverHoursModalOpen(true)}
-                        color="primary"
-                        variant="flat"
-                      >
-                        Edit
-                      </Button>
+                  <div className="flex justify-between items-center border rounded-lg p-3">
+                    <div>
+                      <p className="font-medium">Observer Hours</p>
+                      <p className="text-sm text-gray-600">
+                        Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
+                      </p>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
-                    </div>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsObserverHoursModalOpen(true)}
+                      color="primary"
+                      variant="flat"
+                    >
+                      Edit
+                    </Button>
                   </div>
 
                   <Divider />
@@ -365,11 +357,12 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         color="primary"
                         variant="flat"
                       >
-                        Edit
+                        Edits
                       </Button>
                     </div>
                     <div className="text-sm text-gray-600">
-                      Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets: {netHours.nets.length}
+                      Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
+                      {netHours.nets.length}
                     </div>
                   </div>
 
@@ -400,18 +393,11 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {visitors.map((visitor, index) => (
-                        <Chip
-                          key={index}
-                          onClose={() => removeVisitor(index)}
-                          variant="flat"
-                          color="primary"
-                        >
+                        <Chip key={index} onClose={() => removeVisitor(index)} variant="flat" color="primary">
                           {visitor}
                         </Chip>
                       ))}
-                      {visitors.length === 0 && (
-                        <p className="text-sm text-gray-500">No visitors added</p>
-                      )}
+                      {visitors.length === 0 && <p className="text-sm text-gray-500">No visitors added</p>}
                     </div>
                   </div>
 
@@ -512,48 +498,62 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
                   {/* Weather */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Weather {isLoadingWeather && <span className="text-sm text-gray-500">(Loading...)</span>}</h3>
+                    <h3 className="text-lg font-semibold">
+                      Weather {isLoadingWeather && <span className="text-sm text-gray-500">(Loading...)</span>}
+                    </h3>
                     <div className="grid grid-cols-3 gap-4">
                       <Input
                         label="Temperature (°C)"
                         type="number"
                         value={weather?.temperature ? String(weather.temperature) : ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), temperature: val ? Number(val) : undefined })}
+                        onValueChange={(val) =>
+                          setWeather({ ...(weather || {}), temperature: val ? Number(val) : undefined })
+                        }
                         variant="bordered"
                       />
                       <Input
                         label="Min Temperature (°C)"
                         type="number"
                         value={weather?.temperatureMin ? String(weather.temperatureMin) : ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), temperatureMin: val ? Number(val) : undefined })}
+                        onValueChange={(val) =>
+                          setWeather({ ...(weather || {}), temperatureMin: val ? Number(val) : undefined })
+                        }
                         variant="bordered"
                       />
                       <Input
                         label="Max Temperature (°C)"
                         type="number"
                         value={weather?.temperatureMax ? String(weather.temperatureMax) : ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), temperatureMax: val ? Number(val) : undefined })}
+                        onValueChange={(val) =>
+                          setWeather({ ...(weather || {}), temperatureMax: val ? Number(val) : undefined })
+                        }
                         variant="bordered"
                       />
                       <Input
                         label="Cloud Coverage (%)"
                         type="number"
                         value={weather?.cloudCoverage ? String(weather.cloudCoverage) : ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), cloudCoverage: val ? Number(val) : undefined })}
+                        onValueChange={(val) =>
+                          setWeather({ ...(weather || {}), cloudCoverage: val ? Number(val) : undefined })
+                        }
                         variant="bordered"
                       />
                       <Input
                         label="Precipitation (mm)"
                         type="number"
                         value={weather?.precipitation ? String(weather.precipitation) : ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), precipitation: val ? Number(val) : undefined })}
+                        onValueChange={(val) =>
+                          setWeather({ ...(weather || {}), precipitation: val ? Number(val) : undefined })
+                        }
                         variant="bordered"
                       />
                       <Input
                         label="Wind Speed (km/h)"
                         type="number"
                         value={weather?.windSpeed ? String(weather.windSpeed) : ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), windSpeed: val ? Number(val) : undefined })}
+                        onValueChange={(val) =>
+                          setWeather({ ...(weather || {}), windSpeed: val ? Number(val) : undefined })
+                        }
                         variant="bordered"
                       />
                       <Input
@@ -567,7 +567,9 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         label="Humidity (%)"
                         type="number"
                         value={weather?.humidity ? String(weather.humidity) : ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), humidity: val ? Number(val) : undefined })}
+                        onValueChange={(val) =>
+                          setWeather({ ...(weather || {}), humidity: val ? Number(val) : undefined })
+                        }
                         variant="bordered"
                       />
                       <Textarea
