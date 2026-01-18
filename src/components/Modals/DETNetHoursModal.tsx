@@ -1,4 +1,4 @@
-import { useState, useEffect, startTransition } from "react";
+import { useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input } from "@heroui/react";
 import type { NetHours, Net } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
@@ -24,13 +24,7 @@ export default function DETNetHoursModal({
   netHours: initialNetHours,
   onSave,
 }: DETNetHoursModalProps) {
-  const [netHours, setNetHours] = useState<NetHours>(initialNetHours);
-
-  useEffect(() => {
-    startTransition(() => {
-      setNetHours(initialNetHours);
-    });
-  }, [initialNetHours, isOpen]);
+  const [netHours, setNetHours] = useState<NetHours>(() => initialNetHours);
 
   const addNet = () => {
     const newNet: Net = {

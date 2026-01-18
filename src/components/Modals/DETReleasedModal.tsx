@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Modal,
   ModalContent,
@@ -33,12 +33,7 @@ export default function DETReleasedModal({
   released: initialReleased,
   onSave,
 }: DETReleasedModalProps) {
-  const [released, setReleased] = useState<Released[]>(initialReleased);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setReleased(initialReleased);
-  }, [initialReleased, isOpen]);
+  const [released, setReleased] = useState<Released[]>(() => initialReleased);
 
   const addReleased = () => {
     const newReleased: Released = {

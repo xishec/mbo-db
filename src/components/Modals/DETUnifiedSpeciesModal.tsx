@@ -77,12 +77,10 @@ export default function DETUnifiedSpeciesModal({
       return;
     }
 
-    /* eslint-disable react-hooks/set-state-in-effect */
     setObservedSpeciesCount(initialObservedSpeciesCount);
     setCensusSpeciesCount(initialCensusSpeciesCount);
     setReturnSpeciesCount(initialReturnSpeciesCount);
     setDETSpeciesCount(initialDETSpeciesCount);
-    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Only process initial data once when modal opens
     if (!processedInitialDataRef.current) {

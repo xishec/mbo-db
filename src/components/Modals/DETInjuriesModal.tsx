@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Modal,
   ModalContent,
@@ -33,12 +33,7 @@ export default function DETInjuriesModal({
   injuries: initialInjuries,
   onSave,
 }: DETInjuriesModalProps) {
-  const [injuries, setInjuries] = useState<Injury[]>(initialInjuries);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setInjuries(initialInjuries);
-  }, [initialInjuries, isOpen]);
+  const [injuries, setInjuries] = useState<Injury[]>(() => initialInjuries);
 
   const addInjury = () => {
     const newInjury: Injury = {

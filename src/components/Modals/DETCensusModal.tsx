@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Modal,
   ModalContent,
@@ -32,13 +32,8 @@ export default function DETCensusModal({
   census: initialCensus,
   onSave,
 }: DETCensusModalProps) {
-  const [census, setCensus] = useState<Census>(initialCensus);
+  const [census, setCensus] = useState<Census>(() => initialCensus);
   const [isSpeciesModalOpen, setIsSpeciesModalOpen] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCensus(initialCensus);
-  }, [initialCensus, isOpen]);
 
   const handleSave = () => {
     onSave(census);

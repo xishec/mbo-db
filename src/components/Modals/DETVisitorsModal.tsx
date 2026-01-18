@@ -33,10 +33,8 @@ export default function DETVisitorsModal({ isOpen, onOpenChange, visitors, onSav
   // Sync local state with prop when modal opens
   useEffect(() => {
     if (isOpen) {
-      /* eslint-disable react-hooks/set-state-in-effect */
       setLocalVisitors([...visitors]);
       setNewVisitor("");
-      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [isOpen, visitors]);
 

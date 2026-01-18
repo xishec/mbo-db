@@ -12,7 +12,11 @@ function fixElectronCJS(): Plugin {
       if (options.dir?.includes("dist-electron")) {
         for (const [fileName, output] of Object.entries(bundle)) {
           if (fileName.endsWith(".cjs") && "code" in output) {
-            const fixed = output.code.replace(/export default require_(\w+)\(\);?/g, "require_$1();");
+            const fixed = output.code
+              // rollup sometimes leaves ESM-style imports even when output format is CJS
+              .replace(/^import\s+\{\s*([^}]+)\s*\}\s+from\s+"([^"]+)";$/gm, "const { $1 } = require(\"$2\");")
+              .replace(/^import\s+([\w$]+)\s+from\s+"([^"]+)";$/gm, "const $1 = require(\"$2\");")
+              .replace(/export default require_(\w+)\(\);?/g, "require_$1();");
             writeFileSync(`${options.dir}/${fileName}`, fixed);
           }
         }

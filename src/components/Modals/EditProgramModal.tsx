@@ -1,5 +1,5 @@
 import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useData } from "../../services/useData";
 import type { Program } from "../../types";
 import {
@@ -19,17 +19,17 @@ interface EditProgramModalProps {
 
 export default function EditProgramModal({ isOpen, onOpenChange, program }: EditProgramModalProps) {
   const { updateProgram, isOnline, programsMap } = useData();
-  const [displayName, setDisplayName] = useState("");
+  const [displayName, setDisplayName] = useState(() => program?.displayName ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Update displayName when program changes
-  useEffect(() => {
-    if (program) {
-      setDisplayName(program.displayName);
+  // Reset error when modal opens/closes
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
       setError("");
     }
-  }, [program]);
+    onOpenChange(open);
+  };
 
   // Check if display name is unique (case-insensitive, excluding current program)
   const isDuplicate = useMemo(() => {
@@ -64,7 +64,7 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
 
   const handleClose = () => {
     setError("");
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   return (
