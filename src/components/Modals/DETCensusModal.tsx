@@ -108,7 +108,7 @@ export default function DETCensusModal({
 
       <DETSpeciesModal
         isOpen={isSpeciesModalOpen}
-        onOpenChange={setIsSpeciesModalOpen}
+        onOpenChange={() => setIsSpeciesModalOpen(!isSpeciesModalOpen)}
         speciesCount={census.speciesCount}
         onSave={(speciesCount) => setCensus({ ...census, speciesCount })}
         title="Edit Census Species Count"

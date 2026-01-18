@@ -10,18 +10,22 @@ export interface DET {
   netHours: NetHours;
   coverageCode: number;
 
-  
+
   narrative: string;
   deviations: string;
   visitors: string[];
   stationManagement: string;
   injuries: Injury[];
   released: Released[];
-  
+
+  censuser?: string;
+  censusStart?: string;
+  censusEnd?: string;
+
   // Obs
   observedSpeciesCount: Record<string, number>;
   // Cns
-  census: Census;
+  censusSpeciesCount: Record<string, number>;
   // Bnd
   bandedSpeciesCount: Record<string, number>;
   // Rep
@@ -46,14 +50,6 @@ export interface Weather {
   windDirection?: string; // N, NE, E, SE, S, SW, W, NW
   humidity?: number; // percentage
   description?: string; // Clear, Cloudy, Rain, etc.
-}
-
-export interface Census {
-  censuser?: string;
-  start?: string;
-  end?: string;
-  // Cns
-  speciesCount: Record<string, number>;
 }
 
 export interface Net {

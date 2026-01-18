@@ -76,13 +76,11 @@ dailyRecords.forEach((record) => {
     stationManagement: "",
     injuries: [],
     released: [],
+    censuser: undefined,
+    censusStart: undefined,
+    censusEnd: undefined,
     observedSpeciesCount: {},
-    census: {
-      censuser: undefined,
-      start: undefined,
-      end: undefined,
-      speciesCount: {},
-    },
+    censusSpeciesCount: {},
     bandedSpeciesCount: {},
     repeatSpeciesCount: {},
     returnSpeciesCount: {},
@@ -103,7 +101,7 @@ speciesRecords.forEach((record) => {
   }
 
   if (record.Census && parseInt(record.Census) > 0) {
-    detMap.census.speciesCount[species] = parseInt(record.Census);
+    detMap.censusSpeciesCount[species] = parseInt(record.Census);
   }
 
   if (record.Banded && parseInt(record.Banded) > 0) {

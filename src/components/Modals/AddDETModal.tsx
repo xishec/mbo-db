@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea } from "@heroui/react";
-import type { DET, ObserverHours, NetHours, Injury, Released, Census, Weather } from "../../types/DET";
+import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "../../types/DET";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDate } from "../../services/weatherService";
 import DETObserverHoursModal from "./DETObserverHoursModal";
 import DETNetHoursModal from "./DETNetHoursModal";
-import DETSpeciesModal from "./DETSpeciesModal";
+import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
 import DETInjuriesModal from "./DETInjuriesModal";
 import DETReleasedModal from "./DETReleasedModal";
-import DETCensusModal from "./DETCensusModal";
 import DETVisitorsModal from "./DETVisitorsModal";
 
 interface AddDETModalProps {
@@ -39,7 +38,10 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [injuries, setInjuries] = useState<Injury[]>([]);
   const [released, setReleased] = useState<Released[]>([]);
   const [observedSpeciesCount, setObservedSpeciesCount] = useState<Record<string, number>>({});
-  const [census, setCensus] = useState<Census>({ speciesCount: {} });
+  const [censuser, setCensuser] = useState("");
+  const [censusStart, setCensusStart] = useState("");
+  const [censusEnd, setCensusEnd] = useState("");
+  const [censusSpeciesCount, setCensusSpeciesCount] = useState<Record<string, number>>({});
   const [bandedSpeciesCount, setBandedSpeciesCount] = useState<Record<string, number>>({});
   const [repeatSpeciesCount, setRepeatSpeciesCount] = useState<Record<string, number>>({});
   const [returnSpeciesCount, setReturnSpeciesCount] = useState<Record<string, number>>({});
@@ -55,14 +57,9 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [isObserverHoursModalOpen, setIsObserverHoursModalOpen] = useState(false);
   const [isNetHoursModalOpen, setIsNetHoursModalOpen] = useState(false);
   const [isVisitorsModalOpen, setIsVisitorsModalOpen] = useState(false);
-  const [isObservedSpeciesModalOpen, setIsObservedSpeciesModalOpen] = useState(false);
-  const [isBandedSpeciesModalOpen, setIsBandedSpeciesModalOpen] = useState(false);
-  const [isRepeatSpeciesModalOpen, setIsRepeatSpeciesModalOpen] = useState(false);
-  const [isReturnSpeciesModalOpen, setIsReturnSpeciesModalOpen] = useState(false);
-  const [isDETSpeciesModalOpen, setIsDETSpeciesModalOpen] = useState(false);
+  const [isUnifiedSpeciesModalOpen, setIsUnifiedSpeciesModalOpen] = useState(false);
   const [isInjuriesModalOpen, setIsInjuriesModalOpen] = useState(false);
   const [isReleasedModalOpen, setIsReleasedModalOpen] = useState(false);
-  const [isCensusModalOpen, setIsCensusModalOpen] = useState(false);
 
   // Prefill form when editing
   useEffect(() => {
@@ -83,7 +80,10 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setInjuries(existingDET.injuries || []);
       setReleased(existingDET.released || []);
       setObservedSpeciesCount(existingDET.observedSpeciesCount || {});
-      setCensus(existingDET.census || { speciesCount: {} });
+      setCensuser(existingDET.censuser || "");
+      setCensusStart(existingDET.censusStart || "");
+      setCensusEnd(existingDET.censusEnd || "");
+      setCensusSpeciesCount(existingDET.censusSpeciesCount || {});
       setBandedSpeciesCount(existingDET.bandedSpeciesCount || {});
       setRepeatSpeciesCount(existingDET.repeatSpeciesCount || {});
       setReturnSpeciesCount(existingDET.returnSpeciesCount || {});
@@ -107,7 +107,10 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setInjuries([]);
       setReleased([]);
       setObservedSpeciesCount({});
-      setCensus({ speciesCount: {} });
+      setCensuser("");
+      setCensusStart("");
+      setCensusEnd("");
+      setCensusSpeciesCount({});
       setBandedSpeciesCount({});
       setRepeatSpeciesCount({});
       setReturnSpeciesCount({});
@@ -180,8 +183,11 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
         visitors,
         injuries,
         released,
+        censuser: censuser || undefined,
+        censusStart: censusStart || undefined,
+        censusEnd: censusEnd || undefined,
         observedSpeciesCount,
-        census,
+        censusSpeciesCount,
         bandedSpeciesCount,
         repeatSpeciesCount,
         returnSpeciesCount,
@@ -275,6 +281,29 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         />
                         <Input label="End Time" type="time" value={end} onValueChange={setEnd} variant="bordered" />
                       </div>
+                      <Input
+                        label="Censuser"
+                        value={censuser}
+                        onValueChange={setCensuser}
+                        variant="bordered"
+                        placeholder="Censuser name"
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          label="Census Start"
+                          type="time"
+                          value={censusStart}
+                          onValueChange={setCensusStart}
+                          variant="bordered"
+                        />
+                        <Input
+                          label="Census End"
+                          type="time"
+                          value={censusEnd}
+                          onValueChange={setCensusEnd}
+                          variant="bordered"
+                        />
+                      </div>
                     </div>
                     <Textarea
                       label="Narrative"
@@ -357,33 +386,25 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     </Button>
                   </div>
 
-                  {/* Species Counts */}
-                  <div className="space-y-4">
-                    {[
-                      { title: "Observed Species", data: observedSpeciesCount, setter: setIsObservedSpeciesModalOpen },
-                      { title: "Banded Species", data: bandedSpeciesCount, setter: setIsBandedSpeciesModalOpen },
-                      { title: "Repeat Species", data: repeatSpeciesCount, setter: setIsRepeatSpeciesModalOpen },
-                      { title: "Return Species", data: returnSpeciesCount, setter: setIsReturnSpeciesModalOpen },
-                      { title: "DET Species", data: DETSpeciesCount, setter: setIsDETSpeciesModalOpen },
-                    ].map(({ title, data, setter }) => (
-                      <div
-                        key={title}
-                        className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3"
-                      >
-                        <div>
-                          <p className="text-xs text-default-600">{title}</p>
-                          <p className="text-sm text-gray-600 pt-2">{getSpeciesCountSummary(data)}</p>
-                        </div>
-                        <Button
-                          startContent={<PencilIcon className="h-4 w-4" />}
-                          onPress={() => setter(true)}
-                          color="primary"
-                          variant="light"
-                        >
-                          Edit
-                        </Button>
+                  {/* Unified Species Data Entry */}
+                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <div>
+                      <p className="text-xs text-default-600">Species Data (Obs, Cns, Ret, DET)</p>
+                      <div className="text-sm text-gray-600 pt-2 space-y-1">
+                        <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
+                        <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
+                        <p>Return: {getSpeciesCountSummary(returnSpeciesCount)}</p>
+                        <p>DET: {getSpeciesCountSummary(DETSpeciesCount)}</p>
                       </div>
-                    ))}
+                    </div>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsUnifiedSpeciesModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
                   </div>
 
                   {/* Injuries */}
@@ -415,24 +436,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     <Button
                       startContent={<PencilIcon className="h-4 w-4" />}
                       onPress={() => setIsReleasedModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
-                  </div>
-
-                  {/* Census */}
-                  <div className="flex justify-between items-center border rounded-medium border-medium border-default-200 py-2 px-3">
-                    <div>
-                      <p className="text-xs text-default-600">Census</p>
-                      <p className="text-sm text-gray-600 pt-2">
-                        Censuser: {census.censuser || "—"} | Species: {getSpeciesCountSummary(census.speciesCount)}
-                      </p>
-                    </div>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsCensusModalOpen(true)}
                       color="primary"
                       variant="light"
                     >
@@ -527,44 +530,19 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
         onSave={setNetHours}
       />
 
-      <DETSpeciesModal
-        isOpen={isObservedSpeciesModalOpen}
-        onOpenChange={() => setIsObservedSpeciesModalOpen(!isObservedSpeciesModalOpen)}
-        speciesCount={observedSpeciesCount}
-        onSave={setObservedSpeciesCount}
-        title="Edit Observed Species Count"
-      />
-
-      <DETSpeciesModal
-        isOpen={isBandedSpeciesModalOpen}
-        onOpenChange={() => setIsBandedSpeciesModalOpen(!isBandedSpeciesModalOpen)}
-        speciesCount={bandedSpeciesCount}
-        onSave={setBandedSpeciesCount}
-        title="Edit Banded Species Count"
-      />
-
-      <DETSpeciesModal
-        isOpen={isRepeatSpeciesModalOpen}
-        onOpenChange={() => setIsRepeatSpeciesModalOpen(!isRepeatSpeciesModalOpen)}
-        speciesCount={repeatSpeciesCount}
-        onSave={setRepeatSpeciesCount}
-        title="Edit Repeat Species Count"
-      />
-
-      <DETSpeciesModal
-        isOpen={isReturnSpeciesModalOpen}
-        onOpenChange={() => setIsReturnSpeciesModalOpen(!isReturnSpeciesModalOpen)}
-        speciesCount={returnSpeciesCount}
-        onSave={setReturnSpeciesCount}
-        title="Edit Return Species Count"
-      />
-
-      <DETSpeciesModal
-        isOpen={isDETSpeciesModalOpen}
-        onOpenChange={() => setIsDETSpeciesModalOpen(!isDETSpeciesModalOpen)}
-        speciesCount={DETSpeciesCount}
-        onSave={setDETSpeciesCount}
-        title="Edit DET Species Count"
+      <DETUnifiedSpeciesModal
+        isOpen={isUnifiedSpeciesModalOpen}
+        onOpenChange={() => setIsUnifiedSpeciesModalOpen(!isUnifiedSpeciesModalOpen)}
+        observedSpeciesCount={observedSpeciesCount}
+        censusSpeciesCount={censusSpeciesCount}
+        returnSpeciesCount={returnSpeciesCount}
+        DETSpeciesCount={DETSpeciesCount}
+        onSave={({ observedSpeciesCount, censusSpeciesCount, returnSpeciesCount, DETSpeciesCount }) => {
+          setObservedSpeciesCount(observedSpeciesCount);
+          setCensusSpeciesCount(censusSpeciesCount);
+          setReturnSpeciesCount(returnSpeciesCount);
+          setDETSpeciesCount(DETSpeciesCount);
+        }}
       />
 
       <DETInjuriesModal
@@ -579,13 +557,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
         onOpenChange={() => setIsReleasedModalOpen(!isReleasedModalOpen)}
         released={released}
         onSave={setReleased}
-      />
-
-      <DETCensusModal
-        isOpen={isCensusModalOpen}
-        onOpenChange={() => setIsCensusModalOpen(!isCensusModalOpen)}
-        census={census}
-        onSave={setCensus}
       />
 
       <DETVisitorsModal

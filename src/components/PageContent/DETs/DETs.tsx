@@ -269,18 +269,18 @@ export default function DETs() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-sm mb-3">Censuser</p>
-              <p className="font-medium">{selectedDET.census?.censuser || <span className="text-gray-400">-</span>}</p>
+              <p className="font-medium">{selectedDET.censuser || <span className="text-gray-400">-</span>}</p>
             </div>
             <div>
               <p className="text-sm mb-3">Start</p>
-              <p className="font-medium">{selectedDET.census?.start || <span className="text-gray-400">-</span>}</p>
+              <p className="font-medium">{selectedDET.censusStart || <span className="text-gray-400">-</span>}</p>
             </div>
             <div>
               <p className="text-sm mb-3">End</p>
-              <p className="font-medium">{selectedDET.census?.end || <span className="text-gray-400">-</span>}</p>
+              <p className="font-medium">{selectedDET.censusEnd || <span className="text-gray-400">-</span>}</p>
             </div>
           </div>
-          <div>{renderSpeciesSection("Census Species", selectedDET.census?.speciesCount || {}, "primary", "-")}</div>
+          <div>{renderSpeciesSection("Census Species", selectedDET.censusSpeciesCount || {}, "primary", "-")}</div>
         </CardBody>
 
         <Divider />
