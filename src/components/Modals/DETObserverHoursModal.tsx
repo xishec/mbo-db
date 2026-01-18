@@ -256,11 +256,11 @@ export default function DETObserverHoursModal({
                   </Table>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex w-full">
                   <Button
                     startContent={<PlusIcon className="h-4 w-4" />}
                     onPress={addObserver}
-                    size="sm"
+                    className="w-full"
                     color="primary"
                     variant="flat"
                   >

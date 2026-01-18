@@ -342,7 +342,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       <Button
                         startContent={<PencilIcon className="h-4 w-4" />}
                         onPress={() => setIsObserverHoursModalOpen(true)}
-                        size="sm"
                         color="primary"
                         variant="flat"
                       >
@@ -363,7 +362,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       <Button
                         startContent={<PencilIcon className="h-4 w-4" />}
                         onPress={() => setIsNetHoursModalOpen(true)}
-                        size="sm"
                         color="primary"
                         variant="flat"
                       >
