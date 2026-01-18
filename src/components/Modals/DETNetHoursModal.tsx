@@ -1,13 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  Input,
-} from "@heroui/react";
+import { useState, useEffect, startTransition } from "react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input } from "@heroui/react";
 import type { NetHours, Net } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
 
@@ -27,7 +19,9 @@ export default function DETNetHoursModal({
   const [netHours, setNetHours] = useState<NetHours>(initialNetHours);
 
   useEffect(() => {
-    setNetHours(initialNetHours);
+    startTransition(() => {
+      setNetHours(initialNetHours);
+    });
   }, [initialNetHours, isOpen]);
 
   const addNet = () => {
@@ -65,7 +59,7 @@ export default function DETNetHoursModal({
         {(onClose) => (
           <>
             <ModalHeader>Edit Net Hours</ModalHeader>
-            <ModalBody>
+            <ModalBody className="gap-4 px-8 py-4">
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <Input
@@ -99,13 +93,7 @@ export default function DETNetHoursModal({
                   <div key={index} className="border rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-semibold">Net {index + 1}</span>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        color="danger"
-                        onPress={() => removeNet(index)}
-                      >
+                      <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => removeNet(index)}>
                         <TrashIcon className="h-4 w-4" />
                       </Button>
                     </div>
@@ -160,7 +148,7 @@ export default function DETNetHoursModal({
                 ))}
               </div>
             </ModalBody>
-            <ModalFooter>
+            <ModalFooter className="gap-4 p-8 pt-4">
               <Button color="default" variant="flat" onPress={onClose}>
                 Cancel
               </Button>
