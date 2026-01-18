@@ -441,90 +441,61 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   </div>
 
                   {/* Weather */}
-                  <div className="space-y-4">
-                    <p className="text-xs text-default-600">
+                  <div className="border rounded-medium border-medium border-default-200 py-2 px-3">
+                    <p className="text-xs text-default-600 mb-2">
                       Weather {isLoadingWeather && <span className="text-gray-500">(Loading...)</span>}
                     </p>
-                    <div className="grid grid-cols-3 gap-4">
-                      <Input
-                        label="Temperature (°C)"
-                        type="number"
-                        value={weather?.temperature ? String(weather.temperature) : ""}
-                        onValueChange={(val) =>
-                          setWeather({ ...(weather || {}), temperature: val ? Number(val) : undefined })
-                        }
-                        variant="bordered"
-                      />
-                      <Input
-                        label="Min Temperature (°C)"
-                        type="number"
-                        value={weather?.temperatureMin ? String(weather.temperatureMin) : ""}
-                        onValueChange={(val) =>
-                          setWeather({ ...(weather || {}), temperatureMin: val ? Number(val) : undefined })
-                        }
-                        variant="bordered"
-                      />
-                      <Input
-                        label="Max Temperature (°C)"
-                        type="number"
-                        value={weather?.temperatureMax ? String(weather.temperatureMax) : ""}
-                        onValueChange={(val) =>
-                          setWeather({ ...(weather || {}), temperatureMax: val ? Number(val) : undefined })
-                        }
-                        variant="bordered"
-                      />
-                      <Input
-                        label="Cloud Coverage (%)"
-                        type="number"
-                        value={weather?.cloudCoverage ? String(weather.cloudCoverage) : ""}
-                        onValueChange={(val) =>
-                          setWeather({ ...(weather || {}), cloudCoverage: val ? Number(val) : undefined })
-                        }
-                        variant="bordered"
-                      />
-                      <Input
-                        label="Precipitation (mm)"
-                        type="number"
-                        value={weather?.precipitation ? String(weather.precipitation) : ""}
-                        onValueChange={(val) =>
-                          setWeather({ ...(weather || {}), precipitation: val ? Number(val) : undefined })
-                        }
-                        variant="bordered"
-                      />
-                      <Input
-                        label="Wind Speed (km/h)"
-                        type="number"
-                        value={weather?.windSpeed ? String(weather.windSpeed) : ""}
-                        onValueChange={(val) =>
-                          setWeather({ ...(weather || {}), windSpeed: val ? Number(val) : undefined })
-                        }
-                        variant="bordered"
-                      />
-                      <Input
-                        label="Wind Direction"
-                        value={weather?.windDirection || ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), windDirection: val || undefined })}
-                        variant="bordered"
-                        placeholder="N, NE, E, SE, S, SW, W, NW"
-                      />
-                      <Input
-                        label="Humidity (%)"
-                        type="number"
-                        value={weather?.humidity ? String(weather.humidity) : ""}
-                        onValueChange={(val) =>
-                          setWeather({ ...(weather || {}), humidity: val ? Number(val) : undefined })
-                        }
-                        variant="bordered"
-                      />
-                      <Textarea
-                        label="Description"
-                        value={weather?.description || ""}
-                        onValueChange={(val) => setWeather({ ...(weather || {}), description: val || undefined })}
-                        variant="bordered"
-                        placeholder="Clear, Cloudy, Rain, etc."
-                        minRows={2}
-                      />
-                    </div>
+                    {weather ? (
+                      <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm text-gray-600">
+                        {weather.temperature !== undefined && (
+                          <div>
+                            <span className="font-medium">Temperature:</span> {weather.temperature}°C
+                          </div>
+                        )}
+                        {weather.temperatureMin !== undefined && (
+                          <div>
+                            <span className="font-medium">Min Temp:</span> {weather.temperatureMin}°C
+                          </div>
+                        )}
+                        {weather.temperatureMax !== undefined && (
+                          <div>
+                            <span className="font-medium">Max Temp:</span> {weather.temperatureMax}°C
+                          </div>
+                        )}
+                        {weather.cloudCoverage !== undefined && (
+                          <div>
+                            <span className="font-medium">Cloud Coverage:</span> {weather.cloudCoverage}%
+                          </div>
+                        )}
+                        {weather.precipitation !== undefined && (
+                          <div>
+                            <span className="font-medium">Precipitation:</span> {weather.precipitation} mm
+                          </div>
+                        )}
+                        {weather.windSpeed !== undefined && (
+                          <div>
+                            <span className="font-medium">Wind Speed:</span> {weather.windSpeed} km/h
+                          </div>
+                        )}
+                        {weather.windDirection && (
+                          <div>
+                            <span className="font-medium">Wind Direction:</span> {weather.windDirection}
+                          </div>
+                        )}
+                        {weather.humidity !== undefined && (
+                          <div>
+                            <span className="font-medium">Humidity:</span> {weather.humidity}%
+                          </div>
+                        )}
+                        {weather.description && (
+                          <div className="col-span-3">
+                            <span className="font-medium">Description:</span> {weather.description}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No weather data available</p>
+                    )}
                   </div>
                 </div>
               </ModalBody>
