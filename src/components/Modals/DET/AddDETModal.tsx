@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
 import { Button, Input, Textarea } from "@heroui/react";
-import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "../../types/DET";
+import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "../../../types/DET";
 import { PencilIcon } from "@heroicons/react/24/outline";
-import { fetchWeatherForDate } from "../../services/weatherService";
-import DETObserverHoursModal from "./DET/DETObserverHoursModal";
-import DETNetHoursModal from "./DET/DETNetHoursModal";
-import DETUnifiedSpeciesModal from "./DET/DETUnifiedSpeciesModal";
-import DETInjuriesModal from "./DET/DETInjuriesModal";
-import DETReleasedModal from "./DET/DETReleasedModal";
-import DETVisitorsModal from "./DET/DETVisitorsModal";
-import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
+import { fetchWeatherForDate } from "../../../services/weatherService";
+import DETObserverHoursModal from "./DETObserverHoursModal";
+import DETNetHoursModal from "./DETNetHoursModal";
+import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
+import DETInjuriesModal from "./DETInjuriesModal";
+import DETReleasedModal from "./DETReleasedModal";
+import DETVisitorsModal from "./DETVisitorsModal";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import {
-        modalInputProps,
+  modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
-} from "./modalDefaults";
+} from "../modalDefaults";
 
 interface AddDETModalProps {
   isOpen: boolean;

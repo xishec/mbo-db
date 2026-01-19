@@ -1,16 +1,19 @@
 import { Tooltip } from "@heroui/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SPECIES_MAP } from "../../../types/species";
 import SpeciesInfoModal from "../../Modals/SpeciesInfoModal";
 
 interface SpeciesTooltipProps {
   speciesCode: string;
   disabled?: boolean;
+  // allow for custom content to be passed in, like chips for DETs
+  children?: ReactNode;
 }
 
-export default function SpeciesTooltip({ speciesCode, disabled = false }: SpeciesTooltipProps) {
+export default function SpeciesTooltip({ speciesCode, disabled = false, children }: SpeciesTooltipProps) {
   const species = SPECIES_MAP[speciesCode];
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const content = children ?? speciesCode;
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -34,9 +37,7 @@ export default function SpeciesTooltip({ speciesCode, disabled = false }: Specie
   return (
     <>
       {disabled ? (
-        <span>
-          {speciesCode}
-        </span>
+        <span>{content}</span>
       ) : (
         <Tooltip
           content={tooltipContent}
@@ -48,7 +49,7 @@ export default function SpeciesTooltip({ speciesCode, disabled = false }: Specie
             className="cursor-pointer hover:underline"
             onClick={handleClick}
           >
-            {speciesCode}
+            {content}
           </span>
         </Tooltip>
       )}

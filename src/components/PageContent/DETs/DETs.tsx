@@ -5,7 +5,7 @@ import { Calendar, Card, CardBody, CardHeader, Chip, Button } from "@heroui/reac
 import type { DateValue } from "@internationalized/date";
 import SpeciesTooltip from "../../Helper/Info/SpeciesTooltip";
 import { fetchWeatherForDate } from "../../../services/weatherService";
-import AddDETModal from "../../Modals/AddDETModal";
+import AddDETModal from "../../Modals/DET/AddDETModal";
 import { PencilIcon } from "@heroicons/react/24/outline";
 
 export default function DETs() {
@@ -249,7 +249,7 @@ export default function DETs() {
               {selectedDET.netHours?.nets && selectedDET.netHours.nets.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selectedDET.netHours.nets.map((net, idx) => (
-                    <Chip key={idx} variant="flat" color="primary" size="sm">
+                    <Chip key={idx} variant="bordered" color="primary" size="sm">
                       {net.id}: {net.total}
                     </Chip>
                   ))}
@@ -263,10 +263,12 @@ export default function DETs() {
             <p className="text-small font-semibold mb-2">Species Data (Obs, Cns, Ret, DET)</p>
             <div className="border rounded-medium border border-default-100 py-2 px-3">
               <div className="space-y-3">
-                {renderSpeciesCategory("Observed", selectedDET.observedSpeciesCount, "default", "No observed species")}
+                {renderSpeciesCategory("Observed", selectedDET.observedSpeciesCount, "primary", "No observed species")}
                 {renderSpeciesCategory("Census", selectedDET.censusSpeciesCount || {}, "primary", "No census species")}
+                {renderSpeciesCategory("Banded", selectedDET.bandedSpeciesCount || {}, "primary", "No banded species")}
+                {renderSpeciesCategory("Repeats", selectedDET.repeatSpeciesCount, "primary", "No repeat species")}
                 {renderSpeciesCategory("Return", selectedDET.returnSpeciesCount, "primary", "No return species")}
-                {renderSpeciesCategory("DET", selectedDET.DETSpeciesCount, "warning", "No DET species")}
+                {renderSpeciesCategory("DET", selectedDET.DETSpeciesCount, "primary", "No DET species")}
               </div>
             </div>
           </div>
@@ -329,7 +331,9 @@ export default function DETs() {
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Species</p>
                           <SpeciesTooltip speciesCode={injury.specie}>
-                            <p className="font-medium cursor-pointer hover:text-blue-600">{injury.specie}</p>
+                            <Chip variant="flat" color="default" size="sm">
+                              {injury.specie}
+                            </Chip>
                           </SpeciesTooltip>
                         </div>
                         <div>
@@ -349,7 +353,7 @@ export default function DETs() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No injuries recorded</p>
+                <p className="text-xs text-gray-400">No injuries recorded</p>
               )}
             </div>
           </div>
@@ -369,7 +373,9 @@ export default function DETs() {
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Species</p>
                           <SpeciesTooltip speciesCode={bird.specie}>
-                            <p className="font-medium cursor-pointer hover:text-blue-600">{bird.specie}</p>
+                            <Chip variant="flat" color="default" size="sm">
+                              {bird.specie}
+                            </Chip>
                           </SpeciesTooltip>
                         </div>
                         <div>
@@ -403,7 +409,7 @@ export default function DETs() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No birds released</p>
+                <p className="text-xs text-gray-400">No birds released</p>
               )}
             </div>
           </div>
