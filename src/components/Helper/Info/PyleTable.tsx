@@ -41,7 +41,7 @@ export default function PyleTable({
   }
 
   const table = (
-    <Table aria-label={`${title} species range`} classNames={{ th: "text-xs", td: "text-xs py-1" }} removeWrapper>
+    <Table aria-label={`${title} species range`} classNames={{ th: "text-xs", td: "text-xs py-2" }} removeWrapper>
       <TableHeader>
         <TableColumn>Sex</TableColumn>
         <TableColumn>Weight</TableColumn>

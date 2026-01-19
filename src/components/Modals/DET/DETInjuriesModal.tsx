@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
         Button,
   Input,
+  Textarea,
   Table,
   TableHeader,
   TableColumn,
@@ -9,38 +10,39 @@ import {
   TableRow,
   TableCell,
 } from "@heroui/react";
+import type { Injury } from "../../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
-import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import {
         modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
-} from "./modalDefaults";
+} from "../modalDefaults";
 
-interface DETVisitorsModalProps {
+interface DETInjuriesModalProps {
   isOpen: boolean;
   onOpenChange: () => void;
-  visitors: string[];
-  onSave: (visitors: string[]) => void;
+  injuries: Injury[];
+  onSave: (injuries: Injury[]) => void;
 }
 
-export default function DETVisitorsModal({
+export default function DETInjuriesModal({
   isOpen,
   onOpenChange,
-  visitors: initialVisitors,
+  injuries: initialInjuries,
   onSave,
-}: DETVisitorsModalProps) {
-  const [visitors, setVisitors] = useState<string[]>([]);
+}: DETInjuriesModalProps) {
+  const [injuries, setInjuries] = useState<Injury[]>([]);
   const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
   const lastAddedIndexRef = useRef<number | null>(null);
 
   // Sync local state with prop when modal opens
   useEffect(() => {
     if (isOpen) {
-      setVisitors([...initialVisitors]);
+      setInjuries([...initialInjuries]);
       lastAddedIndexRef.current = null;
     }
-  }, [isOpen, initialVisitors]);
+  }, [isOpen, initialInjuries]);
 
   // Focus the first input of the newly added row
   useEffect(() => {
@@ -54,26 +56,30 @@ export default function DETVisitorsModal({
       }
       lastAddedIndexRef.current = null;
     }
-  }, [visitors]);
+  }, [injuries]);
 
-  const addVisitor = () => {
-    const newIndex = visitors.length;
-    setVisitors([...visitors, ""]);
+  const addInjury = () => {
+    const newInjury: Injury = {
+      specie: "",
+      description: "",
+    };
+    const newIndex = injuries.length;
+    setInjuries([...injuries, newInjury]);
     lastAddedIndexRef.current = newIndex;
   };
 
-  const updateVisitor = (index: number, value: string) => {
-    const updated = [...visitors];
-    updated[index] = value;
-    setVisitors(updated);
+  const updateInjury = (index: number, field: keyof Injury, value: string) => {
+    const updated = [...injuries];
+    updated[index] = { ...updated[index], [field]: value };
+    setInjuries(updated);
   };
 
-  const removeVisitor = (index: number) => {
-    setVisitors(visitors.filter((_, i) => i !== index));
+  const removeInjury = (index: number) => {
+    setInjuries(injuries.filter((_, i) => i !== index));
   };
 
   const handleSave = () => {
-    onSave(visitors);
+    onSave(injuries);
     onOpenChange();
   };
 
@@ -83,7 +89,7 @@ export default function DETVisitorsModal({
         isOpen,
         onOpenChange: (open) => {
           if (!open) {
-            setVisitors(initialVisitors);
+            setInjuries(initialInjuries);
           }
           onOpenChange();
         },
@@ -93,17 +99,20 @@ export default function DETVisitorsModal({
     >
       {(onClose) => (
         <>
-            <ModalHeaderShell>Edit Visitors</ModalHeaderShell>
+            <ModalHeaderShell>Edit Injuries</ModalHeaderShell>
             <ModalBodyShell>
               <div className="flex flex-col gap-4">
                 <div className="rounded-medium border border-default-100 overflow-hidden">
-                  <Table aria-label="Visitors table" removeWrapper>
+                  <Table aria-label="Injuries table" removeWrapper>
                     <TableHeader>
-                      <TableColumn>Visitor Name</TableColumn>
+                      <TableColumn>Species</TableColumn>
+                      <TableColumn>Band ID</TableColumn>
+                      <TableColumn>Net</TableColumn>
+                      <TableColumn>Description</TableColumn>
                       <TableColumn width={50}>Actions</TableColumn>
                     </TableHeader>
-                    <TableBody emptyContent="No visitors added">
-                      {visitors.map((visitor, index) => (
+                    <TableBody emptyContent="No injuries added">
+                      {injuries.map((injury, index) => (
                         <TableRow key={index}>
                           <TableCell className="p-1">
                             <Input
@@ -114,10 +123,38 @@ export default function DETVisitorsModal({
                                   inputRefs.current.delete(index);
                                 }
                               }}
-                              value={visitor}
-                              onValueChange={(val) => updateVisitor(index, val)}
+                              value={injury.specie}
+                              onValueChange={(val) => updateInjury(index, "specie", val)}
                               {...modalInputProps}
-                              placeholder="Enter visitor name"
+                              placeholder="Enter species"
+                              classNames={{ input: "text-sm" }}
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <Input
+                              value={injury.bandId || ""}
+                              onValueChange={(val) => updateInjury(index, "bandId", val)}
+                              {...modalInputProps}
+                              placeholder="Enter band ID"
+                              classNames={{ input: "text-sm" }}
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <Input
+                              value={injury.net || ""}
+                              onValueChange={(val) => updateInjury(index, "net", val)}
+                              {...modalInputProps}
+                              placeholder="Enter net"
+                              classNames={{ input: "text-sm" }}
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <Textarea
+                              value={injury.description}
+                              onValueChange={(val) => updateInjury(index, "description", val)}
+                              {...modalInputProps}
+                              placeholder="Enter description"
+                              minRows={2}
                               classNames={{ input: "text-sm" }}
                             />
                           </TableCell>
@@ -127,7 +164,7 @@ export default function DETVisitorsModal({
                               size="sm"
                               variant="light"
                               color="danger"
-                              onPress={() => removeVisitor(index)}
+                              onPress={() => removeInjury(index)}
                             >
                               <TrashIcon className="h-4 w-4" />
                             </Button>
@@ -140,12 +177,12 @@ export default function DETVisitorsModal({
 
                 <Button
                   startContent={<PlusIcon className="h-4 w-4" />}
-                  onPress={addVisitor}
+                  onPress={addInjury}
                   className="w-full"
                   color="primary"
                   variant="flat"
                 >
-                  Add Visitor
+                  Add Injury
                 </Button>
               </div>
             </ModalBodyShell>

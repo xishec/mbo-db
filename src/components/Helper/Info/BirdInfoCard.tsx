@@ -19,7 +19,7 @@ interface BirdInfoCardProps {
 export default function BirdInfoCard({ bandId, birdInfo }: BirdInfoCardProps) {
   return (
     <div className="bg-default-100 rounded-medium p-4 mb-2">
-      <h3 className="text-lg font-semibold mb-3">Bird Information</h3>
+      <h3 className="text-lg mb-3">Bird Information</h3>
       <div className="flex justify-between text-sm">
         <div>
           <span className="text-default-700">Band ID :</span> <span className="font-medium">{bandId}</span>

@@ -34,7 +34,7 @@ export default function SpeciesFunFacts({
     setIsModalOpen(true);
   };
 
-  const statItemClass = "text-xs rounded-medium p-1 -m-1 transition-colors";
+  const statItemClass = "text-xs rounded p-2 -m-2 transition-colors";
 
   const getStatItemClass = (bandId: string) =>
     bandId === currentBandId
@@ -75,7 +75,7 @@ export default function SpeciesFunFacts({
           <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> records
         </h4>
         <Card className="flex-1 flex flex-col" shadow="sm">
-          <CardBody className="gap-2 p-3 flex-1">
+          <CardBody className="gap-2 p-4 flex-1">
             <div className="grid grid-cols-2 gap-4">
               <div
                 className={getStatItemClass(biggest.band.id)}

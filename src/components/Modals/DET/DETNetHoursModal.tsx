@@ -9,14 +9,14 @@ import {
   TableRow,
   TableCell,
 } from "@heroui/react";
-import type { NetHours, Net } from "../../types/DET";
+import type { NetHours, Net } from "../../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
-import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import {
         modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
-} from "./modalDefaults";
+} from "../modalDefaults";
 
 interface DETNetHoursModalProps {
   isOpen: boolean;
