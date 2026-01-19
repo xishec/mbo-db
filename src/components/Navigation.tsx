@@ -193,6 +193,23 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               DETs
             </Link>
           </NavbarItem>
+          <NavbarItem isActive={activePage === "species"}>
+            <Link
+              aria-current={activePage === "species" ? "page" : undefined}
+              color={activePage === "species" ? "primary" : "foreground"}
+              href="#"
+              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!isLoading) {
+                  selectProgram(null);
+                  onPageChange("species");
+                }
+              }}
+            >
+              Species
+            </Link>
+          </NavbarItem>
           <NavbarItem isActive={activePage === "integrations"}>
             <Link
               color={activePage === "integrations" ? "primary" : "foreground"}
