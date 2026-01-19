@@ -13,9 +13,10 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  Divider,
 } from "@heroui/react";
 import { SPECIES_MAP } from "../../types/species";
-import { SPECIES_GROUPS } from "../../types/DET";
+import { SPECIES_GROUPS, DET_SPECIES_CODES_SET, type SpeciesListItem } from "../../types/DET";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -24,16 +25,6 @@ import {
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
-
-// Calculate DET species list once outside component - it never changes
-// Flatten all species codes from SPECIES_GROUPS
-const DET_SPECIES_CODES_SET = new Set<string>(
-  Object.values(SPECIES_GROUPS).flat() as string[]
-);
-const DET_SPECIES_LIST = Array.from(DET_SPECIES_CODES_SET)
-  .map((code) => SPECIES_MAP[code])
-  .filter((species): species is NonNullable<typeof species> => species !== undefined)
-  .sort((a, b) => a.code.localeCompare(b.code));
 
 interface DETUnifiedSpeciesModalProps {
   isOpen: boolean;
@@ -126,9 +117,20 @@ export default function DETUnifiedSpeciesModal({
       .sort((a, b) => a.code.localeCompare(b.code));
   }, [customSpeciesCodes]);
 
-  // Get all species (DET enum + custom) - only recalculates when custom list changes
-  const filteredSpecies = useMemo(() => {
-    return [...DET_SPECIES_LIST, ...customSpeciesList];
+  // Create a flat list with group headers and species, maintaining order
+  // Uses pre-processed SPECIES_GROUPS and adds custom species at the end
+  const filteredSpeciesWithGroups = useMemo(() => {
+    const items: SpeciesListItem[] = [...SPECIES_GROUPS];
+
+    // Add custom species at the end with a group header
+    if (customSpeciesList.length > 0) {
+      items.push({ type: "group", groupName: "CUSTOM" });
+      customSpeciesList.forEach((s) => {
+        items.push({ type: "species", code: s.code });
+      });
+    }
+
+    return items;
   }, [customSpeciesList]);
 
   // Memoized function to add custom species
@@ -290,15 +292,32 @@ export default function DETUnifiedSpeciesModal({
                       <TableColumn width={100}>Ret</TableColumn>
                       <TableColumn width={100}>DET</TableColumn>
                     </TableHeader>
-                    <TableBody items={filteredSpecies}>
-                      {(species) => {
-                        const code = species.code;
+                    <TableBody items={filteredSpeciesWithGroups}>
+                      {(item) => {
+                        if (item.type === "group") {
+                          return (
+                            <TableRow key={`group-${item.groupName}`}>
+                              <TableCell colSpan={7}>
+                                <div className="flex items-center gap-2 py-2">
+                                  <Divider className="flex-1" />
+                                  <span className="font-semibold text-sm text-default-700 px-2">
+                                    {item.groupName}
+                                  </span>
+                                  <Divider className="flex-1" />
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        const code = item.code;
+                        const species = SPECIES_MAP[code];
                         return (
                           <TableRow key={code}>
                             <TableCell>
                               <div className="flex flex-col">
                                 <span className="font-medium text-sm">{code}</span>
-                                {species.speciesDescriptionMBO !== code && (
+                                {species && species.speciesDescriptionMBO !== code && (
                                   <span className="text-xs text-gray-500">{species.speciesDescriptionMBO}</span>
                                 )}
                               </div>
