@@ -35,6 +35,54 @@ import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
 import { onAuthStateChanged, type User } from "firebase/auth";
 
+type FavoriteRateResult = {
+  value: string;
+  rate: number;
+};
+
+type BandStats = {
+  count: number;
+  earliest: BirdEvent;
+  latest: BirdEvent;
+  earliestTime: number;
+  latestTime: number;
+};
+
+const getEventTimestamp = (event: BirdEvent): number =>
+  Date.parse(`${event.date}T${event.time}`);
+
+const computeFavoriteRate = (
+  events: BirdEvent[],
+  selector: (event: BirdEvent) => string | undefined
+): FavoriteRateResult => {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    const key = selector(event);
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  if (counts.size === 0) {
+    return { value: "", rate: 0 };
+  }
+
+  let totalCount = 0;
+  let maxKey = "";
+  let maxCount = 0;
+  for (const [key, count] of counts.entries()) {
+    totalCount += count;
+    if (count > maxCount) {
+      maxCount = count;
+      maxKey = key;
+    }
+  }
+
+  const averageCount = totalCount / counts.size;
+  const rate = averageCount > 0 ? maxCount / averageCount : 0;
+
+  return { value: maxKey, rate };
+};
+
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,10 +133,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     for (const event of validEvents) {
       if (!event.species || event.species.length !== 4) continue;
       const species = event.species;
-      if (!eventsBySpecies.has(species)) {
-        eventsBySpecies.set(species, []);
+      const speciesEvents = eventsBySpecies.get(species);
+      if (speciesEvents) {
+        speciesEvents.push(event);
+      } else {
+        eventsBySpecies.set(species, [event]);
       }
-      eventsBySpecies.get(species)!.push(event);
     }
 
     // Compute stats for each species
@@ -108,27 +158,40 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Group events by band ID to find dummiest and oldest
-      const eventsByBand = new Map<string, BirdEvent[]>();
+      const bandStats = new Map<string, BandStats>();
       for (const event of events) {
         const bandId = event.band.id;
-        if (!eventsByBand.has(bandId)) {
-          eventsByBand.set(bandId, []);
+        const timestamp = getEventTimestamp(event);
+        const stats = bandStats.get(bandId);
+        if (!stats) {
+          bandStats.set(bandId, {
+            count: 1,
+            earliest: event,
+            latest: event,
+            earliestTime: timestamp,
+            latestTime: timestamp,
+          });
+          continue;
         }
-        eventsByBand.get(bandId)!.push(event);
+
+        stats.count += 1;
+        if (timestamp < stats.earliestTime) {
+          stats.earliest = event;
+          stats.earliestTime = timestamp;
+        }
+        if (timestamp > stats.latestTime) {
+          stats.latest = event;
+          stats.latestTime = timestamp;
+        }
       }
 
       // Dummiest: band with most events
       let maxEventCount = 0;
       let dummiestEvent: BirdEvent | null = null;
-      for (const [, bandEvents] of eventsByBand.entries()) {
-        if (bandEvents.length > maxEventCount) {
-          maxEventCount = bandEvents.length;
-          // Use the most recent event from this band
-          dummiestEvent = bandEvents.sort((a, b) => {
-            const dateCompare = b.date.localeCompare(a.date);
-            if (dateCompare !== 0) return dateCompare;
-            return b.time.localeCompare(a.time);
-          })[0];
+      for (const stats of bandStats.values()) {
+        if (stats.count > maxEventCount) {
+          maxEventCount = stats.count;
+          dummiestEvent = stats.latest;
         }
       }
 
@@ -136,26 +199,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       let maxSpan = 0;
       let oldestSpanDays = 0;
       let oldestEvent: BirdEvent | null = null;
-      for (const [, bandEvents] of eventsByBand.entries()) {
-        if (bandEvents.length < 2) continue; // Need at least 2 events for a span
-
-        const sortedEvents = [...bandEvents].sort((a, b) => {
-          const dateCompare = a.date.localeCompare(b.date);
-          if (dateCompare !== 0) return dateCompare;
-          return a.time.localeCompare(b.time);
-        });
-
-        const earliest = sortedEvents[0];
-        const latest = sortedEvents[sortedEvents.length - 1];
-        const earliestDate = new Date(`${earliest.date}T${earliest.time}`);
-        const latestDate = new Date(`${latest.date}T${latest.time}`);
-        const spanMs = latestDate.getTime() - earliestDate.getTime();
-        const spanDays = Math.floor(spanMs / (1000 * 60 * 60 * 24));
-
+      for (const stats of bandStats.values()) {
+        if (stats.count < 2) continue; // Need at least 2 events for a span
+        const spanMs = stats.latestTime - stats.earliestTime;
         if (spanMs > maxSpan) {
           maxSpan = spanMs;
-          oldestSpanDays = spanDays;
-          oldestEvent = latest; // Use the latest event
+          oldestSpanDays = Math.floor(spanMs / (1000 * 60 * 60 * 24));
+          oldestEvent = stats.latest; // Use the latest event
         }
       }
 
@@ -163,58 +213,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // (oldestEvent will remain null, which will be handled in the component)
 
       // Favorite bander: most repeated bander string
-      const banderCounts = new Map<string, number>();
-      for (const event of events) {
-        if (event.bander) {
-          banderCounts.set(event.bander, (banderCounts.get(event.bander) || 0) + 1);
-        }
-      }
-      let favoriteBander = "";
-      let maxBanderCount = 0;
-      for (const [bander, count] of banderCounts.entries()) {
-        if (count > maxBanderCount) {
-          maxBanderCount = count;
-          favoriteBander = bander;
-        }
-      }
-
-      // Calculate favoriteBanderRate: how much more likely favoriteBander is than average
-      // If rate = 2.0, favorite bander appears 2x more often than average
-      let favoriteBanderRate = 0;
-      if (favoriteBander && banderCounts.size > 0) {
-        const totalEventsWithBander = Array.from(banderCounts.values()).reduce((sum, count) => sum + count, 0);
-        if (totalEventsWithBander > 0) {
-          const averageBanderRate = totalEventsWithBander / banderCounts.size;
-          favoriteBanderRate = maxBanderCount / averageBanderRate;
-        }
-      }
+      const { value: favoriteBander, rate: favoriteBanderRate } = computeFavoriteRate(
+        events,
+        (event) => event.bander
+      );
 
       // Favorite net: most repeated net string
-      const netCounts = new Map<string, number>();
-      for (const event of events) {
-        if (event.net) {
-          netCounts.set(event.net, (netCounts.get(event.net) || 0) + 1);
-        }
-      }
-      let favoriteNet = "";
-      let maxNetCount = 0;
-      for (const [net, count] of netCounts.entries()) {
-        if (count > maxNetCount) {
-          maxNetCount = count;
-          favoriteNet = net;
-        }
-      }
-
-      // Calculate favoriteNetRate: how much more likely favoriteNet is than average
-      // If rate = 2.0, favorite net appears 2x more often than average
-      let favoriteNetRate = 0;
-      if (favoriteNet && netCounts.size > 0) {
-        const totalEventsWithNet = Array.from(netCounts.values()).reduce((sum, count) => sum + count, 0);
-        if (totalEventsWithNet > 0) {
-          const averageNetRate = totalEventsWithNet / netCounts.size;
-          favoriteNetRate = maxNetCount / averageNetRate;
-        }
-      }
+      const { value: favoriteNet, rate: favoriteNetRate } = computeFavoriteRate(events, (event) => event.net);
 
       // Ensure we have valid events for all required fields
       // oldestEvent can be null if no band has multiple events
