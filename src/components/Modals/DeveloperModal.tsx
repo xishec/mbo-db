@@ -185,7 +185,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
             <Tab key="logs" title={`Logs (${filteredLogs.length})`}>
               <div className="flex flex-col gap-2 mt-2">
                 {filteredLogs.length === 0 ? (
-                  <Card>
+                  <Card shadow="sm">
                     <CardBody>
                       <p className="text-center text-default-500">No logs to display</p>
                     </CardBody>
@@ -195,7 +195,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
                     .slice()
                     .reverse()
                     .map((log) => (
-                      <Card key={log.id}>
+                      <Card key={log.id} shadow="sm">
                         <CardBody className="p-3">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
@@ -236,7 +236,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
 
             <Tab key="stats" title="Statistics">
               <div className="grid grid-cols-2 gap-4 mt-2">
-                <Card>
+                <Card shadow="sm">
                   <CardBody>
                     <h3 className="font-semibold mb-2">By Level</h3>
                     <div className="space-y-1">
@@ -250,7 +250,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
                   </CardBody>
                 </Card>
 
-                <Card>
+                <Card shadow="sm">
                   <CardBody>
                     <h3 className="font-semibold mb-2">By Category</h3>
                     <div className="space-y-1 max-h-60 overflow-y-auto">

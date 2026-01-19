@@ -119,7 +119,7 @@ export default function DETs() {
 
   const DETDisplay = selectedDET && (
     <div className="flex-1">
-      <Card className="">
+      <Card className="" shadow="sm">
         {/* Header */}
         <CardHeader className="flex gap-3 justify-between items-start">
           <div className="flex flex-col flex-1">
@@ -427,7 +427,7 @@ export default function DETs() {
       </div>
 
       <div className="mb-4 flex gap-4 items-start">
-        <Card className="">
+        <Card className="" shadow="sm">
           <CardBody className="p-0">
             <Calendar
               aria-label="Select DET date"
