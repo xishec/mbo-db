@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Modal,
   ModalContent,
@@ -8,6 +8,12 @@ import {
   Button,
   Input,
   Textarea,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
 } from "@heroui/react";
 import type { Injury } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
@@ -33,14 +39,40 @@ export default function DETInjuriesModal({
   injuries: initialInjuries,
   onSave,
 }: DETInjuriesModalProps) {
-  const [injuries, setInjuries] = useState<Injury[]>(() => initialInjuries);
+  const [injuries, setInjuries] = useState<Injury[]>([]);
+  const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  const lastAddedIndexRef = useRef<number | null>(null);
+
+  // Sync local state with prop when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setInjuries([...initialInjuries]);
+      lastAddedIndexRef.current = null;
+    }
+  }, [isOpen, initialInjuries]);
+
+  // Focus the first input of the newly added row
+  useEffect(() => {
+    if (lastAddedIndexRef.current !== null) {
+      const input = inputRefs.current.get(lastAddedIndexRef.current);
+      if (input) {
+        setTimeout(() => {
+          input.focus();
+          input.select();
+        }, 0);
+      }
+      lastAddedIndexRef.current = null;
+    }
+  }, [injuries]);
 
   const addInjury = () => {
     const newInjury: Injury = {
       specie: "",
       description: "",
     };
+    const newIndex = injuries.length;
     setInjuries([...injuries, newInjury]);
+    lastAddedIndexRef.current = newIndex;
   };
 
   const updateInjury = (index: number, field: keyof Injury, value: string) => {
@@ -59,70 +91,105 @@ export default function DETInjuriesModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setInjuries(initialInjuries);
+        }
+        onOpenChange();
+      }}
+      size="4xl"
+      scrollBehavior="inside"
+    >
       <ModalContent>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>Edit Injuries</ModalHeader>
             <ModalBody className={modalBodyClass}>
               <div className="flex flex-col gap-4">
+                <div className="rounded-medium border border-default-100 overflow-hidden">
+                  <Table aria-label="Injuries table" removeWrapper>
+                    <TableHeader>
+                      <TableColumn>Species</TableColumn>
+                      <TableColumn>Band ID</TableColumn>
+                      <TableColumn>Net</TableColumn>
+                      <TableColumn>Description</TableColumn>
+                      <TableColumn width={50}>Actions</TableColumn>
+                    </TableHeader>
+                    <TableBody emptyContent="No injuries added">
+                      {injuries.map((injury, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="p-1">
+                            <Input
+                              ref={(el) => {
+                                if (el) {
+                                  inputRefs.current.set(index, el);
+                                } else {
+                                  inputRefs.current.delete(index);
+                                }
+                              }}
+                              value={injury.specie}
+                              onValueChange={(val) => updateInjury(index, "specie", val)}
+                              {...modalInputProps}
+                              placeholder="Enter species"
+                              classNames={{ input: "text-sm" }}
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <Input
+                              value={injury.bandId || ""}
+                              onValueChange={(val) => updateInjury(index, "bandId", val)}
+                              {...modalInputProps}
+                              placeholder="Enter band ID"
+                              classNames={{ input: "text-sm" }}
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <Input
+                              value={injury.net || ""}
+                              onValueChange={(val) => updateInjury(index, "net", val)}
+                              {...modalInputProps}
+                              placeholder="Enter net"
+                              classNames={{ input: "text-sm" }}
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <Textarea
+                              value={injury.description}
+                              onValueChange={(val) => updateInjury(index, "description", val)}
+                              {...modalInputProps}
+                              placeholder="Enter description"
+                              minRows={2}
+                              classNames={{ input: "text-sm" }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="light"
+                              color="danger"
+                              onPress={() => removeInjury(index)}
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
                 <Button
                   startContent={<PlusIcon className="h-4 w-4" />}
                   onPress={addInjury}
-                  size="sm"
+                  className="w-full"
                   color="primary"
                   variant="flat"
-                  className="self-start"
                 >
                   Add Injury
                 </Button>
-                {injuries.map((injury, index) => (
-                  <div key={index} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold">Injury {index + 1}</span>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        color="danger"
-                        onPress={() => removeInjury(index)}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input
-                        label="Species"
-                        value={injury.specie}
-                        onValueChange={(val) => updateInjury(index, "specie", val)}
-                        {...modalInputProps}
-                      />
-                      <Input
-                        label="Band ID"
-                        value={injury.bandId || ""}
-                        onValueChange={(val) => updateInjury(index, "bandId", val)}
-                        {...modalInputProps}
-                      />
-                      <Input
-                        label="Net"
-                        value={injury.net || ""}
-                        onValueChange={(val) => updateInjury(index, "net", val)}
-                        {...modalInputProps}
-                      />
-                      <Textarea
-                        label="Description"
-                        value={injury.description}
-                        onValueChange={(val) => updateInjury(index, "description", val)}
-                        labelPlacement="outside"
-                        variant="bordered"
-                        minRows={2}
-                      />
-                    </div>
-                  </div>
-                ))}
-                {injuries.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">No injuries added</p>
-                )}
               </div>
             </ModalBody>
             <ModalFooter className={modalFooterClass}>

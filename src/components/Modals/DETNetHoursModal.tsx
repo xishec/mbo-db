@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Modal,
   ModalContent,
@@ -39,8 +39,25 @@ export default function DETNetHoursModal({
   onSave,
 }: DETNetHoursModalProps) {
   const [netHours, setNetHours] = useState<NetHours>(() => initialNetHours);
+  const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  const lastAddedIndexRef = useRef<number | null>(null);
+
+  // Focus the first input of the newly added row
+  useEffect(() => {
+    if (lastAddedIndexRef.current !== null) {
+      const input = inputRefs.current.get(lastAddedIndexRef.current);
+      if (input) {
+        setTimeout(() => {
+          input.focus();
+          input.select();
+        }, 0);
+      }
+      lastAddedIndexRef.current = null;
+    }
+  }, [netHours.nets]);
 
   const addNet = () => {
+    const newIndex = netHours.nets.length;
     setNetHours({
       ...netHours,
       nets: [
@@ -55,6 +72,7 @@ export default function DETNetHoursModal({
         },
       ],
     });
+    lastAddedIndexRef.current = newIndex;
   };
 
   const updateNet = (index: number, field: keyof Net, value: string | number | undefined) => {
@@ -85,6 +103,7 @@ export default function DETNetHoursModal({
       onOpenChange={(open) => {
         if (!open) {
           setNetHours(initialNetHours);
+          lastAddedIndexRef.current = null;
         }
         onOpenChange();
       }}
@@ -148,8 +167,15 @@ export default function DETNetHoursModal({
                     <TableBody emptyContent="No nets added">
                       {netHours.nets.map((net, index) => (
                         <TableRow key={index}>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
+                              ref={(el) => {
+                                if (el) {
+                                  inputRefs.current.set(index, el);
+                                } else {
+                                  inputRefs.current.delete(index);
+                                }
+                              }}
                               value={net.id}
                               onValueChange={(val) => updateNet(index, "id", val)}
                               {...modalInputProps}
@@ -157,7 +183,7 @@ export default function DETNetHoursModal({
                               classNames={{ input: "text-sm font-medium" }}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
                               type="time"
                               value={net.open || ""}
@@ -166,7 +192,7 @@ export default function DETNetHoursModal({
                               classNames={{ input: "text-sm" }}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
                               type="time"
                               value={net.closed || ""}
@@ -175,7 +201,7 @@ export default function DETNetHoursModal({
                               classNames={{ input: "text-sm" }}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
                               type="number"
                               value={net.hours || ""}
@@ -187,7 +213,7 @@ export default function DETNetHoursModal({
                               classNames={{ input: "text-sm" }}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <div className="flex items-center gap-1">
                               <Input
                                 type="number"
@@ -205,7 +231,7 @@ export default function DETNetHoursModal({
                               <span className="text-gray-400 text-sm whitespace-nowrap">=</span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
                               type="number"
                               value={String((parseFloat(net.hours || "0") * (net.multiplier || 1)).toFixed(1))}

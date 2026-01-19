@@ -322,7 +322,7 @@ export default function DETUnifiedSpeciesModal({
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-1">
                               <Input
                                 type="number"
                                 value={String(observedSpeciesCount[code] || "")}
@@ -334,7 +334,7 @@ export default function DETUnifiedSpeciesModal({
                                 }}
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-1">
                               <Input
                                 type="number"
                                 value={String(censusSpeciesCount[code] || "")}
@@ -346,7 +346,7 @@ export default function DETUnifiedSpeciesModal({
                                 }}
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-1">
                               <Input
                                 type="number"
                                 value=""
@@ -358,7 +358,7 @@ export default function DETUnifiedSpeciesModal({
                                 }}
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-1">
                               <Input
                                 type="number"
                                 value=""
@@ -370,7 +370,7 @@ export default function DETUnifiedSpeciesModal({
                                 }}
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-1">
                               <Input
                                 type="number"
                                 value={String(returnSpeciesCount[code] || "")}
@@ -382,7 +382,7 @@ export default function DETUnifiedSpeciesModal({
                                 }}
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="p-1">
                               <Input
                                 type="number"
                                 value={String(DETSpeciesCount[code] || "")}

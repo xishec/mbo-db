@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Modal,
   ModalContent,
@@ -39,6 +39,22 @@ export default function DETObserverHoursModal({
   onSave,
 }: DETObserverHoursModalProps) {
   const [observerHours, setObserverHours] = useState<ObserverHours>(initialObserverHours);
+  const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  const lastAddedIndexRef = useRef<number | null>(null);
+
+  // Focus the first input of the newly added row
+  useEffect(() => {
+    if (lastAddedIndexRef.current !== null) {
+      const input = inputRefs.current.get(lastAddedIndexRef.current);
+      if (input) {
+        setTimeout(() => {
+          input.focus();
+          input.select();
+        }, 0);
+      }
+      lastAddedIndexRef.current = null;
+    }
+  }, [observerHours.observers]);
 
   const addObserver = () => {
     const newObserver: Observer = {
@@ -49,12 +65,14 @@ export default function DETObserverHoursModal({
       totalHours: 0,
     };
     const updated = [...(observerHours.observers || []), newObserver];
+    const newIndex = updated.length - 1;
     const newTotal = updated.reduce((sum, obs) => sum + obs.totalHours, 0);
     setObserverHours({
       ...observerHours,
       observers: updated,
       total: newTotal,
     });
+    lastAddedIndexRef.current = newIndex;
   };
 
   // Calculate total hours for an observer based on class and hours observed
@@ -116,6 +134,7 @@ export default function DETObserverHoursModal({
         if (!open) {
           // Reset state when modal closes
           setObserverHours(initialObserverHours);
+          lastAddedIndexRef.current = null;
         }
         onOpenChange();
       }}
@@ -160,8 +179,15 @@ export default function DETObserverHoursModal({
                     <TableBody emptyContent="No observers added">
                       {(observerHours.observers || []).map((observer, index) => (
                         <TableRow key={index}>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
+                              ref={(el) => {
+                                if (el) {
+                                  inputRefs.current.set(index, el);
+                                } else {
+                                  inputRefs.current.delete(index);
+                                }
+                              }}
                               value={observer.name}
                               onValueChange={(val) => updateObserver(index, "name", val)}
                               {...modalInputProps}
@@ -171,7 +197,7 @@ export default function DETObserverHoursModal({
                               }}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
                               value={observer.initials}
                               onValueChange={(val) => updateObserver(index, "initials", val.toUpperCase())}
@@ -183,7 +209,7 @@ export default function DETObserverHoursModal({
                               }}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
                               type="number"
                               value={String(observer.hoursObserved || "")}
@@ -197,7 +223,7 @@ export default function DETObserverHoursModal({
                               }}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <div className="flex items-center gap-1">
                               <Input
                                 type="number"
@@ -220,7 +246,7 @@ export default function DETObserverHoursModal({
                               <span className="text-gray-400 text-sm whitespace-nowrap pl-4">=</span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="p-1">
                             <Input
                               type="number"
                               value={observer.totalHours.toFixed(1)}
