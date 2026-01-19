@@ -300,7 +300,7 @@ export default function DETUnifiedSpeciesModal({
                               <TableCell colSpan={7}>
                                 <div className="flex items-center gap-2 py-2">
                                   <Divider className="flex-1" />
-                                  <span className="font-semibold text-sm text-default-700 px-2">
+                                  <span className="font-medium text-sm px-2">
                                     {item.groupName}
                                   </span>
                                   <Divider className="flex-1" />
