@@ -1,4 +1,4 @@
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
@@ -7,8 +7,8 @@ import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../Helper/ValidationMessages";
 import SpeciesTooltip from "../Helper/SpeciesTooltip";
-import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
-import { stopModalPropagation } from "./modalInteractions";
+import { modalPrimaryButtonProps } from "./modalDefaults";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
 interface CaptureHistoryModalProps {
   isOpen: boolean;
@@ -114,22 +114,23 @@ export default function CaptureHistoryModal({
   }, [birdEvents, magicTable]);
 
   return (
-    <Modal onClick={stopModalPropagation}
-      isDismissable
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      className={`!max-w-[calc(100%-8rem)]`}
-      scrollBehavior="inside"
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        onOpenChange,
+        className: "!max-w-[calc(100%-8rem)]",
+        scrollBehavior: "inside",
+      }}
     >
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>
               <div className="flex flex-row items-center gap-1">
                 History of band : <span className="font-bold">{bandId}</span>
               </div>
-            </ModalHeader>
-            <ModalBody className={modalBodyClass}>
+            </ModalHeaderShell>
+            <ModalBodyShell>
               {birdInfo && (
                 <div className="bg-default-100 rounded-medium p-4 mb-2">
                   <h3 className="text-lg font-semibold mb-3">Bird Information</h3>
@@ -191,15 +192,14 @@ export default function CaptureHistoryModal({
               ) : (
                 <p>No captures found for this band.</p>
               )}
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalPrimaryButtonProps} onPress={onClose}>
                 Close
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

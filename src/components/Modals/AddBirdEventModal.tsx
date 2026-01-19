@@ -1,12 +1,7 @@
 import {
   Button,
   Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Select,
+        Select,
   SelectItem,
   Switch,
   Table,
@@ -33,12 +28,9 @@ import {
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -612,19 +604,21 @@ export default function AddBirdEventModal({
   const shouldShowPastBirdEvents = pastBirdEvents.length > 0 && !birdEventToModify;
 
   return (
-    <Modal onClick={stopModalPropagation}
-      isDismissable
-      isOpen={isOpen}
-      onOpenChange={handleModalOpenChange}
-      className={`${birdEventToModify ? "!max-w-[calc(100%-8rem)]" : "!max-w-[calc(100%-8rem)]"} ${
-        shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""
-      }`}
-      scrollBehavior="inside"
-    >
-      <ModalContent onClick={stopModalPropagation}>
+    <>
+      <ModalShell
+        modalProps={{
+          isDismissable: true,
+          isOpen,
+          onOpenChange: handleModalOpenChange,
+          className: `${birdEventToModify ? "!max-w-[calc(100%-8rem)]" : "!max-w-[calc(100%-8rem)]"} ${
+            shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""
+          }`,
+          scrollBehavior: "inside",
+        }}
+      >
         {() => (
           <>
-            <ModalHeader className={modalHeaderClass}>
+            <ModalHeaderShell>
               <div className="flex w-full items-center justify-between">
                 <div className="flex flex-row items-center gap-1 font-bold">
                   {birdEventToModify ? "Modify" : "Add"} Capture
@@ -635,8 +629,8 @@ export default function AddBirdEventModal({
                   </Switch>
                 )}
               </div>
-            </ModalHeader>
-            <ModalBody className={modalBodyClass}>
+            </ModalHeaderShell>
+            <ModalBodyShell>
               {formData.species.length === 4 && (
                 <div className="flex gap-4">
                   {pyleSpeciesRange && (
@@ -690,8 +684,8 @@ export default function AddBirdEventModal({
                   <BirdEventsTable birdEvents={pastBirdEvents} maxTableHeight={300} allowInspectHistory />
                 </div>
               )}
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={handleClose}>
                 Cancel
               </Button>
@@ -707,16 +701,16 @@ export default function AddBirdEventModal({
               <Button {...modalPrimaryButtonProps} onPress={handleSaveAndClose}>
                 Save
               </Button>
-            </ModalFooter>
+            </ModalFooterShell>
           </>
         )}
-      </ModalContent>
+      </ModalShell>
       <BirdStatusModal
         isOpen={isBirdStatusModalOpen}
         onOpenChange={setIsBirdStatusModalOpen}
         currentStatus={formData.birdStatus || DEFAULT_BIRD_STATUS}
         onStatusChange={(status) => setFormData((prev) => ({ ...prev, birdStatus: status }))}
       />
-    </Modal>
+    </>
   );
 }

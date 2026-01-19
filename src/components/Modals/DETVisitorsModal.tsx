@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
+        Button,
   Input,
   Table,
   TableHeader,
@@ -15,12 +10,9 @@ import {
   TableCell,
 } from "@heroui/react";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -86,22 +78,23 @@ export default function DETVisitorsModal({
   };
 
   return (
-    <Modal onClick={stopModalPropagation}
-      isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          setVisitors(initialVisitors);
-        }
-        onOpenChange();
+    <ModalShell
+      modalProps={{
+        isOpen,
+        onOpenChange: (open) => {
+          if (!open) {
+            setVisitors(initialVisitors);
+          }
+          onOpenChange();
+        },
+        size: "4xl",
+        scrollBehavior: "inside",
       }}
-      size="4xl"
-      scrollBehavior="inside"
     >
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>Edit Visitors</ModalHeader>
-            <ModalBody className={modalBodyClass}>
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>Edit Visitors</ModalHeaderShell>
+            <ModalBodyShell>
               <div className="flex flex-col gap-4">
                 <div className="rounded-medium border border-default-100 overflow-hidden">
                   <Table aria-label="Visitors table" removeWrapper>
@@ -155,18 +148,17 @@ export default function DETVisitorsModal({
                   Add Visitor
                 </Button>
               </div>
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
               <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

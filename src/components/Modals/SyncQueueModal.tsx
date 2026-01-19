@@ -1,10 +1,10 @@
 import { useMemo, useState, useEffect } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import { getQueuedEvents } from "../../services/indexedDB";
 import type { PendingEvent } from "../../types";
-import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
-import { stopModalPropagation } from "./modalInteractions";
+import { modalPrimaryButtonProps } from "./modalDefaults";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
 interface SyncQueueModalProps {
   isOpen: boolean;
@@ -29,9 +29,16 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
   }, [queuedEvents]);
 
   return (
-    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
-      <ModalContent onClick={stopModalPropagation}>
-        <ModalHeader className={modalHeaderClass}>
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        onClose,
+        size: "5xl",
+        scrollBehavior: "inside",
+      }}
+    >
+        <ModalHeaderShell>
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl">Sync Queue</h2>
@@ -40,9 +47,9 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
               </p>
             </div>
           </div>
-        </ModalHeader>
+        </ModalHeaderShell>
 
-        <ModalBody className={modalBodyClass}>
+        <ModalBodyShell>
           {birdEvents.length === 0 ? (
             <div className="flex justify-center items-center py-8">
               <p className="text-default-500">No pending events in queue</p>
@@ -53,14 +60,13 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
               maxTableHeight={600}
             />
           )}
-        </ModalBody>
+        </ModalBodyShell>
 
-        <ModalFooter className={modalFooterClass}>
+        <ModalFooterShell>
           <Button {...modalPrimaryButtonProps} onPress={onClose}>
             Close
           </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </ModalFooterShell>
+    </ModalShell>
   );
 }

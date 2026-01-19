@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useData } from "../../services/useData";
 import { findBirdEventErrors } from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../Helper/ExportButton";
 import SpeciesTooltip from "../Helper/SpeciesTooltip";
-import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
-import { stopModalPropagation } from "./modalInteractions";
+import { modalPrimaryButtonProps } from "./modalDefaults";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
 interface ErrorsModalProps {
   isOpen: boolean;
@@ -73,15 +73,16 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
 
   return (
     <>
-      <Modal onClick={stopModalPropagation}
-        isDismissable
-        isOpen={isOpen}
-        onClose={onClose}
-        className={`!max-w-[calc(100%-8rem)]`}
-        scrollBehavior="inside"
+      <ModalShell
+        modalProps={{
+          isDismissable: true,
+          isOpen,
+          onClose,
+          className: "!max-w-[calc(100%-8rem)]",
+          scrollBehavior: "inside",
+        }}
       >
-        <ModalContent onClick={stopModalPropagation}>
-          <ModalHeader className={modalHeaderClass}>
+          <ModalHeaderShell>
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl">Data Errors</h2>
@@ -91,9 +92,9 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                 </p>
               </div>
             </div>
-          </ModalHeader>
+          </ModalHeaderShell>
 
-          <ModalBody className={modalBodyClass}>
+          <ModalBodyShell>
             <div className="flex flex-col gap-2">
               {errors.map((error) => (
                 <div key={error.id} className="flex flex-row gap-2">
@@ -132,9 +133,9 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
               ))}
               {errors.length === 0 && <div className="text-center text-default-500 py-8">No severe errors found</div>}
             </div>
-          </ModalBody>
+          </ModalBodyShell>
 
-          <ModalFooter className={modalFooterClass}>
+          <ModalFooterShell>
             {isLoggedIn && isOnline && dismissedCount > 0 && (
               <Button color="primary" variant="bordered" onPress={handleResetDismissedErrors}>
                 Reset Dismissed Errors
@@ -151,9 +152,8 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             <Button {...modalPrimaryButtonProps} onPress={onClose}>
               Close
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </ModalFooterShell>
+      </ModalShell>
 
       <CaptureHistoryModal
         isOpen={isCaptureHistoryModalOpen}

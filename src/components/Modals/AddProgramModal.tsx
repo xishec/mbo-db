@@ -1,12 +1,9 @@
-import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import { useState } from "react";
 import { useData } from "../../services/useData";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -50,13 +47,19 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
   };
 
   return (
-    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
-      <ModalContent onClick={stopModalPropagation}>
-        <ModalHeader className={modalHeaderClass}>
-          <h2 className="text-2xl font-bold">Add New Program</h2>
-          <p className="text-sm font-normal">Enter a display name and year for the new program</p>
-        </ModalHeader>
-        <ModalBody className={modalBodyClass}>
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        placement: "top-center",
+        onOpenChange: handleClose,
+      }}
+    >
+      <ModalHeaderShell>
+        <h2 className="text-2xl font-bold">Add New Program</h2>
+        <p className="text-sm font-normal">Enter a display name and year for the new program</p>
+      </ModalHeaderShell>
+        <ModalBodyShell>
           <Input
             label="Year"
             placeholder="Enter year"
@@ -90,8 +93,8 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
             isInvalid={!!error}
             errorMessage={error}
           />
-        </ModalBody>
-        <ModalFooter className={modalFooterClass}>
+        </ModalBodyShell>
+        <ModalFooterShell>
           <Button
             {...modalCancelButtonProps}
             onPress={() => onOpenChange(false)}
@@ -109,8 +112,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
           >
             Add Program
           </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </ModalFooterShell>
+    </ModalShell>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Textarea } from "@heroui/react";
+import { Button, Input, Textarea } from "@heroui/react";
 import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "../../types/DET";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDate } from "../../services/weatherService";
@@ -9,12 +9,9 @@ import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
 import DETInjuriesModal from "./DETInjuriesModal";
 import DETReleasedModal from "./DETReleasedModal";
 import DETVisitorsModal from "./DETVisitorsModal";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -240,12 +237,18 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
   return (
     <>
-      <Modal onClick={stopModalPropagation} isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
-        <ModalContent onClick={stopModalPropagation}>
-          {(onClose) => (
-            <>
-              <ModalHeader className={modalHeaderClass}>{mode === "create" ? "Add New DET" : "Edit DET"}</ModalHeader>
-              <ModalBody className={modalBodyClass}>
+      <ModalShell
+        modalProps={{
+          isOpen,
+          onOpenChange,
+          size: "5xl",
+          scrollBehavior: "inside",
+        }}
+      >
+        {(onClose) => (
+          <>
+              <ModalHeaderShell>{mode === "create" ? "Add New DET" : "Edit DET"}</ModalHeaderShell>
+              <ModalBodyShell>
                 <div className="flex flex-col gap-4">
                   {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
 
@@ -509,19 +512,18 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                     </div>
                   </div>
                 </div>
-              </ModalBody>
-              <ModalFooter className={modalFooterClass}>
+              </ModalBodyShell>
+              <ModalFooterShell>
                 <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
                   Cancel
                 </Button>
                 <Button {...modalPrimaryButtonProps} onPress={handleSave} isLoading={isSaving}>
                   {mode === "create" ? "Create DET" : "Save Changes"}
                 </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+              </ModalFooterShell>
+          </>
+        )}
+      </ModalShell>
 
       {/* Complex Object Modals */}
       <DETObserverHoursModal

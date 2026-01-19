@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Checkbox, Input, Link } from "@heroui/react";
+import { Button, Checkbox, Input, Link } from "@heroui/react";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -9,12 +9,9 @@ import {
   browserSessionPersistence,
 } from "firebase/auth";
 import { app } from "../../firebase";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -149,15 +146,21 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
   };
 
   return (
-    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        placement: "top-center",
+        onOpenChange: handleClose,
+      }}
+    >
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>
               <h2 className="text-2xl font-bold">Log in</h2>
               <p className="text-sm font-normal">Enter your credentials to access your account</p>
-            </ModalHeader>
-            <ModalBody className={modalBodyClass}>
+            </ModalHeaderShell>
+            <ModalBodyShell>
               {(error || success) && (
                 <div
                   className={`${
@@ -218,8 +221,8 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
                   Forgot password?
                 </Link>
               </div>
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={onClose} className="flex-1">
                 Cancel
               </Button>
@@ -232,10 +235,9 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
               >
                 Sign in
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

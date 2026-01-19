@@ -1,12 +1,9 @@
-import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from "@heroui/react";
+import { Button, Select, SelectItem } from "@heroui/react";
 import { useMemo, useState } from "react";
 import { BIRD_STATUS_CODES, BIRD_STATUS_GROUPS, getCodesForGroup } from "../../types/birdStatus";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalCancelButtonProps,
+        modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
 
@@ -66,16 +63,22 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
   };
 
   return (
-    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
-      <ModalContent onClick={stopModalPropagation}>
-        {() => (
-          <>
-            <ModalHeader className={modalHeaderClass}>
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        onOpenChange,
+        size: "2xl",
+      }}
+    >
+      {() => (
+        <>
+            <ModalHeaderShell>
               <div className="flex w-full items-center justify-between">
                 <div className="flex flex-row items-center gap-1 font-bold">Select Bird Status</div>
               </div>
-            </ModalHeader>
-            <ModalBody className={modalBodyClass}>
+            </ModalHeaderShell>
+            <ModalBodyShell>
               {/* Select Group */}
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-foreground-600">Status Category</label>
@@ -128,18 +131,17 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
                   })}
                 </Select>
               </div>
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={handleCancel}>
                 Cancel
               </Button>
               <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

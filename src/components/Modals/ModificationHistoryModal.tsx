@@ -1,10 +1,10 @@
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import type { BirdEvent } from "../../types";
-import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
-import { stopModalPropagation } from "./modalInteractions";
+import { modalPrimaryButtonProps } from "./modalDefaults";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
 interface ModificationHistoryModalProps {
   isOpen: boolean;
@@ -35,22 +35,23 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
   }, [birdEvent.id, birdEventsMap]);
 
   return (
-    <Modal onClick={stopModalPropagation}
-      isDismissable
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      className={`!max-w-[calc(100%-8rem)]`}
-      scrollBehavior="inside"
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        onOpenChange,
+        className: "!max-w-[calc(100%-8rem)]",
+        scrollBehavior: "inside",
+      }}
     >
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>
               <div className="flex flex-row items-center gap-1">
                 Modification history of band <span className="font-bold">{birdEvent.band?.id}</span>
               </div>
-            </ModalHeader>
-            <ModalBody className={modalBodyClass}>
+            </ModalHeaderShell>
+            <ModalBodyShell>
               {birdEvents.length > 0 ? (
                 <BirdEventsTable
                   birdEvents={birdEvents}
@@ -62,15 +63,14 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
               ) : (
                 <p>No history found for this band.</p>
               )}
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalPrimaryButtonProps} onPress={onClose}>
                 Close
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

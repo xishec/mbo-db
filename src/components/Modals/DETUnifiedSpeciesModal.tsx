@@ -1,11 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
+        Button,
   Input,
   Table,
   TableHeader,
@@ -17,12 +12,9 @@ import {
 } from "@heroui/react";
 import { SPECIES_MAP } from "../../types/species";
 import { SPECIES_GROUPS, DET_SPECIES_CODES_SET, type SpeciesListItem } from "../../types/DET";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -240,12 +232,17 @@ export default function DETUnifiedSpeciesModal({
   };
 
   return (
-    <Modal onClick={stopModalPropagation} isOpen={isOpen} onOpenChange={onOpenChange} className={`!max-w-[calc(100%-8rem)]`}>
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>Edit Species Data</ModalHeader>
-            <ModalBody className={modalBodyClass}>
+    <ModalShell
+      modalProps={{
+        isOpen,
+        onOpenChange,
+        className: "!max-w-[calc(100%-8rem)]",
+      }}
+    >
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>Edit Species Data</ModalHeaderShell>
+            <ModalBodyShell>
               <div className="flex flex-col gap-4">
                 {/* Add Custom Species */}
                 <div className="flex gap-2 items-end">
@@ -402,18 +399,17 @@ export default function DETUnifiedSpeciesModal({
                   </Table>
                 </div>
               </div>
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
               <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

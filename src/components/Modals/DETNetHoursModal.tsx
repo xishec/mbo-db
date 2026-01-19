@@ -1,11 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
+        Button,
   Input,
   Table,
   TableHeader,
@@ -16,12 +11,9 @@ import {
 } from "@heroui/react";
 import type { NetHours, Net } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -99,23 +91,24 @@ export default function DETNetHoursModal({
   };
 
   return (
-    <Modal onClick={stopModalPropagation}
-      isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          setNetHours(initialNetHours);
-          lastAddedIndexRef.current = null;
-        }
-        onOpenChange();
+    <ModalShell
+      modalProps={{
+        isOpen,
+        onOpenChange: (open) => {
+          if (!open) {
+            setNetHours(initialNetHours);
+            lastAddedIndexRef.current = null;
+          }
+          onOpenChange();
+        },
+        size: "4xl",
+        scrollBehavior: "inside",
       }}
-      size="4xl"
-      scrollBehavior="inside"
     >
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>Edit Net Hours</ModalHeader>
-            <ModalBody className={modalBodyClass}>
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>Edit Net Hours</ModalHeaderShell>
+            <ModalBodyShell>
               <div className="flex flex-col gap-4">
                 {/* Hummingbird Trap */}
                 <div className="rounded-medium border border-default-100 p-3">
@@ -269,18 +262,17 @@ export default function DETNetHoursModal({
                   Add Net
                 </Button>
               </div>
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
               <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

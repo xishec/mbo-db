@@ -1,13 +1,10 @@
-import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import { useState, useMemo, useRef } from "react";
 import { useData } from "../../services/useData";
 import { BandSize } from "../../types";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -85,15 +82,22 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
   };
 
   return (
-    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside">
-      <ModalContent onClick={stopModalPropagation}>
-        {(handleClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        onOpenChange,
+        size: "md",
+        scrollBehavior: "inside",
+      }}
+    >
+      {(handleClose) => (
+        <>
+            <ModalHeaderShell>
               <h2 className="text-2xl font-bold">Band Size Settings</h2>
               <p className="text-sm font-normal">Configure band IDs for each band size</p>
-            </ModalHeader>
-            <ModalBody className={modalBodyClass}>
+            </ModalHeaderShell>
+            <ModalBodyShell>
               {Object.values(BandSize)
                 .filter((bandSize) => bandSize !== BandSize.Other)
                 .map((bandSize) => {
@@ -144,18 +148,17 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
                     </div>
                   );
                 })}
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={handleClose}>
                 Cancel
               </Button>
               <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

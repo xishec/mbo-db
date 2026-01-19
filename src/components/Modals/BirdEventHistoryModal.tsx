@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Chip } from "@heroui/react";
+import { Button, Chip } from "@heroui/react";
 import { useData } from "../../services/useData";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import { formatUpdatedAt } from "../PageContent/Programs/Captures/helpers";
 import { MagnifyingGlassIcon } from "@heroicons/react/16/solid";
 import SpeciesTooltip from "../Helper/SpeciesTooltip";
-import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
-import { stopModalPropagation } from "./modalInteractions";
+import { modalPrimaryButtonProps } from "./modalDefaults";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
 enum ModificationType {
   Addition = "Added",
@@ -57,24 +57,25 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
 
   return (
     <>
-      <Modal onClick={stopModalPropagation}
-        isDismissable
-        isOpen={isOpen}
-        onClose={onClose}
-        className={`!max-w-[calc(100%-8rem)]`}
-        scrollBehavior="inside"
+      <ModalShell
+        modalProps={{
+          isDismissable: true,
+          isOpen,
+          onClose,
+          className: "!max-w-[calc(100%-8rem)]",
+          scrollBehavior: "inside",
+        }}
       >
-        <ModalContent onClick={stopModalPropagation}>
-          <ModalHeader className={modalHeaderClass}>
+          <ModalHeaderShell>
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl">Recent History</h2>
                 <p className="text-sm text-default-900 font-light">Showing the 10 most recently updated bird events</p>
               </div>
             </div>
-          </ModalHeader>
+          </ModalHeaderShell>
 
-          <ModalBody className={modalBodyClass}>
+          <ModalBodyShell>
             <div className="flex flex-col gap-2">
               {birdEvents.map((event) => (
                 <div key={event.id} className="flex flex-row gap-2">
@@ -108,15 +109,14 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
               ))}
               {birdEvents.length === 0 && <div className="text-center text-default-500 py-8">No bird events found</div>}
             </div>
-          </ModalBody>
+          </ModalBodyShell>
 
-          <ModalFooter className={modalFooterClass}>
+          <ModalFooterShell>
             <Button {...modalPrimaryButtonProps} onPress={onClose}>
               Close
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </ModalFooterShell>
+      </ModalShell>
 
       <CaptureHistoryModal
         isOpen={isCaptureHistoryModalOpen}

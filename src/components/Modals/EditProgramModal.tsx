@@ -1,13 +1,10 @@
-import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import { useState, useMemo } from "react";
 import { useData } from "../../services/useData";
 import type { Program } from "../../types";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -69,18 +66,24 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
   };
 
   return (
-    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
-      <ModalContent onClick={stopModalPropagation}>
-        <ModalHeader className={modalHeaderClass}>
-          <h2 className="text-2xl font-bold">Edit Program</h2>
-          <p className="text-sm font-normal">Update the display name for this program</p>
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        placement: "top-center",
+        onOpenChange: handleClose,
+      }}
+    >
+      <ModalHeaderShell>
+        <h2 className="text-2xl font-bold">Edit Program</h2>
+        <p className="text-sm font-normal">Update the display name for this program</p>
           {program && (
             <p className="text-xs text-gray-500 mt-2">
               Program ID: <span className="font-mono">{program.id}</span>
             </p>
           )}
-        </ModalHeader>
-        <ModalBody className={modalBodyClass}>
+        </ModalHeaderShell>
+        <ModalBodyShell>
           <Input
             label="Display Name"
             placeholder="Enter display name (e.g., MBO Fall Migration)"
@@ -100,8 +103,8 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
             isInvalid={!!error || isDuplicate}
             errorMessage={error || (isDuplicate ? "A program with this display name already exists" : "")}
           />
-        </ModalBody>
-        <ModalFooter className={modalFooterClass}>
+        </ModalBodyShell>
+        <ModalFooterShell>
           <Button {...modalCancelButtonProps} onPress={handleClose} className="flex-1" isDisabled={isLoading}>
             Cancel
           </Button>
@@ -114,8 +117,7 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
           >
             Update Program
           </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </ModalFooterShell>
+    </ModalShell>
   );
 }

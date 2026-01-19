@@ -1,21 +1,9 @@
 import { useState, useEffect } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  Input,
-  Textarea,
-} from "@heroui/react";
+import { Button, Input, Textarea } from "@heroui/react";
 import type { DET } from "../../types/DET";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -136,14 +124,20 @@ export default function AddOrEditDETModal({ isOpen, onOpenChange, onSave, existi
   };
 
   return (
-    <Modal onClick={stopModalPropagation} isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside">
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>
+    <ModalShell
+      modalProps={{
+        isOpen,
+        onOpenChange,
+        size: "2xl",
+        scrollBehavior: "inside",
+      }}
+    >
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>
               {mode === "create" ? "Add New DET" : "Edit DET"}
-            </ModalHeader>
-            <ModalBody className={modalBodyClass}>
+            </ModalHeaderShell>
+            <ModalBodyShell>
               <div className="flex flex-col gap-4">
                 {error && (
                   <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">
@@ -242,18 +236,17 @@ export default function AddOrEditDETModal({ isOpen, onOpenChange, onSave, existi
                   placeholder="Station management notes..."
                 />
               </div>
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
                 Cancel
               </Button>
               <Button {...modalPrimaryButtonProps} onPress={handleSave} isLoading={isSaving}>
                 {mode === "create" ? "Create DET" : "Save Changes"}
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

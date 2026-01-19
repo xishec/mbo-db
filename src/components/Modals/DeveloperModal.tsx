@@ -1,11 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
+        Button,
   Chip,
   Input,
   Select,
@@ -20,12 +15,9 @@ import {
 } from "@heroui/react";
 import { logger, LogLevel, type LogEntry } from "../../services/logger";
 import { useData } from "../../services/useData";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
 
@@ -121,32 +113,39 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
   const stats = logger.getStats();
 
   return (
-    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
-      <ModalContent onClick={stopModalPropagation}>
-        <ModalHeader className={modalHeaderClass}>
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl">Developer Mode</h2>
-              <p className="text-sm text-default-600 font-light">
-                {filteredLogs.length} of {logs.length} logs
-              </p>
-            </div>
-            <div className="flex gap-4 items-center">
-              <Switch isSelected={forceOffline} onValueChange={setForceOffline}>
-                Force Offline
-              </Switch>
-              <div className="flex gap-2">
-                {Object.entries(stats.byLevel).map(([level, count]) => (
-                  <Chip key={level} color={getLevelColor(level as LogLevel)} variant="flat">
-                    {level}: {count}
-                  </Chip>
-                ))}
-              </div>
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        onClose,
+        size: "5xl",
+        scrollBehavior: "inside",
+      }}
+    >
+      <ModalHeaderShell>
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl">Developer Mode</h2>
+            <p className="text-sm text-default-600 font-light">
+              {filteredLogs.length} of {logs.length} logs
+            </p>
+          </div>
+          <div className="flex gap-4 items-center">
+            <Switch isSelected={forceOffline} onValueChange={setForceOffline}>
+              Force Offline
+            </Switch>
+            <div className="flex gap-2">
+              {Object.entries(stats.byLevel).map(([level, count]) => (
+                <Chip key={level} color={getLevelColor(level as LogLevel)} variant="flat">
+                  {level}: {count}
+                </Chip>
+              ))}
             </div>
           </div>
-        </ModalHeader>
+        </div>
+      </ModalHeaderShell>
 
-        <ModalBody className={modalBodyClass}>
+        <ModalBodyShell>
           <div className="flex gap-2 mb-4">
             <Input
               placeholder="Search logs..."
@@ -269,9 +268,9 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
               </div>
             </Tab>
           </Tabs>
-        </ModalBody>
+        </ModalBodyShell>
 
-        <ModalFooter className={modalFooterClass}>
+        <ModalFooterShell>
           <Button color="danger" variant="bordered" size="md" onPress={handleClearLogs}>
             Clear Logs
           </Button>
@@ -281,8 +280,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
           <Button {...modalPrimaryButtonProps} onPress={onClose}>
             Close
           </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </ModalFooterShell>
+    </ModalShell>
   );
 }

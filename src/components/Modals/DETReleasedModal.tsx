@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
+        Button,
   Input,
   Textarea,
   Table,
@@ -17,12 +12,9 @@ import {
 } from "@heroui/react";
 import type { Released } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalBodyClass,
-  modalFooterClass,
-  modalHeaderClass,
-  modalInputProps,
+        modalInputProps,
   modalCancelButtonProps,
   modalPrimaryButtonProps,
 } from "./modalDefaults";
@@ -91,22 +83,23 @@ export default function DETReleasedModal({
   };
 
   return (
-    <Modal onClick={stopModalPropagation}
-      isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          setReleased(initialReleased);
-        }
-        onOpenChange();
+    <ModalShell
+      modalProps={{
+        isOpen,
+        onOpenChange: (open) => {
+          if (!open) {
+            setReleased(initialReleased);
+          }
+          onOpenChange();
+        },
+        size: "4xl",
+        scrollBehavior: "inside",
       }}
-      size="4xl"
-      scrollBehavior="inside"
     >
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>Edit Released</ModalHeader>
-            <ModalBody className={modalBodyClass}>
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>Edit Released</ModalHeaderShell>
+            <ModalBodyShell>
               <div className="flex flex-col gap-4">
                 <div className="rounded-medium border border-default-100 overflow-hidden">
                   <Table aria-label="Released birds table" removeWrapper>
@@ -221,18 +214,17 @@ export default function DETReleasedModal({
                   Add Released
                 </Button>
               </div>
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={onClose}>
                 Cancel
               </Button>
               <Button {...modalPrimaryButtonProps} onPress={handleSave}>
                 Save
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }

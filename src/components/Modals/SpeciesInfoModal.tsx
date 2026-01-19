@@ -1,15 +1,12 @@
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { useMemo } from "react";
 import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 import { useData } from "../../services/useData";
 import { SPECIES_MAP } from "../../types/species";
-import { stopModalPropagation } from "./modalInteractions";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-  modalHeaderClass,
-  modalBodyClass,
-  modalFooterClass,
-  modalPrimaryButtonProps,
+        modalPrimaryButtonProps,
 } from "./modalDefaults";
 
 interface SpeciesInfoModalProps {
@@ -28,18 +25,18 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
   }, [speciesCode, magicTable]);
 
   return (
-    <Modal
-      onClick={stopModalPropagation}
-      isDismissable
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      size="5xl"
-      scrollBehavior="inside"
+    <ModalShell
+      modalProps={{
+        isDismissable: true,
+        isOpen,
+        onOpenChange,
+        size: "5xl",
+        scrollBehavior: "inside",
+      }}
     >
-      <ModalContent onClick={stopModalPropagation}>
-        {(onClose) => (
-          <>
-            <ModalHeader className={modalHeaderClass}>
+      {(onClose) => (
+        <>
+            <ModalHeaderShell>
               <h2 className="text-xl font-bold">Species Information: {speciesCode}</h2>
               {species && (
                 <div className="flex flex-col gap-1 mt-2 text-sm">
@@ -54,8 +51,8 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
                   </div>
                 </div>
               )}
-            </ModalHeader>
-            <ModalBody className={modalBodyClass}>
+            </ModalHeaderShell>
+            <ModalBodyShell>
               {speciesCode.length === 4 && (
                 <div className="flex gap-4">
                   {pyleSpeciesRange && (
@@ -67,15 +64,14 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
                   />
                 </div>
               )}
-            </ModalBody>
-            <ModalFooter className={modalFooterClass}>
+            </ModalBodyShell>
+            <ModalFooterShell>
               <Button {...modalPrimaryButtonProps} onPress={onClose}>
                 Close
               </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }
