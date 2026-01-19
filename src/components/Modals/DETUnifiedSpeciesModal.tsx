@@ -12,7 +12,7 @@ import {
 } from "@heroui/react";
 import { SPECIES_MAP } from "../../types/species";
 import { SPECIES_GROUPS, DET_SPECIES_CODES_SET, type SpeciesListItem } from "../../types/DET";
-import SpeciesTooltip from "../Helper/SpeciesTooltip";
+import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
         modalInputProps,

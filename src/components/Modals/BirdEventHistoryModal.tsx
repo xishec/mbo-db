@@ -4,7 +4,7 @@ import { useData } from "../../services/useData";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import { formatUpdatedAt } from "../PageContent/Programs/Captures/helpers";
 import { MagnifyingGlassIcon } from "@heroicons/react/16/solid";
-import SpeciesTooltip from "../Helper/SpeciesTooltip";
+import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 

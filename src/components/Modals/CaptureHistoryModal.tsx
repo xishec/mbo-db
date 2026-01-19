@@ -2,10 +2,10 @@ import { Button } from "@heroui/react";
 import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
-import PyleAndFunFacts from "../Helper/PyleAndFunFacts";
+import PyleAndFunFacts from "../Helper/Info/PyleAndFunFacts";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../Helper/ValidationMessages";
-import BirdInfoCard from "../Helper/BirdInfoCard";
+import BirdInfoCard from "../Helper/Info/BirdInfoCard";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 

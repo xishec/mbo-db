@@ -26,8 +26,8 @@ import {
   isInRange,
 } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
-import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
-import SpeciesFunFacts from "../Helper/SpeciesFunFacts";
+import SpeciesRangeTable from "../Helper/Info/PyleTable";
+import SpeciesFunFacts from "../Helper/Info/SpeciesFunFacts";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
         modalInputProps,

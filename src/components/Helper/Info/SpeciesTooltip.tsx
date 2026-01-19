@@ -1,7 +1,7 @@
 import { Tooltip } from "@heroui/react";
 import { useState } from "react";
-import { SPECIES_MAP } from "../../types/species";
-import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
+import { SPECIES_MAP } from "../../../types/species";
+import SpeciesInfoModal from "../../Modals/SpeciesInfoModal";
 
 interface SpeciesTooltipProps {
   speciesCode: string;

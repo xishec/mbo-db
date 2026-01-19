@@ -5,7 +5,7 @@ import { useData } from "../../services/useData";
 import { findBirdEventErrors } from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../Helper/ExportButton";
-import SpeciesTooltip from "../Helper/SpeciesTooltip";
+import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 

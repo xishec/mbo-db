@@ -1,28 +1,31 @@
 import { Card, CardBody } from "@heroui/react";
 import { useState } from "react";
-import type { SpeciesInfo } from "../../types";
+import type { SpeciesInfo } from "../../../types";
 import SpeciesTooltip from "./SpeciesTooltip";
-import CaptureHistoryModal from "../Modals/CaptureHistoryModal";
+import CaptureHistoryModal from "../../Modals/CaptureHistoryModal";
 
 interface SpeciesFunFactsProps {
   speciesCode: string;
   speciesInfo: SpeciesInfo | null;
   currentBandId?: string | null; // Band ID currently being viewed
   disabled?: boolean;
+  className?: string;
 }
 
 export default function SpeciesFunFacts({
   speciesCode,
   speciesInfo,
   currentBandId = null,
-  disabled = false
+  disabled = false,
+  className,
 }: SpeciesFunFactsProps) {
+  const containerClassName = className ? `flex flex-col h-full ${className}` : "flex flex-col h-full";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [eventIdToHighlight, setEventIdToHighlight] = useState<string | undefined>(undefined);
 
   const handleStatClick = (bandId: string, eventId?: string) => {
-    // Prevent opening modal if it's the current bird
+    // Prevent opening modal if it's the current bird.
     if (bandId === currentBandId) {
       return;
     }
@@ -31,11 +34,24 @@ export default function SpeciesFunFacts({
     setIsModalOpen(true);
   };
 
+  const statItemClass = "text-xs rounded-medium p-1 -m-1 transition-colors";
+
+  const getStatItemClass = (bandId: string) =>
+    bandId === currentBandId
+      ? `${statItemClass} cursor-not-allowed text-default-500`
+      : `${statItemClass} cursor-pointer hover:bg-default-100`;
+
+  const renderCurrentBirdNote = (bandId: string) =>
+    bandId === currentBandId ? <span className="text-xs ml-2">(current bird, not clickable)</span> : null;
+
   if (!speciesInfo) {
     return (
-      <div className="flex-1 border border-default-200 rounded-medium p-3">
+      <div className={`${containerClassName} border border-default-200 rounded-medium p-3`}>
         <h4 className="text-sm font-bold mb-2">
-          Species Info: <span className="font-normal"><SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /></span>
+          Species Info:{" "}
+          <span className="font-normal">
+            <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} />
+          </span>
         </h4>
         <p className="text-sm text-default-400">No data available</p>
       </div>
@@ -47,54 +63,59 @@ export default function SpeciesFunFacts({
     return `${rate.toFixed(2)}x average`;
   };
 
+  const biggest = speciesInfo.biggest;
+  const fattest = speciesInfo.fattest;
+  const dummiest = speciesInfo.dummiest;
+  const oldest = speciesInfo.oldest;
+
   return (
     <>
-      <div className="flex-1">
+      <div className={containerClassName}>
         <h4 className="text-sm mb-2">
           <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> records
         </h4>
-        <Card>
-          <CardBody className="gap-2 p-3">
-            <div className="grid grid-cols-2 gap-2">
+        <Card className="flex-1 flex flex-col" shadow="sm">
+          <CardBody className="gap-2 p-3 flex-1">
+            <div className="grid grid-cols-2 gap-4">
               <div
-                className="text-xs cursor-pointer hover:bg-default-100 rounded-medium p-1 -m-1 transition-colors"
-                onClick={() => speciesInfo.biggest.band.id !== currentBandId && handleStatClick(speciesInfo.biggest.band.id, speciesInfo.biggest.id)}
+                className={getStatItemClass(biggest.band.id)}
+                onClick={() => handleStatClick(biggest.band.id, biggest.id)}
               >
                 <div className="font-semibold text-default-900 mb-1">Biggest</div>
                 <div className="text-default-700">
-                  {speciesInfo.biggest.wing}mm by {speciesInfo.biggest.band.id}
-                  {speciesInfo.biggest.band.id === currentBandId && <span className="text-xs ml-2">(current bird)</span>}
+                  {biggest.wing}mm by {biggest.band.id}
+                  {renderCurrentBirdNote(biggest.band.id)}
                 </div>
               </div>
               <div
-                className="text-xs cursor-pointer hover:bg-default-100 rounded-medium p-1 -m-1 transition-colors"
-                onClick={() => speciesInfo.fattest.band.id !== currentBandId && handleStatClick(speciesInfo.fattest.band.id, speciesInfo.fattest.id)}
+                className={getStatItemClass(fattest.band.id)}
+                onClick={() => handleStatClick(fattest.band.id, fattest.id)}
               >
                 <div className="font-semibold text-default-900 mb-1">Fattest</div>
                 <div className="text-default-700">
-                  Fat {speciesInfo.fattest.fat}, {speciesInfo.fattest.weight}g by {speciesInfo.fattest.band.id}
-                  {speciesInfo.fattest.band.id === currentBandId && <span className="text-xs ml-2">(current bird)</span>}
+                  Fat {fattest.fat}, {fattest.weight}g by {fattest.band.id}
+                  {renderCurrentBirdNote(fattest.band.id)}
                 </div>
               </div>
               <div
-                className="text-xs cursor-pointer hover:bg-default-100 rounded-medium p-1 -m-1 transition-colors"
-                onClick={() => speciesInfo.dummiest.band.id !== currentBandId && handleStatClick(speciesInfo.dummiest.band.id)}
+                className={getStatItemClass(dummiest.band.id)}
+                onClick={() => handleStatClick(dummiest.band.id)}
               >
                 <div className="font-semibold text-default-900 mb-1">Dummiest</div>
                 <div className="text-default-700">
-                  {speciesInfo.dummiestCount} time{speciesInfo.dummiestCount !== 1 ? "s" : ""} by {speciesInfo.dummiest.band.id}
-                  {speciesInfo.dummiest.band.id === currentBandId && <span className="text-xs ml-2">(current bird)</span>}
+                  {speciesInfo.dummiestCount} time{speciesInfo.dummiestCount !== 1 ? "s" : ""} by {dummiest.band.id}
+                  {renderCurrentBirdNote(dummiest.band.id)}
                 </div>
               </div>
               {speciesInfo.oldest && speciesInfo.oldestSpanDays >= 0 ? (
                 <div
-                  className="text-xs cursor-pointer hover:bg-default-100 rounded-medium p-1 -m-1 transition-colors"
-                  onClick={() => speciesInfo.oldest && speciesInfo.oldest.band.id !== currentBandId && handleStatClick(speciesInfo.oldest.band.id)}
+                  className={getStatItemClass(oldest?.band.id ?? "")}
+                  onClick={() => oldest && handleStatClick(oldest.band.id)}
                 >
                   <div className="font-semibold text-default-900 mb-1">Oldest</div>
                   <div className="text-default-700">
-                    {speciesInfo.oldestSpanDays} day{speciesInfo.oldestSpanDays !== 1 ? "s" : ""} by {speciesInfo.oldest.band.id}
-                    {speciesInfo.oldest.band.id === currentBandId && <span className="text-xs ml-2">(current bird)</span>}
+                    {speciesInfo.oldestSpanDays} day{speciesInfo.oldestSpanDays !== 1 ? "s" : ""} by {oldest?.band.id}
+                    {oldest ? renderCurrentBirdNote(oldest.band.id) : null}
                   </div>
                 </div>
               ) : (

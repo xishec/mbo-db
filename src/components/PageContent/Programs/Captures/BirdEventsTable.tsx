@@ -7,7 +7,7 @@ import { PencilSquareIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/rea
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 import { useData } from "../../../../services/useData";
-import SpeciesTooltip from "../../../Helper/SpeciesTooltip";
+import SpeciesTooltip from "../../../Helper/Info/SpeciesTooltip";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {

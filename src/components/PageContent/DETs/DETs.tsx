@@ -3,7 +3,7 @@ import { useData } from "../../../services/useData";
 import type { DET } from "../../../types/DET";
 import { Calendar, Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
-import SpeciesTooltip from "../../Helper/SpeciesTooltip";
+import SpeciesTooltip from "../../Helper/Info/SpeciesTooltip";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/AddDETModal";
 import { PencilIcon } from "@heroicons/react/24/outline";

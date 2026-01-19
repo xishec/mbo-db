@@ -1,6 +1,6 @@
-import type { SpeciesInfo, SpeciesRange } from "../../types";
+import type { SpeciesInfo, SpeciesRange } from "../../../types";
 import SpeciesFunFacts from "./SpeciesFunFacts";
-import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
+import PyleTable from "./PyleTable";
 
 interface PyleAndFunFactsProps {
   speciesCode: string;
@@ -17,21 +17,24 @@ export default function PyleAndFunFacts({
   currentBandId = null,
   disabled = false,
 }: PyleAndFunFactsProps) {
+  const panelClassName = "flex-1";
+
   return (
-    <div className="flex gap-4">
-      {pyleSpeciesRange && (
-        <SpeciesRangeTable
-          title="Pyle"
-          speciesCode={speciesCode}
-          speciesRange={pyleSpeciesRange}
-          disabled={disabled}
-        />
-      )}
+    <div className="grid grid-cols-2 gap-4 items-stretch">
+      <PyleTable
+        title="Pyle"
+        speciesCode={speciesCode}
+        speciesRange={pyleSpeciesRange}
+        disabled={disabled}
+        className={panelClassName}
+        withCard
+      />
       <SpeciesFunFacts
         speciesCode={speciesCode}
         speciesInfo={speciesInfo}
         currentBandId={currentBandId}
         disabled={disabled}
+        className={panelClassName}
       />
     </div>
   );
