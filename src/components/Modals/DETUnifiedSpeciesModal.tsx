@@ -15,7 +15,7 @@ import {
   TableCell,
 } from "@heroui/react";
 import { SPECIES_MAP } from "../../types/species";
-import { DETSpecies } from "../../types/DET";
+import { SPECIES_GROUPS } from "../../types/DET";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -26,7 +26,10 @@ import {
 } from "./modalDefaults";
 
 // Calculate DET species list once outside component - it never changes
-const DET_SPECIES_CODES_SET = new Set(Object.values(DETSpecies) as string[]);
+// Flatten all species codes from SPECIES_GROUPS
+const DET_SPECIES_CODES_SET = new Set<string>(
+  Object.values(SPECIES_GROUPS).flat() as string[]
+);
 const DET_SPECIES_LIST = Array.from(DET_SPECIES_CODES_SET)
   .map((code) => SPECIES_MAP[code])
   .filter((species): species is NonNullable<typeof species> => species !== undefined)
@@ -234,7 +237,7 @@ export default function DETUnifiedSpeciesModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl">
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} className={`!max-w-[calc(100%-8rem)]`}>
       <ModalContent>
         {(onClose) => (
           <>
