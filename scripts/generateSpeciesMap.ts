@@ -50,7 +50,7 @@ for (let i = 1; i < lines.length; i++) {
 }
 
 // Generate the TypeScript file content
-const outputContent = `export interface Specie {
+const outputContent = `export interface Species {
   code: string; // Species code (e.g., "ABDU", "AMGO")
   pseudoSpeciesType: string; // Type (e.g., "Species", "Hybrid")
   speciesDescriptionMBO: string; // MBO description
@@ -59,7 +59,7 @@ const outputContent = `export interface Specie {
   speciesScientific: string; // Scientific name
 }
 
-export const SPECIES_MAP: Record<string, Specie> = {
+export const SPECIES_MAP: Record<string, Species> = {
 ${speciesEntries.join(",\n")}
 };
 `;

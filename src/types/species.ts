@@ -1,4 +1,4 @@
-export interface Specie {
+export interface Species {
   code: string; // Species code (e.g., "ABDU", "AMGO")
   pseudoSpeciesType: string; // Type (e.g., "Species", "Hybrid")
   speciesDescriptionMBO: string; // MBO description
@@ -7,7 +7,7 @@ export interface Specie {
   speciesScientific: string; // Scientific name
 }
 
-export const SPECIES_MAP: Record<string, Specie> = {
+export const SPECIES_MAP: Record<string, Species> = {
   ABDU: {
     code: "ABDU",
     pseudoSpeciesType: "Species",

@@ -277,3 +277,15 @@ export interface PendingDETEvent {
 }
 
 export type PendingEvent = PendingBirdEvent | PendingDETEvent;
+
+export interface SpeciesInfo {
+  speciesCode: string;
+  biggest: BirdEvent;
+  heaviest: BirdEvent;
+  fattest: BirdEvent;
+  dummiest: BirdEvent;
+  oldest: BirdEvent;
+  favoriteBander: string;
+}
+
+export type SpeciesInfoMap = Record<string, SpeciesInfo>;
