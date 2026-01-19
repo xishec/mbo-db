@@ -238,7 +238,7 @@ export default function BirdEventsTable({
       }
 
       if (columnKey === "species") {
-        return <SpeciesTooltip speciesCode={item.species}>{item.species}</SpeciesTooltip>;
+        return <SpeciesTooltip speciesCode={item.species} />;
       }
 
       const cellValue = item[columnKey as keyof TableRow];

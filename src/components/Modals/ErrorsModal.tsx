@@ -112,7 +112,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                         {error.birdEvent.date} {error.birdEvent.time}
                       </span>
                       <span className="text-default-900 font-bold">
-                        <SpeciesTooltip speciesCode={error.birdEvent.species}>{error.birdEvent.species}</SpeciesTooltip>
+                        <SpeciesTooltip speciesCode={error.birdEvent.species} />
                       </span>
                       <span className={`font-semibold ${error.severity === "danger" ? "text-danger-600" : "text-warning-600"}`}>
                         {error.reason}

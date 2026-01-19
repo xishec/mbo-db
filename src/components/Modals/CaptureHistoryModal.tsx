@@ -2,11 +2,10 @@ import { Button } from "@heroui/react";
 import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
-import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
-import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
+import PyleAndFunFacts from "../Helper/PyleAndFunFacts";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../Helper/ValidationMessages";
-import SpeciesTooltip from "../Helper/SpeciesTooltip";
+import BirdInfoCard from "../Helper/BirdInfoCard";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
@@ -45,14 +44,14 @@ export default function CaptureHistoryModal({
     });
 
     const mostRecentEvent = sortedEvents[0];
-    
+
     // Sort events chronologically for span calculation
     const chronologicalEvents = [...birdEvents].sort((a, b) => {
       const dateCompare = a.date.localeCompare(b.date);
       if (dateCompare !== 0) return dateCompare;
       return a.time.localeCompare(b.time);
     });
-    
+
     const earliestEvent = chronologicalEvents[0];
     const latestEvent = chronologicalEvents[chronologicalEvents.length - 1];
     const hasRecaptures = birdEvents.length > 1;
@@ -125,79 +124,42 @@ export default function CaptureHistoryModal({
     >
       {(onClose) => (
         <>
-            <ModalHeaderShell>
-              <div className="flex flex-row items-center gap-1">
-                History of band : <span className="font-bold">{bandId}</span>
-              </div>
-            </ModalHeaderShell>
-            <ModalBodyShell>
-              {birdInfo && (
-                <div className="bg-default-100 rounded-medium p-4 mb-2">
-                  <h3 className="text-lg font-semibold mb-3">Bird Information</h3>
-                  <div className="grid grid-cols-5 gap-4 text-sm">
-                    <div>
-                      <span className="text-default-700">Band ID :</span> <span className="font-medium">{bandId}</span>
-                    </div>
-                    <div>
-                      <span className="text-default-700">Species :</span>{" "}
-                      <span className="font-medium">
-                        <SpeciesTooltip speciesCode={birdInfo.species}>{birdInfo.species}</SpeciesTooltip>
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-default-700">Total Captures :</span>{" "}
-                      <span className="font-medium">{birdInfo.totalCaptures}</span>
-                    </div>
-                    <div>
-                      <span className="text-default-700">Capture Span :</span>{" "}
-                      <span className="font-medium">{birdInfo.captureSpan}</span>
-                    </div>
-                    <div>
-                      <span className="text-default-700">Latest Recapture :</span>{" "}
-                      {birdInfo.latestRecapture === "never" ? (
-                        <span className="font-medium">n/a</span>
-                      ) : birdInfo.latestRecapture === "< 6 months" ? (
-                        <span className="font-medium">{`< 6 months`}</span>
-                      ) : (
-                        <span className="font-medium">{`> 6 months`}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {birdInfo && birdInfo.species.length === 4 && (
-                <div className="flex gap-4">
-                  {pyleSpeciesRange && (
-                    <SpeciesRangeTable title="Pyle" speciesCode={birdInfo.species} speciesRange={pyleSpeciesRange} />
-                  )}
-                  <SpeciesInfoCard 
-                    speciesCode={birdInfo.species} 
-                    speciesInfo={speciesInfoMap[birdInfo.species] || null}
-                    currentBandId={bandId}
-                  />
-                </div>
-              )}
-              <ValidationMessages
-                messages={errors.map((e) => ({ text: e.reason, severity: e.severity }))}
-                title="Errors Detected:"
+          <ModalHeaderShell>
+            <div className="flex flex-row items-center gap-1">
+              History of band : <span className="font-bold">{bandId}</span>
+            </div>
+          </ModalHeaderShell>
+          <ModalBodyShell>
+            {birdInfo && <BirdInfoCard bandId={bandId} birdInfo={birdInfo} />}
+            {birdInfo && pyleSpeciesRange && (
+              <PyleAndFunFacts
+                speciesCode={birdInfo.species}
+                pyleSpeciesRange={pyleSpeciesRange}
+                speciesInfo={speciesInfoMap[birdInfo.species]}
+                currentBandId={bandId}
               />
-              {birdEvents.length > 0 ? (
-                <BirdEventsTable
-                  birdEvents={birdEvents}
-                  maxTableHeight={300}
-                  allowInspectHistory
-                  hiddenColumns={["bandGroup", "bandLastTwoDigits"]}
-                  birdEventIdToHighlight={birdEventIdToHighlight}
-                />
-              ) : (
-                <p>No captures found for this band.</p>
-              )}
-            </ModalBodyShell>
-            <ModalFooterShell>
-              <Button {...modalPrimaryButtonProps} onPress={onClose}>
-                Close
-              </Button>
-            </ModalFooterShell>
+            )}
+            <ValidationMessages
+              messages={errors.map((e) => ({ text: e.reason, severity: e.severity }))}
+              title="Errors Detected:"
+            />
+            {birdEvents.length > 0 ? (
+              <BirdEventsTable
+                birdEvents={birdEvents}
+                maxTableHeight={300}
+                allowInspectHistory
+                hiddenColumns={["bandGroup", "bandLastTwoDigits"]}
+                birdEventIdToHighlight={birdEventIdToHighlight}
+              />
+            ) : (
+              <p>No captures found for this band.</p>
+            )}
+          </ModalBodyShell>
+          <ModalFooterShell>
+            <Button {...modalPrimaryButtonProps} onPress={onClose}>
+              Close
+            </Button>
+          </ModalFooterShell>
         </>
       )}
     </ModalShell>

@@ -1,12 +1,11 @@
 import { Button } from "@heroui/react";
 import { useMemo } from "react";
-import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
-import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
+import PyleAndFunFacts from "../Helper/PyleAndFunFacts";
 import { useData } from "../../services/useData";
 import { SPECIES_MAP } from "../../types/species";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
-        modalPrimaryButtonProps,
+  modalPrimaryButtonProps,
 } from "./modalDefaults";
 
 interface SpeciesInfoModalProps {
@@ -36,40 +35,37 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
     >
       {(onClose) => (
         <>
-            <ModalHeaderShell>
-              <h2 className="text-xl font-bold">Species Information: {speciesCode}</h2>
-              {species && (
-                <div className="flex flex-col gap-1 mt-2 text-sm">
-                  <div>
-                    <span className="font-semibold">English:</span> {species.speciesDescriptionMBO}
-                  </div>
-                  <div>
-                    <span className="font-semibold">French:</span> {species.speciesFrench}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Scientific:</span> <span className="italic">{species.speciesScientific}</span>
-                  </div>
+          <ModalHeaderShell>
+            <h2 className="text-xl font-bold">Species Information: {speciesCode}</h2>
+            {species && (
+              <div className="flex flex-col gap-1 mt-2 text-sm font-normal">
+                <div>
+                  <span className="font-semibold">English:</span> {species.speciesDescriptionMBO}
                 </div>
-              )}
-            </ModalHeaderShell>
-            <ModalBodyShell>
-              {speciesCode.length === 4 && (
-                <div className="flex gap-4">
-                  {pyleSpeciesRange && (
-                    <SpeciesRangeTable title="Pyle" speciesCode={speciesCode} speciesRange={pyleSpeciesRange} />
-                  )}
-                  <SpeciesInfoCard
-                    speciesCode={speciesCode}
-                    speciesInfo={speciesInfoMap[speciesCode] || null}
-                  />
+                <div>
+                  <span className="font-semibold">French:</span> {species.speciesFrench}
                 </div>
-              )}
-            </ModalBodyShell>
-            <ModalFooterShell>
-              <Button {...modalPrimaryButtonProps} onPress={onClose}>
-                Close
-              </Button>
-            </ModalFooterShell>
+                <div>
+                  <span className="font-semibold">Scientific:</span> <span className="italic">{species.speciesScientific}</span>
+                </div>
+              </div>
+            )}
+          </ModalHeaderShell>
+          <ModalBodyShell>
+            {speciesCode.length === 4 && pyleSpeciesRange && speciesInfoMap[speciesCode] && (
+              <PyleAndFunFacts
+                speciesCode={speciesCode}
+                pyleSpeciesRange={pyleSpeciesRange}
+                speciesInfo={speciesInfoMap[speciesCode]}
+                disabled
+              />
+            )}
+          </ModalBodyShell>
+          <ModalFooterShell>
+            <Button {...modalPrimaryButtonProps} onPress={onClose}>
+              Close
+            </Button>
+          </ModalFooterShell>
         </>
       )}
     </ModalShell>

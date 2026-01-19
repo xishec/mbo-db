@@ -4,17 +4,19 @@ import type { SpeciesInfo } from "../../types";
 import SpeciesTooltip from "./SpeciesTooltip";
 import CaptureHistoryModal from "../Modals/CaptureHistoryModal";
 
-interface SpeciesInfoCardProps {
+interface SpeciesFunFactsProps {
   speciesCode: string;
   speciesInfo: SpeciesInfo | null;
   currentBandId?: string | null; // Band ID currently being viewed
+  disabled?: boolean;
 }
 
-export default function SpeciesInfoCard({
+export default function SpeciesFunFacts({
   speciesCode,
   speciesInfo,
-  currentBandId = null
-}: SpeciesInfoCardProps) {
+  currentBandId = null,
+  disabled = false
+}: SpeciesFunFactsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [eventIdToHighlight, setEventIdToHighlight] = useState<string | undefined>(undefined);
@@ -33,7 +35,7 @@ export default function SpeciesInfoCard({
     return (
       <div className="flex-1 border border-default-200 rounded-medium p-3">
         <h4 className="text-sm font-bold mb-2">
-          Species Info: <span className="font-normal"><SpeciesTooltip speciesCode={speciesCode} showInfoCardOnClick={false}>{speciesCode}</SpeciesTooltip></span>
+          Species Info: <span className="font-normal"><SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /></span>
         </h4>
         <p className="text-sm text-default-400">No data available</p>
       </div>
@@ -49,13 +51,13 @@ export default function SpeciesInfoCard({
     <>
       <div className="flex-1">
         <h4 className="text-sm mb-2">
-          <SpeciesTooltip speciesCode={speciesCode} showInfoCardOnClick={false}>{speciesCode}</SpeciesTooltip> records
+          <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> records
         </h4>
         <Card>
           <CardBody className="gap-2 p-3">
             <div className="grid grid-cols-2 gap-2">
               <div
-                className="text-xs cursor-pointer hover:bg-default-100 rounded p-1 -m-1 transition-colors"
+                className="text-xs cursor-pointer hover:bg-default-100 rounded-medium p-1 -m-1 transition-colors"
                 onClick={() => speciesInfo.biggest.band.id !== currentBandId && handleStatClick(speciesInfo.biggest.band.id, speciesInfo.biggest.id)}
               >
                 <div className="font-semibold text-default-900 mb-1">Biggest</div>
@@ -65,7 +67,7 @@ export default function SpeciesInfoCard({
                 </div>
               </div>
               <div
-                className="text-xs cursor-pointer hover:bg-default-100 rounded p-1 -m-1 transition-colors"
+                className="text-xs cursor-pointer hover:bg-default-100 rounded-medium p-1 -m-1 transition-colors"
                 onClick={() => speciesInfo.fattest.band.id !== currentBandId && handleStatClick(speciesInfo.fattest.band.id, speciesInfo.fattest.id)}
               >
                 <div className="font-semibold text-default-900 mb-1">Fattest</div>
@@ -75,7 +77,7 @@ export default function SpeciesInfoCard({
                 </div>
               </div>
               <div
-                className="text-xs cursor-pointer hover:bg-default-100 rounded p-1 -m-1 transition-colors"
+                className="text-xs cursor-pointer hover:bg-default-100 rounded-medium p-1 -m-1 transition-colors"
                 onClick={() => speciesInfo.dummiest.band.id !== currentBandId && handleStatClick(speciesInfo.dummiest.band.id)}
               >
                 <div className="font-semibold text-default-900 mb-1">Dummiest</div>
@@ -86,7 +88,7 @@ export default function SpeciesInfoCard({
               </div>
               {speciesInfo.oldest && speciesInfo.oldestSpanDays >= 0 ? (
                 <div
-                  className="text-xs cursor-pointer hover:bg-default-100 rounded p-1 -m-1 transition-colors"
+                  className="text-xs cursor-pointer hover:bg-default-100 rounded-medium p-1 -m-1 transition-colors"
                   onClick={() => speciesInfo.oldest && speciesInfo.oldest.band.id !== currentBandId && handleStatClick(speciesInfo.oldest.band.id)}
                 >
                   <div className="font-semibold text-default-900 mb-1">Oldest</div>

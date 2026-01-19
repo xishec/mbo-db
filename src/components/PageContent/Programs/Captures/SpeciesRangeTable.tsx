@@ -6,9 +6,10 @@ interface SpeciesRangeTableProps {
   title: string;
   speciesCode: string;
   speciesRange: SpeciesRange | null;
+  disabled?: boolean;
 }
 
-export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: SpeciesRangeTableProps) {
+export default function SpeciesRangeTable({ title, speciesCode, speciesRange, disabled = false }: SpeciesRangeTableProps) {
   const formatRange = (lower: number, upper: number) => {
     // If values are valid, show them
     if (lower > 0 && upper > 0 && !isNaN(lower) && !isNaN(upper)) {
@@ -21,7 +22,7 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
     return (
       <div className="flex-1 border border-default-200 rounded-medium p-3">
         <h4 className="text-sm font-bold mb-2">
-          {title}: <span className="font-normal"><SpeciesTooltip speciesCode={speciesCode}>{speciesCode}</SpeciesTooltip></span>
+          {title}: <span className="font-normal"><SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /></span>
         </h4>
         <p className="text-sm text-default-400">No data available</p>
       </div>
@@ -31,7 +32,7 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
   return (
     <div className="flex-1">
       <h4 className="text-sm mb-2">
-        <SpeciesTooltip speciesCode={speciesCode}>{speciesCode}</SpeciesTooltip> statistics - {title}
+        <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> statistics - {title}
       </h4>
       <Table aria-label={`${title} species range`} classNames={{ th: "text-xs", td: "text-xs py-1" }}>
         <TableHeader>

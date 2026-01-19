@@ -93,7 +93,7 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
                         {event.date} {event.time}
                       </span>
                       <span className="text-default-900 font-bold">
-                        <SpeciesTooltip speciesCode={event.species}>{event.species}</SpeciesTooltip>
+                        <SpeciesTooltip speciesCode={event.species} />
                       </span>
                       <Chip
                         size="sm"

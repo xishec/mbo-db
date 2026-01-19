@@ -12,6 +12,7 @@ import {
 } from "@heroui/react";
 import { SPECIES_MAP } from "../../types/species";
 import { SPECIES_GROUPS, DET_SPECIES_CODES_SET, type SpeciesListItem } from "../../types/DET";
+import SpeciesTooltip from "../Helper/SpeciesTooltip";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
         modalInputProps,
@@ -314,7 +315,7 @@ export default function DETUnifiedSpeciesModal({
                           <TableRow key={code}>
                             <TableCell>
                               <div className="flex flex-col">
-                                <span className="font-medium text-sm">{code}</span>
+                                <span className="font-medium text-sm"><SpeciesTooltip speciesCode={code} /></span>
                                 {species && species.speciesDescriptionMBO !== code && (
                                   <span className="text-xs text-gray-500">{species.speciesDescriptionMBO}</span>
                                 )}

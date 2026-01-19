@@ -27,7 +27,7 @@ import {
 } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
-import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
+import SpeciesFunFacts from "../Helper/SpeciesFunFacts";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
         modalInputProps,
@@ -636,7 +636,7 @@ export default function AddBirdEventModal({
                   {pyleSpeciesRange && (
                     <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />
                   )}
-                  <SpeciesInfoCard 
+                  <SpeciesFunFacts 
                     speciesCode={formData.species} 
                     speciesInfo={speciesInfoMap[formData.species] || null} 
                   />
