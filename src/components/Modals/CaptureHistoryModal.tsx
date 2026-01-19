@@ -70,7 +70,7 @@ export default function CaptureHistoryModal({
     }
 
     // Calculate capture span (from earliest to latest)
-    let captureSpan = "Single capture";
+    let captureSpan = "n/a";
     let captureSpanDays = 0;
     if (hasRecaptures) {
       const spanMs = latestDate.getTime() - earliestDate.getTime();
@@ -153,7 +153,7 @@ export default function CaptureHistoryModal({
                     <div>
                       <span className="text-default-700">Latest Recapture :</span>{" "}
                       {birdInfo.latestRecapture === "never" ? (
-                        <span className="font-medium">None</span>
+                        <span className="font-medium">n/a</span>
                       ) : birdInfo.latestRecapture === "< 6 months" ? (
                         <span className="font-medium">{`< 6 months`}</span>
                       ) : (
@@ -170,7 +170,8 @@ export default function CaptureHistoryModal({
                   )}
                   <SpeciesInfoCard 
                     speciesCode={birdInfo.species} 
-                    speciesInfo={speciesInfoMap[birdInfo.species] || null} 
+                    speciesInfo={speciesInfoMap[birdInfo.species] || null}
+                    currentBandId={bandId}
                   />
                 </div>
               )}

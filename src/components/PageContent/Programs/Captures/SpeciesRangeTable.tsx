@@ -31,7 +31,7 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
   return (
     <div className="flex-1">
       <h4 className="text-sm mb-2">
-        <SpeciesPopover speciesCode={speciesCode}>{speciesCode}</SpeciesPopover> statistics - <span className="font-bold">{title}</span>
+        <SpeciesPopover speciesCode={speciesCode}>{speciesCode}</SpeciesPopover> statistics - {title}
       </h4>
       <Table aria-label={`${title} species range`} classNames={{ th: "text-xs", td: "text-xs py-1" }}>
         <TableHeader>

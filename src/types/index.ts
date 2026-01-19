@@ -288,6 +288,9 @@ export interface SpeciesInfo {
   oldest: BirdEvent | null; // null if no band has multiple events
   oldestSpanDays: number; // Span in days for the oldest individual (-1 if n/a)
   favoriteBander: string;
+  favoriteBanderRate: number;
+  favoriteNet: string;
+  favoriteNetRate: number;
 }
 
 export type SpeciesInfoMap = Record<string, SpeciesInfo>;

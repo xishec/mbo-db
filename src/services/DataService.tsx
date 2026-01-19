@@ -72,7 +72,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    */
   const speciesInfoMap = useMemo<SpeciesInfoMap>(() => {
     const infoMap: SpeciesInfoMap = {};
-    
+
     // Filter out modified events
     const validEvents = Object.values(birdEventsMap).filter(
       (event) => event && !event.modifiedEventId
@@ -96,7 +96,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (events.length === 0) continue;
 
       // Biggest: largest wing
-      const biggest = events.reduce((max, event) => 
+      const biggest = events.reduce((max, event) =>
         event.wing > max.wing ? event : max
       );
 
@@ -138,20 +138,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       let oldestEvent: BirdEvent | null = null;
       for (const [, bandEvents] of eventsByBand.entries()) {
         if (bandEvents.length < 2) continue; // Need at least 2 events for a span
-        
+
         const sortedEvents = [...bandEvents].sort((a, b) => {
           const dateCompare = a.date.localeCompare(b.date);
           if (dateCompare !== 0) return dateCompare;
           return a.time.localeCompare(b.time);
         });
-        
+
         const earliest = sortedEvents[0];
         const latest = sortedEvents[sortedEvents.length - 1];
         const earliestDate = new Date(`${earliest.date}T${earliest.time}`);
         const latestDate = new Date(`${latest.date}T${latest.time}`);
         const spanMs = latestDate.getTime() - earliestDate.getTime();
         const spanDays = Math.floor(spanMs / (1000 * 60 * 60 * 24));
-        
+
         if (spanMs > maxSpan) {
           maxSpan = spanMs;
           oldestSpanDays = spanDays;
@@ -178,6 +178,44 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Calculate favoriteBanderRate: how much more likely favoriteBander is than average
+      // If rate = 2.0, favorite bander appears 2x more often than average
+      let favoriteBanderRate = 0;
+      if (favoriteBander && banderCounts.size > 0) {
+        const totalEventsWithBander = Array.from(banderCounts.values()).reduce((sum, count) => sum + count, 0);
+        if (totalEventsWithBander > 0) {
+          const averageBanderRate = totalEventsWithBander / banderCounts.size;
+          favoriteBanderRate = maxBanderCount / averageBanderRate;
+        }
+      }
+
+      // Favorite net: most repeated net string
+      const netCounts = new Map<string, number>();
+      for (const event of events) {
+        if (event.net) {
+          netCounts.set(event.net, (netCounts.get(event.net) || 0) + 1);
+        }
+      }
+      let favoriteNet = "";
+      let maxNetCount = 0;
+      for (const [net, count] of netCounts.entries()) {
+        if (count > maxNetCount) {
+          maxNetCount = count;
+          favoriteNet = net;
+        }
+      }
+
+      // Calculate favoriteNetRate: how much more likely favoriteNet is than average
+      // If rate = 2.0, favorite net appears 2x more often than average
+      let favoriteNetRate = 0;
+      if (favoriteNet && netCounts.size > 0) {
+        const totalEventsWithNet = Array.from(netCounts.values()).reduce((sum, count) => sum + count, 0);
+        if (totalEventsWithNet > 0) {
+          const averageNetRate = totalEventsWithNet / netCounts.size;
+          favoriteNetRate = maxNetCount / averageNetRate;
+        }
+      }
+
       // Ensure we have valid events for all required fields
       // oldestEvent can be null if no band has multiple events
       if (biggest && fattest && dummiestEvent) {
@@ -190,6 +228,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           oldest: oldestEvent, // null if no band has multiple events
           oldestSpanDays: oldestEvent ? oldestSpanDays : -1, // Use -1 to indicate n/a
           favoriteBander,
+          favoriteBanderRate,
+          favoriteNet,
+          favoriteNetRate,
         };
       }
     }
@@ -583,7 +624,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           } else if (pending.type === "det") {
             // Handle DET sync
             await set(ref(db, `${pending.environment}/DETsMap/${pending.det.date}`), pending.det);
-            
+
             logger.sync("SyncQueue", `Synced DET ${successCount + 1}/${pendingEvents.length}`, {
               date: pending.det.date,
             });
@@ -673,11 +714,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       try {
         // 1. Create Band and BirdEvent objects
         const birdEventType = captureData.birdEventType as BirdEventType;
-        
+
         // Ensure inputs have correct padding (defensive)
         const bandGroup = captureData.bandGroup.padStart(7, "0");
         const bandLastTwoDigits = captureData.bandLastTwoDigits.padStart(2, "0");
-        
+
         const bandPrefix = bandGroup.substring(0, 4);
         const bandSuffix = bandGroup.substring(4) + bandLastTwoDigits;
         const band = new Band(bandPrefix, bandSuffix);
