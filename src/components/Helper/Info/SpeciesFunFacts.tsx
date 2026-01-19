@@ -72,7 +72,7 @@ export default function SpeciesFunFacts({
     <>
       <div className={containerClassName}>
         <h4 className="text-sm mb-2">
-          <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> records
+          <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> records - {speciesInfo.totalCaptures} captures
         </h4>
         <Card className="flex-1 flex flex-col" shadow="sm">
           <CardBody className="gap-2 p-4 flex-1">

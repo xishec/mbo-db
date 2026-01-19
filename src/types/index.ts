@@ -280,6 +280,7 @@ export interface PendingDETEvent {
 export type PendingEvent = PendingBirdEvent | PendingDETEvent;
 
 export interface SpeciesInfo {
+  totalCaptures: number;
   speciesCode: string;
   biggest: BirdEvent;
   fattest: BirdEvent;

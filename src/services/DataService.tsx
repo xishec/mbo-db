@@ -225,6 +225,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // oldestEvent can be null if no band has multiple events
       if (biggest && fattest && dummiestEvent) {
         infoMap[speciesCode] = {
+          totalCaptures: events.length,
           speciesCode,
           biggest,
           fattest,
