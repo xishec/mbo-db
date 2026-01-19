@@ -207,6 +207,7 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "species", code: "EAWP" }, // Eastern Wood-Pewee
   { type: "species", code: "YBFL" }, // Yellow-bellied Flycatcher
   { type: "species", code: "ALFL" }, // Alder Flycatcher
+  { type: "species", code: "TRFL" }, // Traill's Flycatcher
   { type: "species", code: "WIFL" }, // Willow Flycatcher
   { type: "species", code: "LEFL" }, // Least Flycatcher
   { type: "species", code: "EAPH" }, // Eastern Phoebe
@@ -223,7 +224,7 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "species", code: "BLJA" }, // Blue Jay
   { type: "species", code: "AMCR" }, // American Crow
   { type: "species", code: "CORA" }, // Common Raven
-  { type: "group", groupName: "MESANGES" },
+  { type: "group", groupName: "MÉSANGES" },
   { type: "species", code: "BCCH" }, // Black-capped Chickadee
   { type: "species", code: "TUTI" }, // Tufted Titmouse
   { type: "group", groupName: "LARKS" },
@@ -297,14 +298,15 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "species", code: "SWSP" }, // Swamp Sparrow
   { type: "species", code: "EATO" }, // Eastern Towhee
   { type: "group", groupName: "BLACKBIRDS" },
-  { type: "species", code: "RWBL" }, // Red-winged Blackbird
+  { type: "species", code: "BOBO" }, // Bobolink
   { type: "species", code: "EAME" }, // Eastern Meadowlark
   { type: "species", code: "BAOR" }, // Baltimore Oriole
+  { type: "species", code: "RWBL" }, // Red-winged Blackbird
   { type: "species", code: "BHCO" }, // Brown-headed Cowbird
   { type: "species", code: "RUBL" }, // Rusty Blackbird
   { type: "species", code: "COGR" }, // Common Grackle
-  { type: "species", code: "OVEN" }, // Ovenbird
   { type: "group", groupName: "WARBLERS" },
+  { type: "species", code: "OVEN" }, // Ovenbird
   { type: "species", code: "NOWA" }, // Northern Waterthrush
   { type: "species", code: "BAWW" }, // Black-and-white Warbler
   { type: "species", code: "TEWA" }, // Tennessee Warbler
@@ -323,9 +325,10 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "species", code: "CSWA" }, // Chestnut-sided Warbler
   { type: "species", code: "BLPW" }, // Blackpoll Warbler
   { type: "species", code: "BTBW" }, // Black-throated Blue Warbler
-  { type: "species", code: "MYWA" }, // Yellow-rumped Warbler
+  { type: "species", code: "WPWA" }, // Western Palm Warbler
   { type: "species", code: "YPWA" }, // Yellow Palm Warbler
   { type: "species", code: "PIWA" }, // Pine Warbler
+  { type: "species", code: "MYWA" }, // Yellow-rumped Warbler
   { type: "species", code: "BTNW" }, // Black-throated Green Warbler
   { type: "species", code: "CAWA" }, // Canada Warbler
   { type: "species", code: "WIWA" }, // Wilson's Warbler
