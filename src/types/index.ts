@@ -147,22 +147,18 @@ export interface SpeciesRange {
   fWeightUpper: number;
   fWingLower: number;
   fWingUpper: number;
-  fCounter?: number;
   mWeightLower: number;
   mWeightUpper: number;
   mWingLower: number;
   mWingUpper: number;
-  mCounter?: number;
   unknownWeightLower: number;
   unknownWeightUpper: number;
   unknownWingLower: number;
   unknownWingUpper: number;
-  unknownCounter?: number;
 }
 
 export interface MagicTable {
   pyle: Record<string, SpeciesRange>;
-  mbo: Record<string, SpeciesRange>;
 }
 
 // Database root type

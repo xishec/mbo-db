@@ -35,17 +35,14 @@ function parseCSV(csvContent: string): Record<string, SpeciesRange> {
       fWeightUpper,
       fWingLower,
       fWingUpper,
-      fCounter: 0,
       mWeightLower,
       mWeightUpper,
       mWingLower,
       mWingUpper,
-      mCounter: 0,
       unknownWeightLower: Math.min(fWeightLower, mWeightLower),
       unknownWeightUpper: Math.max(fWeightUpper, mWeightUpper),
       unknownWingLower: Math.min(fWingLower, mWingLower),
       unknownWingUpper: Math.max(fWingUpper, mWingUpper),
-      unknownCounter: 0,
     };
   }
 

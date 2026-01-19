@@ -9,8 +9,12 @@ interface SpeciesRangeTableProps {
 }
 
 export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: SpeciesRangeTableProps) {
-  const formatRange = (lower: number, upper: number, counter?: number) => {
-    return counter === 0 ? "n/a" : `${lower} - ${upper}`;
+  const formatRange = (lower: number, upper: number) => {
+    // If values are valid, show them
+    if (lower > 0 && upper > 0 && !isNaN(lower) && !isNaN(upper)) {
+      return `${lower} - ${upper}`;
+    }
+    return "n/a";
   };
 
   if (!speciesRange) {
@@ -37,34 +41,33 @@ export default function SpeciesRangeTable({ title, speciesCode, speciesRange }: 
         </TableHeader>
         <TableBody>
           <TableRow key="male">
-            <TableCell>Male {speciesRange.mCounter ? ` (${speciesRange.mCounter})` : ""}</TableCell>
+            <TableCell>Male</TableCell>
             <TableCell>
-              {formatRange(speciesRange.mWeightLower, speciesRange.mWeightUpper, speciesRange.mCounter)}
+              {formatRange(speciesRange.mWeightLower, speciesRange.mWeightUpper)}
             </TableCell>
             <TableCell>
-              {formatRange(speciesRange.mWingLower, speciesRange.mWingUpper, speciesRange.mCounter)}
+              {formatRange(speciesRange.mWingLower, speciesRange.mWingUpper)}
             </TableCell>
           </TableRow>
           <TableRow key="female">
-            <TableCell>Female {speciesRange.fCounter ? ` (${speciesRange.fCounter})` : ""}</TableCell>
+            <TableCell>Female</TableCell>
             <TableCell>
-              {formatRange(speciesRange.fWeightLower, speciesRange.fWeightUpper, speciesRange.fCounter)}
+              {formatRange(speciesRange.fWeightLower, speciesRange.fWeightUpper)}
             </TableCell>
             <TableCell>
-              {formatRange(speciesRange.fWingLower, speciesRange.fWingUpper, speciesRange.fCounter)}
+              {formatRange(speciesRange.fWingLower, speciesRange.fWingUpper)}
             </TableCell>
           </TableRow>
           <TableRow key="unknown">
-            <TableCell>Unknown {speciesRange.unknownCounter ? ` (${speciesRange.unknownCounter})` : ""}</TableCell>
+            <TableCell>Unknown</TableCell>
             <TableCell>
               {formatRange(
                 speciesRange.unknownWeightLower,
-                speciesRange.unknownWeightUpper,
-                speciesRange.unknownCounter
+                speciesRange.unknownWeightUpper
               )}
             </TableCell>
             <TableCell>
-              {formatRange(speciesRange.unknownWingLower, speciesRange.unknownWingUpper, speciesRange.unknownCounter)}
+              {formatRange(speciesRange.unknownWingLower, speciesRange.unknownWingUpper)}
             </TableCell>
           </TableRow>
         </TableBody>

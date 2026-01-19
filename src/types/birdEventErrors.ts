@@ -103,27 +103,6 @@ function checkPyleMeasurementTolerance(
 }
 
 /**
- * Check if a measurement is outside the MBO range
- * Returns error severity: 'warning' for MBO violations
- */
-function checkMBOMeasurementRange(
-  value: number,
-  mboLower: number,
-  mboUpper: number,
-  measurementType: "Weight" | "Wing",
-  sexLabel: SexLabel,
-  unit: "g" | "mm"
-): string | null {
-  if (value <= 0 || mboLower <= 0) return null;
-
-  if (value < mboLower || value > mboUpper) {
-    return `${measurementType} ${value}${unit} is outside of MBO ${sexLabel} range (${mboLower}-${mboUpper}${unit})`;
-  }
-
-  return null;
-}
-
-/**
  * Check if fat value is within valid range (0-7)
  */
 function checkFatValue(fat: number): string | null {
@@ -134,9 +113,9 @@ function checkFatValue(fat: number): string | null {
 }
 
 /**
- * Check a single event for out-of-range measurements against both Pyle and MBO ranges
+ * Check a single event for out-of-range measurements against Pyle ranges
  */
-function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange, mboRange?: SpeciesRange): BirdEventError[] {
+function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange): BirdEventError[] {
   const errors: BirdEventError[] = [];
   const sexLabel = getSexLabel(event.sex);
 
@@ -153,7 +132,6 @@ function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange, mboR
 
   // Get sex-specific ranges
   const pyleRanges = getRangesForSex(pyleRange, event.sex);
-  const mboRanges = getRangesForSex(mboRange, event.sex);
 
   // Check Pyle range (danger level)
   if (pyleRanges) {
@@ -190,43 +168,6 @@ function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange, mboR
         birdEvent: event,
         reason: pyleWingReason,
         severity: "danger",
-      });
-    }
-  }
-
-  // Check MBO range (warning level)
-  if (mboRanges) {
-    const mboWeightReason = checkMBOMeasurementRange(
-      event.weight,
-      mboRanges.weightLower,
-      mboRanges.weightUpper,
-      "Weight",
-      sexLabel,
-      "g"
-    );
-    if (mboWeightReason) {
-      errors.push({
-        id: `${event.id}-mbo-weight-${sanitizeForFirebasePath(mboWeightReason)}`,
-        birdEvent: event,
-        reason: mboWeightReason,
-        severity: "warning",
-      });
-    }
-
-    const mboWingReason = checkMBOMeasurementRange(
-      event.wing,
-      mboRanges.wingLower,
-      mboRanges.wingUpper,
-      "Wing",
-      sexLabel,
-      "mm"
-    );
-    if (mboWingReason) {
-      errors.push({
-        id: `${event.id}-mbo-wing-${sanitizeForFirebasePath(mboWingReason)}`,
-        birdEvent: event,
-        reason: mboWingReason,
-        severity: "warning",
       });
     }
   }
@@ -293,9 +234,8 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
   if (magicTable) {
     for (const event of events) {
       const pyleRange = magicTable.pyle?.[event.species];
-      const mboRange = magicTable.mbo?.[event.species];
 
-      const measurementErrors = checkEventMeasurements(event, pyleRange, mboRange);
+      const measurementErrors = checkEventMeasurements(event, pyleRange);
       errors.push(...measurementErrors);
     }
   }
@@ -361,11 +301,9 @@ export function validateBirdEventForm(
 
   // Get species ranges
   const pyleRange = magicTable?.pyle?.[formData.species];
-  const mboRange = magicTable?.mbo?.[formData.species];
 
   // Get sex-specific ranges
   const pyleRanges = getRangesForSex(pyleRange, formData.sex);
-  const mboRanges = getRangesForSex(mboRange, formData.sex);
 
   // Check Pyle ranges (danger)
   if (pyleRanges) {
@@ -393,33 +331,6 @@ export function validateBirdEventForm(
     );
     if (pyleWeightReason) {
       messages.push({ text: pyleWeightReason, severity: "danger" });
-    }
-  }
-
-  // Check MBO ranges (warning)
-  if (mboRanges) {
-    const mboWingReason = checkMBOMeasurementRange(
-      wingValue,
-      mboRanges.wingLower,
-      mboRanges.wingUpper,
-      "Wing",
-      sexLabel,
-      "mm"
-    );
-    if (mboWingReason) {
-      messages.push({ text: mboWingReason, severity: "warning" });
-    }
-
-    const mboWeightReason = checkMBOMeasurementRange(
-      weightValue,
-      mboRanges.weightLower,
-      mboRanges.weightUpper,
-      "Weight",
-      sexLabel,
-      "g"
-    );
-    if (mboWeightReason) {
-      messages.push({ text: mboWeightReason, severity: "warning" });
     }
   }
 

@@ -85,11 +85,6 @@ export default function CaptureHistoryModal({
     return magicTable.pyle[birdInfo.species] || null;
   }, [birdInfo, magicTable]);
 
-  const mboSpeciesRange = useMemo(() => {
-    if (!birdInfo || birdInfo.species.length !== 4 || !magicTable || !magicTable.mbo) return null;
-    return magicTable.mbo[birdInfo.species] || null;
-  }, [birdInfo, magicTable]);
-
   const errors = useMemo(() => {
     return findErrorsInEvents(birdEvents, magicTable);
   }, [birdEvents, magicTable]);
@@ -145,10 +140,9 @@ export default function CaptureHistoryModal({
                   </div>
                 </div>
               )}
-              {birdInfo && birdInfo.species.length === 4 && (pyleSpeciesRange || mboSpeciesRange) && (
+              {birdInfo && birdInfo.species.length === 4 && pyleSpeciesRange && (
                 <div className="flex gap-4">
                   <SpeciesRangeTable title="Pyle" speciesCode={birdInfo.species} speciesRange={pyleSpeciesRange} />
-                  <SpeciesRangeTable title="MBO" speciesCode={birdInfo.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
               <ValidationMessages

@@ -196,11 +196,6 @@ export default function AddBirdEventModal({
     return magicTable.pyle[formData.species] || null;
   }, [formData.species, magicTable]);
 
-  const mboSpeciesRange = useMemo(() => {
-    if (formData.species.length !== 4 || !magicTable || !magicTable.mbo) return null;
-    return magicTable.mbo[formData.species] || null;
-  }, [formData.species, magicTable]);
-
   const sexCode = formData.sex.charAt(0);
 
   // Build bandId from bandGroup and bandLastTwoDigits
@@ -290,21 +285,17 @@ export default function AddBirdEventModal({
     const weightValue = formData.weight ? Number(formData.weight) : null;
 
     const pyleRange = getApplicableRange(pyleSpeciesRange, sexCode);
-    const mboRange = getApplicableRange(mboSpeciesRange, sexCode);
 
     // Range validation for wing and weight
     const rangeValidation = {
       wing: {
         pyle: wingValue !== null && pyleRange ? isInRange(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
-        mbo: wingValue !== null && mboRange ? isInRange(wingValue, mboRange.wingLower, mboRange.wingUpper) : null,
       },
       weight: {
         pyle:
           weightValue !== null && pyleRange
             ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper)
             : null,
-        mbo:
-          weightValue !== null && mboRange ? isInRange(weightValue, mboRange.weightLower, mboRange.weightUpper) : null,
       },
     };
 
@@ -358,7 +349,7 @@ export default function AddBirdEventModal({
       existingErrors,
       warningMessages: messages,
     };
-  }, [formData, pastBirdEvents, magicTable, sortedColumns, sexCode, pyleSpeciesRange, mboSpeciesRange]);
+  }, [formData, pastBirdEvents, magicTable, sortedColumns, sexCode, pyleSpeciesRange]);
 
   const focusNextInput = useCallback(
     (currentField: keyof CaptureFormData) => {
@@ -484,13 +475,11 @@ export default function AddBirdEventModal({
       // Wing range validation
       if (columnKey === "wing") {
         if (rangeValidation.wing.pyle === false) return "danger";
-        if (rangeValidation.wing.mbo === false) return "warning";
       }
 
       // Weight range validation
       if (columnKey === "weight") {
         if (rangeValidation.weight.pyle === false) return "danger";
-        if (rangeValidation.weight.mbo === false) return "warning";
       }
 
       // Sex conflict validation
@@ -645,10 +634,9 @@ export default function AddBirdEventModal({
               </div>
             </ModalHeader>
             <ModalBody className={modalBodyClass}>
-              {formData.species.length === 4 && (pyleSpeciesRange || mboSpeciesRange) && (
+              {formData.species.length === 4 && pyleSpeciesRange && (
                 <div className="flex gap-4">
                   <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />
-                  <SpeciesRangeTable title="MBO" speciesCode={formData.species} speciesRange={mboSpeciesRange} />
                 </div>
               )}
               <Table

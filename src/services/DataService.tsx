@@ -53,7 +53,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [bandIdToBirdEventIdsMap, setBandIdToBirdEventIdsMap] = useState<BandIdToBirdEventIdsMap>({});
   const [birdEventsMap, setBirdEventsMap] = useState<BirdEventsMap>({});
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>({});
-  const [magicTable, setMagicTable] = useState<MagicTable>({ pyle: {}, mbo: {} });
+  const [magicTable, setMagicTable] = useState<MagicTable>({ pyle: {} });
   const [bandSizeToBandIdMap, setBandSizeToBandIdMap] = useState<Record<BandSize, string>>(
     {} as Record<BandSize, string>
   );
@@ -153,7 +153,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         )
       );
       setBandGroupsMap(data.bandGroupsMap ?? {});
-      setMagicTable(data.magicTable ?? { pyle: {}, mbo: {} });
+      setMagicTable(data.magicTable ?? { pyle: {} });
       setDETsMap(data.DETsMap ?? {});
       console.log("DETsMap loaded:", Object.keys(data.DETsMap ?? {}).length, "entries");
       setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
