@@ -6,7 +6,7 @@ import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTabl
 import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../Helper/ValidationMessages";
-import SpeciesPopover from "../Helper/SpeciesPopover";
+import SpeciesTooltip from "../Helper/SpeciesTooltip";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface CaptureHistoryModalProps {
@@ -139,7 +139,7 @@ export default function CaptureHistoryModal({
                     <div>
                       <span className="text-default-700">Species :</span>{" "}
                       <span className="font-medium">
-                        <SpeciesPopover speciesCode={birdInfo.species}>{birdInfo.species}</SpeciesPopover>
+                        <SpeciesTooltip speciesCode={birdInfo.species}>{birdInfo.species}</SpeciesTooltip>
                       </span>
                     </div>
                     <div>

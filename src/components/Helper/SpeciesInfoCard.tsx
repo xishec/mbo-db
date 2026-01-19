@@ -1,7 +1,7 @@
 import { Card, CardBody } from "@heroui/react";
 import { useState } from "react";
 import type { SpeciesInfo } from "../../types";
-import SpeciesPopover from "./SpeciesPopover";
+import SpeciesTooltip from "./SpeciesTooltip";
 import CaptureHistoryModal from "../Modals/CaptureHistoryModal";
 
 interface SpeciesInfoCardProps {
@@ -33,7 +33,7 @@ export default function SpeciesInfoCard({
     return (
       <div className="flex-1 border border-default-200 rounded-medium p-3">
         <h4 className="text-sm font-bold mb-2">
-          Species Info: <span className="font-normal"><SpeciesPopover speciesCode={speciesCode}>{speciesCode}</SpeciesPopover></span>
+          Species Info: <span className="font-normal"><SpeciesTooltip speciesCode={speciesCode} showInfoCardOnClick={false}>{speciesCode}</SpeciesTooltip></span>
         </h4>
         <p className="text-sm text-default-400">No data available</p>
       </div>
@@ -49,7 +49,7 @@ export default function SpeciesInfoCard({
     <>
       <div className="flex-1">
         <h4 className="text-sm mb-2">
-          <SpeciesPopover speciesCode={speciesCode}>{speciesCode}</SpeciesPopover> records
+          <SpeciesTooltip speciesCode={speciesCode} showInfoCardOnClick={false}>{speciesCode}</SpeciesTooltip> records
         </h4>
         <Card>
           <CardBody className="gap-2 p-3">

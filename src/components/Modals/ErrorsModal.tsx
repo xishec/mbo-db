@@ -5,7 +5,7 @@ import { useData } from "../../services/useData";
 import { findBirdEventErrors } from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../Helper/ExportButton";
-import SpeciesPopover from "../Helper/SpeciesPopover";
+import SpeciesTooltip from "../Helper/SpeciesTooltip";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface ErrorsModalProps {
@@ -110,7 +110,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                         {error.birdEvent.date} {error.birdEvent.time}
                       </span>
                       <span className="text-default-900 font-bold">
-                        <SpeciesPopover speciesCode={error.birdEvent.species}>{error.birdEvent.species}</SpeciesPopover>
+                        <SpeciesTooltip speciesCode={error.birdEvent.species}>{error.birdEvent.species}</SpeciesTooltip>
                       </span>
                       <span className={`font-semibold ${error.severity === "danger" ? "text-danger-600" : "text-warning-600"}`}>
                         {error.reason}

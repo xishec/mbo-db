@@ -3,7 +3,7 @@ import { useData } from "../../../services/useData";
 import type { DET } from "../../../types/DET";
 import { Calendar, Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
-import SpeciesPopover from "../../Helper/SpeciesPopover";
+import SpeciesTooltip from "../../Helper/SpeciesTooltip";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/AddDETModal";
 import { PencilIcon } from "@heroicons/react/24/outline";
@@ -103,11 +103,11 @@ export default function DETs() {
         {hasSpecies ? (
           <div className="flex flex-wrap gap-2">
             {Object.entries(speciesCount || {}).map(([species, count]) => (
-              <SpeciesPopover key={species} speciesCode={species}>
+              <SpeciesTooltip key={species} speciesCode={species}>
                 <Chip variant="flat" color={chipColor} size="sm">
                   {species}: {count}
                 </Chip>
-              </SpeciesPopover>
+              </SpeciesTooltip>
             ))}
           </div>
         ) : (
@@ -328,9 +328,9 @@ export default function DETs() {
                       <div className="grid grid-cols-3 gap-3 text-sm">
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Species</p>
-                          <SpeciesPopover speciesCode={injury.specie}>
+                          <SpeciesTooltip speciesCode={injury.specie}>
                             <p className="font-medium cursor-pointer hover:text-blue-600">{injury.specie}</p>
-                          </SpeciesPopover>
+                          </SpeciesTooltip>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Band ID</p>
@@ -368,9 +368,9 @@ export default function DETs() {
                       <div className="grid grid-cols-4 gap-3 text-sm">
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Species</p>
-                          <SpeciesPopover speciesCode={bird.specie}>
+                          <SpeciesTooltip speciesCode={bird.specie}>
                             <p className="font-medium cursor-pointer hover:text-blue-600">{bird.specie}</p>
-                          </SpeciesPopover>
+                          </SpeciesTooltip>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Age</p>

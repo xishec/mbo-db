@@ -7,7 +7,7 @@ import { PencilSquareIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/rea
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 import { useData } from "../../../../services/useData";
-import SpeciesPopover from "../../../Helper/SpeciesPopover";
+import SpeciesTooltip from "../../../Helper/SpeciesTooltip";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
@@ -238,7 +238,7 @@ export default function BirdEventsTable({
       }
 
       if (columnKey === "species") {
-        return <SpeciesPopover speciesCode={item.species}>{item.species}</SpeciesPopover>;
+        return <SpeciesTooltip speciesCode={item.species}>{item.species}</SpeciesTooltip>;
       }
 
       const cellValue = item[columnKey as keyof TableRow];
