@@ -1,6 +1,6 @@
 import { Button } from "@heroui/react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
-import type { BirdEvent } from "../types";
+import type { BirdEvent } from "../../types";
 
 interface ExportButtonProps {
   birdEvents: BirdEvent[];

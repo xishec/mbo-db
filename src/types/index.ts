@@ -198,6 +198,7 @@ export interface DataContextType {
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
   DETsMap: DETsMap;
+  speciesInfoMap: SpeciesInfoMap;
 
   // Offline support
   isOnline: boolean;
@@ -281,10 +282,11 @@ export type PendingEvent = PendingBirdEvent | PendingDETEvent;
 export interface SpeciesInfo {
   speciesCode: string;
   biggest: BirdEvent;
-  heaviest: BirdEvent;
   fattest: BirdEvent;
   dummiest: BirdEvent;
-  oldest: BirdEvent;
+  dummiestCount: number;
+  oldest: BirdEvent | null; // null if no band has multiple events
+  oldestSpanDays: number; // Span in days for the oldest individual (-1 if n/a)
   favoriteBander: string;
 }
 

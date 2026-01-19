@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import type { SpeciesRange } from "../../../../types";
-import SpeciesPopover from "../../../SpeciesPopover";
+import SpeciesPopover from "../../../Helper/SpeciesPopover";
 
 interface SpeciesRangeTableProps {
   title: string;

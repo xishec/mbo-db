@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
@@ -16,6 +16,7 @@ import {
   BandSize,
   type PendingBirdEvent,
   type PendingDETEvent,
+  type SpeciesInfoMap,
 } from "../types";
 import { Band, BirdEventType, generateBirdEventId, type Program, getBandGroupMapKey, type DET } from "../types";
 import { DataContext } from "./DataContext";
@@ -59,6 +60,142 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
   const [dismissedConflictsMap, setDismissedConflictsMap] = useState<DismissedConflictsMap>({});
   const [DETsMap, setDETsMap] = useState<DETsMap>({});
+
+  /**
+   * Compute SpeciesInfoMap from birdEventsMap
+   * This computes statistics for each species:
+   * - biggest: bird event with largest wing
+   * - fattest: highest fat (if same fat, compare weight)
+   * - dummiest: band with most bird events (capture + recapture)
+   * - oldest: individual with longest span between earliest and latest bird event
+   * - favoriteBander: most repeated bander string
+   */
+  const speciesInfoMap = useMemo<SpeciesInfoMap>(() => {
+    const infoMap: SpeciesInfoMap = {};
+    
+    // Filter out modified events
+    const validEvents = Object.values(birdEventsMap).filter(
+      (event) => event && !event.modifiedEventId
+    );
+
+    if (validEvents.length === 0) return infoMap;
+
+    // Group events by species
+    const eventsBySpecies = new Map<string, BirdEvent[]>();
+    for (const event of validEvents) {
+      if (!event.species || event.species.length !== 4) continue;
+      const species = event.species;
+      if (!eventsBySpecies.has(species)) {
+        eventsBySpecies.set(species, []);
+      }
+      eventsBySpecies.get(species)!.push(event);
+    }
+
+    // Compute stats for each species
+    for (const [speciesCode, events] of eventsBySpecies.entries()) {
+      if (events.length === 0) continue;
+
+      // Biggest: largest wing
+      const biggest = events.reduce((max, event) => 
+        event.wing > max.wing ? event : max
+      );
+
+      // Fattest: highest fat, if same fat compare weight
+      const fattest = events.reduce((max, event) => {
+        if (event.fat > max.fat) return event;
+        if (event.fat === max.fat && event.weight > max.weight) return event;
+        return max;
+      });
+
+      // Group events by band ID to find dummiest and oldest
+      const eventsByBand = new Map<string, BirdEvent[]>();
+      for (const event of events) {
+        const bandId = event.band.id;
+        if (!eventsByBand.has(bandId)) {
+          eventsByBand.set(bandId, []);
+        }
+        eventsByBand.get(bandId)!.push(event);
+      }
+
+      // Dummiest: band with most events
+      let maxEventCount = 0;
+      let dummiestEvent: BirdEvent | null = null;
+      for (const [, bandEvents] of eventsByBand.entries()) {
+        if (bandEvents.length > maxEventCount) {
+          maxEventCount = bandEvents.length;
+          // Use the most recent event from this band
+          dummiestEvent = bandEvents.sort((a, b) => {
+            const dateCompare = b.date.localeCompare(a.date);
+            if (dateCompare !== 0) return dateCompare;
+            return b.time.localeCompare(a.time);
+          })[0];
+        }
+      }
+
+      // Oldest: individual with longest span between earliest and latest event
+      let maxSpan = 0;
+      let oldestSpanDays = 0;
+      let oldestEvent: BirdEvent | null = null;
+      for (const [, bandEvents] of eventsByBand.entries()) {
+        if (bandEvents.length < 2) continue; // Need at least 2 events for a span
+        
+        const sortedEvents = [...bandEvents].sort((a, b) => {
+          const dateCompare = a.date.localeCompare(b.date);
+          if (dateCompare !== 0) return dateCompare;
+          return a.time.localeCompare(b.time);
+        });
+        
+        const earliest = sortedEvents[0];
+        const latest = sortedEvents[sortedEvents.length - 1];
+        const earliestDate = new Date(`${earliest.date}T${earliest.time}`);
+        const latestDate = new Date(`${latest.date}T${latest.time}`);
+        const spanMs = latestDate.getTime() - earliestDate.getTime();
+        const spanDays = Math.floor(spanMs / (1000 * 60 * 60 * 24));
+        
+        if (spanMs > maxSpan) {
+          maxSpan = spanMs;
+          oldestSpanDays = spanDays;
+          oldestEvent = latest; // Use the latest event
+        }
+      }
+
+      // If no band with multiple events, use n/a
+      // (oldestEvent will remain null, which will be handled in the component)
+
+      // Favorite bander: most repeated bander string
+      const banderCounts = new Map<string, number>();
+      for (const event of events) {
+        if (event.bander) {
+          banderCounts.set(event.bander, (banderCounts.get(event.bander) || 0) + 1);
+        }
+      }
+      let favoriteBander = "";
+      let maxBanderCount = 0;
+      for (const [bander, count] of banderCounts.entries()) {
+        if (count > maxBanderCount) {
+          maxBanderCount = count;
+          favoriteBander = bander;
+        }
+      }
+
+      // Ensure we have valid events for all required fields
+      // oldestEvent can be null if no band has multiple events
+      if (biggest && fattest && dummiestEvent) {
+        infoMap[speciesCode] = {
+          speciesCode,
+          biggest,
+          fattest,
+          dummiest: dummiestEvent,
+          dummiestCount: maxEventCount,
+          oldest: oldestEvent, // null if no band has multiple events
+          oldestSpanDays: oldestEvent ? oldestSpanDays : -1, // Use -1 to indicate n/a
+          favoriteBander,
+        };
+      }
+    }
+
+    return infoMap;
+  }, [birdEventsMap]);
 
   // Load entire alpha/ on mount
   useEffect(() => {
@@ -1062,6 +1199,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandSizeToBandIdMap,
         dismissedConflictsMap,
         DETsMap,
+        speciesInfoMap,
         isOnline,
         pendingCount,
         forceOffline,

@@ -4,8 +4,8 @@ import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useData } from "../../services/useData";
 import { findBirdEventErrors } from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
-import ExportButton from "../ExportButton";
-import SpeciesPopover from "../SpeciesPopover";
+import ExportButton from "../Helper/ExportButton";
+import SpeciesPopover from "../Helper/SpeciesPopover";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface ErrorsModalProps {

@@ -4,7 +4,7 @@ import { useData } from "../../services/useData";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import { formatUpdatedAt } from "../PageContent/Programs/Captures/helpers";
 import { MagnifyingGlassIcon } from "@heroicons/react/16/solid";
-import SpeciesPopover from "../SpeciesPopover";
+import SpeciesPopover from "../Helper/SpeciesPopover";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 enum ModificationType {

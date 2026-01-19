@@ -1,8 +1,8 @@
 import { useState } from "react";
 import Navigation from "./components/Navigation";
 import PageContent from "./components/PageContent/PageContent";
-import OfflineIndicator from "./components/OfflineIndicator";
-import LoadingProgressBar from "./components/LoadingProgressBar";
+import OfflineIndicator from "./components/Helper/OfflineIndicator";
+import LoadingProgressBar from "./components/Helper/LoadingProgressBar";
 import { DataProvider } from "./services/DataService";
 import { useData } from "./services/useData";
 

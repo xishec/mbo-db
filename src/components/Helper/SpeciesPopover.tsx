@@ -1,5 +1,5 @@
 import { Popover, PopoverTrigger, PopoverContent } from "@heroui/react";
-import { SPECIES_MAP } from "../types/species";
+import { SPECIES_MAP } from "../../types/species";
 
 interface SpeciesPopoverProps {
   speciesCode: string;

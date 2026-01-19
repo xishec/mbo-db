@@ -22,7 +22,7 @@ import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from ".
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
 import BirdStatusModal from "./BirdStatusModal";
-import ValidationMessages from "../ValidationMessages";
+import ValidationMessages from "../Helper/ValidationMessages";
 import { getSortedColumns } from "../PageContent/Programs/Captures/helpers";
 import {
   formatFieldValue,
@@ -32,6 +32,7 @@ import {
 } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
+import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -65,6 +66,7 @@ export default function AddBirdEventModal({
     addBirdEvent,
     bandSizeToBandIdMap,
     incrementBandSize,
+    speciesInfoMap,
   } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -634,9 +636,15 @@ export default function AddBirdEventModal({
               </div>
             </ModalHeader>
             <ModalBody className={modalBodyClass}>
-              {formData.species.length === 4 && pyleSpeciesRange && (
+              {formData.species.length === 4 && (
                 <div className="flex gap-4">
-                  <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />
+                  {pyleSpeciesRange && (
+                    <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />
+                  )}
+                  <SpeciesInfoCard 
+                    speciesCode={formData.species} 
+                    speciesInfo={speciesInfoMap[formData.species] || null} 
+                  />
                 </div>
               )}
               <Table

@@ -1,4 +1,4 @@
-import type { ErrorSeverity } from "../types/birdEventErrors";
+import type { ErrorSeverity } from "../../types/birdEventErrors";
 
 interface ValidationMessagesProps {
   messages: { text: string; severity: ErrorSeverity }[];

@@ -1,4 +1,4 @@
-import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { SignalSlashIcon } from "@heroicons/react/24/solid";
 
 export default function OfflineIndicator() {

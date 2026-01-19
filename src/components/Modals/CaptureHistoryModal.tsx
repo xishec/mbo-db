@@ -3,9 +3,10 @@ import { useMemo } from "react";
 import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
+import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
-import ValidationMessages from "../ValidationMessages";
-import SpeciesPopover from "../SpeciesPopover";
+import ValidationMessages from "../Helper/ValidationMessages";
+import SpeciesPopover from "../Helper/SpeciesPopover";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface CaptureHistoryModalProps {
@@ -21,7 +22,7 @@ export default function CaptureHistoryModal({
   bandId,
   birdEventIdToHighlight,
 }: CaptureHistoryModalProps) {
-  const { bandIdToBirdEventIdsMap, birdEventsMap, magicTable } = useData();
+  const { bandIdToBirdEventIdsMap, birdEventsMap, magicTable, speciesInfoMap } = useData();
 
   const birdEvents = useMemo(() => {
     if (!bandId) return [];
@@ -43,12 +44,22 @@ export default function CaptureHistoryModal({
     });
 
     const mostRecentEvent = sortedEvents[0];
-    const oldestEvent = sortedEvents[sortedEvents.length - 1];
+    
+    // Sort events chronologically for span calculation
+    const chronologicalEvents = [...birdEvents].sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.time.localeCompare(b.time);
+    });
+    
+    const earliestEvent = chronologicalEvents[0];
+    const latestEvent = chronologicalEvents[chronologicalEvents.length - 1];
     const hasRecaptures = birdEvents.length > 1;
 
     // Calculate dates upfront
     const mostRecentDate = new Date(mostRecentEvent.date);
-    const oldestDate = new Date(oldestEvent.date);
+    const earliestDate = new Date(earliestEvent.date);
+    const latestDate = new Date(latestEvent.date);
 
     // Determine latest recapture status
     let latestRecapture: "never" | "< 6 months" | "> 6 months" = "never";
@@ -58,25 +69,37 @@ export default function CaptureHistoryModal({
       latestRecapture = mostRecentDate >= sixMonthsAgo ? "< 6 months" : "> 6 months";
     }
 
-    // Calculate capture span
+    // Calculate capture span (from earliest to latest)
     let captureSpan = "Single capture";
+    let captureSpanDays = 0;
     if (hasRecaptures) {
-      const spanMs = mostRecentDate.getTime() - oldestDate.getTime();
-      const spanDays = Math.floor(spanMs / (1000 * 60 * 60 * 24));
+      const spanMs = latestDate.getTime() - earliestDate.getTime();
+      captureSpanDays = Math.floor(spanMs / (1000 * 60 * 60 * 24));
 
-      if (spanDays === 0) {
+      if (captureSpanDays === 0) {
         captureSpan = "Same day";
+      } else if (captureSpanDays < 365) {
+        captureSpan = `${captureSpanDays} day${captureSpanDays !== 1 ? "s" : ""}`;
       } else {
-        captureSpan = `${spanDays} day${spanDays !== 1 ? "s" : ""}`;
+        const years = Math.floor(captureSpanDays / 365);
+        const days = captureSpanDays % 365;
+        if (days === 0) {
+          captureSpan = `${years} year${years !== 1 ? "s" : ""}`;
+        } else {
+          captureSpan = `${years} year${years !== 1 ? "s" : ""}, ${days} day${days !== 1 ? "s" : ""}`;
+        }
       }
     }
 
     return {
       captureSpan,
+      captureSpanDays,
       hasRecaptures,
       latestRecapture,
       totalCaptures: birdEvents.length,
       species: mostRecentEvent.species,
+      earliestDate: earliestEvent.date,
+      latestDate: latestEvent.date,
     };
   }, [birdEvents]);
 
@@ -140,9 +163,15 @@ export default function CaptureHistoryModal({
                   </div>
                 </div>
               )}
-              {birdInfo && birdInfo.species.length === 4 && pyleSpeciesRange && (
+              {birdInfo && birdInfo.species.length === 4 && (
                 <div className="flex gap-4">
-                  <SpeciesRangeTable title="Pyle" speciesCode={birdInfo.species} speciesRange={pyleSpeciesRange} />
+                  {pyleSpeciesRange && (
+                    <SpeciesRangeTable title="Pyle" speciesCode={birdInfo.species} speciesRange={pyleSpeciesRange} />
+                  )}
+                  <SpeciesInfoCard 
+                    speciesCode={birdInfo.species} 
+                    speciesInfo={speciesInfoMap[birdInfo.species] || null} 
+                  />
                 </div>
               )}
               <ValidationMessages

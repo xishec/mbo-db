@@ -4,7 +4,7 @@ import { useData } from "../../services/useData";
 import type { BirdEvent, CaptureColumn } from "../../types";
 import { TABLE_COLUMNS } from "./Programs/Captures/helpers";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
-import ExportButton from "../ExportButton";
+import ExportButton from "../Helper/ExportButton";
 
 // Operators for filtering
 const STRING_OPERATORS = [
