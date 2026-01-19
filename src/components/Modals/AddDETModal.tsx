@@ -333,60 +333,35 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
                   {/* Weather */}
                   <div>
-                    <p className="text-small pb-1">
-                      Weather {isLoadingWeather && <span className="text-gray-500">(Loading...)</span>}
-                    </p>
+                    <p className="text-small pb-1">Weather at MBO</p>
                     <div className="border rounded-medium border border-default-100 py-2 px-3">
-                      {weather ? (
-                        <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm text-gray-600">
-                          {weather.temperature !== undefined && (
-                            <div>
-                              <span className="font-medium">Temperature:</span> {weather.temperature}°C
-                            </div>
-                          )}
-                          {weather.temperatureMin !== undefined && (
-                            <div>
-                              <span className="font-medium">Min Temp:</span> {weather.temperatureMin}°C
-                            </div>
-                          )}
-                          {weather.temperatureMax !== undefined && (
-                            <div>
-                              <span className="font-medium">Max Temp:</span> {weather.temperatureMax}°C
-                            </div>
+                      {isLoadingWeather ? (
+                        <p className="text-sm text-gray-600">Loading weather data...</p>
+                      ) : weather ? (
+                        <div className="text-sm text-gray-600 space-y-1">
+                          {weather.temperatureMin !== undefined && weather.temperatureMax !== undefined && (
+                            <p>
+                              Temperature: {weather.temperatureMin.toFixed(1)}°C - {weather.temperatureMax.toFixed(1)}°C
+                            </p>
                           )}
                           {weather.cloudCoverage !== undefined && (
-                            <div>
-                              <span className="font-medium">Cloud Coverage:</span> {weather.cloudCoverage}%
-                            </div>
+                            <p>Cloud Coverage: {weather.cloudCoverage.toFixed(0)}%</p>
                           )}
                           {weather.precipitation !== undefined && (
-                            <div>
-                              <span className="font-medium">Precipitation:</span> {weather.precipitation} mm
-                            </div>
+                            <p>Precipitation: {weather.precipitation.toFixed(1)} mm</p>
                           )}
                           {weather.windSpeed !== undefined && (
-                            <div>
-                              <span className="font-medium">Wind Speed:</span> {weather.windSpeed} km/h
-                            </div>
+                            <p>
+                              Wind: {weather.windSpeed.toFixed(1)} km/h
+                              {weather.windDirection && ` ${weather.windDirection}`}
+                            </p>
                           )}
-                          {weather.windDirection && (
-                            <div>
-                              <span className="font-medium">Wind Direction:</span> {weather.windDirection}
-                            </div>
-                          )}
-                          {weather.humidity !== undefined && (
-                            <div>
-                              <span className="font-medium">Humidity:</span> {weather.humidity}%
-                            </div>
-                          )}
-                          {weather.description && (
-                            <div className="col-span-3">
-                              <span className="font-medium">Description:</span> {weather.description}
-                            </div>
+                          {(!weather.temperatureMin && !weather.temperatureMax && !weather.cloudCoverage && !weather.precipitation && !weather.windSpeed) && (
+                            <p className="text-gray-400">No weather data available</p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-500">No weather data available</p>
+                        <p className="text-sm text-gray-600">No weather data available</p>
                       )}
                     </div>
                   </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useData } from "../../../services/useData";
 import type { DET } from "../../../types/DET";
-import { Calendar, Card, CardBody, CardHeader, Divider, Chip, Button } from "@heroui/react";
+import { Calendar, Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
 import SpeciesPopover from "../../SpeciesPopover";
 import { fetchWeatherForDate } from "../../../services/weatherService";
@@ -80,34 +80,38 @@ export default function DETs() {
     }
   };
 
-  // Render species count section
-  const renderSpeciesSection = (
+  // Helper function to get species count summary
+  const getSpeciesCountSummary = (count: Record<string, number>) => {
+    const total = Object.values(count || {}).reduce((sum, val) => sum + val, 0);
+    const speciesCount = Object.keys(count || {}).length;
+    return `${speciesCount} species, ${total} individuals`;
+  };
+
+  // Helper function to render a species category section
+  const renderSpeciesCategory = (
     title: string,
     speciesCount: Record<string, number>,
     chipColor: "default" | "success" | "warning" | "secondary" | "primary",
     emptyMessage: string
   ) => {
-    const total = Object.values(speciesCount || {}).reduce((sum, count) => sum + count, 0);
-    const totalSpecies = Object.keys(speciesCount || {}).length;
+    const hasSpecies = Object.keys(speciesCount || {}).length > 0;
     return (
       <div>
-        <div className="flex justify-between items-center mb-3">
-          <p className="text-sm">
-            {title} ({totalSpecies} species, {total} individuals) :
-          </p>
-        </div>
-        {Object.keys(speciesCount || {}).length > 0 ? (
+        <p className="text-sm text-gray-600 mb-2">
+          {title}: {getSpeciesCountSummary(speciesCount)}
+        </p>
+        {hasSpecies ? (
           <div className="flex flex-wrap gap-2">
             {Object.entries(speciesCount || {}).map(([species, count]) => (
               <SpeciesPopover key={species} speciesCode={species}>
-                <Chip variant="flat" color={chipColor}>
+                <Chip variant="flat" color={chipColor} size="sm">
                   {species}: {count}
                 </Chip>
               </SpeciesPopover>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">{emptyMessage}</p>
+          <p className="text-xs text-gray-400">{emptyMessage}</p>
         )}
       </div>
     );
@@ -120,9 +124,6 @@ export default function DETs() {
         <CardHeader className="flex gap-3 justify-between items-start">
           <div className="flex flex-col flex-1">
             <p className="text-2xl font-semibold">DET for {selectedDET.date}</p>
-            <p className="text-sm mt-4 mb-2">
-              {selectedDET.programId} - {selectedDET.location} - Coverage: {selectedDET.coverageCode}
-            </p>
           </div>
           {isAdmin && (
             <Button isIconOnly size="sm" variant="light" onPress={handleEdit}>
@@ -131,278 +132,280 @@ export default function DETs() {
           )}
         </CardHeader>
 
-        <Divider />
-
-        {/* Basic Info */}
-        <CardBody className="py-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm mb-3">Bander in Charge</p>
-              <p className="font-medium">{selectedDET.banderInCharge || <span className="text-gray-400">—</span>}</p>
-            </div>
-            <div>
-              <p className="text-sm mb-3">Start</p>
-              <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
-            </div>
-            <div>
-              <p className="text-sm mb-3">End</p>
-              <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
-            </div>
-          </div>
-        </CardBody>
-
-        <Divider />
-
-        {/* Net Hours */}
-        <CardBody className="py-4">
-          <p className="text-lg font-semibold mb-3">Net Hours : {selectedDET.netHours.total}</p>
-          {selectedDET.netHours?.nets && selectedDET.netHours.nets.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {selectedDET.netHours.nets.map((net, idx) => (
-                <Chip key={idx} variant="flat" color="primary">
-                  {net.id}: {net.total}
-                </Chip>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No net hours recorded</p>
-          )}
-        </CardBody>
-
-        <Divider />
-
-        {/* Observer Hours */}
-        <CardBody className="py-4">
-          <p className="text-lg font-semibold mb-3">Observer Hours : {selectedDET.observerHours.total}</p>
-          {selectedDET.observerHours?.observers && selectedDET.observerHours.observers.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {selectedDET.observerHours.observers.map((observer, idx) => (
-                <Chip key={idx} variant="flat" color="secondary">
-                  {observer.name}: {observer.totalHours}
-                </Chip>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No observer info</p>
-          )}
-        </CardBody>
-
-        <Divider />
-
-        {/* Weather */}
-        <CardBody className="py-4">
-          <div className="flex items-center gap-2 mb-3">
-            <p className="text-lg font-semibold">Weather at MBO</p>
-            {isLoadingWeather && <span className="text-sm text-gray-500">Loading...</span>}
-          </div>
-          {selectedDET.weather ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <CardBody className="py-4 space-y-4">
+          {/* Basic Information */}
+          <div className="space-y-4">
+            <p className="text-small font-semibold">Basic Information</p>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Temperature</p>
-                <p className="font-medium">
-                  {selectedDET.weather.temperatureMin !== undefined &&
-                  selectedDET.weather.temperatureMax !== undefined ? (
-                    `${selectedDET.weather.temperatureMin.toFixed(1)}°C - ${selectedDET.weather.temperatureMax.toFixed(
-                      1
-                    )}°C`
-                  ) : (
-                    <span className="text-gray-400">undefined</span>
-                  )}
-                </p>
+                <p className="text-small text-gray-600 mb-1">Date</p>
+                <p className="font-medium">{selectedDET.date}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Cloud Coverage</p>
-                <p className="font-medium">
-                  {selectedDET.weather.cloudCoverage !== undefined ? (
-                    `${selectedDET.weather.cloudCoverage.toFixed(0)}%`
-                  ) : (
-                    <span className="text-gray-400">undefined</span>
-                  )}
-                </p>
+                <p className="text-small text-gray-600 mb-1">Program ID</p>
+                <p className="font-medium">{selectedDET.programId}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Precipitation</p>
-                <p className="font-medium">
-                  {selectedDET.weather.precipitation !== undefined ? (
-                    `${selectedDET.weather.precipitation.toFixed(1)} mm`
-                  ) : (
-                    <span className="text-gray-400">undefined</span>
-                  )}
-                </p>
+                <p className="text-small text-gray-600 mb-1">Location</p>
+                <p className="font-medium">{selectedDET.location}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Wind</p>
-                <p className="font-medium">
-                  {selectedDET.weather.windSpeed !== undefined ? (
-                    <>
-                      {selectedDET.weather.windSpeed.toFixed(1)} km/h
-                      {selectedDET.weather.windDirection && ` ${selectedDET.weather.windDirection}`}
-                    </>
-                  ) : (
-                    <span className="text-gray-400">undefined</span>
-                  )}
-                </p>
+                <p className="text-small text-gray-600 mb-1">Coverage Code</p>
+                <p className="font-medium">{selectedDET.coverageCode}</p>
               </div>
-            </div>
-          ) : (
-            <p className="text-gray-500">No weather data available</p>
-          )}
-        </CardBody>
-
-        <Divider />
-
-        {/* Species Counts */}
-        <CardBody className="py-4 space-y-3">
-          <p className="text-lg font-semibold mb-1">Species Counts</p>
-          {renderSpeciesSection("Observed", selectedDET.observedSpeciesCount, "default", "-")}
-          {renderSpeciesSection("Banded", selectedDET.bandedSpeciesCount, "success", "-")}
-          {renderSpeciesSection("Repeats", selectedDET.repeatSpeciesCount, "secondary", "-")}
-          {renderSpeciesSection("Returns", selectedDET.returnSpeciesCount, "primary", "-")}
-          {renderSpeciesSection("DET", selectedDET.DETSpeciesCount, "warning", "-")}
-        </CardBody>
-
-        <Divider />
-
-        {/* Census */}
-        <CardBody className="py-4 space-y-3">
-          <p className="text-lg font-semibold mb-1">Census</p>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm mb-3">Censuser</p>
-              <p className="font-medium">{selectedDET.censuser || <span className="text-gray-400">-</span>}</p>
-            </div>
-            <div>
-              <p className="text-sm mb-3">Start</p>
-              <p className="font-medium">{selectedDET.censusStart || <span className="text-gray-400">-</span>}</p>
-            </div>
-            <div>
-              <p className="text-sm mb-3">End</p>
-              <p className="font-medium">{selectedDET.censusEnd || <span className="text-gray-400">-</span>}</p>
-            </div>
-          </div>
-          <div>{renderSpeciesSection("Census Species", selectedDET.censusSpeciesCount || {}, "primary", "-")}</div>
-        </CardBody>
-
-        <Divider />
-
-        {/* Injuries */}
-        <CardBody className="py-4 space-y-3">
-          <p className="text-lg font-semibold mb-1">Injuries : {selectedDET.injuries?.length || 0}</p>
-          {selectedDET.injuries && selectedDET.injuries.length > 0 ? (
-            selectedDET.injuries.map((injury, idx) => (
-              <div key={idx} className="border-b pb-2 last:border-b-0">
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Species</p>
-                    <SpeciesPopover speciesCode={injury.specie}>
-                      <p className="font-medium cursor-pointer hover:text-blue-600">{injury.specie}</p>
-                    </SpeciesPopover>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Band ID</p>
-                    <p className="font-medium">{injury.bandId || <span className="text-gray-400">undefined</span>}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Net</p>
-                    <p className="font-medium">{injury.net || <span className="text-gray-400">undefined</span>}</p>
-                  </div>
+              <div>
+                <p className="text-small text-gray-600 mb-1">Bander in Charge</p>
+                <p className="font-medium">{selectedDET.banderInCharge || <span className="text-gray-400">—</span>}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-small text-gray-600 mb-1">Start Time</p>
+                  <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
                 </div>
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Description</p>
-                  <p className="text-sm">{injury.description}</p>
+                <div>
+                  <p className="text-small text-gray-600 mb-1">End Time</p>
+                  <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500">No injuries recorded</p>
-          )}
-        </CardBody>
-
-        <Divider />
-
-        {/* Released */}
-        <CardBody className="py-4 space-y-3">
-          <p className="text-lg font-semibold mb-1">Released : {selectedDET.released?.length || 0}</p>
-          {selectedDET.released && selectedDET.released.length > 0 ? (
-            selectedDET.released.map((bird, idx) => (
-              <div key={idx} className="border-b pb-2 last:border-b-0">
-                <div className="grid grid-cols-4 gap-3">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Species</p>
-                    <SpeciesPopover speciesCode={bird.specie}>
-                      <p className="font-medium cursor-pointer hover:text-blue-600">{bird.specie}</p>
-                    </SpeciesPopover>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Age</p>
-                    <p className="font-medium">{bird.age || <span className="text-gray-400">undefined</span>}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">How Aged</p>
-                    <p className="font-medium">{bird.howAged || <span className="text-gray-400">undefined</span>}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Sex</p>
-                    <p className="font-medium">{bird.sex || <span className="text-gray-400">undefined</span>}</p>
-                  </div>
+              <div>
+                <p className="text-small text-gray-600 mb-1">Censuser</p>
+                <p className="font-medium">{selectedDET.censuser || <span className="text-gray-400">—</span>}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-small text-gray-600 mb-1">Census Start</p>
+                  <p className="font-medium">{selectedDET.censusStart || <span className="text-gray-400">—</span>}</p>
                 </div>
-                <div className="grid grid-cols-3 gap-3 mt-2">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">How Sexed</p>
-                    <p className="font-medium">{bird.howSexed || <span className="text-gray-400">undefined</span>}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Net</p>
-                    <p className="font-medium">{bird.net || <span className="text-gray-400">undefined</span>}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Description</p>
-                    <p className="font-medium">
-                      {bird.description || <span className="text-gray-400">undefined</span>}
+                <div>
+                  <p className="text-small text-gray-600 mb-1">Census End</p>
+                  <p className="font-medium">{selectedDET.censusEnd || <span className="text-gray-400">—</span>}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Weather */}
+          <div>
+            <p className="text-small font-semibold mb-2">Weather at MBO</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              {isLoadingWeather ? (
+                <p className="text-sm text-gray-600">Loading weather data...</p>
+              ) : selectedDET.weather ? (
+                <div className="text-sm text-gray-600 space-y-1">
+                  {selectedDET.weather.temperatureMin !== undefined && selectedDET.weather.temperatureMax !== undefined && (
+                    <p>
+                      Temperature: {selectedDET.weather.temperatureMin.toFixed(1)}°C - {selectedDET.weather.temperatureMax.toFixed(1)}°C
                     </p>
-                  </div>
+                  )}
+                  {selectedDET.weather.cloudCoverage !== undefined && (
+                    <p>Cloud Coverage: {selectedDET.weather.cloudCoverage.toFixed(0)}%</p>
+                  )}
+                  {selectedDET.weather.precipitation !== undefined && (
+                    <p>Precipitation: {selectedDET.weather.precipitation.toFixed(1)} mm</p>
+                  )}
+                  {selectedDET.weather.windSpeed !== undefined && (
+                    <p>
+                      Wind: {selectedDET.weather.windSpeed.toFixed(1)} km/h
+                      {selectedDET.weather.windDirection && ` ${selectedDET.weather.windDirection}`}
+                    </p>
+                  )}
+                  {(!selectedDET.weather.temperatureMin && !selectedDET.weather.temperatureMax && !selectedDET.weather.cloudCoverage && !selectedDET.weather.precipitation && !selectedDET.weather.windSpeed) && (
+                    <p className="text-gray-400">No weather data available</p>
+                  )}
                 </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-500">No birds released</p>
-          )}
-        </CardBody>
-
-        <Divider />
-
-        {/* Visitors */}
-        <CardBody className="py-4">
-          <p className="text-lg font-semibold mb-3">Visitors : {selectedDET.visitors?.length || 0}</p>
-          {selectedDET.visitors && selectedDET.visitors.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {selectedDET.visitors.map((visitor, idx) => (
-                <Chip key={idx} variant="flat" color="default">
-                  {visitor}
-                </Chip>
-              ))}
+              ) : (
+                <p className="text-sm text-gray-600">No weather data available</p>
+              )}
             </div>
-          ) : (
-            <p className="text-gray-500">No visitors recorded</p>
-          )}
-        </CardBody>
-
-        <Divider />
-
-        {/* Notes */}
-        <CardBody className="py-4 space-y-3">
-          <p className="text-lg font-semibold mb-1">Notes</p>
-          <div>
-            <p className="text-sm mb-3">Narrative</p>
-            <p className="text-sm">{selectedDET.narrative || "—"}</p>
           </div>
+
+          {/* Observer Hours */}
           <div>
-            <p className="text-sm mb-3">Deviations</p>
-            <p className="text-sm">{selectedDET.deviations || "—"}</p>
+            <p className="text-small font-semibold mb-2">Observer Hours</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600">
+                Total: {selectedDET.observerHours?.total || 0} hours | Observers: {selectedDET.observerHours?.observers?.length || 0}
+              </p>
+              {selectedDET.observerHours?.observers && selectedDET.observerHours.observers.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedDET.observerHours.observers.map((observer, idx) => (
+                    <Chip key={idx} variant="flat" color="secondary" size="sm">
+                      {observer.name}: {observer.totalHours.toFixed(1)}h
+                    </Chip>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Net Hours */}
           <div>
-            <p className="text-sm mb-3">Station Management</p>
-            <p className="text-sm">{selectedDET.stationManagement || "—"}</p>
+            <p className="text-small font-semibold mb-2">Net Hours</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600">
+                Total: {selectedDET.netHours?.total || "0"} | Hummingbird Trap: {selectedDET.netHours?.hummingbirdTrapTotal || "0"} | Nets:{" "}
+                {selectedDET.netHours?.nets?.length || 0}
+              </p>
+              {selectedDET.netHours?.nets && selectedDET.netHours.nets.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedDET.netHours.nets.map((net, idx) => (
+                    <Chip key={idx} variant="flat" color="primary" size="sm">
+                      {net.id}: {net.total}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Species Data */}
+          <div>
+            <p className="text-small font-semibold mb-2">Species Data (Obs, Cns, Ret, DET)</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <div className="space-y-3">
+                {renderSpeciesCategory("Observed", selectedDET.observedSpeciesCount, "default", "No observed species")}
+                {renderSpeciesCategory("Census", selectedDET.censusSpeciesCount || {}, "primary", "No census species")}
+                {renderSpeciesCategory("Return", selectedDET.returnSpeciesCount, "primary", "No return species")}
+                {renderSpeciesCategory("DET", selectedDET.DETSpeciesCount, "warning", "No DET species")}
+              </div>
+            </div>
+          </div>
+
+          {/* Narrative */}
+          <div>
+            <p className="text-small font-semibold mb-2">Narrative</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedDET.narrative || "—"}</p>
+            </div>
+          </div>
+
+          {/* Deviations */}
+          <div>
+            <p className="text-small font-semibold mb-2">Deviations</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedDET.deviations || "—"}</p>
+            </div>
+          </div>
+
+          {/* Visitors */}
+          <div>
+            <p className="text-small font-semibold mb-2">Visitors</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600 mb-2">
+                {selectedDET.visitors?.length || 0} visitor{selectedDET.visitors?.length !== 1 ? "s" : ""}
+              </p>
+              {selectedDET.visitors && selectedDET.visitors.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedDET.visitors.map((visitor, idx) => (
+                    <Chip key={idx} variant="flat" color="default" size="sm">
+                      {visitor}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Station Management */}
+          <div>
+            <p className="text-small font-semibold mb-2">Station Management</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedDET.stationManagement || "—"}</p>
+            </div>
+          </div>
+
+          {/* Injuries */}
+          <div>
+            <p className="text-small font-semibold mb-2">Injuries</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600 mb-2">
+                {selectedDET.injuries?.length || 0} injury record{selectedDET.injuries?.length !== 1 ? "s" : ""}
+              </p>
+              {selectedDET.injuries && selectedDET.injuries.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedDET.injuries.map((injury, idx) => (
+                    <div key={idx} className="border-b border-default-100 pb-2 last:border-b-0 last:pb-0">
+                      <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Species</p>
+                          <SpeciesPopover speciesCode={injury.specie}>
+                            <p className="font-medium cursor-pointer hover:text-blue-600">{injury.specie}</p>
+                          </SpeciesPopover>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Band ID</p>
+                          <p className="font-medium">{injury.bandId || <span className="text-gray-400">—</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Net</p>
+                          <p className="font-medium">{injury.net || <span className="text-gray-400">—</span>}</p>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500 mb-1">Description</p>
+                        <p className="text-sm">{injury.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No injuries recorded</p>
+              )}
+            </div>
+          </div>
+
+          {/* Released */}
+          <div>
+            <p className="text-small font-semibold mb-2">Released</p>
+            <div className="border rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600 mb-2">
+                {selectedDET.released?.length || 0} released record{selectedDET.released?.length !== 1 ? "s" : ""}
+              </p>
+              {selectedDET.released && selectedDET.released.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedDET.released.map((bird, idx) => (
+                    <div key={idx} className="border-b border-default-100 pb-2 last:border-b-0 last:pb-0">
+                      <div className="grid grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Species</p>
+                          <SpeciesPopover speciesCode={bird.specie}>
+                            <p className="font-medium cursor-pointer hover:text-blue-600">{bird.specie}</p>
+                          </SpeciesPopover>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Age</p>
+                          <p className="font-medium">{bird.age || <span className="text-gray-400">—</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">How Aged</p>
+                          <p className="font-medium">{bird.howAged || <span className="text-gray-400">—</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Sex</p>
+                          <p className="font-medium">{bird.sex || <span className="text-gray-400">—</span>}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 mt-2 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">How Sexed</p>
+                          <p className="font-medium">{bird.howSexed || <span className="text-gray-400">—</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Net</p>
+                          <p className="font-medium">{bird.net || <span className="text-gray-400">—</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Description</p>
+                          <p className="font-medium">{bird.description || <span className="text-gray-400">—</span>}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No birds released</p>
+              )}
+            </div>
           </div>
         </CardBody>
       </Card>
