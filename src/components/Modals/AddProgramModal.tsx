@@ -1,6 +1,7 @@
 import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
 import { useState } from "react";
 import { useData } from "../../services/useData";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -49,8 +50,8 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
   };
 
   return (
-    <Modal isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
+      <ModalContent onClick={stopModalPropagation}>
         <ModalHeader className={modalHeaderClass}>
           <h2 className="text-2xl font-bold">Add New Program</h2>
           <p className="text-sm font-normal">Enter a display name and year for the new program</p>

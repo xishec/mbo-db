@@ -20,6 +20,7 @@ import {
 } from "@heroui/react";
 import { logger, LogLevel, type LogEntry } from "../../services/logger";
 import { useData } from "../../services/useData";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -120,8 +121,8 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
   const stats = logger.getStats();
 
   return (
-    <Modal isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
+      <ModalContent onClick={stopModalPropagation}>
         <ModalHeader className={modalHeaderClass}>
           <div className="flex justify-between items-center">
             <div>

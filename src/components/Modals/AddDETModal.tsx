@@ -9,6 +9,7 @@ import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
 import DETInjuriesModal from "./DETInjuriesModal";
 import DETReleasedModal from "./DETReleasedModal";
 import DETVisitorsModal from "./DETVisitorsModal";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -239,8 +240,8 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
   return (
     <>
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
-        <ModalContent>
+      <Modal onClick={stopModalPropagation} isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
+        <ModalContent onClick={stopModalPropagation}>
           {(onClose) => (
             <>
               <ModalHeader className={modalHeaderClass}>{mode === "create" ? "Add New DET" : "Edit DET"}</ModalHeader>

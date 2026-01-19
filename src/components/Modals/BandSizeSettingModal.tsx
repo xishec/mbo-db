@@ -2,6 +2,7 @@ import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader
 import { useState, useMemo, useRef } from "react";
 import { useData } from "../../services/useData";
 import { BandSize } from "../../types";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -84,8 +85,8 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
   };
 
   return (
-    <Modal isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside">
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="md" scrollBehavior="inside">
+      <ModalContent onClick={stopModalPropagation}>
         {(handleClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>

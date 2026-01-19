@@ -9,6 +9,7 @@ import {
   browserSessionPersistence,
 } from "firebase/auth";
 import { app } from "../../firebase";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -148,8 +149,8 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
   };
 
   return (
-    <Modal isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>

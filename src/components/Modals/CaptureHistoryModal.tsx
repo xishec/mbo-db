@@ -8,6 +8,7 @@ import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../Helper/ValidationMessages";
 import SpeciesTooltip from "../Helper/SpeciesTooltip";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
+import { stopModalPropagation } from "./modalInteractions";
 
 interface CaptureHistoryModalProps {
   isOpen: boolean;
@@ -113,14 +114,14 @@ export default function CaptureHistoryModal({
   }, [birdEvents, magicTable]);
 
   return (
-    <Modal
+    <Modal onClick={stopModalPropagation}
       isDismissable
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       className={`!max-w-[calc(100%-8rem)]`}
       scrollBehavior="inside"
     >
-      <ModalContent>
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>

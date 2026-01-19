@@ -33,6 +33,7 @@ import {
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -611,7 +612,7 @@ export default function AddBirdEventModal({
   const shouldShowPastBirdEvents = pastBirdEvents.length > 0 && !birdEventToModify;
 
   return (
-    <Modal
+    <Modal onClick={stopModalPropagation}
       isDismissable
       isOpen={isOpen}
       onOpenChange={handleModalOpenChange}
@@ -620,7 +621,7 @@ export default function AddBirdEventModal({
       }`}
       scrollBehavior="inside"
     >
-      <ModalContent>
+      <ModalContent onClick={stopModalPropagation}>
         {() => (
           <>
             <ModalHeader className={modalHeaderClass}>

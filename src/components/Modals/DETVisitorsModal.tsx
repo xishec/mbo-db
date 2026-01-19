@@ -15,6 +15,7 @@ import {
   TableCell,
 } from "@heroui/react";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -85,7 +86,7 @@ export default function DETVisitorsModal({
   };
 
   return (
-    <Modal
+    <Modal onClick={stopModalPropagation}
       isOpen={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -96,7 +97,7 @@ export default function DETVisitorsModal({
       size="4xl"
       scrollBehavior="inside"
     >
-      <ModalContent>
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>Edit Visitors</ModalHeader>

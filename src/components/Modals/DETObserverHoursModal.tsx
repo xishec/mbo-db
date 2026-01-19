@@ -16,6 +16,7 @@ import {
 } from "@heroui/react";
 import type { ObserverHours, Observer } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -128,7 +129,7 @@ export default function DETObserverHoursModal({
   };
 
   return (
-    <Modal
+    <Modal onClick={stopModalPropagation}
       isOpen={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -141,7 +142,7 @@ export default function DETObserverHoursModal({
       size="4xl"
       scrollBehavior="inside"
     >
-      <ModalContent>
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>Edit Observer Hours</ModalHeader>

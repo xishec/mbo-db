@@ -17,6 +17,7 @@ import {
 } from "@heroui/react";
 import { SPECIES_MAP } from "../../types/species";
 import { SPECIES_GROUPS, DET_SPECIES_CODES_SET, type SpeciesListItem } from "../../types/DET";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -239,8 +240,8 @@ export default function DETUnifiedSpeciesModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} className={`!max-w-[calc(100%-8rem)]`}>
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isOpen={isOpen} onOpenChange={onOpenChange} className={`!max-w-[calc(100%-8rem)]`}>
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>Edit Species Data</ModalHeader>

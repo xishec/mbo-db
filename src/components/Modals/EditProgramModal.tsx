@@ -2,6 +2,7 @@ import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader
 import { useState, useMemo } from "react";
 import { useData } from "../../services/useData";
 import type { Program } from "../../types";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -68,8 +69,8 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
   };
 
   return (
-    <Modal isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} placement="top-center" onOpenChange={handleClose}>
+      <ModalContent onClick={stopModalPropagation}>
         <ModalHeader className={modalHeaderClass}>
           <h2 className="text-2xl font-bold">Edit Program</h2>
           <p className="text-sm font-normal">Update the display name for this program</p>

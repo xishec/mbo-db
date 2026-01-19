@@ -6,6 +6,7 @@ import { formatUpdatedAt } from "../PageContent/Programs/Captures/helpers";
 import { MagnifyingGlassIcon } from "@heroicons/react/16/solid";
 import SpeciesTooltip from "../Helper/SpeciesTooltip";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
+import { stopModalPropagation } from "./modalInteractions";
 
 enum ModificationType {
   Addition = "Added",
@@ -56,14 +57,14 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
 
   return (
     <>
-      <Modal
+      <Modal onClick={stopModalPropagation}
         isDismissable
         isOpen={isOpen}
         onClose={onClose}
         className={`!max-w-[calc(100%-8rem)]`}
         scrollBehavior="inside"
       >
-        <ModalContent>
+        <ModalContent onClick={stopModalPropagation}>
           <ModalHeader className={modalHeaderClass}>
             <div className="flex justify-between items-center">
               <div>

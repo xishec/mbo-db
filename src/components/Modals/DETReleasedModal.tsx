@@ -17,6 +17,7 @@ import {
 } from "@heroui/react";
 import type { Released } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -90,7 +91,7 @@ export default function DETReleasedModal({
   };
 
   return (
-    <Modal
+    <Modal onClick={stopModalPropagation}
       isOpen={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -101,7 +102,7 @@ export default function DETReleasedModal({
       size="4xl"
       scrollBehavior="inside"
     >
-      <ModalContent>
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>Edit Released</ModalHeader>

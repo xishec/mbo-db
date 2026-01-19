@@ -4,6 +4,7 @@ import { useData } from "../../services/useData";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import type { BirdEvent } from "../../types";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
+import { stopModalPropagation } from "./modalInteractions";
 
 interface ModificationHistoryModalProps {
   isOpen: boolean;
@@ -34,14 +35,14 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
   }, [birdEvent.id, birdEventsMap]);
 
   return (
-    <Modal
+    <Modal onClick={stopModalPropagation}
       isDismissable
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       className={`!max-w-[calc(100%-8rem)]`}
       scrollBehavior="inside"
     >
-      <ModalContent>
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>

@@ -4,6 +4,7 @@ import SpeciesInfoCard from "../Helper/SpeciesInfoCard";
 import SpeciesRangeTable from "../PageContent/Programs/Captures/SpeciesRangeTable";
 import { useData } from "../../services/useData";
 import { SPECIES_MAP } from "../../types/species";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalHeaderClass,
   modalBodyClass,
@@ -27,8 +28,15 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
   }, [speciesCode, magicTable]);
 
   return (
-    <Modal isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="5xl" scrollBehavior="inside">
-      <ModalContent>
+    <Modal
+      onClick={stopModalPropagation}
+      isDismissable
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      size="5xl"
+      scrollBehavior="inside"
+    >
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>

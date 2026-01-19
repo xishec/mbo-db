@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@heroui/react";
 import type { DET } from "../../types/DET";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -135,8 +136,8 @@ export default function AddOrEditDETModal({ isOpen, onOpenChange, onSave, existi
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside">
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isOpen={isOpen} onOpenChange={onOpenChange} size="2xl" scrollBehavior="inside">
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>

@@ -1,6 +1,7 @@
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from "@heroui/react";
 import { useMemo, useState } from "react";
 import { BIRD_STATUS_CODES, BIRD_STATUS_GROUPS, getCodesForGroup } from "../../types/birdStatus";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -65,8 +66,8 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
   };
 
   return (
-    <Modal isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
+      <ModalContent onClick={stopModalPropagation}>
         {() => (
           <>
             <ModalHeader className={modalHeaderClass}>

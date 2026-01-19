@@ -7,6 +7,7 @@ import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../Helper/ExportButton";
 import SpeciesTooltip from "../Helper/SpeciesTooltip";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
+import { stopModalPropagation } from "./modalInteractions";
 
 interface ErrorsModalProps {
   isOpen: boolean;
@@ -72,14 +73,14 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
 
   return (
     <>
-      <Modal
+      <Modal onClick={stopModalPropagation}
         isDismissable
         isOpen={isOpen}
         onClose={onClose}
         className={`!max-w-[calc(100%-8rem)]`}
         scrollBehavior="inside"
       >
-        <ModalContent>
+        <ModalContent onClick={stopModalPropagation}>
           <ModalHeader className={modalHeaderClass}>
             <div className="flex justify-between items-center">
               <div>

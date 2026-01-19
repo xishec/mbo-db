@@ -4,6 +4,7 @@ import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import { getQueuedEvents } from "../../services/indexedDB";
 import type { PendingEvent } from "../../types";
 import { modalBodyClass, modalFooterClass, modalHeaderClass, modalPrimaryButtonProps } from "./modalDefaults";
+import { stopModalPropagation } from "./modalInteractions";
 
 interface SyncQueueModalProps {
   isOpen: boolean;
@@ -28,8 +29,8 @@ export function SyncQueueModal({ isOpen, onClose }: SyncQueueModalProps) {
   }, [queuedEvents]);
 
   return (
-    <Modal isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
-      <ModalContent>
+    <Modal onClick={stopModalPropagation} isDismissable isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
+      <ModalContent onClick={stopModalPropagation}>
         <ModalHeader className={modalHeaderClass}>
           <div className="flex justify-between items-center">
             <div>

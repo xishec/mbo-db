@@ -17,6 +17,7 @@ import {
 } from "@heroui/react";
 import type { Injury } from "../../types/DET";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { stopModalPropagation } from "./modalInteractions";
 import {
   modalBodyClass,
   modalFooterClass,
@@ -91,7 +92,7 @@ export default function DETInjuriesModal({
   };
 
   return (
-    <Modal
+    <Modal onClick={stopModalPropagation}
       isOpen={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -102,7 +103,7 @@ export default function DETInjuriesModal({
       size="4xl"
       scrollBehavior="inside"
     >
-      <ModalContent>
+      <ModalContent onClick={stopModalPropagation}>
         {(onClose) => (
           <>
             <ModalHeader className={modalHeaderClass}>Edit Injuries</ModalHeader>
