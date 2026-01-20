@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { SPECIES_GROUPS } from "../../types/DET";
 import { SPECIES_MAP } from "../../types/species";
 import { useData } from "../../services/useData";
+import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
 
 type SpeciesGroup = {
@@ -36,22 +37,6 @@ const SPECIES_COLUMNS: ColumnType[] = [
   { key: "dummiestCount", label: "Dummiest Count", type: "number", align: "end" },
   { key: "oldestSpanDays", label: "Oldest Span", type: "number", align: "end" },
 ];
-
-const formatSpanDays = (days: number): string => {
-  if (days < 0) return "—";
-  const years = Math.floor(days / 365);
-  const remainderDays = days % 365;
-  const parts: string[] = [];
-
-  if (years > 0) {
-    parts.push(`${years} year${years === 1 ? "" : "s"}`);
-  }
-  if (remainderDays > 0 || parts.length === 0) {
-    parts.push(`${remainderDays} day${remainderDays === 1 ? "" : "s"}`);
-  }
-
-  return parts.join(" ");
-};
 
 export default function SpeciesGroups() {
   const { speciesInfoMap } = useData();

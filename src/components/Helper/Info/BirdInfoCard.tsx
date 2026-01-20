@@ -1,3 +1,4 @@
+import { formatSpanDays } from "./formatSpanDays";
 import SpeciesTooltip from "./SpeciesTooltip";
 
 interface BirdInfo {
@@ -36,7 +37,7 @@ export default function BirdInfoCard({ bandId, birdInfo }: BirdInfoCardProps) {
         </div>
         <div>
           <span className="text-default-700">Capture Span :</span>{" "}
-          <span className="font-medium">{birdInfo.captureSpan}</span>
+          <span className="font-medium">{formatSpanDays(birdInfo.captureSpanDays)}</span>
         </div>
         <div>
           <span className="text-default-700">Latest Recapture :</span>{" "}

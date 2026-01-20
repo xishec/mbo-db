@@ -1,6 +1,7 @@
 import { Card, CardBody } from "@heroui/react";
 import { useState } from "react";
 import type { SpeciesInfo } from "../../../types";
+import { formatSpanDays } from "./formatSpanDays";
 import SpeciesTooltip from "./SpeciesTooltip";
 import CaptureHistoryModal from "../../Modals/CaptureHistoryModal";
 
@@ -11,22 +12,6 @@ interface SpeciesFunFactsProps {
   disabled?: boolean;
   className?: string;
 }
-
-const formatSpanDays = (days: number): string => {
-  if (days < 0) return "—";
-  const years = Math.floor(days / 365);
-  const remainderDays = days % 365;
-  const parts: string[] = [];
-
-  if (years > 0) {
-    parts.push(`${years} year${years === 1 ? "" : "s"}`);
-  }
-  if (remainderDays > 0 || parts.length === 0) {
-    parts.push(`${remainderDays} day${remainderDays === 1 ? "" : "s"}`);
-  }
-
-  return parts.join(" ");
-};
 
 export default function SpeciesFunFacts({
   speciesCode,
@@ -99,7 +84,7 @@ export default function SpeciesFunFacts({
               >
                 <div className="font-semibold text-default-900 mb-1">Biggest</div>
                 <div className="text-default-700">
-                  {biggest.wing}mm by {biggest.band.id}
+                  {biggest.wing} mm
                   {renderCurrentBirdNote(biggest.band.id)}
                 </div>
               </div>
@@ -109,7 +94,7 @@ export default function SpeciesFunFacts({
               >
                 <div className="font-semibold text-default-900 mb-1">Fattest</div>
                 <div className="text-default-700">
-                  Fat {fattest.fat}, {fattest.weight}g by {fattest.band.id}
+                  Fat {fattest.fat}, {fattest.weight}g
                   {renderCurrentBirdNote(fattest.band.id)}
                 </div>
               </div>
@@ -119,7 +104,7 @@ export default function SpeciesFunFacts({
               >
                 <div className="font-semibold text-default-900 mb-1">Dummiest</div>
                 <div className="text-default-700">
-                  {speciesInfo.dummiestCount} time{speciesInfo.dummiestCount !== 1 ? "s" : ""} by {dummiest.band.id}
+                  {speciesInfo.dummiestCount} time{speciesInfo.dummiestCount !== 1 ? "s" : ""}
                   {renderCurrentBirdNote(dummiest.band.id)}
                 </div>
               </div>
@@ -130,7 +115,7 @@ export default function SpeciesFunFacts({
                 >
                   <div className="font-semibold text-default-900 mb-1">Oldest</div>
                   <div className="text-default-700">
-                    {formatSpanDays(speciesInfo.oldestSpanDays)} by {oldest?.band.id}
+                    {formatSpanDays(speciesInfo.oldestSpanDays, false)}
                     {oldest ? renderCurrentBirdNote(oldest.band.id) : null}
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import PyleAndFunFacts from "../Helper/Info/PyleAndFunFacts";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../Helper/ValidationMessages";
 import BirdInfoCard from "../Helper/Info/BirdInfoCard";
+import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
@@ -75,20 +76,7 @@ export default function CaptureHistoryModal({
     if (hasRecaptures) {
       const spanMs = latestDate.getTime() - earliestDate.getTime();
       captureSpanDays = Math.floor(spanMs / (1000 * 60 * 60 * 24));
-
-      if (captureSpanDays === 0) {
-        captureSpan = "Same day";
-      } else if (captureSpanDays < 365) {
-        captureSpan = `${captureSpanDays} day${captureSpanDays !== 1 ? "s" : ""}`;
-      } else {
-        const years = Math.floor(captureSpanDays / 365);
-        const days = captureSpanDays % 365;
-        if (days === 0) {
-          captureSpan = `${years} year${years !== 1 ? "s" : ""}`;
-        } else {
-          captureSpan = `${years} year${years !== 1 ? "s" : ""}, ${days} day${days !== 1 ? "s" : ""}`;
-        }
-      }
+      captureSpan = formatSpanDays(captureSpanDays, false);
     }
 
     return {
