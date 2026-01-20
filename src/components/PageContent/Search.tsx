@@ -215,7 +215,7 @@ export default function Search() {
       </div>
       <div className="w-full flex flex-col gap-4">
         {/* Filter Builder */}
-        <div className="flex flex-wrap gap-3 items-end">
+        <div className="w-full flex flex-wrap gap-3 items-end">
           <Select
             label="Property"
             placeholder="Select property"
@@ -224,7 +224,7 @@ export default function Search() {
             size="md"
             selectedKeys={currentProperty ? [currentProperty as string] : []}
             onSelectionChange={handlePropertyChange}
-            className="w-48"
+            className="flex-1"
           >
             {TABLE_COLUMNS.filter((col) => col.key !== "actions").map((prop: CaptureColumn) => (
               <SelectItem key={prop.key}>{prop.label}</SelectItem>
@@ -242,7 +242,7 @@ export default function Search() {
               const selected = Array.from(keys)[0] as string | undefined;
               setCurrentOperator(selected ?? "");
             }}
-            className="w-40"
+            className="flex-1"
             isDisabled={!currentProperty}
           >
             {availableOperators.map((op) => (
@@ -258,7 +258,7 @@ export default function Search() {
             size="md"
             value={currentValue}
             onValueChange={setCurrentValue}
-            className="w-48"
+            className="flex-1"
             isDisabled={!currentProperty || !operatorRequiresValue}
             type={currentPropertyType === "number" ? "number" : "text"}
             onKeyDown={(e) => {

@@ -420,8 +420,8 @@ export default function DETs() {
   );
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
-      <div className="mb-6">
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col items-center pt-4 p-8 gap-4">
+      <div className="w-full">
         <PageHeader
           title="Daily Effort Tables"
           subtitle={`${availableDatesSet.size} DET entries available`}
@@ -435,7 +435,7 @@ export default function DETs() {
         />
       </div>
 
-      <div className="mb-4 flex gap-4 items-start">
+      <div className="w-full mb-4 flex gap-4 items-start">
         <Card className="" shadow="sm">
           <CardBody className="p-0">
             <Calendar

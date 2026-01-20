@@ -152,80 +152,78 @@ export default function SpeciesGroups() {
   }, [groupedSpecies, speciesInfoMap]);
 
   return (
-    <div className="px-8 py-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8">
-          <PageHeader
-            title="Species Catalog"
-            subtitle="Browse species grouped by the DET classification table."
-            actions={
-              sortDescriptors.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={handleResetSort}
-                  className="text-sm font-medium text-primary hover:text-primary-600"
-                >
-                  Reset sort
-                </button>
-              ) : null
-            }
-          />
-        </div>
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col items-center pt-4 p-8 gap-4">
+      <div className="w-full">
+        <PageHeader
+          title="Species Catalog"
+          subtitle="Browse species grouped by the DET classification table."
+          actions={
+            sortDescriptors.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleResetSort}
+                className="text-sm font-medium text-primary hover:text-primary-600"
+              >
+                Reset sort
+              </button>
+            ) : null
+          }
+        />
+      </div>
 
-        <div className="pb-[200px]">
-          <div className="overflow-hidden rounded-medium border border-default-200">
-            <Table
-              aria-label="species catalog table"
-              sortDescriptor={sortDescriptors[0]}
-              onSortChange={handleSortChange}
-              selectionMode="single"
-              classNames={{
-                wrapper: "shadow-none",
-                th: "bg-default-100 text-xs font-semibold uppercase tracking-wide text-default-600",
-                td: "text-sm select-text",
-              }}
-            >
-              <TableHeader<ColumnType> columns={SPECIES_COLUMNS}>
-                {(column) => (
-                  <TableColumn
-                    key={column.key}
-                    allowsSorting
-                    className={`${column.align === "end" ? "text-right" : ""} ${column.key === "groupName" ? "whitespace-nowrap" : ""
-                      }`}
-                  >
-                    {column.label}
-                  </TableColumn>
-                )}
-              </TableHeader>
-              <TableBody items={sortRows(rows)} emptyContent="No species found">
-                {(item) => (
-                  <TableRow key={item.code} onClick={() => handleRowClick(item.code)} className="cursor-pointer">
-                    {(columnKey) => {
-                      const value = item[columnKey as keyof SpeciesRow];
-                      if (columnKey === "code") {
-                        return <TableCell className="font-mono text-default-900">{value}</TableCell>;
-                      }
-                      if (columnKey === "groupName") {
-                        return <TableCell className="text-default-900 whitespace-nowrap">{value}</TableCell>;
-                      }
-                      if (columnKey === "oldestSpanDays") {
-                        const numValue = typeof value === "number" ? value : Number(value) || -1;
-                        return (
-                          <TableCell className="text-right tabular-nums text-default-900 whitespace-nowrap">
-                            {formatSpanDays(numValue, true)}
-                          </TableCell>
-                        );
-                      }
-                      if (typeof value === "number") {
-                        return <TableCell className="text-right tabular-nums text-default-900">{value}</TableCell>;
-                      }
-                      return <TableCell className="text-default-900">{value}</TableCell>;
-                    }}
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+      <div className="pb-[200px]">
+        <div className="overflow-hidden rounded-medium border border-default-200">
+          <Table
+            aria-label="species catalog table"
+            sortDescriptor={sortDescriptors[0]}
+            onSortChange={handleSortChange}
+            selectionMode="single"
+            classNames={{
+              wrapper: "shadow-none",
+              th: "bg-default-100 text-xs font-semibold uppercase tracking-wide text-default-600",
+              td: "text-sm select-text",
+            }}
+          >
+            <TableHeader<ColumnType> columns={SPECIES_COLUMNS}>
+              {(column) => (
+                <TableColumn
+                  key={column.key}
+                  allowsSorting
+                  className={`${column.align === "end" ? "text-right" : ""} ${column.key === "groupName" ? "whitespace-nowrap" : ""
+                    }`}
+                >
+                  {column.label}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody items={sortRows(rows)} emptyContent="No species found">
+              {(item) => (
+                <TableRow key={item.code} onClick={() => handleRowClick(item.code)} className="cursor-pointer">
+                  {(columnKey) => {
+                    const value = item[columnKey as keyof SpeciesRow];
+                    if (columnKey === "code") {
+                      return <TableCell className="font-mono text-default-900">{value}</TableCell>;
+                    }
+                    if (columnKey === "groupName") {
+                      return <TableCell className="text-default-900 whitespace-nowrap">{value}</TableCell>;
+                    }
+                    if (columnKey === "oldestSpanDays") {
+                      const numValue = typeof value === "number" ? value : Number(value) || -1;
+                      return (
+                        <TableCell className="text-right tabular-nums text-default-900 whitespace-nowrap">
+                          {formatSpanDays(numValue, true)}
+                        </TableCell>
+                      );
+                    }
+                    if (typeof value === "number") {
+                      return <TableCell className="text-right tabular-nums text-default-900">{value}</TableCell>;
+                    }
+                    return <TableCell className="text-default-900">{value}</TableCell>;
+                  }}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
 
