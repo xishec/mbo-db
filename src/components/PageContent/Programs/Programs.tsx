@@ -18,6 +18,7 @@ import { useData } from "../../../services/useData";
 import AddProgramModal from "../../Modals/AddProgramModal";
 import EditProgramModal from "../../Modals/EditProgramModal";
 import type { Program } from "../../../types";
+import PageHeader from "../PageHeader";
 
 export default function Programs() {
   const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading, isOnline, isLoggedIn } = useData();
@@ -63,8 +64,23 @@ export default function Programs() {
     return <div className="p-4">No programs available.</div>;
   }
 
+  const headerSubtitle = selectedProgram
+    ? "Review captures and program details."
+    : "Select a year and program to view captures.";
+
   return (
-    <div className="h-full w-full flex flex-col items-center pt-4 p-8 gap-4">
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col items-center pt-4 p-8 gap-4">
+      <PageHeader
+        title="Programs"
+        subtitle={headerSubtitle}
+        actions={
+          !selectedProgram && isLoggedIn ? (
+            <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
+              Add Program
+            </Button>
+          ) : null
+        }
+      />
       <div className="w-full flex justify-between items-center h-[40px]">
         <div className="flex items-center gap-2">
           <Breadcrumbs>
@@ -97,11 +113,6 @@ export default function Programs() {
             </Tooltip>
           )}
         </div>
-        {!selectedProgram && isLoggedIn && (
-          <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
-            Add Program
-          </Button>
-        )}
       </div>
 
       {!selectedProgram && (

@@ -4,6 +4,7 @@ import type { DET } from "../../../types/DET";
 import { Calendar, Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
 import SpeciesTooltip from "../../Helper/Info/SpeciesTooltip";
+import PageHeader from "../PageHeader";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/DET/AddDETModal";
 import { PencilIcon } from "@heroicons/react/24/outline";
@@ -420,16 +421,18 @@ export default function DETs() {
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Daily Effort Tables</h1>
-          <p className="text-xs text-gray-500">{availableDatesSet.size} DET entries available</p>
-        </div>
-        {isAdmin && (
-          <Button color="primary" onPress={handleAddNew}>
-            Add DET
-          </Button>
-        )}
+      <div className="mb-6">
+        <PageHeader
+          title="Daily Effort Tables"
+          subtitle={`${availableDatesSet.size} DET entries available`}
+          actions={
+            isAdmin ? (
+              <Button color="primary" onPress={handleAddNew}>
+                Add DET
+              </Button>
+            ) : null
+          }
+        />
       </div>
 
       <div className="mb-4 flex gap-4 items-start">

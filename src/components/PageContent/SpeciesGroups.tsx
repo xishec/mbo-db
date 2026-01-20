@@ -5,6 +5,7 @@ import { SPECIES_MAP } from "../../types/species";
 import { useData } from "../../services/useData";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
+import PageHeader from "./PageHeader";
 
 type SpeciesGroup = {
   name: string;
@@ -154,18 +155,21 @@ export default function SpeciesGroups() {
     <div className="px-8 py-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-3xl font-semibold text-default-900">Species Catalog</h1>
-            {sortDescriptors.length > 0 && (
-              <button
-                type="button"
-                onClick={handleResetSort}
-                className="text-sm font-medium text-primary hover:text-primary-600"
-              >
-                Reset sort
-              </button>
-            )}
-          </div>
+          <PageHeader
+            title="Species Catalog"
+            subtitle="Browse species grouped by the DET classification table."
+            actions={
+              sortDescriptors.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleResetSort}
+                  className="text-sm font-medium text-primary hover:text-primary-600"
+                >
+                  Reset sort
+                </button>
+              ) : null
+            }
+          />
         </div>
 
         <div className="pb-[200px]">
@@ -208,7 +212,7 @@ export default function SpeciesGroups() {
                         const numValue = typeof value === "number" ? value : Number(value) || -1;
                         return (
                           <TableCell className="text-right tabular-nums text-default-900 whitespace-nowrap">
-                            {formatSpanDays(numValue)}
+                            {formatSpanDays(numValue, true)}
                           </TableCell>
                         );
                       }

@@ -5,6 +5,7 @@ import type { BirdEvent, CaptureColumn } from "../../types";
 import { TABLE_COLUMNS } from "./Programs/Captures/helpers";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import ExportButton from "../Helper/ExportButton";
+import PageHeader from "./PageHeader";
 
 // Operators for filtering
 const STRING_OPERATORS = [
@@ -208,7 +209,10 @@ export default function Search() {
   const canAddFilter = currentProperty && currentOperator && (operatorRequiresValue ? currentValue : true);
 
   return (
-    <div className="h-full w-full flex flex-col items-center pt-4 p-8 gap-4">
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col items-center pt-4 p-8 gap-4">
+      <div className="w-full">
+        <PageHeader title="Search" subtitle="Filter and export capture records." />
+      </div>
       <div className="w-full flex flex-col gap-4">
         {/* Filter Builder */}
         <div className="flex flex-wrap gap-3 items-end">

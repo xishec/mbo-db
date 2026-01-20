@@ -37,7 +37,7 @@ export default function BirdInfoCard({ bandId, birdInfo }: BirdInfoCardProps) {
         </div>
         <div>
           <span className="text-default-700">Capture Span :</span>{" "}
-          <span className="font-medium">{formatSpanDays(birdInfo.captureSpanDays)}</span>
+          <span className="font-medium">{formatSpanDays(birdInfo.captureSpanDays, false)}</span>
         </div>
         <div>
           <span className="text-default-700">Latest Recapture :</span>{" "}

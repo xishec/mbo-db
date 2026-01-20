@@ -1,4 +1,4 @@
-export const formatSpanDays = (days: number, shouldPad = true): string => {
+export const formatSpanDays = (days: number, shouldPad: boolean): string => {
   if (days <= 0) return "n/a";
   const years = Math.floor(days / 365);
   const remainderDays = days % 365;
