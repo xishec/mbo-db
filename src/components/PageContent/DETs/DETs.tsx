@@ -427,7 +427,7 @@ export default function DETs() {
           subtitle={`${availableDatesSet.size} DET entries available`}
           actions={
             isAdmin ? (
-              <Button color="primary" onPress={handleAddNew}>
+              <Button color="secondary" onPress={handleAddNew}>
                 Add DET
               </Button>
             ) : null
