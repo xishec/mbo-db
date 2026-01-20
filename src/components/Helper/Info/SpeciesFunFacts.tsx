@@ -12,6 +12,22 @@ interface SpeciesFunFactsProps {
   className?: string;
 }
 
+const formatSpanDays = (days: number): string => {
+  if (days < 0) return "—";
+  const years = Math.floor(days / 365);
+  const remainderDays = days % 365;
+  const parts: string[] = [];
+
+  if (years > 0) {
+    parts.push(`${years} year${years === 1 ? "" : "s"}`);
+  }
+  if (remainderDays > 0 || parts.length === 0) {
+    parts.push(`${remainderDays} day${remainderDays === 1 ? "" : "s"}`);
+  }
+
+  return parts.join(" ");
+};
+
 export default function SpeciesFunFacts({
   speciesCode,
   speciesInfo,
@@ -114,7 +130,7 @@ export default function SpeciesFunFacts({
                 >
                   <div className="font-semibold text-default-900 mb-1">Oldest</div>
                   <div className="text-default-700">
-                    {speciesInfo.oldestSpanDays} day{speciesInfo.oldestSpanDays !== 1 ? "s" : ""} by {oldest?.band.id}
+                    {formatSpanDays(speciesInfo.oldestSpanDays)} by {oldest?.band.id}
                     {oldest ? renderCurrentBirdNote(oldest.band.id) : null}
                   </div>
                 </div>

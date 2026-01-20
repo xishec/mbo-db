@@ -32,10 +32,26 @@ const SPECIES_COLUMNS: ColumnType[] = [
   { key: "code", label: "Code", type: "string" },
   { key: "englishName", label: "English", type: "string" },
   { key: "frenchName", label: "French", type: "string" },
-  { key: "totalCaptures", label: "Captures", type: "number", align: "end" },
-  { key: "dummiestCount", label: "Dummiest", type: "number", align: "end" },
-  { key: "oldestSpanDays", label: "Oldest", type: "number", align: "end" },
+  { key: "totalCaptures", label: "Total Captures", type: "number", align: "end" },
+  { key: "dummiestCount", label: "Dummiest Count", type: "number", align: "end" },
+  { key: "oldestSpanDays", label: "Oldest Span", type: "number", align: "end" },
 ];
+
+const formatSpanDays = (days: number): string => {
+  if (days < 0) return "—";
+  const years = Math.floor(days / 365);
+  const remainderDays = days % 365;
+  const parts: string[] = [];
+
+  if (years > 0) {
+    parts.push(`${years} year${years === 1 ? "" : "s"}`);
+  }
+  if (remainderDays > 0 || parts.length === 0) {
+    parts.push(`${remainderDays} day${remainderDays === 1 ? "" : "s"}`);
+  }
+
+  return parts.join(" ");
+};
 
 export default function SpeciesGroups() {
   const { speciesInfoMap } = useData();
@@ -206,8 +222,8 @@ export default function SpeciesGroups() {
                       if (columnKey === "oldestSpanDays") {
                         const numValue = typeof value === "number" ? value : Number(value) || -1;
                         return (
-                          <TableCell className="text-right tabular-nums text-default-900">
-                            {numValue >= 0 ? numValue : "—"}
+                          <TableCell className="text-right tabular-nums text-default-900 whitespace-nowrap">
+                            {formatSpanDays(numValue)}
                           </TableCell>
                         );
                       }
