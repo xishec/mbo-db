@@ -69,18 +69,24 @@ export default function Programs() {
     : "Select a year and program to view captures.";
 
   return (
-    <div className="h-full w-full max-w-7xl mx-auto flex flex-col items-center pt-4 p-8 gap-4">
-      <PageHeader
-        title="Programs"
-        subtitle={headerSubtitle}
-        actions={
-          !selectedProgram && isLoggedIn ? (
-            <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
-              Add Program
-            </Button>
-          ) : null
-        }
-      />
+    <div
+      className={`h-full w-full flex flex-col items-center pt-4 p-8 gap-4 ${
+        selectedProgram ? "" : "max-w-7xl mx-auto"
+      }`}
+    >
+      {!selectedProgram && (
+        <PageHeader
+          title="Programs"
+          subtitle={headerSubtitle}
+          actions={
+            isLoggedIn ? (
+              <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
+                Add Program
+              </Button>
+            ) : null
+          }
+        />
+      )}
       <div className="w-full flex justify-between items-center h-[40px]">
         <div className="flex items-center gap-2">
           <Breadcrumbs>
