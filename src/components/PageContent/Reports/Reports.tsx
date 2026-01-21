@@ -126,7 +126,6 @@ function ReportSection({ title, subtitle, children }: { title: string; subtitle?
   );
 }
 
-
 const parseCsvLine = (line: string): string[] => {
   const result: string[] = [];
   let current = "";
@@ -149,6 +148,12 @@ const parseCsvLine = (line: string): string[] => {
   }
   result.push(current);
   return result;
+};
+
+const getYearFromDate = (dateString: string) => {
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.getFullYear();
 };
 
 const formatMonthRangeLabel = (start: string, end: string) => {
@@ -269,6 +274,7 @@ type ReportGroupData = {
   groupCaptures: ReportCapture[];
   effortDays: number;
   netHours: number;
+  groupDateBounds: { start: string; end: string };
   dailyBanded: DailyTrendPoint[];
   dailyBandedSpecies: DailyTrendPoint[];
   dailyCensusSpecies: DailyTrendPoint[];
@@ -330,20 +336,42 @@ const PROGRAM_GROUPS: ProgramGroupDefinition[] = [
   },
 ];
 
+type ProgramGroupKey = "winter" | "spring" | "summer" | "fall" | "owl";
+
+const GROUP_KEYS: Array<{ key: ProgramGroupKey; label: string }> = [
+  { key: "winter", label: "Winter" },
+  { key: "spring", label: "Spring" },
+  { key: "summer", label: "Summer" },
+  { key: "fall", label: "Fall" },
+  { key: "owl", label: "Owl" },
+];
+
 export default function Reports() {
-  const { birdEventsMap, programsMap, DETsMap, isLoading } = useData();
-  const [selectedProgramId, setSelectedProgramId] = useState<string>("all");
+  const { birdEventsMap, programsMap, DETsMap, yearsToProgramMap, isLoading } = useData();
   const [startDate, setStartDate] = useState<string>("2022-11-01");
   const [endDate, setEndDate] = useState<string>("2023-11-01");
   const [isReportReady, setIsReportReady] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [appliedStartDate, setAppliedStartDate] = useState<string>("");
   const [appliedEndDate, setAppliedEndDate] = useState<string>("");
-  const [appliedProgramId, setAppliedProgramId] = useState<string>("all");
+  const [selectedGroupPrograms, setSelectedGroupPrograms] = useState<Record<ProgramGroupKey, string[]>>({
+    winter: [],
+    spring: [],
+    summer: [],
+    fall: [],
+    owl: [],
+  });
+  const [appliedGroupPrograms, setAppliedGroupPrograms] = useState<Record<ProgramGroupKey, string[]>>({
+    winter: [],
+    spring: [],
+    summer: [],
+    fall: [],
+    owl: [],
+  });
   const [prioritySpeciesMap, setPrioritySpeciesMap] = useState<Record<string, string>>({});
   const deferredStartDate = useDeferredValue(appliedStartDate);
   const deferredEndDate = useDeferredValue(appliedEndDate);
-  const deferredProgramId = useDeferredValue(appliedProgramId);
+  const deferredGroupPrograms = useDeferredValue(appliedGroupPrograms);
 
   const captures = useMemo<ReportCapture[]>(() => {
     return Object.values(birdEventsMap)
@@ -441,9 +469,56 @@ export default function Reports() {
     };
   }, []);
 
-  const programOptions = useMemo(() => {
-    return Object.values(programsMap).sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [programsMap]);
+  const availablePrograms = useMemo(() => {
+    const startYear = startDate ? getYearFromDate(startDate) : null;
+    const endYear = endDate ? getYearFromDate(endDate) : null;
+    const years = new Set<number>();
+    if (startYear !== null) years.add(startYear);
+    if (endYear !== null) years.add(endYear);
+    const programIds = new Set<string>();
+    years.forEach((year) => {
+      (yearsToProgramMap?.[String(year)] ?? []).forEach((id) => programIds.add(id));
+    });
+    return Array.from(programIds)
+      .map((id) => programsMap[id])
+      .filter((program): program is Program => Boolean(program))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }, [startDate, endDate, programsMap, yearsToProgramMap]);
+
+  const availableProgramIds = useMemo(() => new Set(availablePrograms.map((program) => program.id)), [availablePrograms]);
+
+  const otherPrograms = useMemo(() => {
+    const selectedIds = new Set<string>();
+    Object.values(selectedGroupPrograms).forEach((ids) => {
+      ids.forEach((id) => selectedIds.add(id));
+    });
+    return availablePrograms.filter((program) => !selectedIds.has(program.id));
+  }, [availablePrograms, selectedGroupPrograms]);
+
+  const handleGroupSelectionChange = (groupKey: ProgramGroupKey, keys: Set<React.Key>) => {
+    setSelectedGroupPrograms((current) => ({
+      ...current,
+      [groupKey]: Array.from(keys).map((key) => String(key)),
+    }));
+    setIsReportReady(false);
+  };
+
+  useEffect(() => {
+    setSelectedGroupPrograms((current) => {
+      const next: Record<ProgramGroupKey, string[]> = { ...current };
+      GROUP_KEYS.forEach(({ key }) => {
+        next[key] = current[key].filter((id) => availableProgramIds.has(id));
+      });
+      return next;
+    });
+    setAppliedGroupPrograms((current) => {
+      const next: Record<ProgramGroupKey, string[]> = { ...current };
+      GROUP_KEYS.forEach(({ key }) => {
+        next[key] = current[key].filter((id) => availableProgramIds.has(id));
+      });
+      return next;
+    });
+  }, [availableProgramIds]);
 
   const dets = useMemo(() => {
     return Object.values(DETsMap ?? {}).filter((det) => det && det.date);
@@ -474,9 +549,8 @@ export default function Reports() {
 
   const filteredCaptures = useMemo(() => {
     if (!isReportReady) return [];
-    if (deferredProgramId === "all") return capturesInRange;
-    return capturesInRange.filter((capture) => capture.programId === deferredProgramId);
-  }, [capturesInRange, deferredProgramId, isReportReady]);
+    return capturesInRange;
+  }, [capturesInRange, isReportReady]);
 
   const detsInRange = useMemo(() => {
     if (!isReportReady) return [];
@@ -491,9 +565,8 @@ export default function Reports() {
 
   const filteredDets = useMemo(() => {
     if (!isReportReady) return [];
-    if (deferredProgramId === "all") return detsInRange;
-    return detsInRange.filter((det) => det.programId === deferredProgramId);
-  }, [detsInRange, deferredProgramId, isReportReady]);
+    return detsInRange;
+  }, [detsInRange, isReportReady]);
 
   const analysis = useMemo(() => {
     if (!filteredCaptures.length) return null;
@@ -517,10 +590,8 @@ export default function Reports() {
 
   const summaryText = useMemo(() => {
     if (!analysis) return "";
-    const programLabel =
-      appliedProgramId === "all" ? "all programs" : programsMap[appliedProgramId]?.displayName || "the program";
-    return summarizeSeason(analysis, dateRangeLabel, programLabel);
-  }, [analysis, dateRangeLabel, appliedProgramId, programsMap]);
+    return summarizeSeason(analysis, dateRangeLabel, "all programs");
+  }, [analysis, dateRangeLabel]);
 
   const overallNetHours = useMemo(() => {
     return filteredDets.reduce((sum, det) => {
@@ -549,21 +620,19 @@ export default function Reports() {
   }, []);
 
   const programGroups = useMemo<ProgramGroup[]>(() => {
-    if (!programOptions.length) return [];
-    const normalizedPrograms = programOptions.map((program) => ({
-      ...program,
-      normalizedName: program.displayName.toLowerCase(),
-    }));
+    if (!availablePrograms.length) return [];
+    const programsById = new Map(availablePrograms.map((program) => [program.id, program]));
     const assigned = new Set<string>();
     const groups: ProgramGroup[] = PROGRAM_GROUPS.map((group) => {
-      const programs = normalizedPrograms.filter((program) =>
-        group.matchers.some((matcher) => program.normalizedName.includes(matcher))
-      );
+      const selectedIds = deferredGroupPrograms[group.key as ProgramGroupKey] ?? [];
+      const programs = selectedIds
+        .map((id) => programsById.get(id))
+        .filter((program): program is Program => Boolean(program));
       programs.forEach((program) => assigned.add(program.id));
       return { ...group, programs };
     }).filter((group) => group.programs.length);
 
-    const otherPrograms = normalizedPrograms.filter((program) => !assigned.has(program.id));
+    const otherPrograms = availablePrograms.filter((program) => !assigned.has(program.id));
     if (otherPrograms.length) {
       groups.push({
         key: "other",
@@ -574,15 +643,13 @@ export default function Reports() {
       });
     }
     return groups;
-  }, [programOptions]);
+  }, [availablePrograms, deferredGroupPrograms]);
 
   const reportGroups = useMemo<ReportGroupData[]>(() => {
     if (!isReportReady || !reportDates.length) return [];
     const results: ReportGroupData[] = [];
     for (const group of programGroups) {
-      const allProgramIds = group.programs.map((program) => program.id);
-      const activeProgramIds =
-        appliedProgramId === "all" ? allProgramIds : allProgramIds.filter((id) => id === appliedProgramId);
+      const activeProgramIds = group.programs.map((program) => program.id);
       if (!activeProgramIds.length) continue;
 
       const groupCaptures = capturesInRange.filter((capture) => activeProgramIds.includes(capture.programId));
@@ -597,6 +664,7 @@ export default function Reports() {
             max: groupDates.reduce((a, b) => (a > b ? a : b)),
           }
         : { min: effectiveDateRange.start, max: effectiveDateRange.end };
+      const groupDateRange = { start: groupDateBounds.min, end: groupDateBounds.max };
       const groupReportDates = enumerateDates(groupDateBounds.min, groupDateBounds.max);
       const groupAnalysis = groupCaptures.length ? analyzeCaptures(groupCaptures) : null;
 
@@ -1718,6 +1786,7 @@ export default function Reports() {
         dailyCensusSpecies,
         dailyObservedSpecies,
         summary,
+        groupDateBounds: groupDateRange,
         effortSummary,
         siteConditionsSummary,
         bandedSummary,
@@ -1741,7 +1810,6 @@ export default function Reports() {
     }
     return results;
   }, [
-    appliedProgramId,
     birdEventsMap,
     bandingByBandId,
     captureHistoryByBandId,
@@ -1762,7 +1830,7 @@ export default function Reports() {
   const handleGenerate = () => {
     setAppliedStartDate(startDate);
     setAppliedEndDate(endDate);
-    setAppliedProgramId(selectedProgramId);
+    setAppliedGroupPrograms(selectedGroupPrograms);
     startTransition(() => {
       setIsReportReady(true);
     });
@@ -1787,6 +1855,45 @@ export default function Reports() {
           </Button>
         }
       />
+
+      {isReportReady && reportGroups.length ? (
+        <ReportSection title="Report Metadata" subtitle="Programs and date ranges included in this report.">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatTile label="Date range" value={dateRangeLabel} />
+            <StatTile label="Programs covered" value={formatNumber(availablePrograms.length)} />
+            <StatTile
+              label="Generated"
+              value={new Date().toLocaleDateString("en-CA", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+              hint="Local time"
+            />
+          </div>
+          <div className="mt-6 space-y-4">
+            {reportGroups.map((groupData) => {
+              const programList = groupData.group.programs
+                .map((program) => program.displayName)
+                .sort((a, b) => a.localeCompare(b))
+                .join(", ");
+              const startLabel = groupData.groupDateBounds.start
+                ? formatShortDate(groupData.groupDateBounds.start)
+                : "—";
+              const endLabel = groupData.groupDateBounds.end ? formatShortDate(groupData.groupDateBounds.end) : "—";
+              return (
+                <div key={groupData.group.key} className="rounded-lg border border-default-100 bg-default-50 p-4">
+                  <div className="text-sm font-semibold text-default-900">{groupData.group.title}</div>
+                  <div className="mt-1 text-xs text-default-600">Programs: {programList || "—"}</div>
+                  <div className="mt-1 text-xs text-default-600">
+                    Date range: {startLabel} to {endLabel}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </ReportSection>
+      ) : null}
 
       <div className="rounded-2xl border border-default-200 bg-white p-5 shadow-sm print:hidden">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -1832,33 +1939,38 @@ export default function Reports() {
               </div>
             </div>
           </div>
-          <div className="lg:min-w-[220px]">
-            <Select
-              size="sm"
-              label="Program"
-              selectedKeys={new Set([selectedProgramId])}
-              disallowEmptySelection
-              onSelectionChange={(keys) => {
-                setSelectedProgramId(String(Array.from(keys)[0] ?? "all"));
-                setIsReportReady(false);
-              }}
-              className="w-full lg:min-w-[200px]"
-            >
-              <SelectItem key="all" textValue="All programs">
-                All programs
-              </SelectItem>
-              {programOptions.map((program) => (
-                <SelectItem key={program.id} textValue={program.displayName}>
-                  {program.displayName}
-                </SelectItem>
-              ))}
-            </Select>
+          <div className="lg:min-w-[260px] space-y-3">
+            {GROUP_KEYS.map((group) => (
+              <Select
+                key={group.key}
+                size="sm"
+                label={`${group.label} programs`}
+                selectionMode="multiple"
+                selectedKeys={new Set(selectedGroupPrograms[group.key])}
+                onSelectionChange={(keys) => handleGroupSelectionChange(group.key, keys as Set<React.Key>)}
+                className="w-full"
+              >
+                {availablePrograms.map((program) => (
+                  <SelectItem key={program.id} textValue={program.displayName}>
+                    {program.displayName}
+                  </SelectItem>
+                ))}
+              </Select>
+            ))}
+            <div className="rounded-lg border border-default-100 bg-default-50 p-3 text-xs text-default-600">
+              <div className="font-semibold text-default-900">Other programs (auto)</div>
+              <div className="mt-1">
+                {otherPrograms.length
+                  ? otherPrograms.map((program) => program.displayName).sort((a, b) => a.localeCompare(b)).join(", ")
+                  : "—"}
+              </div>
+            </div>
             <Button
               color="secondary"
               onPress={handleGenerate}
               isDisabled={!startDate || !endDate || isPending}
               isLoading={isPending}
-              className="mt-3 w-full"
+              className="w-full"
             >
               Generate report
             </Button>
@@ -2110,27 +2222,6 @@ export default function Reports() {
             );
           })}
 
-          <ReportSection title="Report Metadata" subtitle="Export and audit-ready details.">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <StatTile label="Date range" value={dateRangeLabel} />
-              <StatTile
-                label="Program"
-                value={appliedProgramId === "all" ? "All programs" : programsMap[appliedProgramId]?.displayName || ""}
-              />
-              <StatTile
-                label="Generated"
-                value={new Date().toLocaleDateString("en-CA", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-                hint="Local time"
-              />
-            </div>
-            <div className="mt-4 rounded-lg bg-primary-50 p-3 text-xs text-primary-700">
-              <strong>Export:</strong> Use the "Export / Print PDF" button above to generate a print-ready version of this report.
-            </div>
-          </ReportSection>
         </div>
       )}
     </div>
