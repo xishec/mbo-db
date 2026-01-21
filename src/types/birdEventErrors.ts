@@ -19,11 +19,13 @@ interface MeasurementRanges {
   wingUpper: number;
 }
 
+// 4->2->5->1->6->1->6...
 const AGE_SEQUENCE_ALLOWED_NEXT: Record<string, Set<string>> = {
+  "4": new Set(["4", "2", "5", "1", "6"]),
   "2": new Set(["2", "5", "1", "6"]),
   "5": new Set(["5", "1", "6"]),
   "1": new Set(["1", "6"]),
-  "6": new Set(["1", "6"]),
+  "6": new Set(["6", "1"]),
 };
 
 /**
@@ -98,7 +100,7 @@ function checkAgeSequenceOrder(events: BirdEvent[]): BirdEventError[] {
     if (isAgeValidationExcluded(event.species)) continue;
 
     const age = event.age;
-    if (!age || age === "0") continue;
+    if (!age || age === "0" || age === "3") continue;
 
     if (!lastNonZeroAge) {
       lastNonZeroAge = age;
@@ -107,7 +109,7 @@ function checkAgeSequenceOrder(events: BirdEvent[]): BirdEventError[] {
 
     const allowedNext: Set<string> = AGE_SEQUENCE_ALLOWED_NEXT[lastNonZeroAge];
     if (allowedNext && !allowedNext.has(age)) {
-      const reason = `Age changed from ${lastNonZeroAge} to ${age}`;
+      const reason = `Age changed from ${lastNonZeroAge} to ${age}, expected 4->2->5->1->6->1->6...`;
       errors.push({
         id: `${event.id}-age-sequence-${sanitizeForFirebasePath(reason)}`,
         birdEvent: event,
@@ -127,10 +129,9 @@ function checkAgeSeasonCompatibility(event: BirdEvent): BirdEventError | null {
   if (isAgeValidationExcluded(event.species)) return null;
 
   const age = event.age;
-  if (!age || age === "0") return null;
+  if (!age || age === "0" || age === "3") return null;
 
-  const month = new Date(`${event.date}T${event.time || "00:00"}`).getMonth() + 1;
-  if (!Number.isFinite(month) || month <= 0) return null;
+  const month = new Date(event.date).getMonth() + 1;
 
   const allowedAges = new Set<string>(["0"]);
   if (month >= 1 && month <= 8) {
@@ -141,9 +142,12 @@ function checkAgeSeasonCompatibility(event: BirdEvent): BirdEventError | null {
     allowedAges.add("2");
     allowedAges.add("1");
   }
+  if (month >= 4 && month <= 9) {
+    allowedAges.add("4");
+  }
 
   if (!allowedAges.has(age)) {
-    const reason = `Age ${age} is not expected for month ${month} (Jan-Aug: 5/6, Jul-Dec: 2/1, 0 anytime)`;
+    const reason = `Age ${age} is not expected for month ${month} (Jan-Aug: 5/6, Apr-Sep: 4, Jul-Dec: 2/1, 0 anytime)`;
     return {
       id: `${event.id}-age-season-${sanitizeForFirebasePath(reason)}`,
       birdEvent: event,
@@ -351,7 +355,7 @@ export function findBirdEventErrors(
 
   // Iterate through each band
   for (const bandId in bandIdToBirdEventIdsMap) {
-    if (bandId == "999999999") continue; // Skip test band
+    if (bandId === "999999999") continue; // Skip test band
 
     const eventIds = bandIdToBirdEventIdsMap[bandId];
     // Filter out modified events (events that have been superseded by newer versions)
@@ -460,38 +464,39 @@ export function validateBirdEventForm(
     }
   }
 
-  if (formData.age && formData.date && !isAgeValidationExcluded(formData.species)) {
-    const month = new Date(`${formData.date}T${formData.time || "00:00"}`).getMonth() + 1;
-    if (Number.isFinite(month) && month > 0) {
-      const allowedAges = new Set<string>(["0"]);
-      if (month >= 1 && month <= 8) {
-        allowedAges.add("5");
-        allowedAges.add("6");
-      }
-      if (month >= 7 && month <= 12) {
-        allowedAges.add("2");
-        allowedAges.add("1");
-      }
-      if (formData.age !== "0" && !allowedAges.has(formData.age)) {
-        messages.push({
-          text: `Age ${formData.age} is not expected for month ${month} (Jan-Aug: 5/6, Jul-Dec: 2/1, 0 anytime)`,
-          severity: "warning",
-        });
-      }
+  if (formData.age && formData.date && !isAgeValidationExcluded(formData.species) && formData.age !== "3") {
+    const month = new Date(formData.date).getMonth() + 1;
+    const allowedAges = new Set<string>(["0"]);
+    if (month >= 1 && month <= 8) {
+      allowedAges.add("5");
+      allowedAges.add("6");
+    }
+    if (month >= 7 && month <= 12) {
+      allowedAges.add("2");
+      allowedAges.add("1");
+    }
+    if (month >= 4 && month <= 9) {
+      allowedAges.add("4");
+    }
+    if (formData.age !== "0" && !allowedAges.has(formData.age)) {
+      messages.push({
+        text: `Age ${formData.age} is not expected for month ${month} (Jan-Aug: 5/6, Apr-Sep: 4, Jul-Dec: 2/1, 0 anytime)`,
+        severity: "warning",
+      });
     }
 
     const sortedPastEvents = [...pastBirdEvents].sort((a, b) => getEventTimestamp(a) - getEventTimestamp(b));
     let lastNonZeroAge: string | null = null;
     for (const event of sortedPastEvents) {
       if (isAgeValidationExcluded(event.species)) continue;
-      if (!event.age || event.age === "0") continue;
+      if (!event.age || event.age === "0" || event.age === "3") continue;
       lastNonZeroAge = event.age;
     }
     if (lastNonZeroAge && formData.age !== "0") {
       const allowedNext = AGE_SEQUENCE_ALLOWED_NEXT[lastNonZeroAge];
       if (allowedNext && !allowedNext.has(formData.age)) {
         messages.push({
-          text: `Age changed from ${lastNonZeroAge} to ${formData.age}`,
+          text: `Age changed from ${lastNonZeroAge} to ${formData.age}, expected 4->2->5->1->6->1->6...`,
           severity: "danger",
         });
       }
