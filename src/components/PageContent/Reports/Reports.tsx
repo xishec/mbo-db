@@ -274,6 +274,10 @@ type ReportGroupData = {
   dailyCensusSpecies: DailyTrendPoint[];
   dailyObservedSpecies: DailyTrendPoint[];
   summary: string;
+  effortSummary: string;
+  siteConditionsSummary: string;
+  bandedSummary: string;
+  recaptureSummary: string;
   periodLabel: string;
   weatherColumns: TableColumn[];
   weatherRows: Array<Record<string, React.ReactNode>>;
@@ -583,6 +587,17 @@ export default function Reports() {
 
       const groupCaptures = capturesInRange.filter((capture) => activeProgramIds.includes(capture.programId));
       const groupDets = detsInRange.filter((det) => activeProgramIds.includes(det.programId));
+      const groupDates = [
+        ...groupDets.map((det) => det.date),
+        ...groupCaptures.map((capture) => capture.date),
+      ].filter(Boolean);
+      const groupDateBounds = groupDates.length
+        ? {
+            min: groupDates.reduce((a, b) => (a < b ? a : b)),
+            max: groupDates.reduce((a, b) => (a > b ? a : b)),
+          }
+        : { min: effectiveDateRange.start, max: effectiveDateRange.end };
+      const groupReportDates = enumerateDates(groupDateBounds.min, groupDateBounds.max);
       const groupAnalysis = groupCaptures.length ? analyzeCaptures(groupCaptures) : null;
 
       const bandedCaptures = groupCaptures.filter((capture) => capture.captureType === BirdEventType.Banded);
@@ -607,10 +622,10 @@ export default function Reports() {
         observedSpeciesCounts.set(det.date, countSpeciesEntries(det.observedSpeciesCount));
       });
 
-      const dailyBanded = buildDailyTrend(reportDates, bandedCounts);
-      const dailyBandedSpecies = buildDailyTrend(reportDates, bandedSpeciesCounts);
-      const dailyCensusSpecies = buildDailyTrend(reportDates, censusSpeciesCounts);
-      const dailyObservedSpecies = buildDailyTrend(reportDates, observedSpeciesCounts);
+      const dailyBanded = buildDailyTrend(groupReportDates, bandedCounts);
+      const dailyBandedSpecies = buildDailyTrend(groupReportDates, bandedSpeciesCounts);
+      const dailyCensusSpecies = buildDailyTrend(groupReportDates, censusSpeciesCounts);
+      const dailyObservedSpecies = buildDailyTrend(groupReportDates, observedSpeciesCounts);
 
       const effortDays = groupDets.length;
       const netHours = groupDets.reduce((sum, det) => {
@@ -647,6 +662,7 @@ export default function Reports() {
           repeatSpecies: Set<string>;
           observedSpecies: Set<string>;
           bandingDates: Set<string>;
+          fullCoverageDays: number;
           effortDays: number;
           netHours: number;
           tempSum: number; // Sum of dailyMeanTemp for "Mean daily temp"
@@ -689,6 +705,7 @@ export default function Reports() {
           repeatSpecies: new Set<string>(),
           observedSpecies: new Set<string>(),
           bandingDates: new Set<string>(),
+          fullCoverageDays: 0,
           effortDays: 0,
           netHours: 0,
           tempSum: 0,
@@ -730,12 +747,22 @@ export default function Reports() {
         }
       });
 
+      const maxNetHoursPerDay = groupDets.reduce((max, det) => {
+        const value = Number(det.netHours?.total ?? 0);
+        if (Number.isNaN(value)) return max;
+        return Math.max(max, value);
+      }, 0);
+      const fullCoverageThreshold = maxNetHoursPerDay ? maxNetHoursPerDay * 0.95 : null;
+
       groupDets.forEach((det) => {
         const entry = ensurePeriodEntry(det.date);
         entry.effortDays += 1;
         const netHoursValue = Number(det.netHours?.total ?? 0);
         if (!Number.isNaN(netHoursValue)) {
           entry.netHours += netHoursValue;
+          if (fullCoverageThreshold !== null && netHoursValue >= fullCoverageThreshold) {
+            entry.fullCoverageDays += 1;
+          }
         }
         const weather =
           (det.weather as Record<string, unknown> | undefined) ??
@@ -862,6 +889,11 @@ export default function Reports() {
         })
         .sort((a, b) => a.key.localeCompare(b.key));
 
+      const totalSeasonDays = groupReportDates.length;
+      const seasonStartLabel = groupDateBounds.min ? formatShortDate(groupDateBounds.min) : "";
+      const seasonEndLabel = groupDateBounds.max ? formatShortDate(groupDateBounds.max) : "";
+      const seasonWeeks = totalSeasonDays ? Math.round(totalSeasonDays / 7) : 0;
+
       const summary = (() => {
         if (!groupAnalysis || !groupAnalysis.totalCaptures) {
           return `No report data available for ${group.title} during ${dateRangeLabel}.`;
@@ -875,12 +907,16 @@ export default function Reports() {
           peakBandedDay.label || "N/A"
         } with ${formatNumber(Math.max(0, peakBandedDay.value))} individuals.`;
 
-        if (group.key !== "winter") return baseSummary;
-
-        const seasonStartLabel = effectiveDateRange.start ? formatShortDate(effectiveDateRange.start) : "";
-        const seasonEndLabel = effectiveDateRange.end ? formatShortDate(effectiveDateRange.end) : "";
-        const totalSeasonDays = reportDates.length;
-        const seasonWeeks = totalSeasonDays ? Math.round(totalSeasonDays / 7) : 0;
+        if (group.key !== "winter") {
+          return [
+            seasonStartLabel && seasonEndLabel
+              ? `The ${group.title} season spans the ${seasonWeeks}-week period from ${seasonStartLabel} through ${seasonEndLabel}.`
+              : "",
+            baseSummary,
+          ]
+            .filter(Boolean)
+            .join(" ");
+        }
         const effortPercent = totalSeasonDays ? Math.round((effortDays / totalSeasonDays) * 100) : 0;
 
         const monthEffort = periodEntries.map((entry) => ({
@@ -972,6 +1008,70 @@ export default function Reports() {
         }
       );
 
+      const bandedSpeciesCount = new Set(bandedCaptures.map((capture) => capture.species)).size;
+      const returnSpeciesSet = new Set(
+        groupCaptures
+          .filter((capture) => capture.captureType === BirdEventType.Return)
+          .map((capture) => capture.species)
+      );
+      const repeatSpeciesSet = new Set(
+        groupCaptures
+          .filter((capture) => capture.captureType === BirdEventType.Repeat || capture.captureType === BirdEventType.Alien)
+          .map((capture) => capture.species)
+      );
+
+      const effortPercent = totalSeasonDays ? Math.round((effortDays / totalSeasonDays) * 100) : 0;
+      const avgNetHoursPerDay = effortDays ? netHours / effortDays : null;
+      const totalFullCoverageDays = periodEntries.reduce((sum, entry) => sum + entry.fullCoverageDays, 0);
+      const reducedNetDays = Math.max(0, effortDays - totalFullCoverageDays);
+      const effortSummary = groupAnalysis
+        ? `Observations were recorded on ${formatNumber(effortDays)}${
+            totalSeasonDays ? ` (${effortPercent}%)` : ""
+          } of the ${formatNumber(totalSeasonDays)} days in the season. Banding occurred on ${formatNumber(
+            bandingDates.size
+          )} days, totaling ${formatOptional(netHours, 1)} net hours${
+            avgNetHoursPerDay ? ` (avg ${formatOptional(avgNetHoursPerDay, 1)} per day)` : ""
+          }.${totalFullCoverageDays ? ` ${formatNumber(totalFullCoverageDays)} days met full net coverage,` : ""}${
+            reducedNetDays ? ` with ${formatNumber(reducedNetDays)} days reduced by weather.` : ""
+          }`
+        : "";
+
+      const meanHigh =
+        seasonAggregate.dailyHighCount > 0 ? seasonAggregate.dailyHighSum / seasonAggregate.dailyHighCount : null;
+      const meanLow =
+        seasonAggregate.dailyLowCount > 0 ? seasonAggregate.dailyLowSum / seasonAggregate.dailyLowCount : null;
+      const meanTemp = seasonAggregate.tempCount > 0 ? seasonAggregate.tempSum / seasonAggregate.tempCount : null;
+      const siteConditionsSummary = groupAnalysis
+        ? `Mean daily high was ${formatOptional(meanHigh)}°C and mean daily low ${formatOptional(
+            meanLow
+          )}°C (mean ${formatOptional(meanTemp)}°C). Rain fell on ${formatNumber(
+            seasonAggregate.rainDays
+          )} days (${formatOptionalInt(seasonAggregate.precipSum)} mm total)${
+            seasonAggregate.snowDays
+              ? `, with snow on ${formatNumber(seasonAggregate.snowDays)} days (${formatOptionalInt(
+                  seasonAggregate.snowSum
+                )} cm total).`
+              : "."
+          }`
+        : "";
+
+      const averageBandedPerDay = bandingDates.size ? bandedCaptures.length / bandingDates.size : null;
+      const bandedSummary = groupAnalysis
+        ? `${formatNumber(bandedCaptures.length)} individuals of ${formatNumber(
+            bandedSpeciesCount
+          )} species were banded. Peak banding occurred on ${peakBandedDay.label || "N/A"} with ${formatNumber(
+            Math.max(0, peakBandedDay.value)
+          )} individuals${averageBandedPerDay ? `; average ${formatOptional(averageBandedPerDay, 1)} per banding day.` : "."}`
+        : "";
+
+      const recaptureSummary = groupAnalysis
+        ? `${formatNumber(groupAnalysis.recaptures)} repeats from ${formatNumber(
+            repeatSpeciesSet.size
+          )} species and ${formatNumber(groupAnalysis.returns)} returns from ${formatNumber(
+            returnSpeciesSet.size
+          )} species were recorded.`
+        : "";
+
       const weatherColumns: TableColumn[] = [
         { key: "metric", label: "" },
         ...periodEntries.map((entry) => ({ key: entry.key, label: entry.label, align: "right" })),
@@ -1055,6 +1155,7 @@ export default function Reports() {
           acc.recaptures += entry.recaptures;
           acc.netHours += entry.netHours;
           acc.effortDays += entry.effortDays;
+          acc.fullCoverageDays += entry.fullCoverageDays;
           entry.bandedSpecies.forEach((species) => acc.bandedSpecies.add(species));
           entry.returnSpecies.forEach((species) => acc.returnSpecies.add(species));
           entry.repeatSpecies.forEach((species) => acc.repeatSpecies.add(species));
@@ -1068,6 +1169,7 @@ export default function Reports() {
           recaptures: 0,
           netHours: 0,
           effortDays: 0,
+          fullCoverageDays: 0,
           bandedSpecies: new Set<string>(),
           returnSpecies: new Set<string>(),
           repeatSpecies: new Set<string>(),
@@ -1079,6 +1181,7 @@ export default function Reports() {
       const summaryColumns: TableColumn[] = [
         { key: "metric", label: "" },
         ...periodEntries.map((entry) => ({ key: entry.key, label: entry.label, align: "right" })),
+        ...(group.key !== "winter" ? [{ key: "average", label: "Average", align: "right" } as TableColumn] : []),
         { key: "season", label: "Season", align: "right" },
       ];
 
@@ -1092,15 +1195,21 @@ export default function Reports() {
       const formatSummaryValue = (value: React.ReactNode, entry: (typeof periodEntries)[number]) =>
         hasSummaryData(entry) ? value : "n/a";
 
+      const averageOf = (values: number[]) => (values.length ? values.reduce((sum, val) => sum + val, 0) / values.length : null);
+
       const buildSummaryRow = (
         label: string,
         getValue: (entry: (typeof periodEntries)[number]) => React.ReactNode,
-        seasonValue: React.ReactNode
+        seasonValue: React.ReactNode,
+        getAverage?: () => React.ReactNode
       ) => {
         const row: Record<string, React.ReactNode> = { metric: label, season: seasonValue };
         periodEntries.forEach((entry) => {
           row[entry.key] = formatSummaryValue(getValue(entry), entry);
         });
+        if (group.key !== "winter") {
+          row.average = getAverage ? getAverage() : "n/a";
+        }
         return row;
       };
 
@@ -1118,6 +1227,15 @@ export default function Reports() {
           seasonHasData
             ? `${formatNumber(seasonSummary.banded)} (${formatNumber(seasonSummary.bandedSpecies.size)})`
             : "n/a"
+          ,
+          () => {
+            const bandedValues = periodEntries.filter(hasSummaryData).map((entry) => entry.banded);
+            const speciesValues = periodEntries.filter(hasSummaryData).map((entry) => entry.bandedSpecies.size);
+            const avgBanded = averageOf(bandedValues);
+            const avgSpecies = averageOf(speciesValues);
+            if (avgBanded === null || avgSpecies === null) return "n/a";
+            return `${formatNumber(Math.round(avgBanded))} (${formatNumber(Math.round(avgSpecies))})`;
+          }
         ),
         buildSummaryRow(
           "# individuals (species) return",
@@ -1125,6 +1243,15 @@ export default function Reports() {
           seasonHasData
             ? `${formatNumber(seasonSummary.returns)} (${formatNumber(seasonSummary.returnSpecies.size)})`
             : "n/a"
+          ,
+          () => {
+            const values = periodEntries.filter(hasSummaryData).map((entry) => entry.returns);
+            const speciesValues = periodEntries.filter(hasSummaryData).map((entry) => entry.returnSpecies.size);
+            const avgReturns = averageOf(values);
+            const avgSpecies = averageOf(speciesValues);
+            if (avgReturns === null || avgSpecies === null) return "n/a";
+            return `${formatNumber(Math.round(avgReturns))} (${formatNumber(Math.round(avgSpecies))})`;
+          }
         ),
         buildSummaryRow(
           "# individuals (species) repeat",
@@ -1132,16 +1259,37 @@ export default function Reports() {
           seasonHasData
             ? `${formatNumber(seasonSummary.recaptures)} (${formatNumber(seasonSummary.repeatSpecies.size)})`
             : "n/a"
+          ,
+          () => {
+            const values = periodEntries.filter(hasSummaryData).map((entry) => entry.recaptures);
+            const speciesValues = periodEntries.filter(hasSummaryData).map((entry) => entry.repeatSpecies.size);
+            const avgRepeats = averageOf(values);
+            const avgSpecies = averageOf(speciesValues);
+            if (avgRepeats === null || avgSpecies === null) return "n/a";
+            return `${formatNumber(Math.round(avgRepeats))} (${formatNumber(Math.round(avgSpecies))})`;
+          }
         ),
         buildSummaryRow(
           "# species observed",
           (entry) => formatNumber(entry.observedSpecies.size),
           seasonHasData ? formatNumber(seasonSummary.observedSpecies.size) : "n/a"
+          ,
+          () => {
+            const values = periodEntries.filter(hasSummaryData).map((entry) => entry.observedSpecies.size);
+            const avg = averageOf(values);
+            return avg === null ? "n/a" : formatOptional(avg, 1);
+          }
         ),
         buildSummaryRow(
           "# net hours",
           (entry) => formatOptional(entry.netHours, 1),
           seasonHasData ? formatOptional(seasonSummary.netHours, 1) : "n/a"
+          ,
+          () => {
+            const values = periodEntries.filter(hasSummaryData).map((entry) => entry.netHours);
+            const avg = averageOf(values);
+            return avg === null ? "n/a" : formatOptional(avg, 1);
+          }
         ),
         buildSummaryRow(
           "# birds banded / 100 net hours",
@@ -1149,18 +1297,55 @@ export default function Reports() {
           seasonSummary.netHours
             ? formatOptional((seasonSummary.banded / seasonSummary.netHours) * 100, 1)
             : "n/a"
+          ,
+          () => {
+            const values = periodEntries
+              .filter(hasSummaryData)
+              .map((entry) => (entry.netHours ? (entry.banded / entry.netHours) * 100 : Number.NaN))
+              .filter((value) => !Number.isNaN(value));
+            const avg = averageOf(values);
+            return avg === null ? "n/a" : formatOptional(avg, 1);
+          }
         ),
         buildSummaryRow(
           "# days operating",
           (entry) => formatNumber(entry.effortDays),
           seasonHasData ? formatNumber(seasonSummary.effortDays) : "n/a"
+          ,
+          () => {
+            const values = periodEntries.filter(hasSummaryData).map((entry) => entry.effortDays);
+            const avg = averageOf(values);
+            return avg === null ? "n/a" : formatOptional(avg, 1);
+          }
         ),
         buildSummaryRow(
           "# days banding",
           (entry) => formatNumber(entry.bandingDates.size),
           seasonHasData ? formatNumber(seasonSummary.bandingDates.size) : "n/a"
+          ,
+          () => {
+            const values = periodEntries.filter(hasSummaryData).map((entry) => entry.bandingDates.size);
+            const avg = averageOf(values);
+            return avg === null ? "n/a" : formatOptional(avg, 1);
+          }
         ),
       ];
+
+      if (group.key === "spring" || group.key === "fall") {
+        summaryRows.push(
+          buildSummaryRow(
+            "# days with full net coverage",
+            (entry) => formatNumber(entry.fullCoverageDays),
+            seasonHasData ? formatNumber(seasonSummary.fullCoverageDays) : "n/a"
+            ,
+            () => {
+              const values = periodEntries.filter(hasSummaryData).map((entry) => entry.fullCoverageDays);
+              const avg = averageOf(values);
+              return avg === null ? "n/a" : formatOptional(avg, 1);
+            }
+          )
+        );
+      }
 
       const bandedComparisonColumns: TableColumn[] = [];
       const bandedComparisonRows: Array<Record<string, React.ReactNode>> = [];
@@ -1337,39 +1522,7 @@ export default function Reports() {
           share: `${((count / totalRecaptured) * 100).toFixed(1)}%`,
         }));
 
-      const returnsRows = groupCaptures
-        .filter((capture) => capture.captureType === BirdEventType.Return)
-        .map((capture) => {
-          const previous = capture.previousEventId ? birdEventsMap[capture.previousEventId] : null;
-          let daysElapsed: number | null = null;
-          if (previous?.date && capture.date) {
-            const currentDate = new Date(`${capture.date}T00:00:00`);
-            const previousDate = new Date(`${previous.date}T00:00:00`);
-            if (!Number.isNaN(currentDate.getTime()) && !Number.isNaN(previousDate.getTime())) {
-              const diffMs = currentDate.getTime() - previousDate.getTime();
-              daysElapsed = Math.round(diffMs / 86400000);
-            }
-          }
-          return {
-            date: formatShortDate(capture.date),
-            species: getSpeciesLabel(capture.species),
-            band: capture.bandId || "—",
-            elapsedValue: daysElapsed,
-          };
-        })
-        .sort((a, b) => {
-          if (a.elapsedValue === null && b.elapsedValue === null) return 0;
-          if (a.elapsedValue === null) return 1;
-          if (b.elapsedValue === null) return -1;
-          return b.elapsedValue - a.elapsedValue;
-        })
-        .slice(0, 25)
-        .map((entry) => ({
-          date: entry.date,
-          species: entry.species,
-          band: entry.band,
-          elapsed: entry.elapsedValue === null ? "—" : formatNumber(entry.elapsedValue),
-        }));
+      const returnsRows: Array<Record<string, React.ReactNode>> = [];
 
       const netHoursByNet = new Map<string, number>();
       groupDets.forEach((det) => {
@@ -1565,6 +1718,10 @@ export default function Reports() {
         dailyCensusSpecies,
         dailyObservedSpecies,
         summary,
+        effortSummary,
+        siteConditionsSummary,
+        bandedSummary,
+        recaptureSummary,
         periodLabel,
         weatherColumns,
         weatherRows,
@@ -1782,6 +1939,39 @@ export default function Reports() {
                 subtitle={groupData.group.subtitle}
               >
                 <p className="text-sm text-default-900">{groupData.summary}</p>
+                {(groupData.effortSummary ||
+                  groupData.siteConditionsSummary ||
+                  groupData.bandedSummary ||
+                  groupData.recaptureSummary) && (
+                  <div className="mt-4 space-y-3 text-sm text-default-900">
+                    {groupData.effortSummary && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-default-500">Effort</p>
+                        <p>{groupData.effortSummary}</p>
+                      </div>
+                    )}
+                    {groupData.siteConditionsSummary && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-default-500">Site conditions</p>
+                        <p>{groupData.siteConditionsSummary}</p>
+                      </div>
+                    )}
+                    {groupData.bandedSummary && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-default-500">Birds banded</p>
+                        <p>{groupData.bandedSummary}</p>
+                      </div>
+                    )}
+                    {groupData.recaptureSummary && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-default-500">
+                          Birds recaptured
+                        </p>
+                        <p>{groupData.recaptureSummary}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <StatTile label="Total captures" value={formatNumber(groupAnalysis?.totalCaptures ?? 0)} />
                   <StatTile label="Species recorded" value={formatNumber(groupAnalysis?.uniqueSpecies ?? 0)} />
@@ -1866,17 +2056,19 @@ export default function Reports() {
                       <p className="mt-3 text-xs text-default-900">{groupData.netProductivitySummary}</p>
                     )}
                   </div>
-                  <ReportTable
-                    title="Priority species coverage"
-                    subtitle="Priority species observed vs banded."
-                    columns={[
-                      { key: "species", label: "Species" },
-                      { key: "priority", label: "Priority" },
-                      { key: "observed", label: "Observed", align: "right" },
-                      { key: "banded", label: "Banded", align: "right" },
-                    ]}
-                    rows={groupData.priorityRows}
-                  />
+                  {groupData.priorityRows.length ? (
+                    <ReportTable
+                      title="Priority species coverage"
+                      subtitle="Priority species observed vs banded."
+                      columns={[
+                        { key: "species", label: "Species" },
+                        { key: "priority", label: "Priority" },
+                        { key: "observed", label: "Observed", align: "right" },
+                        { key: "banded", label: "Banded", align: "right" },
+                      ]}
+                      rows={groupData.priorityRows}
+                    />
+                  ) : null}
                 </div>
 
                 <div className="mt-6 grid gap-6 grid-cols-1">
@@ -1900,17 +2092,19 @@ export default function Reports() {
                     ]}
                     rows={groupData.topRecapturedRows}
                   />
-                  <ReportTable
-                    title="Return list"
-                    subtitle="Sorted by elapsed time since previous capture."
-                    columns={[
-                      { key: "date", label: "Date" },
-                      { key: "species", label: "Species" },
-                      { key: "band", label: "Band" },
-                      { key: "elapsed", label: "Days since previous", align: "right" },
-                    ]}
-                    rows={groupData.returnsRows}
-                  />
+                  {groupData.returnsRows.length ? (
+                    <ReportTable
+                      title="Return list"
+                      subtitle="Sorted by elapsed time since previous capture."
+                      columns={[
+                        { key: "date", label: "Date" },
+                        { key: "species", label: "Species" },
+                        { key: "band", label: "Band" },
+                        { key: "elapsed", label: "Days since previous", align: "right" },
+                      ]}
+                      rows={groupData.returnsRows}
+                    />
+                  ) : null}
                 </div>
               </ReportSection>
             );
