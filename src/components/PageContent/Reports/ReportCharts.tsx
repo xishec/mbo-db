@@ -11,6 +11,13 @@ export type DailyTrendDatum = {
   mean7: number;
 };
 
+export type MultiLineSeries = {
+  key: string;
+  label: string;
+  color: string;
+  data: ChartDatum[];
+};
+
 type ChartContainerProps = {
   title: string;
   subtitle?: string;
@@ -389,6 +396,136 @@ export function LineChart({ data, ariaLabel, height = 240, valueFormatter }: Lin
             {point.datum.label}
           </text>
         ))}
+      </svg>
+    </div>
+  );
+}
+
+type MultiLineChartProps = {
+  series: MultiLineSeries[];
+  ariaLabel: string;
+  height?: number;
+  valueFormatter?: (value: number) => string;
+};
+
+export function MultiLineChart({ series, ariaLabel, height = 260, valueFormatter }: MultiLineChartProps) {
+  if (!series.length || !series[0].data.length) {
+    return <div className="flex h-60 items-center justify-center text-sm text-default-500">No data available.</div>;
+  }
+
+  const baseWidth = 900;
+  const width = baseWidth;
+  const padding = { top: 30, right: 20, bottom: 70, left: 50 };
+  const chartHeight = height - padding.top - padding.bottom;
+  const chartWidth = width - padding.left - padding.right;
+  const labels = series[0].data.map((datum) => datum.label);
+  const pointCount = Math.max(labels.length - 1, 1);
+  const maxValue = Math.max(
+    ...series.flatMap((entry) => entry.data.map((datum) => datum.value)),
+    1
+  );
+  const tickCount = 5;
+  const tickStep = maxValue / tickCount;
+
+  const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => {
+    const value = i * tickStep;
+    const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
+    return { value, y };
+  });
+
+  const linePaths = series.map((entry) => {
+    const points = entry.data.map((datum, index) => {
+      const x = padding.left + (index / pointCount) * chartWidth;
+      const y = padding.top + chartHeight - (datum.value / maxValue) * chartHeight;
+      return { x, y, datum };
+    });
+    const path = points
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+      .join(" ");
+    return { ...entry, points, path };
+  });
+
+  return (
+    <div className="w-full">
+      <div className="mb-3 flex flex-wrap gap-3 text-xs text-default-600">
+        {series.map((entry) => (
+          <div key={entry.key} className="flex items-center gap-1">
+            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+            {entry.label}
+          </div>
+        ))}
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={ariaLabel}
+        className="w-full h-auto"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {yTicks.map((tick, i) => (
+          <line
+            key={i}
+            x1={padding.left}
+            y1={tick.y}
+            x2={width - padding.right}
+            y2={tick.y}
+            stroke={i === 0 ? "#e5e7eb" : "#f3f4f6"}
+            strokeWidth={1}
+            strokeDasharray={i === 0 ? "0" : "4 4"}
+          />
+        ))}
+        <line
+          x1={padding.left}
+          y1={padding.top + chartHeight}
+          x2={width - padding.right}
+          y2={padding.top + chartHeight}
+          stroke="#d1d5db"
+          strokeWidth={2}
+        />
+        <line
+          x1={padding.left}
+          y1={padding.top}
+          x2={padding.left}
+          y2={padding.top + chartHeight}
+          stroke="#d1d5db"
+          strokeWidth={2}
+        />
+        {yTicks.map((tick, i) => (
+          <text key={i} x={padding.left - 8} y={tick.y + 4} textAnchor="end" fontSize={10} fill="#6b7280">
+            {valueFormatter ? valueFormatter(tick.value) : Math.round(tick.value)}
+          </text>
+        ))}
+
+        {linePaths.map((entry) => (
+          <path
+            key={entry.key}
+            d={entry.path}
+            fill="none"
+            stroke={entry.color}
+            strokeWidth={2.5}
+          />
+        ))}
+
+        {linePaths.map((entry) =>
+          entry.points.map((point, index) => (
+            <circle key={`${entry.key}-${index}`} cx={point.x} cy={point.y} r={2} fill={entry.color}>
+              <title>
+                {point.datum.label}: {valueFormatter ? valueFormatter(point.datum.value) : point.datum.value}
+              </title>
+            </circle>
+          ))
+        )}
+
+        {labels.map((label, index) => {
+          const x = padding.left + (index / pointCount) * chartWidth;
+          const y = padding.top + chartHeight + 18;
+          if (index % 2 !== 0) return null;
+          return (
+            <text key={label} x={x} y={y} textAnchor="middle" fontSize={10} fill="#6b7280">
+              {label}
+            </text>
+          );
+        })}
       </svg>
     </div>
   );

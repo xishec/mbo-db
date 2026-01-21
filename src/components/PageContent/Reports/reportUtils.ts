@@ -10,6 +10,7 @@ export type ReportCapture = {
   fat: number;
   weight: number;
   date: string;
+  time: string;
   bander: string;
   net: string;
   captureType: BirdEventType;
@@ -137,6 +138,7 @@ export const toReportCapture = (event: BirdEvent): ReportCapture => ({
   fat: event.fat ?? 0,
   weight: event.weight ?? 0,
   date: event.date,
+  time: event.time,
   bander: event.bander || "Unknown",
   net: event.net || "Unknown",
   captureType: event.birdEventType ?? BirdEventType.None,

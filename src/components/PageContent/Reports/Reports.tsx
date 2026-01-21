@@ -2,7 +2,7 @@ import { Autocomplete, AutocompleteItem, Button, Spinner } from "@heroui/react";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
 import PageHeader from "../PageHeader";
 import { useData } from "../../../services/useData";
-import { ChartContainer, DailyTrendChart } from "./ReportCharts";
+import { ChartContainer, DailyTrendChart, MultiLineChart, type MultiLineSeries } from "./ReportCharts";
 import {
   analyzeCaptures,
   buildDailyTrend,
@@ -150,6 +150,39 @@ const parseCsvLine = (line: string): string[] => {
   return result;
 };
 
+const trimDatesByValues = (dates: string[], maps: Array<Map<string, number>>) => {
+  if (!dates.length) return [];
+  const hasValueAt = (index: number) =>
+    maps.some((map) => {
+      const value = map.get(dates[index]) ?? 0;
+      return value > 0;
+    });
+  let startIndex = 0;
+  while (startIndex < dates.length && !hasValueAt(startIndex)) {
+    startIndex += 1;
+  }
+  let endIndex = dates.length - 1;
+  while (endIndex >= 0 && !hasValueAt(endIndex)) {
+    endIndex -= 1;
+  }
+  if (startIndex > endIndex) return [];
+  return dates.slice(startIndex, endIndex + 1);
+};
+
+const trimPeriodEntries = <T,>(entries: T[], hasData: (entry: T) => boolean) => {
+  if (!entries.length) return entries;
+  let startIndex = 0;
+  while (startIndex < entries.length && !hasData(entries[startIndex])) {
+    startIndex += 1;
+  }
+  let endIndex = entries.length - 1;
+  while (endIndex >= 0 && !hasData(entries[endIndex])) {
+    endIndex -= 1;
+  }
+  if (startIndex > endIndex) return [];
+  return entries.slice(startIndex, endIndex + 1);
+};
+
 const formatMonthRangeLabel = (start: string, end: string) => {
   const startDate = new Date(`${start}T00:00:00`);
   const endDate = new Date(`${end}T00:00:00`);
@@ -166,6 +199,22 @@ const formatMonthRangeLabel = (start: string, end: string) => {
   const endDay = endDate.getDate();
   if (startDay === endDay) return `${monthLabel} ${startDay}`;
   return `${monthLabel} ${startDay}-${endDay}`;
+};
+
+const formatTimeLabel = (minutes: number) => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+};
+
+const parseTimeToMinutes = (time: string) => {
+  if (!time) return null;
+  const parts = time.split(":");
+  if (parts.length < 2) return null;
+  const hours = Number(parts[0]);
+  const minutes = Number(parts[1]);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
 };
 
 const coerceNumber = (value: unknown): number => {
@@ -293,6 +342,8 @@ type ReportGroupData = {
   netUsageRows: Array<Record<string, React.ReactNode>>;
   netProductivitySummary: string;
   netTopSpeciesRows: Array<Record<string, React.ReactNode>>;
+  timeOfDaySeries: MultiLineSeries[];
+  timeOfDayTopSpeciesRows: Array<Record<string, React.ReactNode>>;
   priorityRows: Array<Record<string, React.ReactNode>>;
 };
 
@@ -634,10 +685,14 @@ export default function Reports() {
         observedSpeciesCounts.set(det.date, countSpeciesEntries(det.observedSpeciesCount));
       });
 
-      const dailyBanded = buildDailyTrend(groupReportDates, bandedCounts);
-      const dailyBandedSpecies = buildDailyTrend(groupReportDates, bandedSpeciesCounts);
-      const dailyCensusSpecies = buildDailyTrend(groupReportDates, censusSpeciesCounts);
-      const dailyObservedSpecies = buildDailyTrend(groupReportDates, observedSpeciesCounts);
+      const bandedDates = trimDatesByValues(groupReportDates, [bandedCounts]);
+      const bandedSpeciesDates = trimDatesByValues(groupReportDates, [bandedSpeciesCounts]);
+      const censusSpeciesDates = trimDatesByValues(groupReportDates, [censusSpeciesCounts]);
+      const observedSpeciesDates = trimDatesByValues(groupReportDates, [observedSpeciesCounts]);
+      const dailyBanded = buildDailyTrend(bandedDates, bandedCounts);
+      const dailyBandedSpecies = buildDailyTrend(bandedSpeciesDates, bandedSpeciesCounts);
+      const dailyCensusSpecies = buildDailyTrend(censusSpeciesDates, censusSpeciesCounts);
+      const dailyObservedSpecies = buildDailyTrend(observedSpeciesDates, observedSpeciesCounts);
 
       const effortDays = groupDets.length;
       const netHours = groupDets.reduce((sum, det) => {
@@ -892,14 +947,29 @@ export default function Reports() {
         });
       });
 
-      const periodEntries = Array.from(periodMap.values())
-        .map((entry) => {
-          if (periodGranularity === "month" && entry.periodStart && entry.periodEnd) {
-            return { ...entry, label: formatMonthRangeLabel(entry.periodStart, entry.periodEnd) };
-          }
-          return entry;
-        })
-        .sort((a, b) => a.key.localeCompare(b.key));
+      const periodEntries = trimPeriodEntries(
+        Array.from(periodMap.values())
+          .map((entry) => {
+            if (periodGranularity === "month" && entry.periodStart && entry.periodEnd) {
+              return { ...entry, label: formatMonthRangeLabel(entry.periodStart, entry.periodEnd) };
+            }
+            return entry;
+          })
+          .sort((a, b) => a.key.localeCompare(b.key)),
+        (entry) =>
+          entry.effortDays > 0 ||
+          entry.netHours > 0 ||
+          entry.banded > 0 ||
+          entry.recaptures > 0 ||
+          entry.returns > 0 ||
+          entry.observedSpecies.size > 0 ||
+          entry.dailyHighCount > 0 ||
+          entry.dailyLowCount > 0 ||
+          entry.tempCount > 0 ||
+          entry.precipSum > 0 ||
+          entry.snowSum > 0 ||
+          entry.snowDepthMeanCount > 0
+      );
 
       const totalSeasonDays = groupReportDates.length;
       const seasonStartLabel = groupDateBounds.min ? formatShortDate(groupDateBounds.min) : "";
@@ -1716,6 +1786,90 @@ export default function Reports() {
             }`.trim()
           : "No net productivity data available.";
 
+      const timeBinSize = 30;
+      const timeBinCount = 48;
+      const timeBinLabels = Array.from({ length: timeBinCount }, (_, index) =>
+        formatTimeLabel(index * timeBinSize)
+      );
+      const totalByTime = Array(timeBinCount).fill(0);
+      const newByTime = Array(timeBinCount).fill(0);
+      const repeatByTime = Array(timeBinCount).fill(0);
+      const returnByTime = Array(timeBinCount).fill(0);
+      const speciesByTime = Array.from({ length: timeBinCount }, () => new Map<string, number>());
+
+      groupCaptures.forEach((capture) => {
+        const minutes = parseTimeToMinutes(capture.time);
+        if (minutes === null) return;
+        const binIndex = Math.floor(minutes / timeBinSize);
+        if (binIndex < 0 || binIndex >= timeBinCount) return;
+        totalByTime[binIndex] += 1;
+        if (capture.captureType === BirdEventType.Banded) newByTime[binIndex] += 1;
+        if (capture.captureType === BirdEventType.Return) returnByTime[binIndex] += 1;
+        if (capture.captureType === BirdEventType.Repeat || capture.captureType === BirdEventType.Alien) {
+          repeatByTime[binIndex] += 1;
+        }
+        const speciesCounts = speciesByTime[binIndex];
+        speciesCounts.set(capture.species, (speciesCounts.get(capture.species) ?? 0) + 1);
+      });
+
+      const totalTimeCaptures = totalByTime.reduce((sum, value) => sum + value, 0);
+      const firstTimeIndex = totalByTime.findIndex((value) => value > 0);
+      const lastTimeIndex = totalByTime.reduce((last, value, index) => (value > 0 ? index : last), -1);
+      const trimmedTimeLabels =
+        firstTimeIndex === -1 || lastTimeIndex === -1
+          ? []
+          : timeBinLabels.slice(firstTimeIndex, lastTimeIndex + 1);
+      const trimmedTotal = totalByTime.slice(firstTimeIndex, lastTimeIndex + 1);
+      const trimmedNew = newByTime.slice(firstTimeIndex, lastTimeIndex + 1);
+      const trimmedRepeat = repeatByTime.slice(firstTimeIndex, lastTimeIndex + 1);
+      const trimmedReturn = returnByTime.slice(firstTimeIndex, lastTimeIndex + 1);
+      const trimmedSpecies = speciesByTime.slice(firstTimeIndex, lastTimeIndex + 1);
+
+      const timeOfDaySeries: MultiLineSeries[] = totalTimeCaptures && trimmedTimeLabels.length
+        ? [
+            {
+              key: "total",
+              label: "Total captures",
+              color: "#007575",
+              data: trimmedTimeLabels.map((label, index) => ({ label, value: trimmedTotal[index] })),
+            },
+            {
+              key: "new",
+              label: "New captures",
+              color: "#0ea5e9",
+              data: trimmedTimeLabels.map((label, index) => ({ label, value: trimmedNew[index] })),
+            },
+            {
+              key: "repeat",
+              label: "Repeats",
+              color: "#f59e0b",
+              data: trimmedTimeLabels.map((label, index) => ({ label, value: trimmedRepeat[index] })),
+            },
+            {
+              key: "return",
+              label: "Returns",
+              color: "#ef4444",
+              data: trimmedTimeLabels.map((label, index) => ({ label, value: trimmedReturn[index] })),
+            },
+          ]
+        : [];
+
+      const timeOfDayTopSpeciesRows = trimmedTimeLabels
+        .map((label, index) => {
+          if (trimmedTotal[index] === 0) return null;
+          const topSpecies = Array.from(trimmedSpecies[index].entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([species, count]) => `${getSpeciesLabel(species)} (${formatNumber(count)})`);
+          return {
+            time: label,
+            top1: topSpecies[0] ?? "—",
+            top2: topSpecies[1] ?? "—",
+            top3: topSpecies[2] ?? "—",
+          };
+        })
+        .filter((row): row is Record<string, React.ReactNode> => Boolean(row));
+
       const priorityCounts = new Map<string, { observed: number; banded: number; priority: string }>();
       groupDets.forEach((det) => {
         Object.entries(det.observedSpeciesCount ?? {}).forEach(([speciesCode, count]) => {
@@ -1775,6 +1929,8 @@ export default function Reports() {
         netUsageRows,
         netProductivitySummary,
         netTopSpeciesRows,
+        timeOfDaySeries,
+        timeOfDayTopSpeciesRows,
         priorityRows,
       });
     }
@@ -2136,6 +2292,30 @@ export default function Reports() {
                         { key: "top3", label: "Top 3", align: "right" },
                       ]}
                       rows={groupData.netTopSpeciesRows}
+                    />
+                  ) : null}
+                  {groupData.timeOfDaySeries.length ? (
+                    <ChartContainer
+                      title="Captures by time of day"
+                      subtitle="Total vs new, repeats, and returns in 30-minute bins."
+                    >
+                      <MultiLineChart
+                        series={groupData.timeOfDaySeries}
+                        ariaLabel="Captures by time of day"
+                      />
+                    </ChartContainer>
+                  ) : null}
+                  {groupData.timeOfDayTopSpeciesRows.length ? (
+                    <ReportTable
+                      title="Top species by time of day"
+                      subtitle="Top 3 species captured per 30-minute bin."
+                      columns={[
+                        { key: "time", label: "Time" },
+                        { key: "top1", label: "Top 1", align: "right" },
+                        { key: "top2", label: "Top 2", align: "right" },
+                        { key: "top3", label: "Top 3", align: "right" },
+                      ]}
+                      rows={groupData.timeOfDayTopSpeciesRows}
                     />
                   ) : null}
                   {groupData.priorityRows.length ? (
