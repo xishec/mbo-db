@@ -292,6 +292,7 @@ type ReportGroupData = {
   returnsRows: Array<Record<string, React.ReactNode>>;
   netUsageRows: Array<Record<string, React.ReactNode>>;
   netProductivitySummary: string;
+  netTopSpeciesRows: Array<Record<string, React.ReactNode>>;
   priorityRows: Array<Record<string, React.ReactNode>>;
 };
 
@@ -1658,6 +1659,31 @@ export default function Reports() {
         });
       }
 
+      const speciesByNet = new Map<string, Map<string, number>>();
+      groupCaptures.forEach((capture) => {
+        const netId = capture.net || "Unknown";
+        if (!speciesByNet.has(netId)) {
+          speciesByNet.set(netId, new Map());
+        }
+        const netMap = speciesByNet.get(netId)!;
+        netMap.set(capture.species, (netMap.get(capture.species) ?? 0) + 1);
+      });
+
+      const netTopSpeciesRows = Array.from(speciesByNet.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([netId, speciesCounts]) => {
+          const topSpecies = Array.from(speciesCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([species, count]) => `${getSpeciesLabel(species)} (${formatNumber(count)})`);
+          return {
+            net: netId,
+            top1: topSpecies[0] ?? "—",
+            top2: topSpecies[1] ?? "—",
+            top3: topSpecies[2] ?? "—",
+          };
+        });
+
       const groupSummaries = netUsageRows.filter((row) => String(row.net).includes("TOTAL"));
       const groupRates = groupSummaries
         .filter((row) => row.net !== "GRAND TOTAL")
@@ -1748,6 +1774,7 @@ export default function Reports() {
         returnsRows,
         netUsageRows,
         netProductivitySummary,
+        netTopSpeciesRows,
         priorityRows,
       });
     }
@@ -2098,6 +2125,19 @@ export default function Reports() {
                       <p className="mt-3 text-sm text-default-900">{groupData.netProductivitySummary}</p>
                     )}
                   </div>
+                  {groupData.netTopSpeciesRows.length ? (
+                    <ReportTable
+                      title="Top species captured per net"
+                      subtitle="Top 3 species by capture count for each net."
+                      columns={[
+                        { key: "net", label: "Net" },
+                        { key: "top1", label: "Top 1", align: "right" },
+                        { key: "top2", label: "Top 2", align: "right" },
+                        { key: "top3", label: "Top 3", align: "right" },
+                      ]}
+                      rows={groupData.netTopSpeciesRows}
+                    />
+                  ) : null}
                   {groupData.priorityRows.length ? (
                     <ReportTable
                       title="Priority species coverage"
