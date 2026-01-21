@@ -210,16 +210,16 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               Species
             </Link>
           </NavbarItem>
-          <NavbarItem isActive={activePage === "integrations"}>
+          <NavbarItem isActive={activePage === "reports"}>
             <Link
-              color={activePage === "integrations" ? "primary" : "foreground"}
+              color={activePage === "reports" ? "primary" : "foreground"}
               href="#"
               className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
               onClick={(e) => {
                 e.preventDefault();
                 if (!isLoading) {
                   selectProgram(null);
-                  onPageChange("integrations");
+                  onPageChange("reports");
                 }
               }}
             >
