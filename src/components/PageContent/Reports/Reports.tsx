@@ -55,8 +55,8 @@ function ReportTable({
         <h3 className="text-base font-semibold text-default-900">{title}</h3>
         {subtitle && <p className="text-xs text-default-900">{subtitle}</p>}
       </div>
-      <div className="max-h-80 overflow-auto rounded-lg border border-default-100">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border border-default-100">
+        <table className="w-full text-xs whitespace-nowrap">
           <thead className="sticky top-0 bg-default-50 text-xs uppercase text-default-900">
             <tr>
               {columns.map((column) => (
@@ -151,6 +151,106 @@ const parseCsvLine = (line: string): string[] => {
   return result;
 };
 
+const formatMonthRangeLabel = (start: string, end: string) => {
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return formatMonthLabel(getMonthKey(start));
+  }
+  if (startDate.getMonth() !== endDate.getMonth() || startDate.getFullYear() !== endDate.getFullYear()) {
+    const startLabel = startDate.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+    const endLabel = endDate.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+    return `${startLabel}-${endLabel}`;
+  }
+  const monthLabel = startDate.toLocaleDateString("en-CA", { month: "short" });
+  const startDay = startDate.getDate();
+  const endDay = endDate.getDate();
+  if (startDay === endDay) return `${monthLabel} ${startDay}`;
+  return `${monthLabel} ${startDay}-${endDay}`;
+};
+
+const coerceNumber = (value: unknown): number => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) return parsed;
+    const match = value.match(/-?\d+(\.\d+)?/);
+    return match ? Number(match[0]) : Number.NaN;
+  }
+  if (value && typeof value === "object" && "value" in value) {
+    return coerceNumber((value as { value?: unknown }).value);
+  }
+  return Number.NaN;
+};
+
+const readWeatherNumber = (weather: Record<string, unknown> | undefined, keys: string[]) => {
+  if (!weather) return Number.NaN;
+  for (const key of keys) {
+    const value = key.includes(".")
+      ? key.split(".").reduce<unknown>((acc, part) => {
+          if (!acc || typeof acc !== "object") return undefined;
+          return (acc as Record<string, unknown>)[part];
+        }, weather)
+      : weather[key];
+    const parsed = coerceNumber(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return Number.NaN;
+};
+
+const formatLongDate = (dateString: string) => {
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString("en-CA", { day: "numeric", month: "short", year: "numeric" });
+};
+
+const formatElapsedVerbose = (start: Date, end: Date) => {
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "—";
+  if (end < start) return "—";
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+  let days = end.getDate() - start.getDate();
+
+  if (days < 0) {
+    months -= 1;
+    const prevMonthDays = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+    days += prevMonthDays;
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} year${years === 1 ? "" : "s"}`);
+  if (months > 0) parts.push(`${months} month${months === 1 ? "" : "s"}`);
+  if (days > 0 || parts.length === 0) parts.push(`${days} day${days === 1 ? "" : "s"}`);
+  return parts.join(" ");
+};
+
+const formatAgeSex = (age?: string, sex?: string) => {
+  const safeAge = age?.trim() || "";
+  const safeSex = sex?.trim() || "";
+  if (!safeAge && !safeSex) return "—";
+  if (safeAge && safeSex) return `${safeAge}-${safeSex}`;
+  return safeAge || safeSex || "—";
+};
+
+const getWinterSeasonKey = (dateString: string) => {
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  const month = date.getMonth();
+  if (month >= 10) {
+    const startYear = date.getFullYear();
+    return { key: `${startYear}-${startYear + 1}`, label: `${startYear}-${startYear + 1}` };
+  }
+  if (month <= 2) {
+    const endYear = date.getFullYear();
+    return { key: `${endYear - 1}-${endYear}`, label: `${endYear - 1}-${endYear}` };
+  }
+  return null;
+};
+
 type ProgramGroupDefinition = {
   key: string;
   title: string;
@@ -175,8 +275,14 @@ type ReportGroupData = {
   dailyObservedSpecies: DailyTrendPoint[];
   summary: string;
   periodLabel: string;
+  weatherColumns: TableColumn[];
   weatherRows: Array<Record<string, React.ReactNode>>;
+  summaryColumns: TableColumn[];
   summaryRows: Array<Record<string, React.ReactNode>>;
+  bandedComparisonColumns: TableColumn[];
+  bandedComparisonRows: Array<Record<string, React.ReactNode>>;
+  returnDetailColumns: TableColumn[];
+  returnDetailRows: Array<Record<string, React.ReactNode>>;
   topBandedRows: Array<Record<string, React.ReactNode>>;
   topRecapturedRows: Array<Record<string, React.ReactNode>>;
   returnsRows: Array<Record<string, React.ReactNode>>;
@@ -222,8 +328,8 @@ const PROGRAM_GROUPS: ProgramGroupDefinition[] = [
 export default function Reports() {
   const { birdEventsMap, programsMap, DETsMap, isLoading } = useData();
   const [selectedProgramId, setSelectedProgramId] = useState<string>("all");
-  const [startDate, setStartDate] = useState<string>("2022-01-01");
-  const [endDate, setEndDate] = useState<string>("2023-12-31");
+  const [startDate, setStartDate] = useState<string>("2022-11-01");
+  const [endDate, setEndDate] = useState<string>("2023-11-01");
   const [isReportReady, setIsReportReady] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [appliedStartDate, setAppliedStartDate] = useState<string>("");
@@ -238,6 +344,46 @@ export default function Reports() {
     return Object.values(birdEventsMap)
       .filter((event) => event && !event.modifiedEventId)
       .map((event) => toReportCapture(event));
+  }, [birdEventsMap]);
+
+  const bandingByBandId = useMemo(() => {
+    const map = new Map<string, { date: string; age: string; sex: string }>();
+    Object.values(birdEventsMap).forEach((event) => {
+      if (!event || event.modifiedEventId || event.birdEventType !== BirdEventType.Banded) return;
+      const bandId = event.band?.id;
+      if (!bandId || !event.date) return;
+      const existing = map.get(bandId);
+      if (!existing || event.date < existing.date) {
+        map.set(bandId, {
+          date: event.date,
+          age: event.age || "",
+          sex: event.sex || "",
+        });
+      }
+    });
+    return map;
+  }, [birdEventsMap]);
+
+  const captureHistoryByBandId = useMemo(() => {
+    const history = new Map<string, Array<{ date: string; age: string; sex: string }>>();
+    Object.values(birdEventsMap).forEach((event) => {
+      if (!event || event.modifiedEventId || !event.date) return;
+      const bandId = event.band?.id;
+      if (!bandId) return;
+      if (!history.has(bandId)) {
+        history.set(bandId, []);
+      }
+      history.get(bandId)!.push({
+        date: event.date,
+        age: event.age || "",
+        sex: event.sex || "",
+      });
+    });
+    history.forEach((entries, bandId) => {
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+      history.set(bandId, entries);
+    });
+    return history;
   }, [birdEventsMap]);
 
   const dateBounds = useMemo(() => {
@@ -500,48 +646,76 @@ export default function Reports() {
         {
           key: string;
           label: string;
+          periodStart: string;
+          periodEnd: string;
           totalCaptures: number;
           banded: number;
           recaptures: number;
           returns: number;
           bandedSpecies: Set<string>;
+          returnSpecies: Set<string>;
+          repeatSpecies: Set<string>;
+          observedSpecies: Set<string>;
+          bandingDates: Set<string>;
           effortDays: number;
           netHours: number;
-          tempSum: number;
+          tempSum: number; // Sum of dailyMeanTemp for "Mean daily temp"
           tempCount: number;
-          tempMin: number | null;
-          tempMax: number | null;
+          dailyHighSum: number; // Sum of dailyHighTemp for "Mean daily high"
+          dailyHighCount: number;
+          dailyLowSum: number; // Sum of dailyLowTemp for "Mean daily low"
+          dailyLowCount: number;
+          tempMin: number | null; // Min of dailyLowTemp for "Lowest temp"
+          tempMax: number | null; // Max of dailyHighTemp for "Highest temp"
+          rainDays: number;
           precipSum: number;
-          windSum: number;
-          windCount: number;
-          cloudSum: number;
-          cloudCount: number;
+          snowDays: number;
+          snowSum: number;
+          snowDepthMeanSum: number;
+          snowDepthMeanCount: number;
+          snowDepthMax: number | null;
         }
       >();
 
       const ensurePeriodEntry = (date: string) => {
         const key = getPeriodKey(date);
         const existing = periodMap.get(key);
-        if (existing) return existing;
+        if (existing) {
+          if (date < existing.periodStart) existing.periodStart = date;
+          if (date > existing.periodEnd) existing.periodEnd = date;
+          return existing;
+        }
         const entry = {
           key,
           label: getPeriodLabel(key),
+          periodStart: date,
+          periodEnd: date,
           totalCaptures: 0,
           banded: 0,
           recaptures: 0,
           returns: 0,
           bandedSpecies: new Set<string>(),
+          returnSpecies: new Set<string>(),
+          repeatSpecies: new Set<string>(),
+          observedSpecies: new Set<string>(),
+          bandingDates: new Set<string>(),
           effortDays: 0,
           netHours: 0,
           tempSum: 0,
           tempCount: 0,
+          dailyHighSum: 0,
+          dailyHighCount: 0,
+          dailyLowSum: 0,
+          dailyLowCount: 0,
           tempMin: null,
           tempMax: null,
+          rainDays: 0,
           precipSum: 0,
-          windSum: 0,
-          windCount: 0,
-          cloudSum: 0,
-          cloudCount: 0,
+          snowDays: 0,
+          snowSum: 0,
+          snowDepthMeanSum: 0,
+          snowDepthMeanCount: 0,
+          snowDepthMax: null,
         };
         periodMap.set(key, entry);
         return entry;
@@ -554,10 +728,15 @@ export default function Reports() {
         if (capture.captureType === BirdEventType.Banded) {
           entry.banded += 1;
           entry.bandedSpecies.add(capture.species);
+          entry.bandingDates.add(capture.date);
         }
-        if (capture.captureType === BirdEventType.Return) entry.returns += 1;
+        if (capture.captureType === BirdEventType.Return) {
+          entry.returns += 1;
+          entry.returnSpecies.add(capture.species);
+        }
         if (capture.captureType === BirdEventType.Repeat || capture.captureType === BirdEventType.Alien) {
           entry.recaptures += 1;
+          entry.repeatSpecies.add(capture.species);
         }
       });
 
@@ -568,70 +747,499 @@ export default function Reports() {
         if (!Number.isNaN(netHoursValue)) {
           entry.netHours += netHoursValue;
         }
-        const weather = det.weather;
+        const weather =
+          (det.weather as Record<string, unknown> | undefined) ??
+          ((det as { weatherData?: Record<string, unknown> }).weatherData ?? undefined) ??
+          ((det as { weatherSummary?: Record<string, unknown> }).weatherSummary ?? undefined);
         if (weather) {
-          let temperature = weather.temperature ?? null;
-          if (temperature === null) {
-            const minTemp = Number(weather.temperatureMin);
-            const maxTemp = Number(weather.temperatureMax);
-            if (!Number.isNaN(minTemp) && !Number.isNaN(maxTemp)) {
-              temperature = (minTemp + maxTemp) / 2;
-            }
+          // Use daily temperature values for aggregation
+          const dailyHigh = readWeatherNumber(weather, [
+            "dailyHighTemp",
+            "daily_high_temp",
+            "dailyHighTempC",
+            "highTemp",
+            "tempHigh",
+            "tempMax",
+            "maxTemp",
+            "temperatureMax",
+            "temperature_2m_max",
+          ]);
+          const dailyLow = readWeatherNumber(weather, [
+            "dailyLowTemp",
+            "daily_low_temp",
+            "dailyLowTempC",
+            "lowTemp",
+            "tempLow",
+            "tempMin",
+            "minTemp",
+            "temperatureMin",
+            "temperature_2m_min",
+          ]);
+          let dailyMean = readWeatherNumber(weather, [
+            "dailyMeanTemp",
+            "daily_mean_temp",
+            "dailyMeanTempC",
+            "meanTemp",
+            "tempMean",
+            "temperatureMean",
+            "temperature_2m_mean",
+          ]);
+          if (Number.isNaN(dailyMean) && !Number.isNaN(dailyHigh) && !Number.isNaN(dailyLow)) {
+            dailyMean = (dailyHigh + dailyLow) / 2;
           }
-          if (temperature !== null && !Number.isNaN(temperature)) {
-            entry.tempSum += temperature;
+          
+          // Track daily highs for "Mean daily high" calculation
+          if (!Number.isNaN(dailyHigh)) {
+            entry.dailyHighSum += dailyHigh;
+            entry.dailyHighCount += 1;
+            // Also track for "Highest temp" (period max)
+            entry.tempMax = entry.tempMax === null ? dailyHigh : Math.max(entry.tempMax, dailyHigh);
+          }
+          
+          // Track daily lows for "Mean daily low" calculation
+          if (!Number.isNaN(dailyLow)) {
+            entry.dailyLowSum += dailyLow;
+            entry.dailyLowCount += 1;
+            // Also track for "Lowest temp" (period min)
+            entry.tempMin = entry.tempMin === null ? dailyLow : Math.min(entry.tempMin, dailyLow);
+          }
+          
+          // Track daily means for "Mean daily temp" calculation
+          if (!Number.isNaN(dailyMean)) {
+            entry.tempSum += dailyMean;
             entry.tempCount += 1;
           }
-          const minTemp = Number(weather.temperatureMin);
-          if (!Number.isNaN(minTemp)) {
-            entry.tempMin = entry.tempMin === null ? minTemp : Math.min(entry.tempMin, minTemp);
-          }
-          const maxTemp = Number(weather.temperatureMax);
-          if (!Number.isNaN(maxTemp)) {
-            entry.tempMax = entry.tempMax === null ? maxTemp : Math.max(entry.tempMax, maxTemp);
-          }
-          const precip = Number(weather.precipitation);
+          const precip = readWeatherNumber(weather, [
+            "totalRainfallMm",
+            "total_rainfall_mm",
+            "rainfallMm",
+            "precipitationMm",
+            "precipitation_sum",
+            "rain_mm",
+            "totalRainMm",
+          ]);
           if (!Number.isNaN(precip)) {
             entry.precipSum += precip;
+            if (precip > 0) entry.rainDays += 1;
           }
-          const wind = Number(weather.windSpeed);
-          if (!Number.isNaN(wind)) {
-            entry.windSum += wind;
-            entry.windCount += 1;
+          const snowfall = readWeatherNumber(weather, [
+            "totalSnowCm",
+            "total_snow_cm",
+            "snowfallCm",
+            "snowfall_sum",
+            "snow_cm",
+            "totalSnowfallCm",
+          ]);
+          if (!Number.isNaN(snowfall)) {
+            entry.snowSum += snowfall;
+            if (snowfall > 0) entry.snowDays += 1;
           }
-          const cloud = Number(weather.cloudCoverage);
-          if (!Number.isNaN(cloud)) {
-            entry.cloudSum += cloud;
-            entry.cloudCount += 1;
+          const meanSnowDepth = readWeatherNumber(weather, [
+            "meanSnowDepthCm",
+            "mean_snow_depth_cm",
+            "snowDepthMeanCm",
+            "snow_depth_mean",
+          ]);
+          if (!Number.isNaN(meanSnowDepth)) {
+            entry.snowDepthMeanSum += meanSnowDepth;
+            entry.snowDepthMeanCount += 1;
+          }
+          const maxSnowDepth = readWeatherNumber(weather, [
+            "maxSnowDepthCm",
+            "max_snow_depth_cm",
+            "snowDepthMaxCm",
+            "snow_depth_max",
+          ]);
+          if (!Number.isNaN(maxSnowDepth)) {
+            entry.snowDepthMax =
+              entry.snowDepthMax === null ? maxSnowDepth : Math.max(entry.snowDepthMax, maxSnowDepth);
           }
         }
+
+        Object.entries(det.observedSpeciesCount ?? {}).forEach(([speciesCode, count]) => {
+          if (Number(count) > 0) {
+            entry.observedSpecies.add(speciesCode);
+          }
+        });
       });
 
-      const periodEntries = Array.from(periodMap.values()).sort((a, b) => a.key.localeCompare(b.key));
+      const periodEntries = Array.from(periodMap.values())
+        .map((entry) => {
+          if (periodGranularity === "month" && entry.periodStart && entry.periodEnd) {
+            return { ...entry, label: formatMonthRangeLabel(entry.periodStart, entry.periodEnd) };
+          }
+          return entry;
+        })
+        .sort((a, b) => a.key.localeCompare(b.key));
 
-      const weatherRows = periodEntries.map((entry) => ({
-        period: entry.label,
-        avgTemp: formatOptional(entry.tempCount ? entry.tempSum / entry.tempCount : null),
-        minTemp: formatOptional(entry.tempMin),
-        maxTemp: formatOptional(entry.tempMax),
-        precip: formatOptionalInt(entry.precipSum),
-        wind: formatOptional(entry.windCount ? entry.windSum / entry.windCount : null),
-        cloud: formatOptional(entry.cloudCount ? entry.cloudSum / entry.cloudCount : null),
-      }));
+      const seasonAggregate = periodEntries.reduce(
+        (acc, entry) => {
+          acc.dailyHighSum += entry.dailyHighSum;
+          acc.dailyHighCount += entry.dailyHighCount;
+          acc.dailyLowSum += entry.dailyLowSum;
+          acc.dailyLowCount += entry.dailyLowCount;
+          acc.tempSum += entry.tempSum;
+          acc.tempCount += entry.tempCount;
+          acc.tempMax = acc.tempMax === null ? entry.tempMax : Math.max(acc.tempMax, entry.tempMax ?? acc.tempMax);
+          acc.tempMin = acc.tempMin === null ? entry.tempMin : Math.min(acc.tempMin, entry.tempMin ?? acc.tempMin);
+          acc.rainDays += entry.rainDays;
+          acc.precipSum += entry.precipSum;
+          acc.snowDays += entry.snowDays;
+          acc.snowSum += entry.snowSum;
+          acc.snowDepthMeanSum += entry.snowDepthMeanSum;
+          acc.snowDepthMeanCount += entry.snowDepthMeanCount;
+          acc.snowDepthMax =
+            acc.snowDepthMax === null
+              ? entry.snowDepthMax
+              : Math.max(acc.snowDepthMax, entry.snowDepthMax ?? acc.snowDepthMax);
+          return acc;
+        },
+        {
+          dailyHighSum: 0,
+          dailyHighCount: 0,
+          dailyLowSum: 0,
+          dailyLowCount: 0,
+          tempSum: 0,
+          tempCount: 0,
+          tempMax: null as number | null,
+          tempMin: null as number | null,
+          rainDays: 0,
+          precipSum: 0,
+          snowDays: 0,
+          snowSum: 0,
+          snowDepthMeanSum: 0,
+          snowDepthMeanCount: 0,
+          snowDepthMax: null as number | null,
+        }
+      );
 
-      const summaryRows = periodEntries.map((entry) => {
-        const captureRate = entry.netHours ? (entry.banded / entry.netHours) * 100 : null;
-        return {
-          period: entry.label,
-          effortDays: formatNumber(entry.effortDays),
-          netHours: formatOptionalInt(entry.netHours),
-          banded: formatNumber(entry.banded),
-          species: formatNumber(entry.bandedSpecies.size),
-          recaptures: formatNumber(entry.recaptures),
-          returns: formatNumber(entry.returns),
-          rate: captureRate === null ? "—" : formatOptional(captureRate),
-        };
-      });
+      const weatherColumns: TableColumn[] = [
+        { key: "metric", label: "" },
+        ...periodEntries.map((entry) => ({ key: entry.key, label: entry.label, align: "right" })),
+        { key: "season", label: "Season", align: "right" },
+      ];
+
+      const buildWeatherRow = (
+        label: string,
+        getValue: (entry: (typeof periodEntries)[number]) => React.ReactNode,
+        seasonValue: React.ReactNode
+      ) => {
+        const row: Record<string, React.ReactNode> = { metric: label, season: seasonValue };
+        periodEntries.forEach((entry) => {
+          row[entry.key] = getValue(entry);
+        });
+        return row;
+      };
+
+      const weatherRows = [
+        buildWeatherRow(
+          "Mean daily high (°C)",
+          (entry) => formatOptional(entry.dailyHighCount ? entry.dailyHighSum / entry.dailyHighCount : null),
+          formatOptional(
+            seasonAggregate.dailyHighCount ? seasonAggregate.dailyHighSum / seasonAggregate.dailyHighCount : null
+          )
+        ),
+        buildWeatherRow(
+          "Mean daily low (°C)",
+          (entry) => formatOptional(entry.dailyLowCount ? entry.dailyLowSum / entry.dailyLowCount : null),
+          formatOptional(
+            seasonAggregate.dailyLowCount ? seasonAggregate.dailyLowSum / seasonAggregate.dailyLowCount : null
+          )
+        ),
+        buildWeatherRow(
+          "Mean daily temp (°C)",
+          (entry) => formatOptional(entry.tempCount ? entry.tempSum / entry.tempCount : null),
+          formatOptional(seasonAggregate.tempCount ? seasonAggregate.tempSum / seasonAggregate.tempCount : null)
+        ),
+        buildWeatherRow("Highest temp (°C)", (entry) => formatOptional(entry.tempMax), formatOptional(seasonAggregate.tempMax)),
+        buildWeatherRow("Lowest temp (°C)", (entry) => formatOptional(entry.tempMin), formatOptional(seasonAggregate.tempMin)),
+        buildWeatherRow(
+          "# days with rainfall",
+          (entry) => formatOptionalInt(entry.rainDays),
+          formatOptionalInt(seasonAggregate.rainDays)
+        ),
+        buildWeatherRow(
+          "Total rain (mm)",
+          (entry) => formatOptionalInt(entry.precipSum),
+          formatOptionalInt(seasonAggregate.precipSum)
+        ),
+        buildWeatherRow(
+          "# days with snowfall",
+          (entry) => formatOptionalInt(entry.snowDays),
+          formatOptionalInt(seasonAggregate.snowDays)
+        ),
+        buildWeatherRow(
+          "Total snow (cm)",
+          (entry) => formatOptionalInt(entry.snowSum),
+          formatOptionalInt(seasonAggregate.snowSum)
+        ),
+        buildWeatherRow(
+          "Mean snow depth (cm)",
+          (entry) => formatOptional(entry.snowDepthMeanCount ? entry.snowDepthMeanSum / entry.snowDepthMeanCount : null),
+          formatOptional(
+            seasonAggregate.snowDepthMeanCount
+              ? seasonAggregate.snowDepthMeanSum / seasonAggregate.snowDepthMeanCount
+              : null
+          )
+        ),
+        buildWeatherRow(
+          "Max. snow depth (cm)",
+          (entry) => formatOptional(entry.snowDepthMax),
+          formatOptional(seasonAggregate.snowDepthMax)
+        ),
+      ];
+
+      const seasonSummary = periodEntries.reduce(
+        (acc, entry) => {
+          acc.banded += entry.banded;
+          acc.returns += entry.returns;
+          acc.recaptures += entry.recaptures;
+          acc.netHours += entry.netHours;
+          acc.effortDays += entry.effortDays;
+          entry.bandedSpecies.forEach((species) => acc.bandedSpecies.add(species));
+          entry.returnSpecies.forEach((species) => acc.returnSpecies.add(species));
+          entry.repeatSpecies.forEach((species) => acc.repeatSpecies.add(species));
+          entry.observedSpecies.forEach((species) => acc.observedSpecies.add(species));
+          entry.bandingDates.forEach((date) => acc.bandingDates.add(date));
+          return acc;
+        },
+        {
+          banded: 0,
+          returns: 0,
+          recaptures: 0,
+          netHours: 0,
+          effortDays: 0,
+          bandedSpecies: new Set<string>(),
+          returnSpecies: new Set<string>(),
+          repeatSpecies: new Set<string>(),
+          observedSpecies: new Set<string>(),
+          bandingDates: new Set<string>(),
+        }
+      );
+
+      const summaryColumns: TableColumn[] = [
+        { key: "metric", label: "" },
+        ...periodEntries.map((entry) => ({ key: entry.key, label: entry.label, align: "right" })),
+        { key: "season", label: "Season", align: "right" },
+      ];
+
+      const hasSummaryData = (entry: (typeof periodEntries)[number]) =>
+        entry.effortDays > 0 ||
+        entry.banded > 0 ||
+        entry.returns > 0 ||
+        entry.recaptures > 0 ||
+        entry.observedSpecies.size > 0;
+
+      const formatSummaryValue = (value: React.ReactNode, entry: (typeof periodEntries)[number]) =>
+        hasSummaryData(entry) ? value : "n/a";
+
+      const buildSummaryRow = (
+        label: string,
+        getValue: (entry: (typeof periodEntries)[number]) => React.ReactNode,
+        seasonValue: React.ReactNode
+      ) => {
+        const row: Record<string, React.ReactNode> = { metric: label, season: seasonValue };
+        periodEntries.forEach((entry) => {
+          row[entry.key] = formatSummaryValue(getValue(entry), entry);
+        });
+        return row;
+      };
+
+      const seasonHasData =
+        seasonSummary.effortDays > 0 ||
+        seasonSummary.banded > 0 ||
+        seasonSummary.returns > 0 ||
+        seasonSummary.recaptures > 0 ||
+        seasonSummary.observedSpecies.size > 0;
+
+      const summaryRows = [
+        buildSummaryRow(
+          "# individuals (species) banded",
+          (entry) => `${formatNumber(entry.banded)} (${formatNumber(entry.bandedSpecies.size)})`,
+          seasonHasData
+            ? `${formatNumber(seasonSummary.banded)} (${formatNumber(seasonSummary.bandedSpecies.size)})`
+            : "n/a"
+        ),
+        buildSummaryRow(
+          "# individuals (species) return",
+          (entry) => `${formatNumber(entry.returns)} (${formatNumber(entry.returnSpecies.size)})`,
+          seasonHasData
+            ? `${formatNumber(seasonSummary.returns)} (${formatNumber(seasonSummary.returnSpecies.size)})`
+            : "n/a"
+        ),
+        buildSummaryRow(
+          "# individuals (species) repeat",
+          (entry) => `${formatNumber(entry.recaptures)} (${formatNumber(entry.repeatSpecies.size)})`,
+          seasonHasData
+            ? `${formatNumber(seasonSummary.recaptures)} (${formatNumber(seasonSummary.repeatSpecies.size)})`
+            : "n/a"
+        ),
+        buildSummaryRow(
+          "# species observed",
+          (entry) => formatNumber(entry.observedSpecies.size),
+          seasonHasData ? formatNumber(seasonSummary.observedSpecies.size) : "n/a"
+        ),
+        buildSummaryRow(
+          "# net hours",
+          (entry) => formatOptional(entry.netHours, 1),
+          seasonHasData ? formatOptional(seasonSummary.netHours, 1) : "n/a"
+        ),
+        buildSummaryRow(
+          "# birds banded / 100 net hours",
+          (entry) => (entry.netHours ? formatOptional((entry.banded / entry.netHours) * 100, 1) : "n/a"),
+          seasonSummary.netHours
+            ? formatOptional((seasonSummary.banded / seasonSummary.netHours) * 100, 1)
+            : "n/a"
+        ),
+        buildSummaryRow(
+          "# days operating",
+          (entry) => formatNumber(entry.effortDays),
+          seasonHasData ? formatNumber(seasonSummary.effortDays) : "n/a"
+        ),
+        buildSummaryRow(
+          "# days banding",
+          (entry) => formatNumber(entry.bandingDates.size),
+          seasonHasData ? formatNumber(seasonSummary.bandingDates.size) : "n/a"
+        ),
+      ];
+
+      const bandedComparisonColumns: TableColumn[] = [];
+      const bandedComparisonRows: Array<Record<string, React.ReactNode>> = [];
+      const returnDetailColumns: TableColumn[] = [];
+      const returnDetailRows: Array<Record<string, React.ReactNode>> = [];
+      if (group.key === "winter") {
+        const seasonStats = new Map<string, { label: string; counts: Map<string, number> }>();
+        const seasonRankings = new Map<string, Map<string, number>>();
+        const winterCaptures = captures.filter((capture) => activeProgramIds.includes(capture.programId));
+
+        winterCaptures.forEach((capture) => {
+          if (capture.captureType !== BirdEventType.Banded || !capture.date) return;
+          const season = getWinterSeasonKey(capture.date);
+          if (!season) return;
+          if (!seasonStats.has(season.key)) {
+            seasonStats.set(season.key, { label: season.label, counts: new Map<string, number>() });
+          }
+          const entry = seasonStats.get(season.key)!;
+          entry.counts.set(capture.species, (entry.counts.get(capture.species) ?? 0) + 1);
+        });
+
+        seasonStats.forEach((seasonEntry, seasonKey) => {
+          const ranked = Array.from(seasonEntry.counts.entries()).sort((a, b) => b[1] - a[1]);
+          const rankMap = new Map<string, number>();
+          ranked.forEach(([species], index) => {
+            rankMap.set(species, index + 1);
+          });
+          seasonRankings.set(seasonKey, rankMap);
+        });
+
+        const seasonList = Array.from(seasonStats.entries())
+          .map(([key, entry]) => {
+            const endYear = Number(key.split("-")[1]) || 0;
+            return { key, label: entry.label, endYear };
+          })
+          .sort((a, b) => b.endYear - a.endYear);
+
+        const defaultSeason =
+          getWinterSeasonKey(effectiveDateRange.start) ??
+          getWinterSeasonKey(effectiveDateRange.end) ??
+          (seasonList[0] ? { key: seasonList[0].key, label: seasonList[0].label } : null);
+
+        if (defaultSeason && seasonStats.has(defaultSeason.key)) {
+          const selectedSeason = seasonStats.get(defaultSeason.key)!;
+          const topSpecies = Array.from(selectedSeason.counts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10);
+
+          bandedComparisonColumns.push({ key: "species", label: "Species" });
+          seasonList.forEach((season) => {
+            bandedComparisonColumns.push({ key: season.key, label: season.label, align: "right" });
+          });
+
+          topSpecies.forEach(([speciesCode, count]) => {
+            const row: Record<string, React.ReactNode> = {
+              species: getSpeciesLabel(speciesCode),
+            };
+            seasonList.forEach((season) => {
+              const seasonEntry = seasonStats.get(season.key);
+              const seasonCount = seasonEntry?.counts.get(speciesCode) ?? 0;
+              if (!seasonCount) {
+                row[season.key] = "—";
+                return;
+              }
+              if (season.key === defaultSeason.key) {
+                row[season.key] = formatNumber(seasonCount);
+                return;
+              }
+              const rank = seasonRankings.get(season.key)?.get(speciesCode);
+              row[season.key] = rank ? `${formatNumber(seasonCount)}(${rank})` : formatNumber(seasonCount);
+            });
+            bandedComparisonRows.push(row);
+          });
+        }
+
+        returnDetailColumns.push(
+          { key: "band", label: "Band" },
+          { key: "species", label: "Species" },
+          { key: "returnAgeSex", label: "Age/sex at return" },
+          { key: "bandingAgeSex", label: "Age/sex at banding" },
+          { key: "bandingDate", label: "Banding date" },
+          { key: "previousCapture", label: "Previous capture" },
+          { key: "returnDate", label: "Return date" },
+          { key: "elapsed", label: "Time elapsed" }
+        );
+
+        const returnEntries = groupCaptures
+          .filter((capture) => capture.captureType === BirdEventType.Return)
+          .map((capture) => {
+            let previous: { date?: string } | null = null;
+            if (capture.previousEventId) {
+              previous = birdEventsMap[capture.previousEventId] ?? null;
+            }
+            if (!previous && capture.bandId) {
+              const history = captureHistoryByBandId.get(capture.bandId) ?? [];
+              const previousEntry = history
+                .filter((entry) => entry.date < capture.date)
+                .sort((a, b) => b.date.localeCompare(a.date))[0];
+              if (previousEntry) {
+                previous = { date: previousEntry.date };
+              }
+            }
+            const banding = capture.bandId ? bandingByBandId.get(capture.bandId) : null;
+            const returnDate = capture.date;
+            const previousDate = previous?.date || "";
+            let elapsed = "—";
+            let elapsedMs: number | null = null;
+            if (previousDate && returnDate) {
+              const currentDate = new Date(`${returnDate}T00:00:00`);
+              const previousDateObj = new Date(`${previousDate}T00:00:00`);
+              if (!Number.isNaN(currentDate.getTime()) && !Number.isNaN(previousDateObj.getTime())) {
+                elapsed = formatElapsedVerbose(previousDateObj, currentDate);
+                elapsedMs = currentDate.getTime() - previousDateObj.getTime();
+              }
+            }
+            return {
+              band: capture.bandId || "—",
+              species: getSpeciesLabel(capture.species),
+              returnAgeSex: formatAgeSex(capture.age, capture.sex),
+              bandingAgeSex: banding ? formatAgeSex(banding.age, banding.sex) : "—",
+              bandingDate: banding?.date ? formatLongDate(banding.date) : "—",
+              previousCapture: previousDate ? formatLongDate(previousDate) : "—",
+              returnDate: returnDate ? formatLongDate(returnDate) : "—",
+              elapsed,
+              elapsedMs,
+            };
+          })
+          .sort((a, b) => {
+            if (a.elapsedMs === null && b.elapsedMs === null) return 0;
+            if (a.elapsedMs === null) return 1;
+            if (b.elapsedMs === null) return -1;
+            return b.elapsedMs - a.elapsedMs;
+          });
+
+        returnDetailRows.push(
+          ...returnEntries.map(({ elapsedMs: _elapsedMs, ...row }) => row)
+        );
+      }
 
       const bandedBySpecies = new Map<string, number>();
       const recapturedBySpecies = new Map<string, number>();
@@ -774,8 +1382,14 @@ export default function Reports() {
         dailyObservedSpecies,
         summary,
         periodLabel,
+        weatherColumns,
         weatherRows,
+        summaryColumns,
         summaryRows,
+        bandedComparisonColumns,
+        bandedComparisonRows,
+        returnDetailColumns,
+        returnDetailRows,
         topBandedRows,
         topRecapturedRows,
         returnsRows,
@@ -787,6 +1401,8 @@ export default function Reports() {
   }, [
     appliedProgramId,
     birdEventsMap,
+    bandingByBandId,
+    captureHistoryByBandId,
     countSpeciesEntries,
     capturesInRange,
     dateRangeLabel,
@@ -819,7 +1435,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6 p-6 print:max-w-full print:p-4">
+    <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-6 p-6 print:max-w-full print:p-4">
       <PageHeader
         title="Annual Program Report"
         subtitle="Structured to mirror the 2019 MBO annual report with daily banding and census charts."
@@ -990,7 +1606,7 @@ export default function Reports() {
                 </div>
 
                 {groupData.group.showCharts && (
-                  <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                  <div className="mt-6 grid gap-6 grid-cols-1">
                     <ChartContainer
                       title="Individuals banded per day"
                       subtitle="Daily totals with 7-day running mean"
@@ -1018,36 +1634,35 @@ export default function Reports() {
                   </div>
                 )}
 
-                <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <div className="mt-6 grid gap-6 grid-cols-1">
                   <ReportTable
                     title={`Weather conditions (${groupData.periodLabel.toLowerCase()}ly)`}
                     subtitle="Summarized from DET weather logs."
-                    columns={[
-                      { key: "period", label: groupData.periodLabel },
-                      { key: "avgTemp", label: "Avg temp (C)", align: "right" },
-                      { key: "minTemp", label: "Min (C)", align: "right" },
-                      { key: "maxTemp", label: "Max (C)", align: "right" },
-                      { key: "precip", label: "Precip (mm)", align: "right" },
-                      { key: "wind", label: "Wind (km/h)", align: "right" },
-                      { key: "cloud", label: "Cloud (%)", align: "right" },
-                    ]}
+                    columns={groupData.weatherColumns}
                     rows={groupData.weatherRows}
                   />
                   <ReportTable
                     title={`Summary results (${groupData.periodLabel.toLowerCase()}ly)`}
                     subtitle="Effort and banding totals."
-                    columns={[
-                      { key: "period", label: groupData.periodLabel },
-                      { key: "effortDays", label: "Effort days", align: "right" },
-                      { key: "netHours", label: "Net hours", align: "right" },
-                      { key: "banded", label: "Banded", align: "right" },
-                      { key: "species", label: "Species banded", align: "right" },
-                      { key: "recaptures", label: "Recaptures", align: "right" },
-                      { key: "returns", label: "Returns", align: "right" },
-                      { key: "rate", label: "Captures/100 NH", align: "right" },
-                    ]}
+                    columns={groupData.summaryColumns}
                     rows={groupData.summaryRows}
                   />
+                  {groupData.bandedComparisonRows.length ? (
+                    <ReportTable
+                      title="Top 10 species banded (winter comparison)"
+                      subtitle="Counts include rank in other winter seasons (in parentheses); dashes indicate no banding."
+                      columns={groupData.bandedComparisonColumns}
+                      rows={groupData.bandedComparisonRows}
+                    />
+                  ) : null}
+                  {groupData.returnDetailRows.length ? (
+                    <ReportTable
+                      title="Returns list (winter)"
+                      subtitle="Returns sorted by time elapsed since the previous capture."
+                      columns={groupData.returnDetailColumns}
+                      rows={groupData.returnDetailRows}
+                    />
+                  ) : null}
                   <ReportTable
                     title="Net usage and capture rates"
                     subtitle="Effort by net with capture rates."
@@ -1072,7 +1687,7 @@ export default function Reports() {
                   />
                 </div>
 
-                <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <div className="mt-6 grid gap-6 grid-cols-1">
                   <ReportTable
                     title="Top species banded"
                     subtitle="Top 10 species by banding volume."

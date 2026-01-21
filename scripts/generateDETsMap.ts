@@ -1,8 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
-import { DET, Net, Weather } from "../src/types/DET.js";
+import { DET, Net } from "../src/types/DET.js";
 import { db, ENVIRONMENT } from "./firebase-node.js";
+import { fetchWeatherForDate } from "../src/services/weatherService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -155,66 +156,7 @@ netsByDate.forEach((nets, date) => {
   }
 });
 
-// Fetch weather data from Open-Meteo API
-const MBO_LAT = 45.43075783523065;
-const MBO_LON = -73.93855172247436;
-
-async function fetchWeatherForDate(date: string): Promise<Weather | null> {
-  try {
-    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${MBO_LAT}&longitude=${MBO_LON}&start_date=${date}&end_date=${date}&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,windspeed_10m_max,winddirection_10m_dominant,cloudcover_mean&timezone=America/Toronto`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error(`Weather API error for ${date}:`, response.status);
-      return null;
-    }
-
-    const data = await response.json();
-
-    if (!data.daily) {
-      return null;
-    }
-
-    const windDirectionDegrees = data.daily.winddirection_10m_dominant?.[0];
-    const windDirection = windDirectionDegrees !== undefined ? degreesToCardinal(windDirectionDegrees) : undefined;
-
-    return {
-      temperature: data.daily.temperature_2m_mean?.[0],
-      temperatureMin: data.daily.temperature_2m_min?.[0],
-      temperatureMax: data.daily.temperature_2m_max?.[0],
-      cloudCoverage: data.daily.cloudcover_mean?.[0],
-      precipitation: data.daily.precipitation_sum?.[0],
-      windSpeed: data.daily.windspeed_10m_max?.[0],
-      windDirection,
-    };
-  } catch (error) {
-    console.error(`Failed to fetch weather for ${date}:`, error);
-    return null;
-  }
-}
-
-function degreesToCardinal(degrees: number): string {
-  const directions = [
-    "N",
-    "NNE",
-    "NE",
-    "ENE",
-    "E",
-    "ESE",
-    "SE",
-    "SSE",
-    "S",
-    "SSW",
-    "SW",
-    "WSW",
-    "W",
-    "WNW",
-    "NW",
-    "NNW",
-  ];
-  const index = Math.round(degrees / 22.5) % 16;
-  return directions[index];
-}
+// Weather fetching is now handled by fetchWeatherForDate from weatherService
 
 // Remove undefined values from an object (Firebase doesn't accept undefined)
 function removeUndefined<T>(obj: T): T {
@@ -247,7 +189,7 @@ async function uploadDETsToRTDB() {
   let weatherErrorCount = 0;
 
   for (let i = 0; i < dates.length; i++) {
-    if (!dates[i].startsWith("2024-")) continue;
+    if (!dates[i].startsWith("202")) continue;
     const date = dates[i];
     const det = DETsMap.get(date)!;
 

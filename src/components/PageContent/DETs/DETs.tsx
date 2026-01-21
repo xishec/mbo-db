@@ -192,25 +192,117 @@ export default function DETs() {
               {isLoadingWeather ? (
                 <p className="text-sm text-gray-600">Loading weather data...</p>
               ) : selectedDET.weather ? (
-                <div className="text-sm text-gray-600 space-y-1">
-                  {selectedDET.weather.temperatureMin !== undefined && selectedDET.weather.temperatureMax !== undefined && (
-                    <p>
-                      Temperature: {selectedDET.weather.temperatureMin.toFixed(1)}°C - {selectedDET.weather.temperatureMax.toFixed(1)}°C
-                    </p>
+                <div className="text-sm text-gray-600 space-y-2">
+                  {/* Temperature Section */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedDET.weather.dailyMeanTemp !== undefined && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Mean Daily Temp</p>
+                        <p className="font-medium">{selectedDET.weather.dailyMeanTemp.toFixed(1)}°C</p>
+                      </div>
+                    )}
+                    {selectedDET.weather.dailyHighTemp !== undefined && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Daily High</p>
+                        <p className="font-medium">{selectedDET.weather.dailyHighTemp.toFixed(1)}°C</p>
+                      </div>
+                    )}
+                    {selectedDET.weather.dailyLowTemp !== undefined && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Daily Low</p>
+                        <p className="font-medium">{selectedDET.weather.dailyLowTemp.toFixed(1)}°C</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Precipitation Section */}
+                  <div className="border-t border-default-100 pt-2">
+                    <p className="text-xs font-semibold text-gray-700 mb-1.5">Precipitation</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedDET.weather.totalRainfallMm !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Total Rain</p>
+                          <p className="font-medium">{selectedDET.weather.totalRainfallMm.toFixed(1)} mm</p>
+                        </div>
+                      )}
+                      {selectedDET.weather.totalSnowCm !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Total Snow</p>
+                          <p className="font-medium">{selectedDET.weather.totalSnowCm.toFixed(1)} cm</p>
+                        </div>
+                      )}
+                      {selectedDET.weather.daysWithRainfall !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Days with Rainfall</p>
+                          <p className="font-medium">{selectedDET.weather.daysWithRainfall}</p>
+                        </div>
+                      )}
+                      {selectedDET.weather.daysWithSnowfall !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Days with Snowfall</p>
+                          <p className="font-medium">{selectedDET.weather.daysWithSnowfall}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Snow Depth Section */}
+                  {(selectedDET.weather.meanSnowDepthCm !== undefined || selectedDET.weather.maxSnowDepthCm !== undefined) && (
+                    <div className="border-t border-default-100 pt-2">
+                      <p className="text-xs font-semibold text-gray-700 mb-1.5">Snow Depth</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {selectedDET.weather.meanSnowDepthCm !== undefined && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Mean</p>
+                            <p className="font-medium">{selectedDET.weather.meanSnowDepthCm.toFixed(1)} cm</p>
+                          </div>
+                        )}
+                        {selectedDET.weather.maxSnowDepthCm !== undefined && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Max</p>
+                            <p className="font-medium">{selectedDET.weather.maxSnowDepthCm.toFixed(1)} cm</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
-                  {selectedDET.weather.cloudCoverage !== undefined && (
-                    <p>Cloud Coverage: {selectedDET.weather.cloudCoverage.toFixed(0)}%</p>
-                  )}
-                  {selectedDET.weather.precipitation !== undefined && (
-                    <p>Precipitation: {selectedDET.weather.precipitation.toFixed(1)} mm</p>
-                  )}
-                  {selectedDET.weather.windSpeed !== undefined && (
-                    <p>
-                      Wind: {selectedDET.weather.windSpeed.toFixed(1)} km/h
-                      {selectedDET.weather.windDirection && ` ${selectedDET.weather.windDirection}`}
-                    </p>
-                  )}
-                  {(!selectedDET.weather.temperatureMin && !selectedDET.weather.temperatureMax && !selectedDET.weather.cloudCoverage && !selectedDET.weather.precipitation && !selectedDET.weather.windSpeed) && (
+
+                  {/* Wind & Cloud Section */}
+                  <div className="border-t border-default-100 pt-2">
+                    <p className="text-xs font-semibold text-gray-700 mb-1.5">Wind & Conditions</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedDET.weather.windSpeed !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Wind Speed</p>
+                          <p className="font-medium">
+                            {selectedDET.weather.windSpeed.toFixed(1)} km/h
+                            {selectedDET.weather.windDirection && ` ${selectedDET.weather.windDirection}`}
+                          </p>
+                        </div>
+                      )}
+                      {selectedDET.weather.cloudCoverage !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Cloud Coverage</p>
+                          <p className="font-medium">{selectedDET.weather.cloudCoverage.toFixed(0)}%</p>
+                        </div>
+                      )}
+                      {selectedDET.weather.humidity !== undefined && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Humidity</p>
+                          <p className="font-medium">{selectedDET.weather.humidity.toFixed(0)}%</p>
+                        </div>
+                      )}
+                      {selectedDET.weather.description && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-0.5">Conditions</p>
+                          <p className="font-medium">{selectedDET.weather.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Check if no data at all */}
+                  {(!selectedDET.weather.dailyHighTemp && !selectedDET.weather.dailyLowTemp && !selectedDET.weather.dailyMeanTemp && !selectedDET.weather.cloudCoverage && !selectedDET.weather.totalRainfallMm && !selectedDET.weather.windSpeed && !selectedDET.weather.totalSnowCm && !selectedDET.weather.meanSnowDepthCm) && (
                     <p className="text-gray-400">No weather data available</p>
                   )}
                 </div>

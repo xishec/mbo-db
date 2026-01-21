@@ -42,11 +42,21 @@ export interface DET {
 }
 
 export interface Weather {
-  temperature?: number; // Celsius
-  temperatureMin?: number;
-  temperatureMax?: number;
+  // Daily temperature values (for aggregation by period)
+  dailyHighTemp?: number; // Daily high temp (°C) - for calculating "Mean daily high" and "Highest temp"
+  dailyLowTemp?: number; // Daily low temp (°C) - for calculating "Mean daily low" and "Lowest temp"
+  dailyMeanTemp?: number; // Daily mean temp (°C) - for calculating "Mean daily temp"
+  
+  // Precipitation
+  totalRainfallMm?: number; // Total rain (mm) - for period sum and "# days with rainfall" count
+  totalSnowCm?: number; // Total snow (cm) - for period sum and "# days with snowfall" count
+  
+  // Snow depth
+  meanSnowDepthCm?: number; // Mean snow depth (cm)
+  maxSnowDepthCm?: number; // Max. snow depth (cm)
+  
+  // Other
   cloudCoverage?: number; // percentage 0-100
-  precipitation?: number; // mm
   windSpeed?: number; // km/h
   windDirection?: string; // N, NE, E, SE, S, SW, W, NW
   humidity?: number; // percentage
