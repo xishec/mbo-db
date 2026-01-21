@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem, Spinner } from "@heroui/react";
+import { Autocomplete, AutocompleteItem, Button, Spinner } from "@heroui/react";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
 import PageHeader from "../PageHeader";
 import { useData } from "../../../services/useData";
@@ -52,8 +52,8 @@ function ReportTable({
   return (
     <div className="rounded-xl border border-default-200 bg-white p-4 shadow-sm">
       <div className="mb-3">
-        <h3 className="text-base font-semibold text-default-900">{title}</h3>
-        {subtitle && <p className="text-xs text-default-900">{subtitle}</p>}
+        <h3 className="text-lg font-semibold text-default-900">{title}</h3>
+        {subtitle && <p className="mt-1 text-sm text-default-900">{subtitle}</p>}
       </div>
       <div className="overflow-x-auto rounded-lg border border-default-100">
         <table className="w-full text-xs whitespace-nowrap">
@@ -118,7 +118,7 @@ function ReportSection({ title, subtitle, children }: { title: string; subtitle?
   return (
     <section className="rounded-2xl border border-default-200 bg-white p-6 shadow-sm print:shadow-none">
       <div className="mb-5">
-        <h2 className="text-xl font-semibold text-default-900">{title}</h2>
+        <h2 className="text-lg font-semibold text-default-900">{title}</h2>
         {subtitle && <p className="mt-1 text-sm text-default-900">{subtitle}</p>}
       </div>
       {children}
@@ -148,12 +148,6 @@ const parseCsvLine = (line: string): string[] => {
   }
   result.push(current);
   return result;
-};
-
-const getYearFromDate = (dateString: string) => {
-  const date = new Date(`${dateString}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.getFullYear();
 };
 
 const formatMonthRangeLabel = (start: string, end: string) => {
@@ -336,42 +330,22 @@ const PROGRAM_GROUPS: ProgramGroupDefinition[] = [
   },
 ];
 
-type ProgramGroupKey = "winter" | "spring" | "summer" | "fall" | "owl";
-
-const GROUP_KEYS: Array<{ key: ProgramGroupKey; label: string }> = [
-  { key: "winter", label: "Winter" },
-  { key: "spring", label: "Spring" },
-  { key: "summer", label: "Summer" },
-  { key: "fall", label: "Fall" },
-  { key: "owl", label: "Owl" },
-];
-
 export default function Reports() {
-  const { birdEventsMap, programsMap, DETsMap, yearsToProgramMap, isLoading } = useData();
-  const [startDate, setStartDate] = useState<string>("2022-11-01");
-  const [endDate, setEndDate] = useState<string>("2023-11-01");
+  const { birdEventsMap, programsMap, DETsMap, isLoading } = useData();
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [isReportReady, setIsReportReady] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [appliedStartDate, setAppliedStartDate] = useState<string>("");
   const [appliedEndDate, setAppliedEndDate] = useState<string>("");
-  const [selectedGroupPrograms, setSelectedGroupPrograms] = useState<Record<ProgramGroupKey, string[]>>({
-    winter: [],
-    spring: [],
-    summer: [],
-    fall: [],
-    owl: [],
-  });
-  const [appliedGroupPrograms, setAppliedGroupPrograms] = useState<Record<ProgramGroupKey, string[]>>({
-    winter: [],
-    spring: [],
-    summer: [],
-    fall: [],
-    owl: [],
-  });
+  const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
+  const [appliedProgramIds, setAppliedProgramIds] = useState<string[]>([]);
+  const [programSearchKey, setProgramSearchKey] = useState<string | null>(null);
+  const [autocompleteResetKey, setAutocompleteResetKey] = useState(0);
   const [prioritySpeciesMap, setPrioritySpeciesMap] = useState<Record<string, string>>({});
   const deferredStartDate = useDeferredValue(appliedStartDate);
   const deferredEndDate = useDeferredValue(appliedEndDate);
-  const deferredGroupPrograms = useDeferredValue(appliedGroupPrograms);
+  const deferredProgramIds = useDeferredValue(appliedProgramIds);
 
   const captures = useMemo<ReportCapture[]>(() => {
     return Object.values(birdEventsMap)
@@ -419,26 +393,6 @@ export default function Reports() {
     return history;
   }, [birdEventsMap]);
 
-  const dateBounds = useMemo(() => {
-    const dates = captures
-      .map((capture) => capture.date)
-      .filter((date) => Boolean(date))
-      .sort();
-    if (!dates.length) {
-      return { min: "", max: "" };
-    }
-    return { min: dates[0], max: dates[dates.length - 1] };
-  }, [captures]);
-
-  useEffect(() => {
-    if (!startDate && dateBounds.min) {
-      setStartDate(dateBounds.min);
-    }
-    if (!endDate && dateBounds.max) {
-      setEndDate(dateBounds.max);
-    }
-  }, [dateBounds, startDate, endDate]);
-
   useEffect(() => {
     let isActive = true;
     fetch("/data/tblSpecies.csv")
@@ -469,56 +423,38 @@ export default function Reports() {
     };
   }, []);
 
-  const availablePrograms = useMemo(() => {
-    const startYear = startDate ? getYearFromDate(startDate) : null;
-    const endYear = endDate ? getYearFromDate(endDate) : null;
-    const years = new Set<number>();
-    if (startYear !== null) years.add(startYear);
-    if (endYear !== null) years.add(endYear);
-    const programIds = new Set<string>();
-    years.forEach((year) => {
-      (yearsToProgramMap?.[String(year)] ?? []).forEach((id) => programIds.add(id));
-    });
-    return Array.from(programIds)
-      .map((id) => programsMap[id])
-      .filter((program): program is Program => Boolean(program))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [startDate, endDate, programsMap, yearsToProgramMap]);
+  const programOptions = useMemo(() => {
+    return Object.values(programsMap).sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }, [programsMap]);
 
-  const availableProgramIds = useMemo(() => new Set(availablePrograms.map((program) => program.id)), [availablePrograms]);
+  const selectedPrograms = useMemo(
+    () => selectedProgramIds.map((id) => programsMap[id]).filter((program): program is Program => Boolean(program)),
+    [selectedProgramIds, programsMap]
+  );
 
-  const otherPrograms = useMemo(() => {
-    const selectedIds = new Set<string>();
-    Object.values(selectedGroupPrograms).forEach((ids) => {
-      ids.forEach((id) => selectedIds.add(id));
-    });
-    return availablePrograms.filter((program) => !selectedIds.has(program.id));
-  }, [availablePrograms, selectedGroupPrograms]);
-
-  const handleGroupSelectionChange = (groupKey: ProgramGroupKey, keys: Set<React.Key>) => {
-    setSelectedGroupPrograms((current) => ({
-      ...current,
-      [groupKey]: Array.from(keys).map((key) => String(key)),
-    }));
-    setIsReportReady(false);
-  };
+  const selectedProgramDateBounds = useMemo(() => {
+    if (!selectedProgramIds.length) return { min: "", max: "" };
+    const dates = [
+      ...Object.values(DETsMap ?? {})
+        .filter((det) => det && selectedProgramIds.includes(det.programId))
+        .map((det) => det.date),
+      ...Object.values(birdEventsMap)
+        .filter((event) => event && selectedProgramIds.includes(event.programId))
+        .map((event) => event.date),
+    ].filter(Boolean);
+    if (!dates.length) return { min: "", max: "" };
+    return { min: dates.reduce((a, b) => (a < b ? a : b)), max: dates.reduce((a, b) => (a > b ? a : b)) };
+  }, [selectedProgramIds, DETsMap, birdEventsMap]);
 
   useEffect(() => {
-    setSelectedGroupPrograms((current) => {
-      const next: Record<ProgramGroupKey, string[]> = { ...current };
-      GROUP_KEYS.forEach(({ key }) => {
-        next[key] = current[key].filter((id) => availableProgramIds.has(id));
-      });
-      return next;
-    });
-    setAppliedGroupPrograms((current) => {
-      const next: Record<ProgramGroupKey, string[]> = { ...current };
-      GROUP_KEYS.forEach(({ key }) => {
-        next[key] = current[key].filter((id) => availableProgramIds.has(id));
-      });
-      return next;
-    });
-  }, [availableProgramIds]);
+    if (selectedProgramIds.length) {
+      setStartDate(selectedProgramDateBounds.min);
+      setEndDate(selectedProgramDateBounds.max);
+    } else {
+      setStartDate("");
+      setEndDate("");
+    }
+  }, [selectedProgramIds, selectedProgramDateBounds]);
 
   const dets = useMemo(() => {
     return Object.values(DETsMap ?? {}).filter((det) => det && det.date);
@@ -526,10 +462,10 @@ export default function Reports() {
 
   const effectiveDateRange = useMemo(() => {
     return {
-      start: deferredStartDate || dateBounds.min,
-      end: deferredEndDate || dateBounds.max,
+      start: deferredStartDate,
+      end: deferredEndDate,
     };
-  }, [deferredStartDate, deferredEndDate, dateBounds]);
+  }, [deferredStartDate, deferredEndDate]);
 
   const reportDates = useMemo(() => {
     if (!isReportReady) return [];
@@ -549,8 +485,9 @@ export default function Reports() {
 
   const filteredCaptures = useMemo(() => {
     if (!isReportReady) return [];
-    return capturesInRange;
-  }, [capturesInRange, isReportReady]);
+    if (!deferredProgramIds.length) return [];
+    return capturesInRange.filter((capture) => deferredProgramIds.includes(capture.programId));
+  }, [capturesInRange, deferredProgramIds, isReportReady]);
 
   const detsInRange = useMemo(() => {
     if (!isReportReady) return [];
@@ -565,8 +502,9 @@ export default function Reports() {
 
   const filteredDets = useMemo(() => {
     if (!isReportReady) return [];
-    return detsInRange;
-  }, [detsInRange, isReportReady]);
+    if (!deferredProgramIds.length) return [];
+    return detsInRange.filter((det) => deferredProgramIds.includes(det.programId));
+  }, [detsInRange, deferredProgramIds, isReportReady]);
 
   const analysis = useMemo(() => {
     if (!filteredCaptures.length) return null;
@@ -620,19 +558,24 @@ export default function Reports() {
   }, []);
 
   const programGroups = useMemo<ProgramGroup[]>(() => {
-    if (!availablePrograms.length) return [];
-    const programsById = new Map(availablePrograms.map((program) => [program.id, program]));
+    if (!programOptions.length || !deferredProgramIds.length) return [];
+    const programsById = new Map(programOptions.map((program) => [program.id, program]));
     const assigned = new Set<string>();
     const groups: ProgramGroup[] = PROGRAM_GROUPS.map((group) => {
-      const selectedIds = deferredGroupPrograms[group.key as ProgramGroupKey] ?? [];
-      const programs = selectedIds
+      const programs = deferredProgramIds
         .map((id) => programsById.get(id))
         .filter((program): program is Program => Boolean(program));
-      programs.forEach((program) => assigned.add(program.id));
-      return { ...group, programs };
+      const filteredPrograms = programs.filter((program) =>
+        group.matchers.some((matcher) => program.displayName.toLowerCase().includes(matcher))
+      );
+      filteredPrograms.forEach((program) => assigned.add(program.id));
+      return { ...group, programs: filteredPrograms };
     }).filter((group) => group.programs.length);
 
-    const otherPrograms = availablePrograms.filter((program) => !assigned.has(program.id));
+    const otherPrograms = deferredProgramIds
+      .map((id) => programsById.get(id))
+      .filter((program): program is Program => Boolean(program))
+      .filter((program) => !assigned.has(program.id));
     if (otherPrograms.length) {
       groups.push({
         key: "other",
@@ -643,7 +586,7 @@ export default function Reports() {
       });
     }
     return groups;
-  }, [availablePrograms, deferredGroupPrograms]);
+  }, [programOptions, deferredProgramIds]);
 
   const reportGroups = useMemo<ReportGroupData[]>(() => {
     if (!isReportReady || !reportDates.length) return [];
@@ -1830,7 +1773,7 @@ export default function Reports() {
   const handleGenerate = () => {
     setAppliedStartDate(startDate);
     setAppliedEndDate(endDate);
-    setAppliedGroupPrograms(selectedGroupPrograms);
+    setAppliedProgramIds(selectedProgramIds);
     startTransition(() => {
       setIsReportReady(true);
     });
@@ -1856,11 +1799,77 @@ export default function Reports() {
         }
       />
 
+      <div className="rounded-2xl border border-default-200 bg-white p-6 shadow-sm print:hidden">
+        <div className="mb-5">
+          <h2 className="text-lg font-semibold text-default-900">Programs</h2>
+          <p className="mt-1 text-sm text-default-900">Pick program(s) to generate the report.</p>
+        </div>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-4 w-full lg:min-w-[320px]">
+            <div>
+              <Autocomplete
+                key={autocompleteResetKey}
+                label="Programs"
+                placeholder="Search programs"
+                size="sm"
+                selectedKey={programSearchKey}
+                onSelectionChange={(key) => {
+                  const programId = key ? String(key) : "";
+                  if (programId && !selectedProgramIds.includes(programId)) {
+                    setSelectedProgramIds((current) => [...current, programId]);
+                    setIsReportReady(false);
+                  }
+                  setProgramSearchKey(null);
+                  setAutocompleteResetKey((current) => current + 1);
+                }}
+              >
+                {programOptions.map((program) => (
+                  <AutocompleteItem key={program.id} textValue={program.displayName}>
+                    {program.displayName}
+                  </AutocompleteItem>
+                ))}
+              </Autocomplete>
+            </div>
+            {selectedPrograms.length ? (
+              <div>
+                <p className="mb-2 text-xs font-medium text-default-600">Selected programs</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedPrograms.map((program) => (
+                    <Button
+                      key={program.id}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => {
+                        setSelectedProgramIds((current) => current.filter((id) => id !== program.id));
+                        setIsReportReady(false);
+                      }}
+                    >
+                      {program.displayName}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-default-600">Select at least one program to generate a report.</div>
+            )}
+            <Button
+              color="secondary"
+              onPress={handleGenerate}
+              isDisabled={!selectedProgramIds.length || !startDate || !endDate || isPending}
+              isLoading={isPending}
+              className="w-full"
+            >
+              Generate report
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {isReportReady && reportGroups.length ? (
         <ReportSection title="Report Metadata" subtitle="Programs and date ranges included in this report.">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatTile label="Date range" value={dateRangeLabel} />
-            <StatTile label="Programs covered" value={formatNumber(availablePrograms.length)} />
+            <StatTile label="Programs selected" value={formatNumber(appliedProgramIds.length)} />
             <StatTile
               label="Generated"
               value={new Date().toLocaleDateString("en-CA", {
@@ -1877,106 +1886,27 @@ export default function Reports() {
                 .map((program) => program.displayName)
                 .sort((a, b) => a.localeCompare(b))
                 .join(", ");
-              const startLabel = groupData.groupDateBounds.start
-                ? formatShortDate(groupData.groupDateBounds.start)
-                : "—";
-              const endLabel = groupData.groupDateBounds.end ? formatShortDate(groupData.groupDateBounds.end) : "—";
+              const hasStart = Boolean(groupData.groupDateBounds.start);
+              const hasEnd = Boolean(groupData.groupDateBounds.end);
+              const startLabel = hasStart ? formatShortDate(groupData.groupDateBounds.start) : null;
+              const endLabel = hasEnd ? formatShortDate(groupData.groupDateBounds.end) : null;
               return (
-                <div key={groupData.group.key} className="rounded-lg border border-default-100 bg-default-50 p-4">
-                  <div className="text-sm font-semibold text-default-900">{groupData.group.title}</div>
-                  <div className="mt-1 text-xs text-default-600">Programs: {programList || "—"}</div>
-                  <div className="mt-1 text-xs text-default-600">
-                    Date range: {startLabel} to {endLabel}
+                <div key={groupData.group.key} className="rounded-lg border border-default-200 bg-default-50 p-4">
+                  <div className="text-base font-semibold text-default-900">{groupData.group.title}</div>
+                  <div className="mt-2 text-sm text-default-900">
+                    <span className="font-medium">Programs:</span> {programList || "—"}
                   </div>
+                  {hasStart && hasEnd && (
+                    <div className="mt-1 text-sm text-default-900">
+                      <span className="font-medium">Date range:</span> {startLabel} to {endLabel}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </ReportSection>
       ) : null}
-
-      <div className="rounded-2xl border border-default-200 bg-white p-5 shadow-sm print:hidden">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex-1 space-y-4">
-            <div>
-              <p className="text-sm font-semibold text-default-900">Time frame</p>
-              <p className="text-xs text-default-900">Set the start and end date for the report.</p>
-            </div>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-default-900" htmlFor="report-start-date">
-                  Start date
-                </label>
-                <input
-                  id="report-start-date"
-                  type="date"
-                  className="rounded-medium border border-default-200 bg-white px-3 py-2 text-sm text-default-900 transition-colors hover:border-default-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  min={dateBounds.min || undefined}
-                  max={endDate || dateBounds.max || undefined}
-                  value={startDate}
-                  onChange={(event) => {
-                    setStartDate(event.target.value);
-                    setIsReportReady(false);
-                  }}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-default-900" htmlFor="report-end-date">
-                  End date
-                </label>
-                <input
-                  id="report-end-date"
-                  type="date"
-                  className="rounded-medium border border-default-200 bg-white px-3 py-2 text-sm text-default-900 transition-colors hover:border-default-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  min={startDate || dateBounds.min || undefined}
-                  max={dateBounds.max || undefined}
-                  value={endDate}
-                  onChange={(event) => {
-                    setEndDate(event.target.value);
-                    setIsReportReady(false);
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="lg:min-w-[260px] space-y-3">
-            {GROUP_KEYS.map((group) => (
-              <Select
-                key={group.key}
-                size="sm"
-                label={`${group.label} programs`}
-                selectionMode="multiple"
-                selectedKeys={new Set(selectedGroupPrograms[group.key])}
-                onSelectionChange={(keys) => handleGroupSelectionChange(group.key, keys as Set<React.Key>)}
-                className="w-full"
-              >
-                {availablePrograms.map((program) => (
-                  <SelectItem key={program.id} textValue={program.displayName}>
-                    {program.displayName}
-                  </SelectItem>
-                ))}
-              </Select>
-            ))}
-            <div className="rounded-lg border border-default-100 bg-default-50 p-3 text-xs text-default-600">
-              <div className="font-semibold text-default-900">Other programs (auto)</div>
-              <div className="mt-1">
-                {otherPrograms.length
-                  ? otherPrograms.map((program) => program.displayName).sort((a, b) => a.localeCompare(b)).join(", ")
-                  : "—"}
-              </div>
-            </div>
-            <Button
-              color="secondary"
-              onPress={handleGenerate}
-              isDisabled={!startDate || !endDate || isPending}
-              isLoading={isPending}
-              className="w-full"
-            >
-              Generate report
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {isPending ? (
         <div className="rounded-2xl border border-dashed border-default-300 bg-default-50 p-10 text-center">
@@ -2002,7 +1932,7 @@ export default function Reports() {
             </svg>
             <h3 className="mt-4 text-lg font-semibold text-default-900">Generate a report</h3>
             <p className="mt-2 text-sm text-default-900">
-              Select a date range and click “Generate report” to run the analysis.
+              Select program(s) and click “Generate report” to run the analysis.
             </p>
           </div>
         </div>
@@ -2058,28 +1988,28 @@ export default function Reports() {
                   <div className="mt-4 space-y-3 text-sm text-default-900">
                     {groupData.effortSummary && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-default-500">Effort</p>
-                        <p>{groupData.effortSummary}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Effort</p>
+                        <p className="text-default-900">{groupData.effortSummary}</p>
                       </div>
                     )}
                     {groupData.siteConditionsSummary && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-default-500">Site conditions</p>
-                        <p>{groupData.siteConditionsSummary}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Site conditions</p>
+                        <p className="text-default-900">{groupData.siteConditionsSummary}</p>
                       </div>
                     )}
                     {groupData.bandedSummary && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-default-500">Birds banded</p>
-                        <p>{groupData.bandedSummary}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Birds banded</p>
+                        <p className="text-default-900">{groupData.bandedSummary}</p>
                       </div>
                     )}
                     {groupData.recaptureSummary && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-default-500">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-default-600">
                           Birds recaptured
                         </p>
-                        <p>{groupData.recaptureSummary}</p>
+                        <p className="text-default-900">{groupData.recaptureSummary}</p>
                       </div>
                     )}
                   </div>
@@ -2165,7 +2095,7 @@ export default function Reports() {
                       rows={groupData.netUsageRows}
                     />
                     {groupData.netProductivitySummary && (
-                      <p className="mt-3 text-xs text-default-900">{groupData.netProductivitySummary}</p>
+                      <p className="mt-3 text-sm text-default-900">{groupData.netProductivitySummary}</p>
                     )}
                   </div>
                   {groupData.priorityRows.length ? (
