@@ -287,6 +287,7 @@ type ReportGroupData = {
   topRecapturedRows: Array<Record<string, React.ReactNode>>;
   returnsRows: Array<Record<string, React.ReactNode>>;
   netUsageRows: Array<Record<string, React.ReactNode>>;
+  netProductivitySummary: string;
   priorityRows: Array<Record<string, React.ReactNode>>;
 };
 
@@ -622,18 +623,7 @@ export default function Reports() {
         { date: "", label: "", value: -1, mean7: 0 }
       );
 
-      const summary =
-        groupAnalysis && groupAnalysis.totalCaptures
-          ? `During ${dateRangeLabel}, ${group.title} recorded ${formatNumber(
-              groupAnalysis.totalCaptures
-            )} captures across ${formatNumber(
-              groupAnalysis.uniqueSpecies
-            )} species. Banders logged ${formatNumber(effortDays)} effort days and ${formatNumber(
-              Math.round(netHours)
-            )} net hours. Peak banding occurred on ${peakBandedDay.label || "N/A"} with ${formatNumber(
-              Math.max(0, peakBandedDay.value)
-            )} individuals.`
-          : `No report data available for ${group.title} during ${dateRangeLabel}.`;
+      const bandingDates = new Set(bandedCaptures.map((capture) => capture.date).filter(Boolean));
 
       const periodGranularity = group.key === "winter" || group.key === "summer" ? "month" : "week";
       const periodLabel = periodGranularity === "week" ? "Week" : "Month";
@@ -871,6 +861,75 @@ export default function Reports() {
           return entry;
         })
         .sort((a, b) => a.key.localeCompare(b.key));
+
+      const summary = (() => {
+        if (!groupAnalysis || !groupAnalysis.totalCaptures) {
+          return `No report data available for ${group.title} during ${dateRangeLabel}.`;
+        }
+
+        const baseSummary = `During ${dateRangeLabel}, ${group.title} recorded ${formatNumber(
+          groupAnalysis.totalCaptures
+        )} captures across ${formatNumber(groupAnalysis.uniqueSpecies)} species. Banders logged ${formatNumber(
+          effortDays
+        )} effort days and ${formatNumber(Math.round(netHours))} net hours. Peak banding occurred on ${
+          peakBandedDay.label || "N/A"
+        } with ${formatNumber(Math.max(0, peakBandedDay.value))} individuals.`;
+
+        if (group.key !== "winter") return baseSummary;
+
+        const seasonStartLabel = effectiveDateRange.start ? formatShortDate(effectiveDateRange.start) : "";
+        const seasonEndLabel = effectiveDateRange.end ? formatShortDate(effectiveDateRange.end) : "";
+        const totalSeasonDays = reportDates.length;
+        const seasonWeeks = totalSeasonDays ? Math.round(totalSeasonDays / 7) : 0;
+        const effortPercent = totalSeasonDays ? Math.round((effortDays / totalSeasonDays) * 100) : 0;
+
+        const monthEffort = periodEntries.map((entry) => ({
+          label: entry.label,
+          effortDays: entry.effortDays,
+          bandingDays: entry.bandingDates.size,
+        }));
+        const effortCounts = monthEffort.map((entry) => entry.effortDays);
+        const maxEffort = effortCounts.length ? Math.max(...effortCounts) : 0;
+        const minEffort = effortCounts.length ? Math.min(...effortCounts) : 0;
+        const monthsWithMax = monthEffort.filter((entry) => entry.effortDays === maxEffort).map((entry) => entry.label);
+        const monthsWithMin = monthEffort.filter((entry) => entry.effortDays === minEffort).map((entry) => entry.label);
+        const noBandingMonths = monthEffort.filter((entry) => entry.bandingDays === 0).map((entry) => entry.label);
+
+        const effortSentence = totalSeasonDays
+          ? `Observations were recorded on ${formatNumber(effortDays)} (${effortPercent}%) of the ${formatNumber(
+              totalSeasonDays
+            )} days during the winter season${seasonWeeks ? ` (${seasonWeeks}-week period)` : ""} from ${
+              seasonStartLabel
+            } through ${seasonEndLabel}.`
+          : `Observations were recorded on ${formatNumber(effortDays)} days during the winter season.`;
+
+        let monthSentence = "";
+        if (maxEffort && minEffort && maxEffort === minEffort) {
+          monthSentence = `There were ${formatNumber(maxEffort)} visits each month.`;
+        } else if (maxEffort && minEffort) {
+          const maxLabel = monthsWithMax.join(", ");
+          const minLabel = monthsWithMin.join(", ");
+          monthSentence = `There were ${formatNumber(maxEffort)} visits in ${maxLabel}${
+            minLabel ? `, except for ${minLabel} with ${formatNumber(minEffort)}` : ""
+          }.`;
+        }
+
+        const bandingSentence = `There were ${formatNumber(
+          bandingDates.size
+        )} days with banding effort${
+          noBandingMonths.length ? `; no banding occurred in ${noBandingMonths.join(", ")}.` : "."
+        }`;
+
+        return [
+          `The winter season at MBO spans the ${seasonWeeks}-week period from ${seasonStartLabel} through ${seasonEndLabel}.`,
+          baseSummary,
+          effortSentence,
+          monthSentence,
+          bandingSentence,
+        ]
+          .filter(Boolean)
+          .join(" ");
+      })();
 
       const seasonAggregate = periodEntries.reduce(
         (acc, entry) => {
@@ -1323,24 +1382,149 @@ export default function Reports() {
         });
       });
 
-      const capturesByNet = new Map<string, number>();
+      const netStatsByNet = new Map<
+        string,
+        { newCaptures: number; returns: number; recaptures: number; totalCaptures: number }
+      >();
       groupCaptures.forEach((capture) => {
         const netId = capture.net || "Unknown";
-        capturesByNet.set(netId, (capturesByNet.get(netId) ?? 0) + 1);
+        if (!netStatsByNet.has(netId)) {
+          netStatsByNet.set(netId, { newCaptures: 0, returns: 0, recaptures: 0, totalCaptures: 0 });
+        }
+        const stats = netStatsByNet.get(netId)!;
+        stats.totalCaptures += 1;
+        if (capture.captureType === BirdEventType.Banded) stats.newCaptures += 1;
+        if (capture.captureType === BirdEventType.Return) stats.returns += 1;
+        if (capture.captureType === BirdEventType.Repeat || capture.captureType === BirdEventType.Alien) {
+          stats.recaptures += 1;
+        }
       });
 
-      const netUsageRows = Array.from(netHoursByNet.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([netId, hours]) => {
-          const capturesForNet = capturesByNet.get(netId) ?? 0;
-          const rate = hours ? (capturesForNet / hours) * 100 : null;
-          return {
-            net: netId,
-            netHours: formatOptionalInt(hours),
-            captures: formatNumber(capturesForNet),
-            rate: rate === null ? "—" : formatOptional(rate),
+      const getNetGroup = (netId: string) => {
+        const trimmed = netId.trim().toUpperCase();
+        if (!trimmed) return "Other";
+        const first = trimmed[0];
+        if (first === "B" || first === "N") return "B/N";
+        if (["A", "C", "D", "E", "H"].includes(first)) return first;
+        return "Other";
+      };
+
+      const groupedNetIds = new Map<string, string[]>();
+      Array.from(netHoursByNet.keys()).forEach((netId) => {
+        const groupKey = getNetGroup(netId);
+        if (!groupedNetIds.has(groupKey)) groupedNetIds.set(groupKey, []);
+        groupedNetIds.get(groupKey)!.push(netId);
+      });
+
+      const groupOrder = ["A", "B/N", "C", "D", "E", "H", "Other"];
+      const netUsageRows: Array<Record<string, React.ReactNode>> = [];
+
+      const grandTotals = {
+        hours: 0,
+        newCaptures: 0,
+        returns: 0,
+        recaptures: 0,
+        totalCaptures: 0,
+      };
+
+      groupOrder.forEach((groupKey) => {
+        const nets = groupedNetIds.get(groupKey);
+        if (!nets?.length) return;
+        nets.sort((a, b) => a.localeCompare(b));
+
+        const groupTotals = {
+          hours: 0,
+          newCaptures: 0,
+          returns: 0,
+          recaptures: 0,
+          totalCaptures: 0,
+        };
+
+        nets.forEach((netId) => {
+          const hours = netHoursByNet.get(netId) ?? 0;
+          const stats = netStatsByNet.get(netId) ?? {
+            newCaptures: 0,
+            returns: 0,
+            recaptures: 0,
+            totalCaptures: 0,
           };
+          groupTotals.hours += hours;
+          groupTotals.newCaptures += stats.newCaptures;
+          groupTotals.returns += stats.returns;
+          groupTotals.recaptures += stats.recaptures;
+          groupTotals.totalCaptures += stats.totalCaptures;
+
+          netUsageRows.push({
+            net: netId,
+            netHours: formatOptional(hours, 1),
+            newCaptures: formatNumber(stats.newCaptures),
+            returnsRecaptures: formatNumber(stats.returns + stats.recaptures),
+            totalCaptures: formatNumber(stats.totalCaptures),
+            newRate: hours ? formatOptional((stats.newCaptures / hours) * 100, 1) : "—",
+            totalRate: hours ? formatOptional((stats.totalCaptures / hours) * 100, 1) : "—",
+          });
         });
+
+        grandTotals.hours += groupTotals.hours;
+        grandTotals.newCaptures += groupTotals.newCaptures;
+        grandTotals.returns += groupTotals.returns;
+        grandTotals.recaptures += groupTotals.recaptures;
+        grandTotals.totalCaptures += groupTotals.totalCaptures;
+
+        netUsageRows.push({
+          net: `${groupKey} - TOTAL`,
+          netHours: formatOptional(groupTotals.hours, 1),
+          newCaptures: formatNumber(groupTotals.newCaptures),
+          returnsRecaptures: formatNumber(groupTotals.returns + groupTotals.recaptures),
+          totalCaptures: formatNumber(groupTotals.totalCaptures),
+          newRate: groupTotals.hours ? formatOptional((groupTotals.newCaptures / groupTotals.hours) * 100, 1) : "—",
+          totalRate: groupTotals.hours ? formatOptional((groupTotals.totalCaptures / groupTotals.hours) * 100, 1) : "—",
+        });
+      });
+
+      if (grandTotals.hours > 0 || grandTotals.totalCaptures > 0) {
+        netUsageRows.push({
+          net: "GRAND TOTAL",
+          netHours: formatOptional(grandTotals.hours, 1),
+          newCaptures: formatNumber(grandTotals.newCaptures),
+          returnsRecaptures: formatNumber(grandTotals.returns + grandTotals.recaptures),
+          totalCaptures: formatNumber(grandTotals.totalCaptures),
+          newRate: grandTotals.hours ? formatOptional((grandTotals.newCaptures / grandTotals.hours) * 100, 1) : "—",
+          totalRate: grandTotals.hours ? formatOptional((grandTotals.totalCaptures / grandTotals.hours) * 100, 1) : "—",
+        });
+      }
+
+      const groupSummaries = netUsageRows.filter((row) => String(row.net).includes("TOTAL"));
+      const groupRates = groupSummaries
+        .filter((row) => row.net !== "GRAND TOTAL")
+        .map((row) => {
+          const netLabel = String(row.net);
+          const hoursValue = Number(String(row.netHours).replace(/,/g, ""));
+          const totalRate = Number(String(row.totalRate).replace(/,/g, ""));
+          return { label: netLabel, totalRate, hoursValue };
+        })
+        .filter((row) => !Number.isNaN(row.totalRate));
+      const topGroup = groupRates.sort((a, b) => b.totalRate - a.totalRate)[0];
+      const lowGroup = groupRates.sort((a, b) => a.totalRate - b.totalRate)[0];
+
+      const overallNewRate =
+        grandTotals.hours > 0 ? formatOptional((grandTotals.newCaptures / grandTotals.hours) * 100, 1) : "—";
+      const overallRecaptureRate =
+        grandTotals.hours > 0
+          ? formatOptional(((grandTotals.returns + grandTotals.recaptures) / grandTotals.hours) * 100, 1)
+          : "—";
+
+      const netProductivitySummary =
+        grandTotals.hours > 0
+          ? `Overall productivity was ${overallNewRate} new birds per 100 net hours, with ${overallRecaptureRate} returns + repeats per 100 net hours. ${
+              topGroup && lowGroup
+                ? `${topGroup.label.replace(" - TOTAL", "")} nets were the most productive, while ${lowGroup.label.replace(
+                    " - TOTAL",
+                    ""
+                  )} nets had the lowest capture rates.`
+                : ""
+            }`.trim()
+          : "No net productivity data available.";
 
       const priorityCounts = new Map<string, { observed: number; banded: number; priority: string }>();
       groupDets.forEach((det) => {
@@ -1394,6 +1578,7 @@ export default function Reports() {
         topRecapturedRows,
         returnsRows,
         netUsageRows,
+        netProductivitySummary,
         priorityRows,
       });
     }
@@ -1597,7 +1782,6 @@ export default function Reports() {
                 subtitle={groupData.group.subtitle}
               >
                 <p className="text-sm text-default-900">{groupData.summary}</p>
-                {programList && <p className="mt-2 text-xs text-default-900">Programs: {programList}</p>}
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <StatTile label="Total captures" value={formatNumber(groupAnalysis?.totalCaptures ?? 0)} />
                   <StatTile label="Species recorded" value={formatNumber(groupAnalysis?.uniqueSpecies ?? 0)} />
@@ -1663,17 +1847,25 @@ export default function Reports() {
                       rows={groupData.returnDetailRows}
                     />
                   ) : null}
-                  <ReportTable
-                    title="Net usage and capture rates"
-                    subtitle="Effort by net with capture rates."
-                    columns={[
-                      { key: "net", label: "Net" },
-                      { key: "netHours", label: "Net hours", align: "right" },
-                      { key: "captures", label: "Captures", align: "right" },
-                      { key: "rate", label: "Captures/100 NH", align: "right" },
-                    ]}
-                    rows={groupData.netUsageRows}
-                  />
+                  <div>
+                    <ReportTable
+                      title="Net usage and capture rates"
+                      subtitle="Effort by net with productivity rates."
+                      columns={[
+                        { key: "net", label: "Net" },
+                        { key: "netHours", label: "Hours open", align: "right" },
+                        { key: "newCaptures", label: "New captures", align: "right" },
+                        { key: "returnsRecaptures", label: "Returns + repeats", align: "right" },
+                        { key: "totalCaptures", label: "Total captures", align: "right" },
+                        { key: "newRate", label: "New / 100 NH", align: "right" },
+                        { key: "totalRate", label: "Total / 100 NH", align: "right" },
+                      ]}
+                      rows={groupData.netUsageRows}
+                    />
+                    {groupData.netProductivitySummary && (
+                      <p className="mt-3 text-xs text-default-900">{groupData.netProductivitySummary}</p>
+                    )}
+                  </div>
                   <ReportTable
                     title="Priority species coverage"
                     subtitle="Priority species observed vs banded."
