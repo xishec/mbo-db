@@ -13,7 +13,6 @@ import {
   formatWeekLabel,
   getMonthKey,
   getWeekStart,
-  summarizeSeason,
   toReportCapture,
   type DailyTrendPoint,
   type ReportCapture,
@@ -37,6 +36,346 @@ type TableColumn = {
   key: string;
   label: string;
   align?: "left" | "right" | "center";
+};
+
+const PRIORITY_CATEGORIES = ["A", "B", "C", "D"] as const;
+type PriorityCategory = (typeof PRIORITY_CATEGORIES)[number];
+
+const COMPARISON_MATCHER_SETS = [
+  { key: "winter", matchers: ["winter"] },
+  { key: "spring", matchers: ["spring", "smmp"] },
+  { key: "summer", matchers: ["summer", "maps"] },
+  { key: "fall", matchers: ["fall", "fmmp"] },
+  { key: "owl", matchers: ["owl", "saw-whet", "saw whet", "nswo"] },
+];
+
+type DetSummary = {
+  observedSpeciesCount?: Record<string, number>;
+  netHours?: { nets?: Array<{ id?: string; total?: number }> };
+};
+
+const getNetGroup = (netId: string) => {
+  const trimmed = netId.trim().toUpperCase();
+  if (!trimmed) return "Other";
+  const first = trimmed[0];
+  if (first === "B" || first === "N") return "B/N";
+  if (["A", "C", "D", "E", "H"].includes(first)) return first;
+  return "Other";
+};
+
+const NET_GROUP_ORDER = ["A", "B/N", "C", "D", "E", "H", "Other"];
+
+const getComparisonMatchers = (programs: Program[]) => {
+  const lowerNames = programs.map((program) => program.displayName.toLowerCase());
+  const matchers = new Set<string>();
+  COMPARISON_MATCHER_SETS.forEach(({ matchers: matcherList }) => {
+    if (matcherList.some((matcher) => lowerNames.some((name) => name.includes(matcher)))) {
+      matcherList.forEach((matcher) => matchers.add(matcher));
+    }
+  });
+  return Array.from(matchers);
+};
+
+const isWinterProgramSet = (programs: Program[]) => {
+  if (!programs.length) return false;
+  const lowerNames = programs.map((program) => program.displayName.toLowerCase());
+  const hasWinter = lowerNames.some((name) => name.includes("winter"));
+  const hasOtherSeason = lowerNames.some((name) =>
+    ["spring", "smmp", "summer", "maps", "fall", "fmmp", "owl", "saw-whet", "saw whet", "nswo"].some((keyword) =>
+      name.includes(keyword)
+    )
+  );
+  return hasWinter && !hasOtherSeason;
+};
+
+const getPeriodGranularity = (programs: Program[]) => {
+  const lowerNames = programs.map((program) => program.displayName.toLowerCase());
+  const hasMonthPrograms = lowerNames.some((name) => name.includes("winter") || name.includes("summer") || name.includes("maps"));
+  const hasWeekPrograms = lowerNames.some((name) => name.includes("spring") || name.includes("smmp") || name.includes("fall") || name.includes("fmmp"));
+  if (hasMonthPrograms && !hasWeekPrograms) return "month";
+  return "week";
+};
+
+const buildNetUsageData = ({
+  groupCaptures,
+  groupDets,
+  formatOptional,
+  getSpeciesLabel,
+}: {
+  groupCaptures: ReportCapture[];
+  groupDets: DetSummary[];
+  formatOptional: (value: number | null, digits?: number) => string;
+  getSpeciesLabel: (code: string) => string;
+}) => {
+  const netHoursByNet = new Map<string, number>();
+  groupDets.forEach((det) => {
+    det.netHours?.nets?.forEach((net) => {
+      const netId = net.id || "Unknown";
+      const hours = Number(net.total ?? 0);
+      if (!Number.isNaN(hours)) {
+        netHoursByNet.set(netId, (netHoursByNet.get(netId) ?? 0) + hours);
+      }
+    });
+  });
+
+  const netStatsByNet = new Map<
+    string,
+    { newCaptures: number; returns: number; recaptures: number; totalCaptures: number }
+  >();
+  groupCaptures.forEach((capture) => {
+    const netId = capture.net || "Unknown";
+    if (!netStatsByNet.has(netId)) {
+      netStatsByNet.set(netId, { newCaptures: 0, returns: 0, recaptures: 0, totalCaptures: 0 });
+    }
+    const stats = netStatsByNet.get(netId)!;
+    stats.totalCaptures += 1;
+    if (capture.captureType === BirdEventType.Banded) stats.newCaptures += 1;
+    if (capture.captureType === BirdEventType.Return) stats.returns += 1;
+    if (capture.captureType === BirdEventType.Repeat || capture.captureType === BirdEventType.Alien) {
+      stats.recaptures += 1;
+    }
+  });
+
+  const groupedNetIds = new Map<string, string[]>();
+  Array.from(netHoursByNet.keys()).forEach((netId) => {
+    const groupKey = getNetGroup(netId);
+    if (!groupedNetIds.has(groupKey)) groupedNetIds.set(groupKey, []);
+    groupedNetIds.get(groupKey)!.push(netId);
+  });
+
+  const netUsageRows: Array<Record<string, React.ReactNode>> = [];
+  const grandTotals = {
+    hours: 0,
+    newCaptures: 0,
+    returns: 0,
+    recaptures: 0,
+    totalCaptures: 0,
+  };
+
+  NET_GROUP_ORDER.forEach((groupKey) => {
+    const nets = groupedNetIds.get(groupKey);
+    if (!nets?.length) return;
+    nets.sort((a, b) => a.localeCompare(b));
+
+    const groupTotals = {
+      hours: 0,
+      newCaptures: 0,
+      returns: 0,
+      recaptures: 0,
+      totalCaptures: 0,
+    };
+
+    nets.forEach((netId) => {
+      const hours = netHoursByNet.get(netId) ?? 0;
+      const stats = netStatsByNet.get(netId) ?? {
+        newCaptures: 0,
+        returns: 0,
+        recaptures: 0,
+        totalCaptures: 0,
+      };
+      groupTotals.hours += hours;
+      groupTotals.newCaptures += stats.newCaptures;
+      groupTotals.returns += stats.returns;
+      groupTotals.recaptures += stats.recaptures;
+      groupTotals.totalCaptures += stats.totalCaptures;
+
+      netUsageRows.push({
+        net: netId,
+        netHours: formatOptional(hours, 1),
+        newCaptures: formatNumber(stats.newCaptures),
+        returnsRecaptures: formatNumber(stats.returns + stats.recaptures),
+        totalCaptures: formatNumber(stats.totalCaptures),
+        newRate: hours ? formatOptional((stats.newCaptures / hours) * 100, 1) : "—",
+        totalRate: hours ? formatOptional((stats.totalCaptures / hours) * 100, 1) : "—",
+      });
+    });
+
+    grandTotals.hours += groupTotals.hours;
+    grandTotals.newCaptures += groupTotals.newCaptures;
+    grandTotals.returns += groupTotals.returns;
+    grandTotals.recaptures += groupTotals.recaptures;
+    grandTotals.totalCaptures += groupTotals.totalCaptures;
+
+    netUsageRows.push({
+      net: `${groupKey} - TOTAL`,
+      netHours: formatOptional(groupTotals.hours, 1),
+      newCaptures: formatNumber(groupTotals.newCaptures),
+      returnsRecaptures: formatNumber(groupTotals.returns + groupTotals.recaptures),
+      totalCaptures: formatNumber(groupTotals.totalCaptures),
+      newRate: groupTotals.hours ? formatOptional((groupTotals.newCaptures / groupTotals.hours) * 100, 1) : "—",
+      totalRate: groupTotals.hours ? formatOptional((groupTotals.totalCaptures / groupTotals.hours) * 100, 1) : "—",
+    });
+  });
+
+  if (grandTotals.hours > 0 || grandTotals.totalCaptures > 0) {
+    netUsageRows.push({
+      net: "GRAND TOTAL",
+      netHours: formatOptional(grandTotals.hours, 1),
+      newCaptures: formatNumber(grandTotals.newCaptures),
+      returnsRecaptures: formatNumber(grandTotals.returns + grandTotals.recaptures),
+      totalCaptures: formatNumber(grandTotals.totalCaptures),
+      newRate: grandTotals.hours ? formatOptional((grandTotals.newCaptures / grandTotals.hours) * 100, 1) : "—",
+      totalRate: grandTotals.hours ? formatOptional((grandTotals.totalCaptures / grandTotals.hours) * 100, 1) : "—",
+    });
+  }
+
+  const speciesByNet = new Map<string, Map<string, number>>();
+  groupCaptures.forEach((capture) => {
+    const netId = capture.net || "Unknown";
+    if (!speciesByNet.has(netId)) {
+      speciesByNet.set(netId, new Map());
+    }
+    const netMap = speciesByNet.get(netId)!;
+    netMap.set(capture.species, (netMap.get(capture.species) ?? 0) + 1);
+  });
+
+  const netTopSpeciesRows = Array.from(speciesByNet.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([netId, speciesCounts]) => {
+      const topSpecies = Array.from(speciesCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([species, count]) => `${getSpeciesLabel(species)} (${formatNumber(count)})`);
+      return {
+        net: netId,
+        top1: topSpecies[0] ?? "—",
+        top2: topSpecies[1] ?? "—",
+        top3: topSpecies[2] ?? "—",
+      };
+    });
+
+  const groupSummaries = netUsageRows.filter((row) => String(row.net).includes("TOTAL"));
+  const groupRates = groupSummaries
+    .filter((row) => row.net !== "GRAND TOTAL")
+    .map((row) => {
+      const netLabel = String(row.net);
+      const totalRate = Number(String(row.totalRate).replace(/,/g, ""));
+      return { label: netLabel, totalRate };
+    })
+    .filter((row) => !Number.isNaN(row.totalRate));
+  const topGroup = groupRates.sort((a, b) => b.totalRate - a.totalRate)[0];
+  const lowGroup = groupRates.sort((a, b) => a.totalRate - b.totalRate)[0];
+
+  const overallNewRate =
+    grandTotals.hours > 0 ? formatOptional((grandTotals.newCaptures / grandTotals.hours) * 100, 1) : "—";
+  const overallRecaptureRate =
+    grandTotals.hours > 0
+      ? formatOptional(((grandTotals.returns + grandTotals.recaptures) / grandTotals.hours) * 100, 1)
+      : "—";
+
+  const netProductivitySummary =
+    grandTotals.hours > 0
+      ? `Overall productivity was ${overallNewRate} new birds per 100 net hours, with ${overallRecaptureRate} returns + repeats per 100 net hours. ${topGroup && lowGroup
+        ? `${topGroup.label.replace(" - TOTAL", "")} nets were the most productive, while ${lowGroup.label.replace(
+          " - TOTAL",
+          ""
+        )} nets had the lowest capture rates.`
+        : ""
+        }`.trim()
+      : "No net productivity data available.";
+
+  return { netUsageRows, netProductivitySummary, netTopSpeciesRows };
+};
+
+const buildPriorityCounts = (
+  groupDets: DetSummary[],
+  bandedCaptures: ReportCapture[],
+  prioritySpeciesMap: Record<string, string>
+) => {
+  const priorityCounts = new Map<string, { observed: number; banded: number; priority: PriorityCategory }>();
+  groupDets.forEach((det) => {
+    Object.entries(det.observedSpeciesCount ?? {}).forEach(([speciesCode, count]) => {
+      const priority = prioritySpeciesMap[speciesCode] as PriorityCategory | undefined;
+      if (!priority) return;
+      const entry = priorityCounts.get(speciesCode) ?? { observed: 0, banded: 0, priority };
+      entry.observed += Number(count) || 0;
+      priorityCounts.set(speciesCode, entry);
+    });
+  });
+  bandedCaptures.forEach((capture) => {
+    const priority = prioritySpeciesMap[capture.species] as PriorityCategory | undefined;
+    if (!priority) return;
+    const entry = priorityCounts.get(capture.species) ?? { observed: 0, banded: 0, priority };
+    entry.banded += 1;
+    priorityCounts.set(capture.species, entry);
+  });
+  return priorityCounts;
+};
+
+const buildPrioritySummaryRows = (priorityCounts: Map<string, { observed: number; banded: number; priority: string }>) => {
+  const initPriorityNumberMap = () =>
+    PRIORITY_CATEGORIES.reduce<Record<string, number>>((acc, category) => {
+      acc[category] = 0;
+      return acc;
+    }, {});
+
+  const priorityCategorySpecies = PRIORITY_CATEGORIES.reduce<Record<string, Set<string>>>((acc, category) => {
+    acc[category] = new Set();
+    return acc;
+  }, {});
+
+  SPECIES_GROUPS.forEach((item) => {
+    if (item.type !== "species") return;
+    if (!item.priority) return;
+    if (!priorityCategorySpecies[item.priority]) return;
+    priorityCategorySpecies[item.priority].add(item.code);
+  });
+
+  const priorityCategoryTotals = initPriorityNumberMap();
+  PRIORITY_CATEGORIES.forEach((category) => {
+    priorityCategoryTotals[category] = priorityCategorySpecies[category]?.size ?? 0;
+  });
+  const priorityCategoryObserved = initPriorityNumberMap();
+  const priorityCategoryBanded = initPriorityNumberMap();
+  const priorityCategoryIndividuals = initPriorityNumberMap();
+
+  priorityCounts.forEach((entry) => {
+    if (!entry.priority) return;
+    if (!priorityCategoryTotals[entry.priority]) return;
+    if (entry.observed > 0) priorityCategoryObserved[entry.priority] += 1;
+    if (entry.banded > 0) priorityCategoryBanded[entry.priority] += 1;
+    priorityCategoryIndividuals[entry.priority] += entry.banded;
+  });
+
+  const hasPriorityData = PRIORITY_CATEGORIES.some(
+    (category) =>
+      priorityCategoryObserved[category] > 0 ||
+      priorityCategoryBanded[category] > 0 ||
+      priorityCategoryIndividuals[category] > 0
+  );
+
+  return hasPriorityData
+    ? [
+      {
+        label: "Number of species in category",
+        A: formatNumber(priorityCategoryTotals.A),
+        B: formatNumber(priorityCategoryTotals.B),
+        C: formatNumber(priorityCategoryTotals.C),
+        D: formatNumber(priorityCategoryTotals.D),
+      },
+      {
+        label: "Number of species observed",
+        A: formatNumber(priorityCategoryObserved.A),
+        B: formatNumber(priorityCategoryObserved.B),
+        C: formatNumber(priorityCategoryObserved.C),
+        D: formatNumber(priorityCategoryObserved.D),
+      },
+      {
+        label: "Number of species banded",
+        A: formatNumber(priorityCategoryBanded.A),
+        B: formatNumber(priorityCategoryBanded.B),
+        C: formatNumber(priorityCategoryBanded.C),
+        D: formatNumber(priorityCategoryBanded.D),
+      },
+      {
+        label: "Number of individuals banded",
+        A: formatNumber(priorityCategoryIndividuals.A),
+        B: formatNumber(priorityCategoryIndividuals.B),
+        C: formatNumber(priorityCategoryIndividuals.C),
+        D: formatNumber(priorityCategoryIndividuals.D),
+      },
+    ]
+    : [];
 };
 
 function ReportTable({
@@ -257,20 +596,9 @@ const getWinterSeasonKey = (dateString: string) => {
   return null;
 };
 
-type ProgramGroupDefinition = {
-  key: string;
+type ReportData = {
   title: string;
   subtitle: string;
-  matchers: string[];
-  showCharts?: boolean;
-};
-
-type ProgramGroup = ProgramGroupDefinition & {
-  programs: Program[];
-};
-
-type ReportGroupData = {
-  group: ProgramGroup;
   groupAnalysis: ReportAnalysis | null;
   groupCaptures: ReportCapture[];
   effortDays: number;
@@ -294,49 +622,12 @@ type ReportGroupData = {
   bandedComparisonRows: Array<Record<string, React.ReactNode>>;
   returnDetailColumns: TableColumn[];
   returnDetailRows: Array<Record<string, React.ReactNode>>;
-  topBandedRows: Array<Record<string, React.ReactNode>>;
   topRecapturedRows: Array<Record<string, React.ReactNode>>;
-  returnsRows: Array<Record<string, React.ReactNode>>;
   netUsageRows: Array<Record<string, React.ReactNode>>;
   netProductivitySummary: string;
   netTopSpeciesRows: Array<Record<string, React.ReactNode>>;
   prioritySummaryRows: Array<Record<string, React.ReactNode>>;
 };
-
-const PROGRAM_GROUPS: ProgramGroupDefinition[] = [
-  {
-    key: "winter",
-    title: "Winter Population Monitoring Program",
-    subtitle: "Seasonal banding activity during winter monitoring.",
-    matchers: ["winter"],
-  },
-  {
-    key: "spring",
-    title: "Spring Migration Monitoring Program",
-    subtitle: "Daily banding and census activity during spring migration.",
-    matchers: ["spring", "smmp"],
-    showCharts: true,
-  },
-  {
-    key: "summer",
-    title: "Summer (MAPS) Program",
-    subtitle: "Breeding season monitoring and capture activity.",
-    matchers: ["summer", "maps"],
-  },
-  {
-    key: "fall",
-    title: "Fall Migration Monitoring Program",
-    subtitle: "Daily banding and census activity during fall migration.",
-    matchers: ["fall", "fmmp"],
-    showCharts: true,
-  },
-  {
-    key: "owl",
-    title: "Northern Saw-whet Owl Migration Monitoring Program",
-    subtitle: "Owl migration monitoring program results.",
-    matchers: ["owl", "saw-whet", "saw whet", "nswo"],
-  },
-];
 
 export default function Reports() {
   const { birdEventsMap, programsMap, DETsMap, yearsToProgramMap, isLoading } = useData();
@@ -465,56 +756,26 @@ export default function Reports() {
     return Object.values(DETsMap ?? {}).filter((det) => det && det.date);
   }, [DETsMap]);
 
-  const effectiveDateRange = useMemo(() => {
-    return {
+  const effectiveDateRange = useMemo(
+    () => ({
       start: deferredStartDate,
       end: deferredEndDate,
-    };
-  }, [deferredStartDate, deferredEndDate]);
+    }),
+    [deferredStartDate, deferredEndDate]
+  );
 
-  const reportDates = useMemo(() => {
-    if (!isReportReady) return [];
-    return enumerateDates(effectiveDateRange.start, effectiveDateRange.end);
-  }, [effectiveDateRange, isReportReady]);
+  const filterByDateRange = useCallback(
+    <T extends { date: string }>(items: T[]) => {
+      if (!isReportReady) return [];
+      const { start, end } = effectiveDateRange;
+      if (!start || !end) return [];
+      return items.filter((item) => item.date >= start && item.date <= end);
+    },
+    [effectiveDateRange, isReportReady]
+  );
 
-  const capturesInRange = useMemo(() => {
-    if (!isReportReady) return [];
-    const { start, end } = effectiveDateRange;
-    if (!start || !end) return [];
-    return captures.filter((capture) => {
-      if (capture.date < start) return false;
-      if (capture.date > end) return false;
-      return true;
-    });
-  }, [captures, effectiveDateRange, isReportReady]);
-
-  const filteredCaptures = useMemo(() => {
-    if (!isReportReady) return [];
-    if (!deferredProgramIds.length) return [];
-    return capturesInRange.filter((capture) => deferredProgramIds.includes(capture.programId));
-  }, [capturesInRange, deferredProgramIds, isReportReady]);
-
-  const detsInRange = useMemo(() => {
-    if (!isReportReady) return [];
-    const { start, end } = effectiveDateRange;
-    if (!start || !end) return [];
-    return dets.filter((det) => {
-      if (det.date < start) return false;
-      if (det.date > end) return false;
-      return true;
-    });
-  }, [dets, effectiveDateRange, isReportReady]);
-
-  const filteredDets = useMemo(() => {
-    if (!isReportReady) return [];
-    if (!deferredProgramIds.length) return [];
-    return detsInRange.filter((det) => deferredProgramIds.includes(det.programId));
-  }, [detsInRange, deferredProgramIds, isReportReady]);
-
-  const analysis = useMemo(() => {
-    if (!filteredCaptures.length) return null;
-    return analyzeCaptures(filteredCaptures);
-  }, [filteredCaptures]);
+  const capturesInRange = useMemo(() => filterByDateRange(captures), [captures, filterByDateRange]);
+  const detsInRange = useMemo(() => filterByDateRange(dets), [dets, filterByDateRange]);
 
   const dateRangeLabel = useMemo(() => {
     if (!deferredStartDate || !deferredEndDate) return "the selected time frame";
@@ -530,18 +791,6 @@ export default function Reports() {
     });
     return `${startLabel} to ${endLabel}`;
   }, [deferredStartDate, deferredEndDate]);
-
-  const summaryText = useMemo(() => {
-    if (!analysis) return "";
-    return summarizeSeason(analysis, dateRangeLabel, "all programs");
-  }, [analysis, dateRangeLabel]);
-
-  const overallNetHours = useMemo(() => {
-    return filteredDets.reduce((sum, det) => {
-      const value = Number(det.netHours?.total ?? 0);
-      return Number.isNaN(value) ? sum : sum + value;
-    }, 0);
-  }, [filteredDets]);
 
   const countSpeciesEntries = useCallback((counts?: Record<string, number>) => {
     if (!counts) return 0;
@@ -562,61 +811,43 @@ export default function Reports() {
     return formatNumber(Math.round(value));
   }, []);
 
-  const programGroups = useMemo<ProgramGroup[]>(() => {
-    if (!programOptions.length || !deferredProgramIds.length) return [];
-    const programsById = new Map(programOptions.map((program) => [program.id, program]));
-    const assigned = new Set<string>();
-    const groups: ProgramGroup[] = PROGRAM_GROUPS.map((group) => {
-      const programs = deferredProgramIds
-        .map((id) => programsById.get(id))
-        .filter((program): program is Program => Boolean(program));
-      const filteredPrograms = programs.filter((program) =>
-        group.matchers.some((matcher) => program.displayName.toLowerCase().includes(matcher))
-      );
-      filteredPrograms.forEach((program) => assigned.add(program.id));
-      return { ...group, programs: filteredPrograms };
-    }).filter((group) => group.programs.length);
+  const reportPrograms = useMemo(
+    () => deferredProgramIds.map((id) => programsMap[id]).filter((program): program is Program => Boolean(program)),
+    [deferredProgramIds, programsMap]
+  );
 
-    const otherPrograms = deferredProgramIds
-      .map((id) => programsById.get(id))
-      .filter((program): program is Program => Boolean(program))
-      .filter((program) => !assigned.has(program.id));
-    if (otherPrograms.length) {
-      groups.push({
-        key: "other",
-        title: "Other MBO Programs",
-        subtitle: "Programs without a seasonal match.",
-        matchers: [],
-        programs: otherPrograms,
-      });
-    }
-    return groups;
-  }, [programOptions, deferredProgramIds]);
+  const reportData = useMemo<ReportData | null>(() => {
+    if (!isReportReady || !deferredProgramIds.length) return null;
+    if (!effectiveDateRange.start || !effectiveDateRange.end) return null;
+    const activeProgramIds = deferredProgramIds;
 
-  const reportGroups = useMemo<ReportGroupData[]>(() => {
-    if (!isReportReady || !reportDates.length) return [];
-    const results: ReportGroupData[] = [];
-    for (const group of programGroups) {
-      const activeProgramIds = group.programs.map((program) => program.id);
-      if (!activeProgramIds.length) continue;
+    const groupCaptures = capturesInRange.filter((capture) => activeProgramIds.includes(capture.programId));
+    const groupDets = detsInRange.filter((det) => activeProgramIds.includes(det.programId));
+    const groupDates = [
+      ...groupDets.map((det) => det.date),
+      ...groupCaptures.map((capture) => capture.date),
+    ].filter(Boolean);
+    const groupDateBounds = groupDates.length
+      ? {
+        min: groupDates.reduce((a, b) => (a < b ? a : b)),
+        max: groupDates.reduce((a, b) => (a > b ? a : b)),
+      }
+      : { min: effectiveDateRange.start, max: effectiveDateRange.end };
+    const groupDateRange = { start: groupDateBounds.min, end: groupDateBounds.max };
+    const groupReportDates = enumerateDates(groupDateBounds.min, groupDateBounds.max);
+    const groupAnalysis = groupCaptures.length ? analyzeCaptures(groupCaptures) : null;
+    const reportTitle = reportPrograms.length === 1 ? reportPrograms[0].displayName : "Program Report";
+    const reportSubtitle =
+      reportPrograms.length === 1
+        ? "Program report generated from the selected dates."
+        : "Combined report for selected programs.";
+    const isWinterReport = isWinterProgramSet(reportPrograms);
+    const comparisonMatchers = getComparisonMatchers(reportPrograms);
+    const hasMigrationPrograms = reportPrograms.some((program) =>
+      ["spring", "smmp", "fall", "fmmp"].some((keyword) => program.displayName.toLowerCase().includes(keyword))
+    );
 
-      const groupCaptures = capturesInRange.filter((capture) => activeProgramIds.includes(capture.programId));
-      const groupDets = detsInRange.filter((det) => activeProgramIds.includes(det.programId));
-      const groupDates = [
-        ...groupDets.map((det) => det.date),
-        ...groupCaptures.map((capture) => capture.date),
-      ].filter(Boolean);
-      const groupDateBounds = groupDates.length
-        ? {
-          min: groupDates.reduce((a, b) => (a < b ? a : b)),
-          max: groupDates.reduce((a, b) => (a > b ? a : b)),
-        }
-        : { min: effectiveDateRange.start, max: effectiveDateRange.end };
-      const groupDateRange = { start: groupDateBounds.min, end: groupDateBounds.max };
-      const groupReportDates = enumerateDates(groupDateBounds.min, groupDateBounds.max);
-      const groupAnalysis = groupCaptures.length ? analyzeCaptures(groupCaptures) : null;
-
-      const bandedCaptures = groupCaptures.filter((capture) => capture.captureType === BirdEventType.Banded);
+    const bandedCaptures = groupCaptures.filter((capture) => capture.captureType === BirdEventType.Banded);
       const bandedCounts = new Map<string, number>();
       const bandedSpeciesSets = new Map<string, Set<string>>();
       bandedCaptures.forEach((capture) => {
@@ -660,7 +891,7 @@ export default function Reports() {
 
       const bandingDates = new Set(bandedCaptures.map((capture) => capture.date).filter(Boolean));
 
-      const periodGranularity = group.key === "winter" || group.key === "summer" ? "month" : "week";
+      const periodGranularity = getPeriodGranularity(reportPrograms);
       const periodLabel = periodGranularity === "week" ? "Week" : "Month";
       const getPeriodKey = (date: string) => (periodGranularity === "week" ? getWeekStart(date) : getMonthKey(date));
       const getPeriodLabel = (key: string) =>
@@ -931,10 +1162,10 @@ export default function Reports() {
 
       const summary = (() => {
         if (!groupAnalysis || !groupAnalysis.totalCaptures) {
-          return `No report data available for ${group.title} during ${dateRangeLabel}.`;
+          return `No report data available for ${reportTitle} during ${dateRangeLabel}.`;
         }
 
-        const baseSummary = `During ${dateRangeLabel}, ${group.title} recorded ${formatNumber(
+        const baseSummary = `During ${dateRangeLabel}, ${reportTitle} recorded ${formatNumber(
           groupAnalysis.totalCaptures
         )} captures across ${formatNumber(groupAnalysis.uniqueSpecies)} species. Banders logged ${formatNumber(
           effortDays
@@ -978,7 +1209,7 @@ export default function Reports() {
 
         return [
           seasonStartLabel && seasonEndLabel
-            ? `The ${group.title} season spans the ${seasonWeeks}-week period from ${seasonStartLabel} through ${seasonEndLabel}.`
+            ? `The ${reportTitle} season spans the ${seasonWeeks}-week period from ${seasonStartLabel} through ${seasonEndLabel}.`
             : "",
           baseSummary,
           effortSentence,
@@ -1196,10 +1427,11 @@ export default function Reports() {
         }
       );
 
+      const showAverageColumn = !isWinterReport;
       const summaryColumns: TableColumn[] = [
         { key: "metric", label: "" },
         ...periodEntries.map((entry) => ({ key: entry.key, label: entry.label, align: "right" })),
-        ...(group.key !== "winter" ? [{ key: "average", label: "Average", align: "right" } as TableColumn] : []),
+        ...(showAverageColumn ? [{ key: "average", label: "Average", align: "right" } as TableColumn] : []),
         { key: "season", label: "Season", align: "right" },
       ];
 
@@ -1225,7 +1457,7 @@ export default function Reports() {
         periodEntries.forEach((entry) => {
           row[entry.key] = formatSummaryValue(getValue(entry), entry);
         });
-        if (group.key !== "winter") {
+        if (showAverageColumn) {
           row.average = getAverage ? getAverage() : "n/a";
         }
         return row;
@@ -1349,7 +1581,7 @@ export default function Reports() {
         ),
       ];
 
-      if (group.key === "spring" || group.key === "fall") {
+      if (hasMigrationPrograms) {
         summaryRows.push(
           buildSummaryRow(
             "# days with full net coverage",
@@ -1372,10 +1604,10 @@ export default function Reports() {
 
       const seasonStats = new Map<string, { label: string; counts: Map<string, number>; sortKey: number }>();
       const seasonRankings = new Map<string, Map<string, number>>();
-      const comparisonProgramIds = group.matchers.length
+      const comparisonProgramIds = comparisonMatchers.length
         ? Object.values(programsMap)
           .filter((program) =>
-            group.matchers.some((matcher) => program.displayName.toLowerCase().includes(matcher))
+            comparisonMatchers.some((matcher) => program.displayName.toLowerCase().includes(matcher))
           )
           .map((program) => program.id)
         : activeProgramIds;
@@ -1386,7 +1618,7 @@ export default function Reports() {
 
       bandedCapturesByProgram.forEach((capture) => {
         if (!capture.date) return;
-        if (group.key === "winter") {
+        if (isWinterReport) {
           const season = getWinterSeasonKey(capture.date);
           if (!season) return;
           const endYear = Number(season.key.split("-")[1]) || 0;
@@ -1420,12 +1652,11 @@ export default function Reports() {
         .map(([key, entry]) => ({ key, label: entry.label, sortKey: entry.sortKey }))
         .sort((a, b) => b.sortKey - a.sortKey);
 
-      const defaultSeason =
-        group.key === "winter"
-          ? getWinterSeasonKey(groupDateBounds.max) ?? getWinterSeasonKey(groupDateBounds.min)
-          : groupDateBounds.max
-            ? { key: String(new Date(`${groupDateBounds.max}T00:00:00`).getFullYear()), label: "" }
-            : null;
+      const defaultSeason = isWinterReport
+        ? getWinterSeasonKey(groupDateBounds.max) ?? getWinterSeasonKey(groupDateBounds.min)
+        : groupDateBounds.max
+          ? { key: String(new Date(`${groupDateBounds.max}T00:00:00`).getFullYear()), label: "" }
+          : null;
 
       if (defaultSeason && seasonStats.has(defaultSeason.key)) {
         const selectedSeason = seasonStats.get(defaultSeason.key)!;
@@ -1521,15 +1752,10 @@ export default function Reports() {
 
       returnDetailRows.push(...returnEntries.map(({ elapsedMs: _elapsedMs, ...row }) => row));
 
-      const bandedBySpecies = new Map<string, number>();
       const recapturedBySpecies = new Map<string, { repeats: number; individuals: Set<string> }>();
-      const returnedBySpecies = new Map<string, number>();
 
       groupCaptures.forEach((capture) => {
         const current = capture.species;
-        if (capture.captureType === BirdEventType.Banded) {
-          bandedBySpecies.set(current, (bandedBySpecies.get(current) ?? 0) + 1);
-        }
         if (capture.captureType === BirdEventType.Repeat || capture.captureType === BirdEventType.Alien) {
           if (!recapturedBySpecies.has(current)) {
             recapturedBySpecies.set(current, { repeats: 0, individuals: new Set<string>() });
@@ -1538,23 +1764,8 @@ export default function Reports() {
           entry.repeats += 1;
           if (capture.bandId) entry.individuals.add(capture.bandId);
         }
-        if (capture.captureType === BirdEventType.Return) {
-          returnedBySpecies.set(current, (returnedBySpecies.get(current) ?? 0) + 1);
-        }
       });
 
-      const totalBanded = bandedCaptures.length || 1;
-      const topBandedRows = Array.from(bandedBySpecies.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([species, count]) => ({
-          species: getSpeciesLabel(species),
-          count: formatNumber(count),
-          share: `${((count / totalBanded) * 100).toFixed(1)}%`,
-        }));
-
-      const totalRecaptured =
-        Array.from(recapturedBySpecies.values()).reduce((sum, entry) => sum + entry.repeats, 0) || 1;
       const topRecapturedRows = Array.from(recapturedBySpecies.entries())
         .sort((a, b) => b[1].repeats - a[1].repeats)
         .slice(0, 10)
@@ -1564,285 +1775,19 @@ export default function Reports() {
           individuals: formatNumber(entry.individuals.size),
         }));
 
-      const returnsRows: Array<Record<string, React.ReactNode>> = [];
-
-      const netHoursByNet = new Map<string, number>();
-      groupDets.forEach((det) => {
-        det.netHours?.nets?.forEach((net) => {
-          const netId = net.id || "Unknown";
-          const hours = Number(net.total ?? 0);
-          if (!Number.isNaN(hours)) {
-            netHoursByNet.set(netId, (netHoursByNet.get(netId) ?? 0) + hours);
-          }
-        });
+      const { netUsageRows, netProductivitySummary, netTopSpeciesRows } = buildNetUsageData({
+        groupCaptures,
+        groupDets,
+        formatOptional,
+        getSpeciesLabel,
       });
 
-      const netStatsByNet = new Map<
-        string,
-        { newCaptures: number; returns: number; recaptures: number; totalCaptures: number }
-      >();
-      groupCaptures.forEach((capture) => {
-        const netId = capture.net || "Unknown";
-        if (!netStatsByNet.has(netId)) {
-          netStatsByNet.set(netId, { newCaptures: 0, returns: 0, recaptures: 0, totalCaptures: 0 });
-        }
-        const stats = netStatsByNet.get(netId)!;
-        stats.totalCaptures += 1;
-        if (capture.captureType === BirdEventType.Banded) stats.newCaptures += 1;
-        if (capture.captureType === BirdEventType.Return) stats.returns += 1;
-        if (capture.captureType === BirdEventType.Repeat || capture.captureType === BirdEventType.Alien) {
-          stats.recaptures += 1;
-        }
-      });
+      const priorityCounts = buildPriorityCounts(groupDets, bandedCaptures, prioritySpeciesMap);
+      const prioritySummaryRows = buildPrioritySummaryRows(priorityCounts);
 
-      const getNetGroup = (netId: string) => {
-        const trimmed = netId.trim().toUpperCase();
-        if (!trimmed) return "Other";
-        const first = trimmed[0];
-        if (first === "B" || first === "N") return "B/N";
-        if (["A", "C", "D", "E", "H"].includes(first)) return first;
-        return "Other";
-      };
-
-      const groupedNetIds = new Map<string, string[]>();
-      Array.from(netHoursByNet.keys()).forEach((netId) => {
-        const groupKey = getNetGroup(netId);
-        if (!groupedNetIds.has(groupKey)) groupedNetIds.set(groupKey, []);
-        groupedNetIds.get(groupKey)!.push(netId);
-      });
-
-      const groupOrder = ["A", "B/N", "C", "D", "E", "H", "Other"];
-      const netUsageRows: Array<Record<string, React.ReactNode>> = [];
-
-      const grandTotals = {
-        hours: 0,
-        newCaptures: 0,
-        returns: 0,
-        recaptures: 0,
-        totalCaptures: 0,
-      };
-
-      groupOrder.forEach((groupKey) => {
-        const nets = groupedNetIds.get(groupKey);
-        if (!nets?.length) return;
-        nets.sort((a, b) => a.localeCompare(b));
-
-        const groupTotals = {
-          hours: 0,
-          newCaptures: 0,
-          returns: 0,
-          recaptures: 0,
-          totalCaptures: 0,
-        };
-
-        nets.forEach((netId) => {
-          const hours = netHoursByNet.get(netId) ?? 0;
-          const stats = netStatsByNet.get(netId) ?? {
-            newCaptures: 0,
-            returns: 0,
-            recaptures: 0,
-            totalCaptures: 0,
-          };
-          groupTotals.hours += hours;
-          groupTotals.newCaptures += stats.newCaptures;
-          groupTotals.returns += stats.returns;
-          groupTotals.recaptures += stats.recaptures;
-          groupTotals.totalCaptures += stats.totalCaptures;
-
-          netUsageRows.push({
-            net: netId,
-            netHours: formatOptional(hours, 1),
-            newCaptures: formatNumber(stats.newCaptures),
-            returnsRecaptures: formatNumber(stats.returns + stats.recaptures),
-            totalCaptures: formatNumber(stats.totalCaptures),
-            newRate: hours ? formatOptional((stats.newCaptures / hours) * 100, 1) : "—",
-            totalRate: hours ? formatOptional((stats.totalCaptures / hours) * 100, 1) : "—",
-          });
-        });
-
-        grandTotals.hours += groupTotals.hours;
-        grandTotals.newCaptures += groupTotals.newCaptures;
-        grandTotals.returns += groupTotals.returns;
-        grandTotals.recaptures += groupTotals.recaptures;
-        grandTotals.totalCaptures += groupTotals.totalCaptures;
-
-        netUsageRows.push({
-          net: `${groupKey} - TOTAL`,
-          netHours: formatOptional(groupTotals.hours, 1),
-          newCaptures: formatNumber(groupTotals.newCaptures),
-          returnsRecaptures: formatNumber(groupTotals.returns + groupTotals.recaptures),
-          totalCaptures: formatNumber(groupTotals.totalCaptures),
-          newRate: groupTotals.hours ? formatOptional((groupTotals.newCaptures / groupTotals.hours) * 100, 1) : "—",
-          totalRate: groupTotals.hours ? formatOptional((groupTotals.totalCaptures / groupTotals.hours) * 100, 1) : "—",
-        });
-      });
-
-      if (grandTotals.hours > 0 || grandTotals.totalCaptures > 0) {
-        netUsageRows.push({
-          net: "GRAND TOTAL",
-          netHours: formatOptional(grandTotals.hours, 1),
-          newCaptures: formatNumber(grandTotals.newCaptures),
-          returnsRecaptures: formatNumber(grandTotals.returns + grandTotals.recaptures),
-          totalCaptures: formatNumber(grandTotals.totalCaptures),
-          newRate: grandTotals.hours ? formatOptional((grandTotals.newCaptures / grandTotals.hours) * 100, 1) : "—",
-          totalRate: grandTotals.hours ? formatOptional((grandTotals.totalCaptures / grandTotals.hours) * 100, 1) : "—",
-        });
-      }
-
-      const speciesByNet = new Map<string, Map<string, number>>();
-      groupCaptures.forEach((capture) => {
-        const netId = capture.net || "Unknown";
-        if (!speciesByNet.has(netId)) {
-          speciesByNet.set(netId, new Map());
-        }
-        const netMap = speciesByNet.get(netId)!;
-        netMap.set(capture.species, (netMap.get(capture.species) ?? 0) + 1);
-      });
-
-      const netTopSpeciesRows = Array.from(speciesByNet.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([netId, speciesCounts]) => {
-          const topSpecies = Array.from(speciesCounts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([species, count]) => `${getSpeciesLabel(species)} (${formatNumber(count)})`);
-          return {
-            net: netId,
-            top1: topSpecies[0] ?? "—",
-            top2: topSpecies[1] ?? "—",
-            top3: topSpecies[2] ?? "—",
-          };
-        });
-
-      const groupSummaries = netUsageRows.filter((row) => String(row.net).includes("TOTAL"));
-      const groupRates = groupSummaries
-        .filter((row) => row.net !== "GRAND TOTAL")
-        .map((row) => {
-          const netLabel = String(row.net);
-          const hoursValue = Number(String(row.netHours).replace(/,/g, ""));
-          const totalRate = Number(String(row.totalRate).replace(/,/g, ""));
-          return { label: netLabel, totalRate, hoursValue };
-        })
-        .filter((row) => !Number.isNaN(row.totalRate));
-      const topGroup = groupRates.sort((a, b) => b.totalRate - a.totalRate)[0];
-      const lowGroup = groupRates.sort((a, b) => a.totalRate - b.totalRate)[0];
-
-      const overallNewRate =
-        grandTotals.hours > 0 ? formatOptional((grandTotals.newCaptures / grandTotals.hours) * 100, 1) : "—";
-      const overallRecaptureRate =
-        grandTotals.hours > 0
-          ? formatOptional(((grandTotals.returns + grandTotals.recaptures) / grandTotals.hours) * 100, 1)
-          : "—";
-
-      const netProductivitySummary =
-        grandTotals.hours > 0
-          ? `Overall productivity was ${overallNewRate} new birds per 100 net hours, with ${overallRecaptureRate} returns + repeats per 100 net hours. ${topGroup && lowGroup
-            ? `${topGroup.label.replace(" - TOTAL", "")} nets were the most productive, while ${lowGroup.label.replace(
-              " - TOTAL",
-              ""
-            )} nets had the lowest capture rates.`
-            : ""
-            }`.trim()
-          : "No net productivity data available.";
-
-      const priorityCounts = new Map<string, { observed: number; banded: number; priority: string }>();
-      groupDets.forEach((det) => {
-        Object.entries(det.observedSpeciesCount ?? {}).forEach(([speciesCode, count]) => {
-          const priority = prioritySpeciesMap[speciesCode];
-          if (!priority) return;
-          const entry = priorityCounts.get(speciesCode) ?? { observed: 0, banded: 0, priority };
-          entry.observed += Number(count) || 0;
-          priorityCounts.set(speciesCode, entry);
-        });
-      });
-      bandedCaptures.forEach((capture) => {
-        const priority = prioritySpeciesMap[capture.species];
-        if (!priority) return;
-        const entry = priorityCounts.get(capture.species) ?? { observed: 0, banded: 0, priority };
-        entry.banded += 1;
-        priorityCounts.set(capture.species, entry);
-      });
-
-      const priorityCategories = ["A", "B", "C", "D"];
-      const priorityCategorySpecies = priorityCategories.reduce<Record<string, Set<string>>>((acc, category) => {
-        acc[category] = new Set();
-        return acc;
-      }, {});
-
-      SPECIES_GROUPS.forEach((item) => {
-        if (item.type !== "species") return;
-        if (!item.priority) return;
-        if (!priorityCategorySpecies[item.priority]) return;
-        priorityCategorySpecies[item.priority].add(item.code);
-      });
-
-      const priorityCategoryTotals = priorityCategories.reduce<Record<string, number>>((acc, category) => {
-        acc[category] = priorityCategorySpecies[category]?.size ?? 0;
-        return acc;
-      }, {});
-      const priorityCategoryObserved = priorityCategories.reduce<Record<string, number>>((acc, category) => {
-        acc[category] = 0;
-        return acc;
-      }, {});
-      const priorityCategoryBanded = priorityCategories.reduce<Record<string, number>>((acc, category) => {
-        acc[category] = 0;
-        return acc;
-      }, {});
-      const priorityCategoryIndividuals = priorityCategories.reduce<Record<string, number>>((acc, category) => {
-        acc[category] = 0;
-        return acc;
-      }, {});
-
-      priorityCounts.forEach((entry) => {
-        if (!entry.priority) return;
-        if (!priorityCategoryTotals[entry.priority]) return;
-        if (entry.observed > 0) priorityCategoryObserved[entry.priority] += 1;
-        if (entry.banded > 0) priorityCategoryBanded[entry.priority] += 1;
-        priorityCategoryIndividuals[entry.priority] += entry.banded;
-      });
-
-      const hasPriorityData = priorityCategories.some(
-        (category) =>
-          priorityCategoryObserved[category] > 0 ||
-          priorityCategoryBanded[category] > 0 ||
-          priorityCategoryIndividuals[category] > 0
-      );
-
-      const prioritySummaryRows = hasPriorityData
-        ? [
-          {
-            label: "Number of species in category",
-            A: formatNumber(priorityCategoryTotals.A),
-            B: formatNumber(priorityCategoryTotals.B),
-            C: formatNumber(priorityCategoryTotals.C),
-            D: formatNumber(priorityCategoryTotals.D),
-          },
-          {
-            label: "Number of species observed",
-            A: formatNumber(priorityCategoryObserved.A),
-            B: formatNumber(priorityCategoryObserved.B),
-            C: formatNumber(priorityCategoryObserved.C),
-            D: formatNumber(priorityCategoryObserved.D),
-          },
-          {
-            label: "Number of species banded",
-            A: formatNumber(priorityCategoryBanded.A),
-            B: formatNumber(priorityCategoryBanded.B),
-            C: formatNumber(priorityCategoryBanded.C),
-            D: formatNumber(priorityCategoryBanded.D),
-          },
-          {
-            label: "Number of individuals banded",
-            A: formatNumber(priorityCategoryIndividuals.A),
-            B: formatNumber(priorityCategoryIndividuals.B),
-            C: formatNumber(priorityCategoryIndividuals.C),
-            D: formatNumber(priorityCategoryIndividuals.D),
-          },
-        ]
-        : [];
-
-      results.push({
-        group,
+      return {
+        title: reportTitle,
+        subtitle: reportSubtitle,
         groupAnalysis,
         groupCaptures,
         effortDays,
@@ -1866,16 +1811,12 @@ export default function Reports() {
         bandedComparisonRows,
         returnDetailColumns,
         returnDetailRows,
-        topBandedRows,
         topRecapturedRows,
-        returnsRows,
         netUsageRows,
         netProductivitySummary,
         netTopSpeciesRows,
         prioritySummaryRows,
-      });
-    }
-    return results;
+      };
   }, [
     birdEventsMap,
     bandingByBandId,
@@ -1888,9 +1829,11 @@ export default function Reports() {
     formatOptionalInt,
     getSpeciesLabel,
     isReportReady,
-    programGroups,
+    programsMap,
+    reportPrograms,
+    deferredProgramIds,
     prioritySpeciesMap,
-    reportDates,
+    effectiveDateRange,
   ]);
 
   const handlePrint = () => window.print();
@@ -1917,7 +1860,7 @@ export default function Reports() {
         title="Annual Program Report"
         subtitle="Structured to mirror the 2019 MBO annual report with daily banding and census charts."
         actions={
-          <Button color="secondary" onPress={handlePrint} isDisabled={!analysis} className="print:hidden">
+          <Button color="secondary" onPress={handlePrint} isDisabled={!reportData?.groupAnalysis} className="print:hidden">
             Export / Print PDF
           </Button>
         }
@@ -1989,7 +1932,7 @@ export default function Reports() {
         </div>
       </div>
 
-      {isReportReady && reportGroups.length ? (
+      {isReportReady && reportData ? (
         <ReportSection title="Report Metadata" subtitle="Programs and date ranges included in this report.">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatTile label="Date range" value={dateRangeLabel} />
@@ -2003,31 +1946,6 @@ export default function Reports() {
               })}
               hint="Local time"
             />
-          </div>
-          <div className="mt-6 space-y-4">
-            {reportGroups.map((groupData) => {
-              const programList = groupData.group.programs
-                .map((program) => program.displayName)
-                .sort((a, b) => a.localeCompare(b))
-                .join(", ");
-              const hasStart = Boolean(groupData.groupDateBounds.start);
-              const hasEnd = Boolean(groupData.groupDateBounds.end);
-              const startLabel = hasStart ? formatShortDate(groupData.groupDateBounds.start) : null;
-              const endLabel = hasEnd ? formatShortDate(groupData.groupDateBounds.end) : null;
-              return (
-                <div key={groupData.group.key} className="rounded-lg border border-default-200 bg-default-50 p-4">
-                  <div className="text-base font-semibold text-default-900">{groupData.group.title}</div>
-                  <div className="mt-2 text-sm text-default-900">
-                    <span className="font-medium">Programs:</span> {programList || "—"}
-                  </div>
-                  {hasStart && hasEnd && (
-                    <div className="mt-1 text-sm text-default-900">
-                      <span className="font-medium">Date range:</span> {startLabel} to {endLabel}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
         </ReportSection>
       ) : null}
@@ -2060,7 +1978,7 @@ export default function Reports() {
             </p>
           </div>
         </div>
-      ) : !analysis ? (
+      ) : !reportData?.groupAnalysis ? (
         <div className="rounded-2xl border border-dashed border-default-300 bg-default-50 p-10 text-center">
           <div className="mx-auto max-w-md">
             <svg
@@ -2082,189 +2000,162 @@ export default function Reports() {
             </p>
           </div>
         </div>
-      ) : (
+      ) : reportData ? (
         <div className="flex flex-col gap-6">
-          {reportGroups.map((groupData) => {
-            const groupAnalysis = groupData.groupAnalysis;
-            return (
-              <ReportSection
-                key={groupData.group.key}
-                title={groupData.group.title}
-                subtitle={groupData.group.subtitle}
-              >
-                <p className="text-sm text-default-900">{groupData.summary}</p>
-                {(groupData.effortSummary ||
-                  groupData.siteConditionsSummary ||
-                  groupData.bandedSummary ||
-                  groupData.recaptureSummary) && (
-                    <div className="mt-4 space-y-3 text-sm text-default-900">
-                      {groupData.effortSummary && (
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Effort</p>
-                          <p className="text-default-900">{groupData.effortSummary}</p>
-                        </div>
-                      )}
-                      {groupData.siteConditionsSummary && (
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Site conditions</p>
-                          <p className="text-default-900">{groupData.siteConditionsSummary}</p>
-                        </div>
-                      )}
-                      {groupData.bandedSummary && (
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Birds banded</p>
-                          <p className="text-default-900">{groupData.bandedSummary}</p>
-                        </div>
-                      )}
-                      {groupData.recaptureSummary && (
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-default-600">
-                            Birds recaptured
-                          </p>
-                          <p className="text-default-900">{groupData.recaptureSummary}</p>
-                        </div>
-                      )}
+          <ReportSection title={reportData.title} subtitle={reportData.subtitle}>
+            <p className="text-sm text-default-900">{reportData.summary}</p>
+            {(reportData.effortSummary ||
+              reportData.siteConditionsSummary ||
+              reportData.bandedSummary ||
+              reportData.recaptureSummary) && (
+                <div className="mt-4 space-y-3 text-sm text-default-900">
+                  {reportData.effortSummary && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Effort</p>
+                      <p className="text-default-900">{reportData.effortSummary}</p>
                     </div>
                   )}
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <StatTile label="Total captures" value={formatNumber(groupAnalysis?.totalCaptures ?? 0)} />
-                  <StatTile label="Species recorded" value={formatNumber(groupAnalysis?.uniqueSpecies ?? 0)} />
-                  <StatTile label="Effort days" value={formatNumber(groupData.effortDays)} />
-                  <StatTile label="Net hours" value={formatNumber(Math.round(groupData.netHours))} />
+                  {reportData.siteConditionsSummary && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Site conditions</p>
+                      <p className="text-default-900">{reportData.siteConditionsSummary}</p>
+                    </div>
+                  )}
+                  {reportData.bandedSummary && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-default-600">Birds banded</p>
+                      <p className="text-default-900">{reportData.bandedSummary}</p>
+                    </div>
+                  )}
+                  {reportData.recaptureSummary && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-default-600">
+                        Birds recaptured
+                      </p>
+                      <p className="text-default-900">{reportData.recaptureSummary}</p>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <div className="mt-6 grid gap-6 grid-cols-1">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatTile label="Total captures" value={formatNumber(reportData.groupAnalysis?.totalCaptures ?? 0)} />
+              <StatTile label="Species recorded" value={formatNumber(reportData.groupAnalysis?.uniqueSpecies ?? 0)} />
+              <StatTile label="Effort days" value={formatNumber(reportData.effortDays)} />
+              <StatTile label="Net hours" value={formatNumber(Math.round(reportData.netHours))} />
+            </div>
 
-                  <ReportTable
-                    title={`Weather conditions (${groupData.periodLabel.toLowerCase()}ly)`}
-                    subtitle="Summarized from DET weather logs."
-                    columns={groupData.weatherColumns}
-                    rows={groupData.weatherRows}
-                  />
+            <div className="mt-6 grid gap-6 grid-cols-1">
+              <ReportTable
+                title={`Weather conditions (${reportData.periodLabel.toLowerCase()}ly)`}
+                subtitle="Summarized from DET weather logs."
+                columns={reportData.weatherColumns}
+                rows={reportData.weatherRows}
+              />
 
-                  <ReportTable
-                    title={`Summary results (${groupData.periodLabel.toLowerCase()}ly)`}
-                    subtitle="Effort and banding totals."
-                    columns={groupData.summaryColumns}
-                    rows={groupData.summaryRows}
-                  />
+              <ReportTable
+                title={`Summary results (${reportData.periodLabel.toLowerCase()}ly)`}
+                subtitle="Effort and banding totals."
+                columns={reportData.summaryColumns}
+                rows={reportData.summaryRows}
+              />
 
-                  <ChartContainer
-                    title="Individuals banded per day"
-                    subtitle="Daily totals with 7-day running mean"
-                  >
-                    <DailyTrendChart data={groupData.dailyBanded} ariaLabel="Individuals banded per day" />
-                  </ChartContainer>
-                  <ChartContainer
-                    title="Species banded per day"
-                    subtitle="Daily species totals with 7-day running mean"
-                  >
-                    <DailyTrendChart data={groupData.dailyBandedSpecies} ariaLabel="Species banded per day" />
-                  </ChartContainer>
+              <ChartContainer title="Individuals banded per day" subtitle="Daily totals with 7-day running mean">
+                <DailyTrendChart data={reportData.dailyBanded} ariaLabel="Individuals banded per day" />
+              </ChartContainer>
+              <ChartContainer title="Species banded per day" subtitle="Daily species totals with 7-day running mean">
+                <DailyTrendChart data={reportData.dailyBandedSpecies} ariaLabel="Species banded per day" />
+              </ChartContainer>
 
-                  {groupData.bandedComparisonRows.length ? (
-                    <ReportTable
-                      title={`Top 10 species banded (${groupData.group.title} comparison)`}
-                      subtitle="Counts include rank in other seasons (in parentheses); dashes indicate no banding."
-                      columns={groupData.bandedComparisonColumns}
-                      rows={groupData.bandedComparisonRows}
-                    />
-                  ) : null}
+              {reportData.bandedComparisonRows.length ? (
+                <ReportTable
+                  title="Top 10 species banded (comparison)"
+                  subtitle="Counts include rank in other seasons (in parentheses); dashes indicate no banding."
+                  columns={reportData.bandedComparisonColumns}
+                  rows={reportData.bandedComparisonRows}
+                />
+              ) : null}
 
-                  <ReportTable
-                    title="Top species recaptured"
-                    subtitle="Top 10 recapture species."
-                    columns={[
-                      { key: "species", label: "Species" },
-                      { key: "repeats", label: "Repeats", align: "right" },
-                      { key: "individuals", label: "Individuals", align: "right" },
-                    ]}
-                    rows={groupData.topRecapturedRows}
-                  />
+              <ReportTable
+                title="Top species recaptured"
+                subtitle="Top 10 recapture species."
+                columns={[
+                  { key: "species", label: "Species" },
+                  { key: "repeats", label: "Repeats", align: "right" },
+                  { key: "individuals", label: "Individuals", align: "right" },
+                ]}
+                rows={reportData.topRecapturedRows}
+              />
 
-                  {groupData.returnDetailRows.length ? (
-                    <ReportTable
-                      title="Returns list"
-                      subtitle="Returns sorted by time elapsed since the previous capture."
-                      columns={groupData.returnDetailColumns}
-                      rows={groupData.returnDetailRows}
-                    />
-                  ) : null}
+              {reportData.returnDetailRows.length ? (
+                <ReportTable
+                  title="Returns list"
+                  subtitle="Returns sorted by time elapsed since the previous capture."
+                  columns={reportData.returnDetailColumns}
+                  rows={reportData.returnDetailRows}
+                />
+              ) : null}
 
+              <ChartContainer title="Species on cCensus per day" subtitle="Daily census species counts with 7-day running mean">
+                <DailyTrendChart data={reportData.dailyCensusSpecies} ariaLabel="Species on census per day" />
+              </ChartContainer>
 
-                  <ChartContainer
-                    title="Species on cCensus per day"
-                    subtitle="Daily census species counts with 7-day running mean"
-                  >
-                    <DailyTrendChart data={groupData.dailyCensusSpecies} ariaLabel="Species on census per day" />
-                  </ChartContainer>
+              <ChartContainer title="Species observed on DET per day" subtitle="Daily observed species counts with 7-day running mean">
+                <DailyTrendChart data={reportData.dailyObservedSpecies} ariaLabel="Species observed per day" />
+              </ChartContainer>
 
-                  <ChartContainer
-                    title="Species observed on DET per day"
-                    subtitle="Daily observed species counts with 7-day running mean"
-                  >
-                    <DailyTrendChart data={groupData.dailyObservedSpecies} ariaLabel="Species observed per day" />
-                  </ChartContainer>
+              {reportData.prioritySummaryRows.length ? (
+                <ReportTable
+                  title="Summary of priority species observed and banded"
+                  subtitle="Detailed category definitions are provided in Gahbauer et al. (2014)."
+                  columns={[
+                    { key: "label", label: "Metric" },
+                    { key: "A", label: "Priority A", align: "right" },
+                    { key: "B", label: "Priority B", align: "right" },
+                    { key: "C", label: "Priority C", align: "right" },
+                    { key: "D", label: "Priority D", align: "right" },
+                  ]}
+                  rows={reportData.prioritySummaryRows}
+                />
+              ) : null}
 
+              <div>
+                <ReportTable
+                  title="Net usage and capture rates"
+                  subtitle="Effort by net with productivity rates."
+                  columns={[
+                    { key: "net", label: "Net" },
+                    { key: "netHours", label: "Hours open", align: "right" },
+                    { key: "newCaptures", label: "New captures", align: "right" },
+                    { key: "returnsRecaptures", label: "Returns + repeats", align: "right" },
+                    { key: "totalCaptures", label: "Total captures", align: "right" },
+                    { key: "newRate", label: "New / 100 NH", align: "right" },
+                    { key: "totalRate", label: "Total / 100 NH", align: "right" },
+                  ]}
+                  rows={reportData.netUsageRows}
+                />
+                {reportData.netProductivitySummary && (
+                  <p className="mt-3 text-sm text-default-900">{reportData.netProductivitySummary}</p>
+                )}
+              </div>
 
-                  {groupData.prioritySummaryRows.length ? (
-                    <ReportTable
-                      title={`Summary of priority species observed and banded (${groupData.group.title})`}
-                      subtitle="Detailed category definitions are provided in Gahbauer et al. (2014)."
-                      columns={[
-                        { key: "label", label: "Metric" },
-                        { key: "A", label: "Priority A", align: "right" },
-                        { key: "B", label: "Priority B", align: "right" },
-                        { key: "C", label: "Priority C", align: "right" },
-                        { key: "D", label: "Priority D", align: "right" },
-                      ]}
-                      rows={groupData.prioritySummaryRows}
-                    />
-                  ) : null}
-
-                  <div>
-                    <ReportTable
-                      title="Net usage and capture rates"
-                      subtitle="Effort by net with productivity rates."
-                      columns={[
-                        { key: "net", label: "Net" },
-                        { key: "netHours", label: "Hours open", align: "right" },
-                        { key: "newCaptures", label: "New captures", align: "right" },
-                        { key: "returnsRecaptures", label: "Returns + repeats", align: "right" },
-                        { key: "totalCaptures", label: "Total captures", align: "right" },
-                        { key: "newRate", label: "New / 100 NH", align: "right" },
-                        { key: "totalRate", label: "Total / 100 NH", align: "right" },
-                      ]}
-                      rows={groupData.netUsageRows}
-                    />
-                    {groupData.netProductivitySummary && (
-                      <p className="mt-3 text-sm text-default-900">{groupData.netProductivitySummary}</p>
-                    )}
-                  </div>
-
-                  {groupData.netTopSpeciesRows.length ? (
-                    <ReportTable
-                      title="Top species captured per net"
-                      subtitle="Top 3 species by capture count for each net."
-                      columns={[
-                        { key: "net", label: "Net" },
-                        { key: "top1", label: "Top 1", align: "right" },
-                        { key: "top2", label: "Top 2", align: "right" },
-                        { key: "top3", label: "Top 3", align: "right" },
-                      ]}
-                      rows={groupData.netTopSpeciesRows}
-                    />
-                  ) : null}
-
-                </div>
-
-              </ReportSection>
-            );
-          })}
-
+              {reportData.netTopSpeciesRows.length ? (
+                <ReportTable
+                  title="Top species captured per net"
+                  subtitle="Top 3 species by capture count for each net."
+                  columns={[
+                    { key: "net", label: "Net" },
+                    { key: "top1", label: "Top 1", align: "right" },
+                    { key: "top2", label: "Top 2", align: "right" },
+                    { key: "top3", label: "Top 3", align: "right" },
+                  ]}
+                  rows={reportData.netTopSpeciesRows}
+                />
+              ) : null}
+            </div>
+          </ReportSection>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
