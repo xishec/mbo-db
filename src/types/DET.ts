@@ -46,15 +46,15 @@ export interface Weather {
   dailyHighTemp?: number; // Daily high temp (°C) - for calculating "Mean daily high" and "Highest temp"
   dailyLowTemp?: number; // Daily low temp (°C) - for calculating "Mean daily low" and "Lowest temp"
   dailyMeanTemp?: number; // Daily mean temp (°C) - for calculating "Mean daily temp"
-  
+
   // Precipitation
   totalRainfallMm?: number; // Total rain (mm) - for period sum and "# days with rainfall" count
   totalSnowCm?: number; // Total snow (cm) - for period sum and "# days with snowfall" count
-  
+
   // Snow depth
   meanSnowDepthCm?: number; // Mean snow depth (cm)
   maxSnowDepthCm?: number; // Max. snow depth (cm)
-  
+
   // Other
   cloudCoverage?: number; // percentage 0-100
   windSpeed?: number; // km/h
@@ -109,9 +109,11 @@ export interface Released {
 }
 
 // Type for flattened species list items
+export type SpeciesPriority = "A" | "B" | "C" | "D";
+
 export type SpeciesListItem =
   | { type: "group"; groupName: string }
-  | { type: "species"; code: string };
+  | { type: "species"; code: string; priority?: SpeciesPriority };
 
 // Species groups with species in exact order from the classification table
 // Already flattened with group dividers - ready to use directly
@@ -200,14 +202,14 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "species", code: "BDOW" }, // Barred Owl
   { type: "species", code: "NSWO" }, // Northern Saw-whet Owl
   { type: "group", groupName: "KINGFISHERS" },
-  { type: "species", code: "BEKI" }, // Belted Kingfisher
+  { type: "species", code: "BEKI", priority: "D" }, // Belted Kingfisher
   { type: "group", groupName: "WOODPECKERS" },
-  { type: "species", code: "YBSA" }, // Yellow-bellied Sapsucker
+  { type: "species", code: "YBSA", priority: "A" }, // Yellow-bellied Sapsucker
   { type: "species", code: "RBWO" }, // Red-bellied Woodpecker
-  { type: "species", code: "DOWO" }, // Downy Woodpecker
-  { type: "species", code: "HAWO" }, // Hairy Woodpecker
+  { type: "species", code: "DOWO", priority: "D" }, // Downy Woodpecker
+  { type: "species", code: "HAWO", priority: "C" }, // Hairy Woodpecker
   { type: "species", code: "PIWO" }, // Pileated Woodpecker
-  { type: "species", code: "YSFL" }, // Northern Flicker
+  { type: "species", code: "YSFL", priority: "C" }, // Northern Flicker
   { type: "group", groupName: "FALCONS" },
   { type: "species", code: "AMKE" }, // American Kestrel
   { type: "species", code: "MERL" }, // Merlin
@@ -215,54 +217,54 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "group", groupName: "FLYCATCHERS" },
   { type: "species", code: "OSFL" }, // Olive-sided Flycatcher
   { type: "species", code: "EAWP" }, // Eastern Wood-Pewee
-  { type: "species", code: "YBFL" }, // Yellow-bellied Flycatcher
-  { type: "species", code: "ALFL" }, // Alder Flycatcher
+  { type: "species", code: "YBFL", priority: "A" }, // Yellow-bellied Flycatcher
+  { type: "species", code: "ALFL", priority: "A" }, // Alder Flycatcher
   { type: "species", code: "TRFL" }, // Traill's Flycatcher
   { type: "species", code: "WIFL" }, // Willow Flycatcher
-  { type: "species", code: "LEFL" }, // Least Flycatcher
-  { type: "species", code: "EAPH" }, // Eastern Phoebe
+  { type: "species", code: "LEFL", priority: "C" }, // Least Flycatcher
+  { type: "species", code: "EAPH", priority: "D" }, // Eastern Phoebe
   { type: "species", code: "GCFL" }, // Great Crested Flycatcher
-  { type: "species", code: "EAKI" }, // Eastern Kingbird
+  { type: "species", code: "EAKI", priority: "C" }, // Eastern Kingbird
   { type: "group", groupName: "VIREOS" },
-  { type: "species", code: "BHVI" }, // Blue-headed Vireo
-  { type: "species", code: "PHVI" }, // Philadelphia Vireo
-  { type: "species", code: "WAVI" }, // Warbling Vireo
-  { type: "species", code: "REVI" }, // Red-eyed Vireo
+  { type: "species", code: "BHVI", priority: "C" }, // Blue-headed Vireo
+  { type: "species", code: "PHVI", priority: "C" }, // Philadelphia Vireo
+  { type: "species", code: "WAVI", priority: "C" }, // Warbling Vireo
+  { type: "species", code: "REVI", priority: "C" }, // Red-eyed Vireo
   { type: "group", groupName: "SHRIKE" },
   { type: "species", code: "NSHR" }, // Northern Shrike
   { type: "group", groupName: "CORVIDS" },
   { type: "species", code: "BLJA" }, // Blue Jay
-  { type: "species", code: "AMCR" }, // American Crow
+  { type: "species", code: "AMCR", priority: "D" }, // American Crow
   { type: "species", code: "CORA" }, // Common Raven
   { type: "group", groupName: "MÉSANGES" },
-  { type: "species", code: "BCCH" }, // Black-capped Chickadee
+  { type: "species", code: "BCCH", priority: "D" }, // Black-capped Chickadee
   { type: "species", code: "TUTI" }, // Tufted Titmouse
   { type: "group", groupName: "LARKS" },
   { type: "species", code: "HOLA" }, // Horned Lark
   { type: "group", groupName: "SWALLOWS" },
   { type: "species", code: "NRWS" }, // Northern Rough-winged Swallow
   { type: "species", code: "PUMA" }, // Purple Martin
-  { type: "species", code: "TRES" }, // Tree Swallow
+  { type: "species", code: "TRES", priority: "C" }, // Tree Swallow
   { type: "species", code: "BANS" }, // Bank Swallow
-  { type: "species", code: "BARS" }, // Barn Swallow
-  { type: "species", code: "CLSW" }, // Cliff Swallow
+  { type: "species", code: "BARS", priority: "C" }, // Barn Swallow
+  { type: "species", code: "CLSW", priority: "C" }, // Cliff Swallow
   { type: "group", groupName: "KINGLETS" },
-  { type: "species", code: "RCKI" }, // Ruby-crowned Kinglet
-  { type: "species", code: "GCKI" }, // Golden-crowned Kinglet
+  { type: "species", code: "RCKI", priority: "B" }, // Ruby-crowned Kinglet
+  { type: "species", code: "GCKI", priority: "C" }, // Golden-crowned Kinglet
   { type: "group", groupName: "NUTHATCHES" },
-  { type: "species", code: "RBNU" }, // Red-breasted Nuthatch
+  { type: "species", code: "RBNU", priority: "D" }, // Red-breasted Nuthatch
   { type: "species", code: "WBNU" }, // White-breasted Nuthatch
   { type: "group", groupName: "TREE CREEPERS" },
-  { type: "species", code: "BRCR" }, // Brown Creeper
+  { type: "species", code: "BRCR", priority: "D" }, // Brown Creeper
   { type: "group", groupName: "GNATCATCHERS" },
   { type: "species", code: "BGGN" }, // Blue-gray Gnatcatcher
   { type: "group", groupName: "WRENS" },
   { type: "species", code: "HOWR" }, // Northern House Wren
-  { type: "species", code: "WIWR" }, // Winter Wren
+  { type: "species", code: "WIWR", priority: "D" }, // Winter Wren
   { type: "species", code: "MAWR" }, // Marsh Wren
   { type: "species", code: "CARW" }, // Carolina Wren
   { type: "group", groupName: "STARLINGS" },
-  { type: "species", code: "EUST" }, // European Starling
+  { type: "species", code: "EUST", priority: "D" }, // European Starling
   { type: "group", groupName: "MIMIDS" },
   { type: "species", code: "GRCA" }, // Gray Catbird
   { type: "species", code: "BRTH" }, // Brown Thrasher
@@ -270,15 +272,15 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "group", groupName: "THRUSHES" },
   { type: "species", code: "EABL" }, // Eastern Bluebird
   { type: "species", code: "VEER" }, // Veery
-  { type: "species", code: "GCTH" }, // Gray-cheeked Thrush
+  { type: "species", code: "GCTH", priority: "A" }, // Gray-cheeked Thrush
   { type: "species", code: "BITH" }, // Bicknell's Thrush
-  { type: "species", code: "SWTH" }, // Swainson's Thrush
-  { type: "species", code: "HETH" }, // Hermit Thrush
+  { type: "species", code: "SWTH", priority: "A" }, // Swainson's Thrush
+  { type: "species", code: "HETH", priority: "C" }, // Hermit Thrush
   { type: "species", code: "WOTH" }, // Wood Thrush
-  { type: "species", code: "AMRO" }, // American Robin
+  { type: "species", code: "AMRO", priority: "D" }, // American Robin
   { type: "group", groupName: "WAXWINGS" },
   { type: "species", code: "BOWA" }, // Bohemian Waxwing
-  { type: "species", code: "CEDW" }, // Cedar Waxwing
+  { type: "species", code: "CEDW", priority: "D" }, // Cedar Waxwing
   { type: "group", groupName: "INVASIVE" },
   { type: "species", code: "HOSP" }, // House Sparrow
   { type: "group", groupName: "PIPITS" },
@@ -287,61 +289,61 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "species", code: "EVGR" }, // Evening Grosbeak
   { type: "species", code: "PIGR" }, // Pine Grosbeak
   { type: "species", code: "HOFI" }, // House Finch
-  { type: "species", code: "PUFI" }, // Purple Finch
+  { type: "species", code: "PUFI", priority: "D" }, // Purple Finch
   { type: "species", code: "CORE" }, // Common Redpoll
   { type: "species", code: "WWCR" }, // White-winged Crossbill
   { type: "species", code: "PISI" }, // Pine Siskin
   { type: "species", code: "AMGO" }, // American Goldfinch
   { type: "group", groupName: "SPARROWS" },
   { type: "species", code: "SNBU" }, // Snow Bunting
-  { type: "species", code: "CHSP" }, // Chipping Sparrow
+  { type: "species", code: "CHSP", priority: "C" }, // Chipping Sparrow
   { type: "species", code: "FISP" }, // Field Sparrow
-  { type: "species", code: "ATSP" }, // American Tree Sparrow
-  { type: "species", code: "FOSP" }, // Fox Sparrow
-  { type: "species", code: "SCJU" }, // Dark-eyed Junco
-  { type: "species", code: "EWCS" }, // White-crowned Sparrow
-  { type: "species", code: "WTSP" }, // White-throated Sparrow
+  { type: "species", code: "ATSP", priority: "B" }, // American Tree Sparrow
+  { type: "species", code: "FOSP", priority: "B" }, // Fox Sparrow
+  { type: "species", code: "SCJU", priority: "B" }, // Dark-eyed Junco
+  { type: "species", code: "EWCS", priority: "B" }, // White-crowned Sparrow
+  { type: "species", code: "WTSP", priority: "B" }, // White-throated Sparrow
   { type: "species", code: "VESP" }, // Vesper Sparrow
-  { type: "species", code: "SAVS" }, // Savannah Sparrow
-  { type: "species", code: "SOSP" }, // Song Sparrow
-  { type: "species", code: "LISP" }, // Lincoln's Sparrow
-  { type: "species", code: "SWSP" }, // Swamp Sparrow
+  { type: "species", code: "SAVS", priority: "A" }, // Savannah Sparrow
+  { type: "species", code: "SOSP", priority: "D" }, // Song Sparrow
+  { type: "species", code: "LISP", priority: "A" }, // Lincoln's Sparrow
+  { type: "species", code: "SWSP", priority: "B" }, // Swamp Sparrow
   { type: "species", code: "EATO" }, // Eastern Towhee
   { type: "group", groupName: "BLACKBIRDS" },
   { type: "species", code: "BOBO" }, // Bobolink
   { type: "species", code: "EAME" }, // Eastern Meadowlark
   { type: "species", code: "BAOR" }, // Baltimore Oriole
-  { type: "species", code: "RWBL" }, // Red-winged Blackbird
+  { type: "species", code: "RWBL", priority: "D" }, // Red-winged Blackbird
   { type: "species", code: "BHCO" }, // Brown-headed Cowbird
-  { type: "species", code: "RUBL" }, // Rusty Blackbird
-  { type: "species", code: "COGR" }, // Common Grackle
+  { type: "species", code: "RUBL", priority: "B" }, // Rusty Blackbird
+  { type: "species", code: "COGR", priority: "D" }, // Common Grackle
   { type: "group", groupName: "WARBLERS" },
-  { type: "species", code: "OVEN" }, // Ovenbird
-  { type: "species", code: "NOWA" }, // Northern Waterthrush
-  { type: "species", code: "BAWW" }, // Black-and-white Warbler
-  { type: "species", code: "TEWA" }, // Tennessee Warbler
-  { type: "species", code: "OCWA" }, // Orange-crowned Warbler
+  { type: "species", code: "OVEN", priority: "C" }, // Ovenbird
+  { type: "species", code: "NOWA", priority: "A" }, // Northern Waterthrush
+  { type: "species", code: "BAWW", priority: "C" }, // Black-and-white Warbler
+  { type: "species", code: "TEWA", priority: "A" }, // Tennessee Warbler
+  { type: "species", code: "OCWA", priority: "A" }, // Orange-crowned Warbler
   { type: "species", code: "NAWA" }, // Nashville Warbler
   { type: "species", code: "CONW" }, // Connecticut Warbler
-  { type: "species", code: "MOWA" }, // Mourning Warbler
-  { type: "species", code: "COYE" }, // Common Yellowthroat
+  { type: "species", code: "MOWA", priority: "C" }, // Mourning Warbler
+  { type: "species", code: "COYE", priority: "C" }, // Common Yellowthroat
   { type: "species", code: "AMRE" }, // American Redstart
-  { type: "species", code: "CMWA" }, // Cape May Warbler
+  { type: "species", code: "CMWA", priority: "A" }, // Cape May Warbler
   { type: "species", code: "NOPA" }, // Northern Parula
-  { type: "species", code: "MAWA" }, // Magnolia Warbler
-  { type: "species", code: "BBWA" }, // Bay-breasted Warbler
+  { type: "species", code: "MAWA", priority: "A" }, // Magnolia Warbler
+  { type: "species", code: "BBWA", priority: "A" }, // Bay-breasted Warbler
   { type: "species", code: "BLBW" }, // Blackburnian Warbler
-  { type: "species", code: "YEWA" }, // Yellow Warbler
+  { type: "species", code: "YEWA", priority: "C" }, // Yellow Warbler
   { type: "species", code: "CSWA" }, // Chestnut-sided Warbler
-  { type: "species", code: "BLPW" }, // Blackpoll Warbler
+  { type: "species", code: "BLPW", priority: "A" }, // Blackpoll Warbler
   { type: "species", code: "BTBW" }, // Black-throated Blue Warbler
   { type: "species", code: "WPWA" }, // Western Palm Warbler
   { type: "species", code: "YPWA" }, // Yellow Palm Warbler
   { type: "species", code: "PIWA" }, // Pine Warbler
-  { type: "species", code: "MYWA" }, // Yellow-rumped Warbler
-  { type: "species", code: "BTNW" }, // Black-throated Green Warbler
-  { type: "species", code: "CAWA" }, // Canada Warbler
-  { type: "species", code: "WIWA" }, // Wilson's Warbler
+  { type: "species", code: "MYWA", priority: "B" }, // Yellow-rumped Warbler
+  { type: "species", code: "BTNW", priority: "C" }, // Black-throated Green Warbler
+  { type: "species", code: "CAWA", priority: "C" }, // Canada Warbler
+  { type: "species", code: "WIWA", priority: "A" }, // Wilson's Warbler
   { type: "group", groupName: "TANAGERS" },
   { type: "species", code: "SCTA" }, // Scarlet Tanager
   { type: "group", groupName: "CARDINALIDAE" },

@@ -20,6 +20,7 @@ import {
   type ReportAnalysis,
 } from "./reportUtils";
 import { BirdEventType, type Program } from "../../../types";
+import { SPECIES_GROUPS } from "../../../types/DET";
 import { SPECIES_MAP } from "../../../types/species";
 
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -122,30 +123,6 @@ function ReportSection({ title, subtitle, children }: { title: string; subtitle?
     </section>
   );
 }
-
-const parseCsvLine = (line: string): string[] => {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    if (char === "\"") {
-      if (inQuotes && line[i + 1] === "\"") {
-        current += "\"";
-        i += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === "," && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  result.push(current);
-  return result;
-};
 
 const trimDatesByValues = (dates: string[], maps: Array<Map<string, number>>) => {
   if (!dates.length) return [];
@@ -323,7 +300,7 @@ type ReportGroupData = {
   netUsageRows: Array<Record<string, React.ReactNode>>;
   netProductivitySummary: string;
   netTopSpeciesRows: Array<Record<string, React.ReactNode>>;
-  priorityRows: Array<Record<string, React.ReactNode>>;
+  prioritySummaryRows: Array<Record<string, React.ReactNode>>;
 };
 
 const PROGRAM_GROUPS: ProgramGroupDefinition[] = [
@@ -373,7 +350,6 @@ export default function Reports() {
   const [appliedProgramIds, setAppliedProgramIds] = useState<string[]>([]);
   const [programSearchKey, setProgramSearchKey] = useState<string | null>(null);
   const [autocompleteResetKey, setAutocompleteResetKey] = useState(0);
-  const [prioritySpeciesMap, setPrioritySpeciesMap] = useState<Record<string, string>>({});
   const deferredStartDate = useDeferredValue(appliedStartDate);
   const deferredEndDate = useDeferredValue(appliedEndDate);
   const deferredProgramIds = useDeferredValue(appliedProgramIds);
@@ -424,34 +400,14 @@ export default function Reports() {
     return history;
   }, [birdEventsMap]);
 
-  useEffect(() => {
-    let isActive = true;
-    fetch("/data/tblSpecies.csv")
-      .then((response) => response.text())
-      .then((text) => {
-        if (!isActive) return;
-        const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-        if (!lines.length) return;
-        const header = parseCsvLine(lines[0]).map((entry) => entry.trim());
-        const codeIndex = header.indexOf("SpeciesCode");
-        const priorityIndex = header.indexOf("PriorityCategory");
-        if (codeIndex === -1 || priorityIndex === -1) return;
-
-        const map: Record<string, string> = {};
-        lines.slice(1).forEach((line) => {
-          const columns = parseCsvLine(line);
-          const code = columns[codeIndex]?.trim();
-          const priority = columns[priorityIndex]?.trim();
-          if (code && priority) {
-            map[code] = priority;
-          }
-        });
-        setPrioritySpeciesMap(map);
-      })
-      .catch(() => { });
-    return () => {
-      isActive = false;
-    };
+  const prioritySpeciesMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    SPECIES_GROUPS.forEach((item) => {
+      if (item.type !== "species") return;
+      if (!item.priority) return;
+      map[item.code] = item.priority;
+    });
+    return map;
   }, []);
 
   const programLatestYearMap = useMemo(() => {
@@ -1566,7 +1522,7 @@ export default function Reports() {
       returnDetailRows.push(...returnEntries.map(({ elapsedMs: _elapsedMs, ...row }) => row));
 
       const bandedBySpecies = new Map<string, number>();
-      const recapturedBySpecies = new Map<string, number>();
+      const recapturedBySpecies = new Map<string, { repeats: number; individuals: Set<string> }>();
       const returnedBySpecies = new Map<string, number>();
 
       groupCaptures.forEach((capture) => {
@@ -1575,7 +1531,12 @@ export default function Reports() {
           bandedBySpecies.set(current, (bandedBySpecies.get(current) ?? 0) + 1);
         }
         if (capture.captureType === BirdEventType.Repeat || capture.captureType === BirdEventType.Alien) {
-          recapturedBySpecies.set(current, (recapturedBySpecies.get(current) ?? 0) + 1);
+          if (!recapturedBySpecies.has(current)) {
+            recapturedBySpecies.set(current, { repeats: 0, individuals: new Set<string>() });
+          }
+          const entry = recapturedBySpecies.get(current)!;
+          entry.repeats += 1;
+          if (capture.bandId) entry.individuals.add(capture.bandId);
         }
         if (capture.captureType === BirdEventType.Return) {
           returnedBySpecies.set(current, (returnedBySpecies.get(current) ?? 0) + 1);
@@ -1592,14 +1553,15 @@ export default function Reports() {
           share: `${((count / totalBanded) * 100).toFixed(1)}%`,
         }));
 
-      const totalRecaptured = Array.from(recapturedBySpecies.values()).reduce((sum, count) => sum + count, 0) || 1;
+      const totalRecaptured =
+        Array.from(recapturedBySpecies.values()).reduce((sum, entry) => sum + entry.repeats, 0) || 1;
       const topRecapturedRows = Array.from(recapturedBySpecies.entries())
-        .sort((a, b) => b[1] - a[1])
+        .sort((a, b) => b[1].repeats - a[1].repeats)
         .slice(0, 10)
-        .map(([species, count]) => ({
+        .map(([species, entry]) => ({
           species: getSpeciesLabel(species),
-          count: formatNumber(count),
-          share: `${((count / totalRecaptured) * 100).toFixed(1)}%`,
+          repeats: formatNumber(entry.repeats),
+          individuals: formatNumber(entry.individuals.size),
         }));
 
       const returnsRows: Array<Record<string, React.ReactNode>> = [];
@@ -1801,15 +1763,83 @@ export default function Reports() {
         priorityCounts.set(capture.species, entry);
       });
 
-      const priorityRows = Array.from(priorityCounts.entries())
-        .sort((a, b) => b[1].banded - a[1].banded)
-        .slice(0, 15)
-        .map(([speciesCode, entry]) => ({
-          species: getSpeciesLabel(speciesCode),
-          priority: entry.priority,
-          observed: formatNumber(entry.observed),
-          banded: formatNumber(entry.banded),
-        }));
+      const priorityCategories = ["A", "B", "C", "D"];
+      const priorityCategorySpecies = priorityCategories.reduce<Record<string, Set<string>>>((acc, category) => {
+        acc[category] = new Set();
+        return acc;
+      }, {});
+
+      SPECIES_GROUPS.forEach((item) => {
+        if (item.type !== "species") return;
+        if (!item.priority) return;
+        if (!priorityCategorySpecies[item.priority]) return;
+        priorityCategorySpecies[item.priority].add(item.code);
+      });
+
+      const priorityCategoryTotals = priorityCategories.reduce<Record<string, number>>((acc, category) => {
+        acc[category] = priorityCategorySpecies[category]?.size ?? 0;
+        return acc;
+      }, {});
+      const priorityCategoryObserved = priorityCategories.reduce<Record<string, number>>((acc, category) => {
+        acc[category] = 0;
+        return acc;
+      }, {});
+      const priorityCategoryBanded = priorityCategories.reduce<Record<string, number>>((acc, category) => {
+        acc[category] = 0;
+        return acc;
+      }, {});
+      const priorityCategoryIndividuals = priorityCategories.reduce<Record<string, number>>((acc, category) => {
+        acc[category] = 0;
+        return acc;
+      }, {});
+
+      priorityCounts.forEach((entry) => {
+        if (!entry.priority) return;
+        if (!priorityCategoryTotals[entry.priority]) return;
+        if (entry.observed > 0) priorityCategoryObserved[entry.priority] += 1;
+        if (entry.banded > 0) priorityCategoryBanded[entry.priority] += 1;
+        priorityCategoryIndividuals[entry.priority] += entry.banded;
+      });
+
+      const hasPriorityData = priorityCategories.some(
+        (category) =>
+          priorityCategoryObserved[category] > 0 ||
+          priorityCategoryBanded[category] > 0 ||
+          priorityCategoryIndividuals[category] > 0
+      );
+
+      const prioritySummaryRows = hasPriorityData
+        ? [
+          {
+            label: "Number of species in category",
+            A: formatNumber(priorityCategoryTotals.A),
+            B: formatNumber(priorityCategoryTotals.B),
+            C: formatNumber(priorityCategoryTotals.C),
+            D: formatNumber(priorityCategoryTotals.D),
+          },
+          {
+            label: "Number of species observed",
+            A: formatNumber(priorityCategoryObserved.A),
+            B: formatNumber(priorityCategoryObserved.B),
+            C: formatNumber(priorityCategoryObserved.C),
+            D: formatNumber(priorityCategoryObserved.D),
+          },
+          {
+            label: "Number of species banded",
+            A: formatNumber(priorityCategoryBanded.A),
+            B: formatNumber(priorityCategoryBanded.B),
+            C: formatNumber(priorityCategoryBanded.C),
+            D: formatNumber(priorityCategoryBanded.D),
+          },
+          {
+            label: "Number of individuals banded",
+            A: formatNumber(priorityCategoryIndividuals.A),
+            B: formatNumber(priorityCategoryIndividuals.B),
+            C: formatNumber(priorityCategoryIndividuals.C),
+            D: formatNumber(priorityCategoryIndividuals.D),
+          },
+        ]
+        : [];
 
       results.push({
         group,
@@ -1842,7 +1872,7 @@ export default function Reports() {
         netUsageRows,
         netProductivitySummary,
         netTopSpeciesRows,
-        priorityRows,
+        prioritySummaryRows,
       });
     }
     return results;
@@ -2147,8 +2177,8 @@ export default function Reports() {
                     subtitle="Top 10 recapture species."
                     columns={[
                       { key: "species", label: "Species" },
-                      { key: "count", label: "Recaptures", align: "right" },
-                      { key: "share", label: "Share", align: "right" },
+                      { key: "repeats", label: "Repeats", align: "right" },
+                      { key: "individuals", label: "Individuals", align: "right" },
                     ]}
                     rows={groupData.topRecapturedRows}
                   />
@@ -2176,6 +2206,22 @@ export default function Reports() {
                   >
                     <DailyTrendChart data={groupData.dailyObservedSpecies} ariaLabel="Species observed per day" />
                   </ChartContainer>
+
+
+                  {groupData.prioritySummaryRows.length ? (
+                    <ReportTable
+                      title={`Summary of priority species observed and banded (${groupData.group.title})`}
+                      subtitle="Detailed category definitions are provided in Gahbauer et al. (2014)."
+                      columns={[
+                        { key: "label", label: "Metric" },
+                        { key: "A", label: "Priority A", align: "right" },
+                        { key: "B", label: "Priority B", align: "right" },
+                        { key: "C", label: "Priority C", align: "right" },
+                        { key: "D", label: "Priority D", align: "right" },
+                      ]}
+                      rows={groupData.prioritySummaryRows}
+                    />
+                  ) : null}
 
                   <div>
                     <ReportTable
@@ -2210,34 +2256,7 @@ export default function Reports() {
                       rows={groupData.netTopSpeciesRows}
                     />
                   ) : null}
-                  
-                  {groupData.priorityRows.length ? (
-                    <ReportTable
-                      title="Priority species coverage"
-                      subtitle="Priority species observed vs banded."
-                      columns={[
-                        { key: "species", label: "Species" },
-                        { key: "priority", label: "Priority" },
-                        { key: "observed", label: "Observed", align: "right" },
-                        { key: "banded", label: "Banded", align: "right" },
-                      ]}
-                      rows={groupData.priorityRows}
-                    />
-                  ) : null}
 
-                  {groupData.returnsRows.length ? (
-                    <ReportTable
-                      title="Return list"
-                      subtitle="Sorted by elapsed time since previous capture."
-                      columns={[
-                        { key: "date", label: "Date" },
-                        { key: "species", label: "Species" },
-                        { key: "band", label: "Band" },
-                        { key: "elapsed", label: "Days since previous", align: "right" },
-                      ]}
-                      rows={groupData.returnsRows}
-                    />
-                  ) : null}
                 </div>
 
               </ReportSection>
