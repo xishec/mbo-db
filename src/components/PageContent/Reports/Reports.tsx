@@ -627,6 +627,7 @@ type ReportData = {
   netProductivitySummary: string;
   netTopSpeciesRows: Array<Record<string, React.ReactNode>>;
   prioritySummaryRows: Array<Record<string, React.ReactNode>>;
+  banderStatsRows: Array<Record<string, React.ReactNode>>;
 };
 
 export default function Reports() {
@@ -1797,6 +1798,29 @@ export default function Reports() {
 
       const priorityCounts = buildPriorityCounts(groupDetSummaries, bandedCaptures, prioritySpeciesMap);
       const prioritySummaryRows = buildPrioritySummaryRows(priorityCounts);
+      const banderStatsMap = new Map<string, { captures: number; dates: Set<string> }>();
+      groupCaptures.forEach((capture) => {
+        const bander = capture.bander || "Unknown";
+        if (!banderStatsMap.has(bander)) {
+          banderStatsMap.set(bander, { captures: 0, dates: new Set<string>() });
+        }
+        const entry = banderStatsMap.get(bander)!;
+        entry.captures += 1;
+        if (capture.date) {
+          entry.dates.add(capture.date);
+        }
+      });
+      const banderStatsRows = Array.from(banderStatsMap.entries())
+        .map(([bander, entry]) => ({
+          bander,
+          daysBanding: formatNumber(entry.dates.size),
+          captures: formatNumber(entry.captures),
+        }))
+        .sort((a, b) => {
+          const diff = Number(String(b.captures).replace(/,/g, "")) - Number(String(a.captures).replace(/,/g, ""));
+          if (diff !== 0) return diff;
+          return String(a.bander).localeCompare(String(b.bander));
+        });
 
       return {
         title: reportTitle,
@@ -1829,6 +1853,7 @@ export default function Reports() {
         netProductivitySummary,
         netTopSpeciesRows,
         prioritySummaryRows,
+        banderStatsRows,
       };
   }, [
     birdEventsMap,
@@ -2163,6 +2188,19 @@ export default function Reports() {
                     { key: "top3", label: "Top 3", align: "right" },
                   ]}
                   rows={reportData.netTopSpeciesRows}
+                />
+              ) : null}
+
+              {reportData.banderStatsRows.length ? (
+                <ReportTable
+                  title="Bander stats"
+                  subtitle="Days banding and total captures per bander."
+                  columns={[
+                    { key: "bander", label: "Bander" },
+                    { key: "daysBanding", label: "Days banding", align: "right" },
+                    { key: "captures", label: "Captures", align: "right" },
+                  ]}
+                  rows={reportData.banderStatsRows}
                 />
               ) : null}
             </div>
