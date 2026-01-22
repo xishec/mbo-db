@@ -50,6 +50,8 @@ export interface Weather {
   // Precipitation
   totalRainfallMm?: number; // Total rain (mm) - for period sum and "# days with rainfall" count
   totalSnowCm?: number; // Total snow (cm) - for period sum and "# days with snowfall" count
+  daysWithRainfall?: number; // Used in period summaries; optional for daily records
+  daysWithSnowfall?: number; // Used in period summaries; optional for daily records
 
   // Snow depth
   meanSnowDepthCm?: number; // Mean snow depth (cm)

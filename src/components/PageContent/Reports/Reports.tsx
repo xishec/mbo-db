@@ -823,6 +823,16 @@ export default function Reports() {
 
     const groupCaptures = capturesInRange.filter((capture) => activeProgramIds.includes(capture.programId));
     const groupDets = detsInRange.filter((det) => activeProgramIds.includes(det.programId));
+    const groupDetSummaries: DetSummary[] = groupDets.map((det) => {
+      const nets = det.netHours?.nets?.map((net) => {
+        const total = net.total !== undefined ? Number(net.total) : undefined;
+        return { id: net.id, total: Number.isNaN(total ?? NaN) ? undefined : total };
+      });
+      return {
+        observedSpeciesCount: det.observedSpeciesCount,
+        netHours: nets ? { nets } : undefined,
+      };
+    });
     const groupDates = [
       ...groupDets.map((det) => det.date),
       ...groupCaptures.map((capture) => capture.date),
@@ -1323,7 +1333,9 @@ export default function Reports() {
 
       const weatherColumns: TableColumn[] = [
         { key: "metric", label: "" },
-        ...periodEntries.map((entry) => ({ key: entry.key, label: entry.label, align: "right" })),
+        ...periodEntries.map(
+          (entry): TableColumn => ({ key: entry.key, label: entry.label, align: "right" })
+        ),
         { key: "season", label: "Season", align: "right" },
       ];
 
@@ -1428,11 +1440,12 @@ export default function Reports() {
       );
 
       const showAverageColumn = !isWinterReport;
+      const alignRight: TableColumn["align"] = "right";
       const summaryColumns: TableColumn[] = [
         { key: "metric", label: "" },
-        ...periodEntries.map((entry) => ({ key: entry.key, label: entry.label, align: "right" })),
-        ...(showAverageColumn ? [{ key: "average", label: "Average", align: "right" } as TableColumn] : []),
-        { key: "season", label: "Season", align: "right" },
+        ...periodEntries.map((entry): TableColumn => ({ key: entry.key, label: entry.label, align: alignRight })),
+        ...(showAverageColumn ? ([{ key: "average", label: "Average", align: alignRight }] as TableColumn[]) : []),
+        { key: "season", label: "Season", align: alignRight },
       ];
 
       const hasSummaryData = (entry: (typeof periodEntries)[number]) =>
@@ -1777,12 +1790,12 @@ export default function Reports() {
 
       const { netUsageRows, netProductivitySummary, netTopSpeciesRows } = buildNetUsageData({
         groupCaptures,
-        groupDets,
+        groupDets: groupDetSummaries,
         formatOptional,
         getSpeciesLabel,
       });
 
-      const priorityCounts = buildPriorityCounts(groupDets, bandedCaptures, prioritySpeciesMap);
+      const priorityCounts = buildPriorityCounts(groupDetSummaries, bandedCaptures, prioritySpeciesMap);
       const prioritySummaryRows = buildPrioritySummaryRows(priorityCounts);
 
       return {

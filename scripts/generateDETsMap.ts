@@ -3,7 +3,7 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 import { DET, Net } from "../src/types/DET.js";
 import { db, ENVIRONMENT } from "./firebase-node.js";
-import { fetchWeatherForDate } from "../src/services/weatherService.js";
+import { fetchWeatherForDateRange } from "../src/services/weatherService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -188,36 +188,44 @@ async function uploadDETsToRTDB() {
   let weatherSuccessCount = 0;
   let weatherErrorCount = 0;
 
-  for (let i = 0; i < dates.length; i++) {
-    if (!dates[i].startsWith("202")) continue;
-    const date = dates[i];
-    const det = DETsMap.get(date)!;
-
-    // Only fetch weather for MBO location
-    if (det.location !== "MBO") {
-      continue;
+  const mboDates = dates.filter((date) => DETsMap.get(date)?.location === "MBO").sort();
+  const datesByYear = new Map<number, string[]>();
+  mboDates.forEach((date) => {
+    const year = parseInt(date.slice(0, 4), 10);
+    if (!datesByYear.has(year)) {
+      datesByYear.set(year, []);
     }
+    datesByYear.get(year)!.push(date);
+  });
+
+  const years = Array.from(datesByYear.keys()).sort((a, b) => a - b);
+  for (let i = 0; i < years.length; i++) {
+    const year = years[i];
+    const yearDates = datesByYear.get(year)!;
+    const startDate = yearDates[0];
+    const endDate = yearDates[yearDates.length - 1];
 
     try {
-      const weather = await fetchWeatherForDate(date);
-      if (weather) {
-        det.weather = weather;
-        weatherSuccessCount++;
-      } else {
-        weatherErrorCount++;
-      }
+      const weatherByDate = await fetchWeatherForDateRange(startDate, endDate);
+      yearDates.forEach((date) => {
+        const det = DETsMap.get(date)!;
+        const weather = weatherByDate.get(date);
+        if (weather) {
+          det.weather = weather;
+          weatherSuccessCount++;
+        } else {
+          weatherErrorCount++;
+        }
+      });
     } catch (error) {
-      console.error(`Failed to fetch weather for ${date}:`, error);
-      weatherErrorCount++;
+      console.error(`Failed to fetch weather for ${year}:`, error);
+      weatherErrorCount += yearDates.length;
     }
 
-    // Progress indicator
-    if ((i + 1) % 10 === 0 || i === dates.length - 1) {
-      console.log(`Progress: ${i + 1}/${dates.length} dates processed`);
-    }
+    console.log(`Progress: ${i + 1}/${years.length} years processed`);
 
     // Small delay to avoid rate limiting
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   console.log(`✅ Weather data: ${weatherSuccessCount} successful, ${weatherErrorCount} failed`);
