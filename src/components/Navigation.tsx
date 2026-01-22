@@ -124,7 +124,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             )}
           </div>
         </NavbarBrand>
-        <NavbarContent className="hidden sm:flex gap-16" justify="center">
+        <NavbarContent className="hidden sm:flex gap-12" justify="center">
           <NavbarItem isActive={activePage === "home"}>
             <Link
               aria-current={activePage === "home" ? "page" : undefined}
