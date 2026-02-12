@@ -301,9 +301,9 @@ export default function Search() {
         {!isLoading && filters.length > 0 && filteredBirdEvents.length > 0 && (
           <div className="w-full">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-normal">
+              {/* <h3 className="text-lg font-normal">
                 Filtered results ({filteredBirdEvents.length} of {allBirdEvents.length}):
-              </h3>
+              </h3> */}
               <ExportButton
                 birdEvents={filteredBirdEvents}
                 filename={`filtered_bird_events_${new Date().toISOString().split('T')[0]}.csv`}
