@@ -566,7 +566,7 @@ export default function AddBirdEventModal({
       // Standard input field
       return (
         <Input
-          ref={(el) => {
+          ref={(el: HTMLInputElement | null) => {
             if (el) inputRefs.current.set(columnKey, el);
           }}
           {...modalInputProps}

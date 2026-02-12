@@ -175,7 +175,7 @@ export default function DETObserverHoursModal({
                         <TableRow key={index}>
                           <TableCell className="p-1">
                             <Input
-                              ref={(el) => {
+                              ref={(el: HTMLInputElement | null) => {
                                 if (el) {
                                   inputRefs.current.set(index, el);
                                 } else {

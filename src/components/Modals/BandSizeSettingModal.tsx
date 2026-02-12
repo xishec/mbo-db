@@ -111,7 +111,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
                     <div key={bandSize} className="flex items-center gap-4">
                       <div className="w-10 text-sm font-medium">{`${bandSize} : `}</div>
                       <Input
-                        ref={(el) => {
+                        ref={(el: HTMLInputElement | null) => {
                           if (el) inputRefs.current.set(`${bandSize}-bandGroup`, el);
                         }}
                         placeholder="Band Group"
@@ -129,7 +129,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
                       />
                       <span className="text-sm">-</span>
                       <Input
-                        ref={(el) => {
+                        ref={(el: HTMLInputElement | null) => {
                           if (el) inputRefs.current.set(`${bandSize}-bandLastTwoDigits`, el);
                         }}
                         placeholder="Last 2"
