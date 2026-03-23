@@ -3,8 +3,34 @@ import { SPECIES_MAP } from "./species";
 
 export type ErrorSeverity = "danger" | "warning";
 
+export const BIRD_EVENT_ERROR_TYPE_CONFIG = {
+  "sex-change": { label: "Sex Changes" },
+  "species-change": { label: "Species Changes" },
+  recapture: { label: "Quick Recaptures" },
+  fat: { label: "Fat Range" },
+  weight: { label: "Weight Range" },
+  wing: { label: "Wing Range" },
+  "age-consistency": { label: "Age Consistency" },
+  "age-sequence": { label: "Age Sequence" },
+  "age-season": { label: "Age Season" },
+} as const;
+
+export type BirdEventErrorType = keyof typeof BIRD_EVENT_ERROR_TYPE_CONFIG;
+
+export const DATA_ERRORS_FILTER_OPTIONS: ReadonlyArray<{
+  key: "all" | BirdEventErrorType;
+  label: string;
+}> = [
+  { key: "all", label: "All Errors" },
+  ...(Object.entries(BIRD_EVENT_ERROR_TYPE_CONFIG) as [BirdEventErrorType, { label: string }][]).map(([key, config]) => ({
+    key,
+    label: config.label,
+  })),
+] as const;
+
 export interface BirdEventError {
   id: string;
+  errorType: BirdEventErrorType;
   birdEvent: BirdEvent;
   reason: string;
   severity: ErrorSeverity;
@@ -18,6 +44,36 @@ interface MeasurementRanges {
   wingLower: number;
   wingUpper: number;
 }
+
+const AGE_U = 0;
+const AGE_AHY = 1;
+const AGE_HY = 2;
+const AGE_L = 4;
+const AGE_SY = 5;
+const AGE_ASY = 6;
+const AGE_TY = 7;
+const AGE_ATY = 8;
+
+const AGE_STAGE: Partial<Record<number, number>> = {
+  [AGE_L]: 0,
+  [AGE_HY]: 0,
+  [AGE_AHY]: 0,
+  [AGE_SY]: 1,
+  [AGE_ASY]: 1,
+  [AGE_TY]: 2,
+  [AGE_ATY]: 2,
+};
+
+const AGE_LABELS: Record<number, string> = {
+  [AGE_U]: "U",
+  [AGE_AHY]: "AHY",
+  [AGE_HY]: "HY",
+  [AGE_L]: "L",
+  [AGE_SY]: "SY",
+  [AGE_ASY]: "ASY",
+  [AGE_TY]: "TY",
+  [AGE_ATY]: "ATY",
+};
 
 // 4->2->5->1->6->1->6...
 const AGE_SEQUENCE_ALLOWED_NEXT: Record<string, Set<string>> = {
@@ -86,40 +142,189 @@ function isAgeValidationExcluded(speciesCode: string): boolean {
   return speciesFrench.toLowerCase().includes("pic");
 }
 
-function getEventTimestamp(event: BirdEvent): number {
-  return Date.parse(event.date);
+function normalizeAgeCode(ageCode: string): number {
+  const parsedAge = Number.parseInt(ageCode, 10);
+
+  if (!Number.isInteger(parsedAge)) return AGE_U;
+  if (parsedAge === 3) return AGE_U;
+  if (parsedAge < AGE_U || parsedAge > AGE_ATY) return AGE_U;
+
+  return parsedAge;
+}
+
+function formatAgeCode(ageCode: number): string {
+  return AGE_LABELS[ageCode] ?? "U";
+}
+
+function getCaptureYear(date: string): number | null {
+  if (!date) return null;
+
+  const [year] = date.split("-");
+  const parsedYear = Number.parseInt(year, 10);
+
+  return Number.isInteger(parsedYear) ? parsedYear : null;
+}
+
+function getEventTimestamp(date: string, time?: string): number | null {
+  if (!date) return null;
+
+  const timestamp = Date.parse(`${date}T${time || "00:00"}`);
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function formatYearSpan(years: number): string {
+  return `${years} year${years === 1 ? "" : "s"}`;
+}
+
+function isAgeConsistentWithRecord(
+  currentAge: number,
+  currentYear: number,
+  otherAge: number,
+  otherYear: number
+): boolean {
+  const yearDelta = otherYear - currentYear;
+
+  if (currentAge === AGE_U) {
+    switch (yearDelta) {
+      case 1:
+        return otherAge !== AGE_L && otherAge !== AGE_HY;
+      case 2:
+        return otherAge !== AGE_L && otherAge !== AGE_HY && otherAge !== AGE_SY;
+      default:
+        if (yearDelta >= 3) {
+          return otherAge !== AGE_L && otherAge !== AGE_HY && otherAge !== AGE_SY && otherAge !== AGE_TY;
+        }
+        return true;
+    }
+  }
+
+  if (currentAge === AGE_L || currentAge === AGE_HY || currentAge === AGE_SY || currentAge === AGE_TY) {
+    const ageStage = (AGE_STAGE[currentAge] ?? 0) + yearDelta;
+
+    if (ageStage <= -1) return false;
+    if (ageStage === 0) return otherAge === AGE_U || otherAge === AGE_L || otherAge === AGE_HY;
+    if (ageStage === 1) return otherAge === AGE_U || otherAge === AGE_SY || otherAge === AGE_AHY;
+    if (ageStage === 2)
+      return otherAge === AGE_U || otherAge === AGE_TY || otherAge === AGE_AHY || otherAge === AGE_ASY;
+
+    return otherAge === AGE_U || otherAge === AGE_AHY || otherAge === AGE_ASY || otherAge === AGE_ATY;
+  }
+
+  if (currentAge === AGE_AHY || currentAge === AGE_ASY || currentAge === AGE_ATY) {
+    const ageStage = (AGE_STAGE[currentAge] ?? 0) + yearDelta;
+
+    if (ageStage === 0) return otherAge !== AGE_L && otherAge !== AGE_HY;
+    if (ageStage === 1) return otherAge !== AGE_L && otherAge !== AGE_HY && otherAge !== AGE_SY;
+    if (ageStage >= 2) {
+      return otherAge !== AGE_L && otherAge !== AGE_HY && otherAge !== AGE_SY && otherAge !== AGE_TY;
+    }
+  }
+
+  return true;
+}
+
+function getAgeConsistencyConflict(
+  currentAgeCode: string,
+  currentDate: string,
+  relatedEvents: BirdEvent[]
+): { otherEvent: BirdEvent; reason: string } | null {
+  const currentYear = getCaptureYear(currentDate);
+  if (currentYear === null) return null;
+
+  const currentAge = normalizeAgeCode(currentAgeCode);
+
+  for (const event of relatedEvents) {
+    const otherYear = getCaptureYear(event.date);
+    if (otherYear === null) continue;
+
+    const otherAge = normalizeAgeCode(event.age);
+    if (!isAgeConsistentWithRecord(currentAge, currentYear, otherAge, otherYear)) {
+      const yearDelta = currentYear - otherYear;
+      return {
+        otherEvent: event,
+        reason: `Age can't be ${otherAge} (${formatAgeCode(otherAge)}) ${formatYearSpan(yearDelta)} after ${currentAge} (${formatAgeCode(currentAge)}).`,
+      };
+    }
+  }
+
+  return null;
+}
+
+function getAgeSequenceConflict(
+  currentAgeCode: string,
+  relatedEvents: BirdEvent[]
+): { previousEvent: BirdEvent; reason: string } | null {
+  if (!currentAgeCode || currentAgeCode === "0" || currentAgeCode === "3") return null;
+
+  let lastNonZeroAgeEvent: BirdEvent | null = null;
+
+  for (const event of relatedEvents) {
+    if (!event.age || event.age === "0" || event.age === "3") continue;
+    lastNonZeroAgeEvent = event;
+  }
+
+  if (!lastNonZeroAgeEvent) return null;
+
+  const allowedNext = AGE_SEQUENCE_ALLOWED_NEXT[lastNonZeroAgeEvent.age];
+  if (!allowedNext || allowedNext.has(currentAgeCode)) return null;
+
+  return {
+    previousEvent: lastNonZeroAgeEvent,
+    reason: `Age can't change from ${normalizeAgeCode(lastNonZeroAgeEvent.age)} to ${normalizeAgeCode(currentAgeCode)}.`,
+  };
+}
+
+function checkAgeConsistency(events: BirdEvent[]): BirdEventError[] {
+  const errors: BirdEventError[] = [];
+  const sortedEvents = [...events].sort((a, b) => {
+    const aTimestamp = getEventTimestamp(a.date, a.time) ?? Number.POSITIVE_INFINITY;
+    const bTimestamp = getEventTimestamp(b.date, b.time) ?? Number.POSITIVE_INFINITY;
+    return aTimestamp - bTimestamp;
+  });
+
+  for (let index = 0; index < sortedEvents.length; index += 1) {
+    const event = sortedEvents[index];
+    const relatedEvents = sortedEvents.slice(0, index);
+    const conflict = getAgeConsistencyConflict(event.age, event.date, relatedEvents);
+
+    if (!conflict) continue;
+
+    errors.push({
+      id: `${event.id}-age-consistency-${sanitizeForFirebasePath(conflict.reason)}`,
+      errorType: "age-consistency",
+      birdEvent: event,
+      reason: conflict.reason,
+      severity: "danger",
+    });
+  }
+
+  return errors;
 }
 
 function checkAgeSequenceOrder(events: BirdEvent[]): BirdEventError[] {
   const errors: BirdEventError[] = [];
-  const sortedEvents = [...events].sort((a, b) => getEventTimestamp(a) - getEventTimestamp(b));
+  const sortedEvents = [...events].sort((a, b) => {
+    const aTimestamp = getEventTimestamp(a.date, a.time) ?? Number.POSITIVE_INFINITY;
+    const bTimestamp = getEventTimestamp(b.date, b.time) ?? Number.POSITIVE_INFINITY;
+    return aTimestamp - bTimestamp;
+  });
 
-  let lastNonZeroAge: string | null = null;
-
-  for (const event of sortedEvents) {
+  for (let index = 0; index < sortedEvents.length; index += 1) {
+    const event = sortedEvents[index];
     if (isAgeValidationExcluded(event.species)) continue;
 
-    const age = event.age;
-    if (!age || age === "0" || age === "3") continue;
+    const relatedEvents = sortedEvents.slice(0, index);
+    const conflict = getAgeSequenceConflict(event.age, relatedEvents);
 
-    if (!lastNonZeroAge) {
-      lastNonZeroAge = age;
-      continue;
-    }
+    if (!conflict) continue;
 
-    const allowedNext: Set<string> = AGE_SEQUENCE_ALLOWED_NEXT[lastNonZeroAge];
-    if (allowedNext && !allowedNext.has(age)) {
-      const reason = `Age changed from ${lastNonZeroAge} to ${age}, expected 4->2->5->1->6->1->6...`;
-      errors.push({
-        id: `${event.id}-age-sequence-${sanitizeForFirebasePath(reason)}`,
-        birdEvent: event,
-        reason,
-        severity: "danger",
-      });
-      continue;
-    }
-
-    lastNonZeroAge = age;
+    errors.push({
+      id: `${event.id}-age-sequence-${sanitizeForFirebasePath(conflict.reason)}`,
+      errorType: "age-sequence",
+      birdEvent: event,
+      reason: conflict.reason,
+      severity: "danger",
+    });
   }
 
   return errors;
@@ -150,6 +355,7 @@ function checkAgeSeasonCompatibility(event: BirdEvent): BirdEventError | null {
     const reason = `Age ${age} is not expected for month ${month} (Jan-Aug: 5/6, Apr-Sep: 4, Jul-Dec: 2/1, 0 anytime)`;
     return {
       id: `${event.id}-age-season-${sanitizeForFirebasePath(reason)}`,
+      errorType: "age-season",
       birdEvent: event,
       reason,
       severity: "warning",
@@ -214,6 +420,7 @@ function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange): Bir
   if (fatReason) {
     errors.push({
       id: `${event.id}-fat-${sanitizeForFirebasePath(fatReason)}`,
+      errorType: "fat",
       birdEvent: event,
       reason: fatReason,
       severity: "danger",
@@ -237,6 +444,7 @@ function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange): Bir
     if (pyleWeightReason) {
       errors.push({
         id: `${event.id}-pyle-weight-${sanitizeForFirebasePath(pyleWeightReason)}`,
+        errorType: "weight",
         birdEvent: event,
         reason: pyleWeightReason,
         severity: "danger",
@@ -255,6 +463,7 @@ function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange): Bir
     if (pyleWingReason) {
       errors.push({
         id: `${event.id}-pyle-wing-${sanitizeForFirebasePath(pyleWingReason)}`,
+        errorType: "wing",
         birdEvent: event,
         reason: pyleWingReason,
         severity: "danger",
@@ -285,6 +494,7 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     if (previousSex === "4" && currentSex === "5") {
       errors.push({
         id: `${currentEvent.id}-sex-change-4-to-5`,
+        errorType: "sex-change",
         birdEvent: currentEvent,
         reason: "Sex changed from 4 to 5",
         severity: "danger",
@@ -292,6 +502,7 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     } else if (previousSex === "5" && currentSex === "4") {
       errors.push({
         id: `${currentEvent.id}-sex-change-5-to-4`,
+        errorType: "sex-change",
         birdEvent: currentEvent,
         reason: "Sex changed from 5 to 4",
         severity: "danger",
@@ -299,6 +510,7 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     } else if (currentSpecies !== previousSpecies) {
       errors.push({
         id: `${currentEvent.id}-species-change`,
+        errorType: "species-change",
         birdEvent: currentEvent,
         reason: `Species changed from ${previousSpecies} to ${currentSpecies}`,
         severity: "danger",
@@ -313,6 +525,7 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     if (timeDiffHours < 12 && timeDiffHours >= 0) {
       errors.push({
         id: `${currentEvent.id}-same-day-recapture`,
+        errorType: "recapture",
         birdEvent: currentEvent,
         reason: "Bird was recaptured within 12 hours - should be released without logging",
         severity: "danger",
@@ -330,6 +543,7 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     }
   }
 
+  errors.push(...checkAgeConsistency(events));
   errors.push(...checkAgeSequenceOrder(events));
 
   for (const event of events) {
@@ -484,19 +698,28 @@ export function validateBirdEventForm(
         severity: "warning",
       });
     }
+  }
 
-    const sortedPastEvents = [...pastBirdEvents].sort((a, b) => getEventTimestamp(a) - getEventTimestamp(b));
-    let lastNonZeroAge: string | null = null;
-    for (const event of sortedPastEvents) {
-      if (isAgeValidationExcluded(event.species)) continue;
-      if (!event.age || event.age === "0" || event.age === "3") continue;
-      lastNonZeroAge = event.age;
+  if (formData.age && formData.date) {
+    const currentTimestamp = getEventTimestamp(formData.date, formData.time);
+    const pastAgeEvents = pastBirdEvents.filter((event) => {
+      const eventTimestamp = getEventTimestamp(event.date, event.time);
+      if (currentTimestamp === null || eventTimestamp === null) return false;
+      return eventTimestamp < currentTimestamp;
+    });
+    const ageConflict = getAgeConsistencyConflict(formData.age, formData.date, pastAgeEvents);
+    if (ageConflict) {
+      messages.push({
+        text: ageConflict.reason,
+        severity: "danger",
+      });
     }
-    if (lastNonZeroAge && formData.age !== "0") {
-      const allowedNext = AGE_SEQUENCE_ALLOWED_NEXT[lastNonZeroAge];
-      if (allowedNext && !allowedNext.has(formData.age)) {
+
+    if (!isAgeValidationExcluded(formData.species)) {
+      const ageSequenceConflict = getAgeSequenceConflict(formData.age, pastAgeEvents);
+      if (ageSequenceConflict) {
         messages.push({
-          text: `Age changed from ${lastNonZeroAge} to ${formData.age}, expected 4->2->5->1->6->1->6...`,
+          text: ageSequenceConflict.reason,
           severity: "danger",
         });
       }

@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
+import {
+  Button,
+  Select,
+  SelectItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useData } from "../../services/useData";
-import { type BirdEventError, findBirdEventErrors } from "../../types/birdEventErrors";
+import {
+  DATA_ERRORS_FILTER_OPTIONS,
+  type BirdEventError,
+  type BirdEventErrorType,
+  findBirdEventErrors,
+} from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../Helper/ExportButton";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
@@ -33,6 +48,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
     dismissedCount: 0,
   });
   const [isComputing, setIsComputing] = useState(false);
+  const [errorFilter, setErrorFilter] = useState<"all" | BirdEventErrorType>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -71,9 +87,11 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
       }
 
       if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-        const idleId = (window as typeof window & {
-          requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-        }).requestIdleCallback?.(computeErrors, { timeout: 1000 });
+        const idleId = (
+          window as typeof window & {
+            requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+          }
+        ).requestIdleCallback?.(computeErrors, { timeout: 1000 });
         return () => {
           if (idleId !== undefined) {
             (window as typeof window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(idleId);
@@ -96,15 +114,22 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   }, [isOpen, bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
   const { errors, dismissedCount } = errorsState;
+  const filteredErrors = useMemo(
+    () => errors.filter((error) => errorFilter === "all" || error.errorType === errorFilter),
+    [errors, errorFilter]
+  );
 
-  const exportBirdEvents = useMemo(() => errors.map((error) => error.birdEvent), [errors]);
+  const exportBirdEvents = useMemo(() => filteredErrors.map((error) => error.birdEvent), [filteredErrors]);
   const exportComments = useMemo(
     () =>
-      errors.reduce((acc, error) => {
-        acc[error.birdEvent.id] = error.reason;
-        return acc;
-      }, {} as Record<string, string>),
-    [errors]
+      filteredErrors.reduce(
+        (acc, error) => {
+          acc[error.birdEvent.id] = error.reason;
+          return acc;
+        },
+        {} as Record<string, string>
+      ),
+    [filteredErrors]
   );
 
   const columns = useMemo(
@@ -158,9 +183,26 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             <div>
               <h2 className="text-xl">Data Errors</h2>
               <p className="text-sm text-default-900 font-light">
-                {errors.length} severe errors found
+                {filteredErrors.length} errors found
+                {errorFilter !== "all" && <span> for selected type</span>}
                 {dismissedCount > 0 && <span> ({dismissedCount} dismissed)</span>}
               </p>
+            </div>
+            <div className="flex justify-end min-w-[220px]">
+              <Select
+                selectedKeys={[errorFilter]}
+                onSelectionChange={(keys) => {
+                  const [selectedKey] = Array.from(keys);
+                  if (selectedKey) {
+                    setErrorFilter(selectedKey as "all" | BirdEventErrorType);
+                  }
+                }}
+                disallowEmptySelection
+              >
+                {DATA_ERRORS_FILTER_OPTIONS.map((option) => (
+                  <SelectItem key={option.key}>{option.label}</SelectItem>
+                ))}
+              </Select>
             </div>
           </div>
         </ModalHeaderShell>
@@ -185,20 +227,20 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                   {(column) => (
                     <TableColumn
                       key={column.key}
-                      className={`${column.key === "reason" ? "" : "whitespace-nowrap"} ${column.key === "actions" ? "text-right" : ""
-                        } ${column.className ?? ""}`}
+                      className={`${column.key === "reason" ? "" : "whitespace-nowrap"} ${
+                        column.key === "actions" ? "text-right" : ""
+                      } ${column.className ?? ""}`}
                     >
                       {column.label}
                     </TableColumn>
                   )}
                 </TableHeader>
-                <TableBody items={errors} emptyContent={isComputing ? "Loading errors..." : "No severe errors found"}>
+                <TableBody
+                  items={filteredErrors}
+                  emptyContent={isComputing ? "Loading errors..." : "No errors found for this filter"}
+                >
                   {(error) => (
-                    <TableRow
-                      key={error.id}
-                      onClick={() => handleErrorClick(error)}
-                      className="cursor-pointer group"
-                    >
+                    <TableRow key={error.id} onClick={() => handleErrorClick(error)} className="cursor-pointer group">
                       {(columnKey) => {
                         if (columnKey === "band") {
                           return (
@@ -225,8 +267,9 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                         if (columnKey === "reason") {
                           return (
                             <TableCell
-                              className={`font-semibold ${error.severity === "danger" ? "text-danger-600" : "text-warning-600"
-                                }`}
+                              className={`font-semibold ${
+                                error.severity === "danger" ? "text-danger-600" : "text-warning-600"
+                              }`}
                             >
                               {error.reason}
                             </TableCell>
@@ -264,11 +307,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
               Reset Dismissed Errors
             </Button>
           )}
-          <ExportButton
-            birdEvents={exportBirdEvents}
-            filename="errors.csv"
-            additionalComments={exportComments}
-          />
+          <ExportButton birdEvents={exportBirdEvents} filename="errors.csv" additionalComments={exportComments} />
           <Button {...modalPrimaryButtonProps} onPress={onClose}>
             Close
           </Button>
