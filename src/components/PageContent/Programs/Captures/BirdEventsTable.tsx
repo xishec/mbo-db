@@ -8,6 +8,7 @@ import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 import { useData } from "../../../../services/useData";
 import SpeciesTooltip from "../../../Helper/Info/SpeciesTooltip";
+import AgeTooltip from "../../../Helper/Info/AgeTooltip";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
@@ -239,6 +240,10 @@ export default function BirdEventsTable({
 
       if (columnKey === "species") {
         return <SpeciesTooltip speciesCode={item.species} />;
+      }
+
+      if (columnKey === "age") {
+        return <AgeTooltip ageCode={item.age} />;
       }
 
       const cellValue = item[columnKey as keyof TableRow];
