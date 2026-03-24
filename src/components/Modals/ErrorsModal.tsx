@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Button,
-  Select,
-  SelectItem,
   Table,
   TableBody,
   TableCell,
   TableColumn,
   TableHeader,
   TableRow,
+  type SortDescriptor,
 } from "@heroui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useData } from "../../services/useData";
 import {
-  DATA_ERRORS_FILTER_OPTIONS,
+  BIRD_EVENT_ERROR_TYPE_CONFIG,
   type BirdEventError,
   type BirdEventErrorType,
   findBirdEventErrors,
@@ -28,6 +27,13 @@ interface ErrorsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+type ErrorColumn = {
+  key: "band" | "datetime" | "species" | "errorType" | "reason" | "actions";
+  label: string;
+  className?: string;
+  allowsSorting?: boolean;
+};
 
 export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   const {
@@ -48,7 +54,10 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
     dismissedCount: 0,
   });
   const [isComputing, setIsComputing] = useState(false);
-  const [errorFilter, setErrorFilter] = useState<"all" | BirdEventErrorType>("all");
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: "datetime",
+    direction: "descending",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -67,15 +76,8 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
         activeErrors.push(error);
       }
 
-      // Sort by updatedAt (most recent first)
-      const sortedErrors = activeErrors.sort((a, b) => {
-        const aTime = parseInt(a.birdEvent.updatedAt || "0", 10);
-        const bTime = parseInt(b.birdEvent.updatedAt || "0", 10);
-        return bTime - aTime; // Descending order (newest first)
-      });
-
       if (!cancelled) {
-        setErrorsState({ errors: sortedErrors, dismissedCount });
+        setErrorsState({ errors: activeErrors, dismissedCount });
         setIsComputing(false);
       }
     };
@@ -114,30 +116,67 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   }, [isOpen, bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
   const { errors, dismissedCount } = errorsState;
-  const filteredErrors = useMemo(
-    () => errors.filter((error) => errorFilter === "all" || error.errorType === errorFilter),
-    [errors, errorFilter]
-  );
+  const sortedErrors = useMemo(() => {
+    const typeLabels = BIRD_EVENT_ERROR_TYPE_CONFIG;
 
-  const exportBirdEvents = useMemo(() => filteredErrors.map((error) => error.birdEvent), [filteredErrors]);
+    return [...errors].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortDescriptor.column) {
+        case "band": {
+          const aBand = `${a.birdEvent.band?.bandGroupId ?? ""}${a.birdEvent.band?.last2digits ?? ""}`;
+          const bBand = `${b.birdEvent.band?.bandGroupId ?? ""}${b.birdEvent.band?.last2digits ?? ""}`;
+          comparison = aBand.localeCompare(bBand);
+          break;
+        }
+        case "species":
+          comparison = a.birdEvent.species.localeCompare(b.birdEvent.species);
+          break;
+        case "errorType":
+          comparison = typeLabels[a.errorType].label.localeCompare(typeLabels[b.errorType].label);
+          break;
+        case "reason":
+          comparison = a.reason.localeCompare(b.reason);
+          break;
+        case "datetime":
+        default: {
+          const aTime = parseInt(a.birdEvent.updatedAt || "0", 10);
+          const bTime = parseInt(b.birdEvent.updatedAt || "0", 10);
+          comparison = aTime - bTime;
+          break;
+        }
+      }
+
+      if (comparison !== 0) {
+        return sortDescriptor.direction === "descending" ? -comparison : comparison;
+      }
+
+      const aTime = parseInt(a.birdEvent.updatedAt || "0", 10);
+      const bTime = parseInt(b.birdEvent.updatedAt || "0", 10);
+      return bTime - aTime;
+    });
+  }, [errors, sortDescriptor]);
+
+  const exportBirdEvents = useMemo(() => sortedErrors.map((error) => error.birdEvent), [sortedErrors]);
   const exportComments = useMemo(
     () =>
-      filteredErrors.reduce(
+      sortedErrors.reduce(
         (acc, error) => {
           acc[error.birdEvent.id] = error.reason;
           return acc;
         },
         {} as Record<string, string>
       ),
-    [filteredErrors]
+    [sortedErrors]
   );
 
-  const columns = useMemo(
+  const columns = useMemo<ErrorColumn[]>(
     () => [
-      { key: "band", label: "Band", className: "w-[100px]" },
-      { key: "datetime", label: "Date/Time", className: "w-[200px]" },
-      { key: "species", label: "Species", className: "w-[100px]" },
-      { key: "reason", label: "Reason", className: "w-auto" },
+      { key: "band", label: "Band", className: "w-[100px]", allowsSorting: true },
+      { key: "datetime", label: "Date/Time", className: "w-[200px]", allowsSorting: true },
+      { key: "species", label: "Species", className: "w-[100px]", allowsSorting: true },
+      { key: "errorType", label: "Error Type", className: "w-[180px]", allowsSorting: true },
+      { key: "reason", label: "Reason", className: "w-auto", allowsSorting: true },
       { key: "actions", label: "", className: "w-[60px]" },
     ],
     []
@@ -167,6 +206,10 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
     }
   };
 
+  const handleSortChange = (descriptor: SortDescriptor) => {
+    setSortDescriptor(descriptor);
+  };
+
   return (
     <>
       <ModalShell
@@ -183,26 +226,9 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             <div>
               <h2 className="text-xl">Data Errors</h2>
               <p className="text-sm text-default-900 font-light">
-                {filteredErrors.length} errors found
-                {errorFilter !== "all" && <span> for selected type</span>}
+                {sortedErrors.length} errors found
                 {dismissedCount > 0 && <span> ({dismissedCount} dismissed)</span>}
               </p>
-            </div>
-            <div className="flex justify-end min-w-[220px]">
-              <Select
-                selectedKeys={[errorFilter]}
-                onSelectionChange={(keys) => {
-                  const [selectedKey] = Array.from(keys);
-                  if (selectedKey) {
-                    setErrorFilter(selectedKey as "all" | BirdEventErrorType);
-                  }
-                }}
-                disallowEmptySelection
-              >
-                {DATA_ERRORS_FILTER_OPTIONS.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
-                ))}
-              </Select>
             </div>
           </div>
         </ModalHeaderShell>
@@ -215,6 +241,8 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                 isHeaderSticky
                 isVirtualized
                 maxTableHeight={800}
+                sortDescriptor={sortDescriptor}
+                onSortChange={handleSortChange}
                 classNames={{
                   base: "table-fixed",
                   table: "table-fixed",
@@ -227,6 +255,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                   {(column) => (
                     <TableColumn
                       key={column.key}
+                      allowsSorting={column.allowsSorting}
                       className={`${column.key === "reason" ? "" : "whitespace-nowrap"} ${
                         column.key === "actions" ? "text-right" : ""
                       } ${column.className ?? ""}`}
@@ -235,10 +264,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                     </TableColumn>
                   )}
                 </TableHeader>
-                <TableBody
-                  items={filteredErrors}
-                  emptyContent={isComputing ? "Loading errors..." : "No errors found for this filter"}
-                >
+                <TableBody items={sortedErrors} emptyContent={isComputing ? "Loading errors..." : "No errors found"}>
                   {(error) => (
                     <TableRow key={error.id} onClick={() => handleErrorClick(error)} className="cursor-pointer group">
                       {(columnKey) => {
@@ -261,6 +287,13 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
                           return (
                             <TableCell className="text-default-900 font-bold">
                               <SpeciesTooltip speciesCode={error.birdEvent.species} />
+                            </TableCell>
+                          );
+                        }
+                        if (columnKey === "errorType") {
+                          return (
+                            <TableCell className="text-default-900 whitespace-nowrap">
+                              {BIRD_EVENT_ERROR_TYPE_CONFIG[error.errorType].label}
                             </TableCell>
                           );
                         }

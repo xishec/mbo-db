@@ -17,17 +17,6 @@ export const BIRD_EVENT_ERROR_TYPE_CONFIG = {
 
 export type BirdEventErrorType = keyof typeof BIRD_EVENT_ERROR_TYPE_CONFIG;
 
-export const DATA_ERRORS_FILTER_OPTIONS: ReadonlyArray<{
-  key: "all" | BirdEventErrorType;
-  label: string;
-}> = [
-  { key: "all", label: "All Errors" },
-  ...(Object.entries(BIRD_EVENT_ERROR_TYPE_CONFIG) as [BirdEventErrorType, { label: string }][]).map(([key, config]) => ({
-    key,
-    label: config.label,
-  })),
-] as const;
-
 export interface BirdEventError {
   id: string;
   errorType: BirdEventErrorType;
