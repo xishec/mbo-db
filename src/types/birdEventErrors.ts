@@ -162,7 +162,7 @@ function getEventTimestamp(date: string, time?: string): number | null {
 }
 
 function formatYearSpan(years: number): string {
-  return `${years} year${years === 1 ? "" : "s"}`;
+  return `${years} year${years <= 1 ? "" : "s"}`;
 }
 
 function isAgeConsistentWithRecord(
@@ -257,9 +257,12 @@ function getAgeSequenceConflict(
   const allowedNext = AGE_SEQUENCE_ALLOWED_NEXT[lastNonZeroAgeEvent.age];
   if (!allowedNext || allowedNext.has(currentAgeCode)) return null;
 
+  const lastAgeNumber = normalizeAgeCode(lastNonZeroAgeEvent.age);
+  const currentAgeNumber = normalizeAgeCode(currentAgeCode);
+
   return {
     previousEvent: lastNonZeroAgeEvent,
-    reason: `Age can't change from ${normalizeAgeCode(lastNonZeroAgeEvent.age)} to ${normalizeAgeCode(currentAgeCode)}.`,
+    reason: `Age can't change from ${lastAgeNumber} (${formatAgeCode(lastAgeNumber)}) to ${currentAgeNumber} (${formatAgeCode(currentAgeNumber)}).`,
   };
 }
 

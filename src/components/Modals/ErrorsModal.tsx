@@ -14,7 +14,6 @@ import { useData } from "../../services/useData";
 import {
   BIRD_EVENT_ERROR_TYPE_CONFIG,
   type BirdEventError,
-  type BirdEventErrorType,
   findBirdEventErrors,
 } from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
