@@ -1,7 +1,11 @@
-import { type SpeciesRange, type CaptureFormData, BirdEventType } from "../../../../types";
+import { type CaptureFormData, BirdEventType } from "../../../../types";
 import { DEFAULT_BIRD_STATUS } from "../../../../types/birdStatus";
 
 import type { CaptureColumn } from "../../../../types";
+
+// Re-export for consumers that import from helpers
+export { getRangesForSex as getApplicableRange } from "../../../../types/birdEventErrors";
+export type { MeasurementRanges as ApplicableRange } from "../../../../types/birdEventErrors";
 
 export const TABLE_COLUMNS: CaptureColumn[] = [
   { key: "actions", type: "", label: "Actions", tableClassName: "w-[75px]", inputClassName: "w-[75px]" },
@@ -172,42 +176,6 @@ export function getSortedColumns(isNewCapture: boolean, birdEventToModifyId?: st
   );
 }
 
-export interface ApplicableRange {
-  weightLower: number;
-  weightUpper: number;
-  wingLower: number;
-  wingUpper: number;
-}
-
-export function getApplicableRange(speciesRange: SpeciesRange | null, sex: string): ApplicableRange | null {
-  if (!speciesRange) return null;
-
-  if (sex === "4") {
-    return {
-      weightLower: speciesRange.mWeightLower,
-      weightUpper: speciesRange.mWeightUpper,
-      wingLower: speciesRange.mWingLower,
-      wingUpper: speciesRange.mWingUpper,
-    };
-  }
-
-  if (sex === "5") {
-    return {
-      weightLower: speciesRange.fWeightLower,
-      weightUpper: speciesRange.fWeightUpper,
-      wingLower: speciesRange.fWingLower,
-      wingUpper: speciesRange.fWingUpper,
-    };
-  }
-
-  // Use unknown range if available, otherwise use combined male/female range
-  return {
-    weightLower: speciesRange.unknownWeightLower || Math.min(speciesRange.mWeightLower, speciesRange.fWeightLower),
-    weightUpper: speciesRange.unknownWeightUpper || Math.max(speciesRange.mWeightUpper, speciesRange.fWeightUpper),
-    wingLower: speciesRange.unknownWingLower || Math.min(speciesRange.mWingLower, speciesRange.fWingLower),
-    wingUpper: speciesRange.unknownWingUpper || Math.max(speciesRange.mWingUpper, speciesRange.fWingUpper),
-  };
-}
 
 export function isInRange(value: number, lower: number, upper: number): boolean | null {
   if (lower === 0 && upper === 0) return null;

@@ -27,7 +27,7 @@ export interface BirdEventError {
 
 type SexLabel = "male" | "female" | "unknown";
 
-interface MeasurementRanges {
+export interface MeasurementRanges {
   weightLower: number;
   weightUpper: number;
   wingLower: number;
@@ -83,7 +83,7 @@ function getSexLabel(sexCode: string): SexLabel {
 /**
  * Extract sex-specific ranges from SpeciesRange
  */
-function getRangesForSex(speciesRange: SpeciesRange | undefined, sexCode: string): MeasurementRanges | null {
+export function getRangesForSex(speciesRange: SpeciesRange | undefined, sexCode: string): MeasurementRanges | null {
   if (!speciesRange) return null;
 
   if (sexCode === "5") {
@@ -322,6 +322,24 @@ function checkAgeSequenceOrder(events: BirdEvent[]): BirdEventError[] {
   return errors;
 }
 
+/**
+ * Returns the set of valid age codes for a given month.
+ * Jan-Aug: 5/6, Apr-Sep: 4, Jul-Dec: 2/1, 0 anytime.
+ */
+function getAllowedAgesForMonth(month: number): Set<string> {
+  const allowed = new Set<string>(["0"]);
+  if (month >= 1 && month <= 8) { allowed.add("5"); allowed.add("6"); }
+  if (month >= 7 && month <= 12) { allowed.add("2"); allowed.add("1"); }
+  if (month >= 4 && month <= 9) { allowed.add("4"); }
+  return allowed;
+}
+
+function getAgeSeasonReason(age: string, month: number): string | null {
+  const allowedAges = getAllowedAgesForMonth(month);
+  if (allowedAges.has(age)) return null;
+  return `Age ${age} is not expected for month ${month} (Jan-Aug: 5/6, Apr-Sep: 4, Jul-Dec: 2/1, 0 anytime)`;
+}
+
 function checkAgeSeasonCompatibility(event: BirdEvent): BirdEventError | null {
   if (isAgeValidationExcluded(event.species)) return null;
 
@@ -329,32 +347,16 @@ function checkAgeSeasonCompatibility(event: BirdEvent): BirdEventError | null {
   if (!age || age === "0" || age === "3") return null;
 
   const month = new Date(event.date).getMonth() + 1;
+  const reason = getAgeSeasonReason(age, month);
+  if (!reason) return null;
 
-  const allowedAges = new Set<string>(["0"]);
-  if (month >= 1 && month <= 8) {
-    allowedAges.add("5");
-    allowedAges.add("6");
-  }
-  if (month >= 7 && month <= 12) {
-    allowedAges.add("2");
-    allowedAges.add("1");
-  }
-  if (month >= 4 && month <= 9) {
-    allowedAges.add("4");
-  }
-
-  if (!allowedAges.has(age)) {
-    const reason = `Age ${age} is not expected for month ${month} (Jan-Aug: 5/6, Apr-Sep: 4, Jul-Dec: 2/1, 0 anytime)`;
-    return {
-      id: `${event.id}-age-season-${sanitizeForFirebasePath(reason)}`,
-      errorType: "age-season",
-      birdEvent: event,
-      reason,
-      severity: "warning",
-    };
-  }
-
-  return null;
+  return {
+    id: `${event.id}-age-season-${sanitizeForFirebasePath(reason)}`,
+    errorType: "age-season",
+    birdEvent: event,
+    reason,
+    severity: "warning",
+  };
 }
 
 /**
@@ -670,25 +672,11 @@ export function validateBirdEventForm(
     }
   }
 
-  if (formData.age && formData.date && !isAgeValidationExcluded(formData.species) && formData.age !== "3") {
+  if (formData.age && formData.age !== "0" && formData.age !== "3" && formData.date && !isAgeValidationExcluded(formData.species)) {
     const month = new Date(formData.date).getMonth() + 1;
-    const allowedAges = new Set<string>(["0"]);
-    if (month >= 1 && month <= 8) {
-      allowedAges.add("5");
-      allowedAges.add("6");
-    }
-    if (month >= 7 && month <= 12) {
-      allowedAges.add("2");
-      allowedAges.add("1");
-    }
-    if (month >= 4 && month <= 9) {
-      allowedAges.add("4");
-    }
-    if (formData.age !== "0" && !allowedAges.has(formData.age)) {
-      messages.push({
-        text: `Age ${formData.age} is not expected for month ${month} (Jan-Aug: 5/6, Apr-Sep: 4, Jul-Dec: 2/1, 0 anytime)`,
-        severity: "warning",
-      });
+    const ageSeasonReason = getAgeSeasonReason(formData.age, month);
+    if (ageSeasonReason) {
+      messages.push({ text: ageSeasonReason, severity: "warning" });
     }
   }
 
@@ -720,9 +708,3 @@ export function validateBirdEventForm(
 
   return messages;
 }
-
-// Legacy aliases for backward compatibility
-/** @deprecated Use findBirdEventErrors instead */
-export const findConflicts = findBirdEventErrors;
-/** @deprecated Use findErrorsInEvents instead */
-export const findConflictsInEvents = findErrorsInEvents;

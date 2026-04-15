@@ -183,6 +183,8 @@ export interface DataContextType {
   // User authentication
   isLoggedIn: boolean;
   isAdmin: boolean;
+  userEmail: string | null;
+  signOut: () => Promise<void>;
 
   // Selected program
   selectedProgram: Program | null;

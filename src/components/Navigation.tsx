@@ -16,10 +16,7 @@ import {
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { CodeBracketIcon, ExclamationTriangleIcon, ArrowPathIcon, ClockIcon } from "@heroicons/react/24/outline";
-import { useState, useEffect, useMemo } from "react";
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
-import type { User as FirebaseUser } from "firebase/auth";
-import { app } from "../firebase";
+import { useMemo } from "react";
 import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
@@ -41,17 +38,18 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
   const { isOpen: isSyncQueueOpen, onOpen: onSyncQueueOpen, onClose: onSyncQueueClose } = useDisclosure();
   const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const auth = getAuth(app);
   const {
     birdEventsMap,
     bandIdToBirdEventIdsMap,
     magicTable,
     pendingCount,
     isOnline,
+    isLoggedIn,
+    userEmail,
     syncQueue,
     selectProgram,
     dismissedConflictsMap,
+    signOut: handleSignOut,
   } = useData();
 
   // Wrapper functions to prevent modal opens during loading
@@ -68,22 +66,6 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     const activeErrors = severeErrors.filter((error) => !dismissedConflictsMap[error.id]);
     return activeErrors.length;
   }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-
-    return () => unsubscribe();
-  }, [auth]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  };
 
   return (
     <>
@@ -125,107 +107,25 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
           </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-12" justify="center">
-          <NavbarItem isActive={activePage === "home"}>
-            <Link
-              aria-current={activePage === "home" ? "page" : undefined}
-              color={activePage === "home" ? "primary" : "foreground"}
-              href="#"
-              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                if (!isLoading) {
-                  selectProgram(null);
-                  onPageChange("home");
-                }
-              }}
-            >
-              Home
-            </Link>
-          </NavbarItem>
-          <NavbarItem isActive={activePage === "programs"}>
-            <Link
-              aria-current={activePage === "programs" ? "page" : undefined}
-              color={activePage === "programs" ? "primary" : "foreground"}
-              href="#"
-              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                if (!isLoading) {
-                  selectProgram(null);
-                  onPageChange("programs");
-                }
-              }}
-            >
-              Programs
-            </Link>
-          </NavbarItem>
-          <NavbarItem isActive={activePage === "search"}>
-            <Link
-              aria-current={activePage === "search" ? "page" : undefined}
-              color={activePage === "search" ? "primary" : "foreground"}
-              href="#"
-              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                if (!isLoading) {
-                  selectProgram(null);
-                  onPageChange("search");
-                }
-              }}
-            >
-              Search
-            </Link>
-          </NavbarItem>
-          <NavbarItem isActive={activePage === "DETs"}>
-            <Link
-              aria-current={activePage === "DETs" ? "page" : undefined}
-              color={activePage === "DETs" ? "primary" : "foreground"}
-              href="#"
-              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                if (!isLoading) {
-                  selectProgram(null);
-                  onPageChange("DETs");
-                }
-              }}
-            >
-              DETs
-            </Link>
-          </NavbarItem>
-          <NavbarItem isActive={activePage === "species"}>
-            <Link
-              aria-current={activePage === "species" ? "page" : undefined}
-              color={activePage === "species" ? "primary" : "foreground"}
-              href="#"
-              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                if (!isLoading) {
-                  selectProgram(null);
-                  onPageChange("species");
-                }
-              }}
-            >
-              Species
-            </Link>
-          </NavbarItem>
-          <NavbarItem isActive={activePage === "reports"}>
-            <Link
-              color={activePage === "reports" ? "primary" : "foreground"}
-              href="#"
-              className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                if (!isLoading) {
-                  selectProgram(null);
-                  onPageChange("reports");
-                }
-              }}
-            >
-              Reports
-            </Link>
-          </NavbarItem>
+          {(["home", "programs", "search", "DETs", "species", "reports"] as const).map((page) => (
+            <NavbarItem key={page} isActive={activePage === page}>
+              <Link
+                aria-current={activePage === page ? "page" : undefined}
+                color={activePage === page ? "primary" : "foreground"}
+                href="#"
+                className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!isLoading) {
+                    selectProgram(null);
+                    onPageChange(page);
+                  }
+                }}
+              >
+                {page === "DETs" ? "DETs" : page.charAt(0).toUpperCase() + page.slice(1)}
+              </Link>
+            </NavbarItem>
+          ))}
         </NavbarContent>
         <NavbarContent justify="end">
           <NavbarItem>
@@ -246,17 +146,17 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             </Button>
           </NavbarItem>
           <NavbarItem className="flex items-center">
-            {user ? (
+            {isLoggedIn ? (
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
                   <div className="flex items-center gap-4 cursor-pointer">
                     <User
                       as="button"
-                      name={user.email}
+                      name={userEmail}
                       className="transition-transform"
                       avatarProps={{
                         size: "sm",
-                        name: user.email?.[0].toUpperCase(),
+                        name: userEmail?.[0].toUpperCase(),
                       }}
                     />
                     <ChevronDownIcon className="w-5 h-5" />

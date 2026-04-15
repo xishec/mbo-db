@@ -1,11 +1,12 @@
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
-import { useCallback, useMemo, useState } from "react";
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
+import { useMemo, useState } from "react";
 import { SPECIES_GROUPS } from "../../types/DET";
 import { SPECIES_MAP } from "../../types/species";
 import { useData } from "../../services/useData";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
 import PageHeader from "./PageHeader";
+import { useCascadingSort, cascadingSort } from "../../hooks/useCascadingSort";
 
 type SpeciesGroup = {
   name: string;
@@ -43,7 +44,7 @@ export default function SpeciesGroups() {
   const { speciesInfoMap } = useData();
   const [selectedSpeciesCode, setSelectedSpeciesCode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>([]);
+  const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort();
 
   const groupedSpecies = useMemo<SpeciesGroup[]>(() => {
     const groups: SpeciesGroup[] = [];
@@ -79,57 +80,9 @@ export default function SpeciesGroups() {
     }
   };
 
-  const handleSortChange = useCallback((descriptor: SortDescriptor) => {
-    setSortDescriptors((prev) => {
-      const existingIndex = prev.findIndex((item) => item.column === descriptor.column);
-
-      if (existingIndex === 0) {
-        const updated = [...prev];
-        updated[0] = descriptor;
-        return updated;
-      }
-      if (existingIndex > 0) {
-        const updated = prev.filter((item) => item.column !== descriptor.column);
-        return [descriptor, ...updated];
-      }
-      return [descriptor, ...prev].slice(0, 3);
-    });
-  }, []);
-
-  const handleResetSort = () => {
-    setSortDescriptors([]);
-  };
-
-  const sortRows = useCallback(
-    (rows: SpeciesRow[]) => {
-      if (sortDescriptors.length === 0) return rows;
-      const numericColumns = new Set<keyof SpeciesRow>(
-        SPECIES_COLUMNS.filter((column) => column.type === "number").map((column) => column.key)
-      );
-
-      return [...rows].sort((a, b) => {
-        for (const descriptor of sortDescriptors) {
-          const column = descriptor.column as keyof SpeciesRow;
-          const first = a[column];
-          const second = b[column];
-          let cmp = 0;
-
-          if (numericColumns.has(column)) {
-            const firstNum = Number(first) || 0;
-            const secondNum = Number(second) || 0;
-            cmp = firstNum - secondNum;
-          } else {
-            cmp = String(first).localeCompare(String(second));
-          }
-
-          if (cmp !== 0) {
-            return descriptor.direction === "descending" ? -cmp : cmp;
-          }
-        }
-        return 0;
-      });
-    },
-    [sortDescriptors]
+  const numericColumns = useMemo(
+    () => new Set<string>(SPECIES_COLUMNS.filter((col) => col.type === "number").map((col) => col.key)),
+    []
   );
 
   const rows = useMemo(() => {
@@ -161,7 +114,7 @@ export default function SpeciesGroups() {
             sortDescriptors.length > 0 ? (
               <button
                 type="button"
-                onClick={handleResetSort}
+                onClick={resetSort}
                 className="text-sm font-medium text-primary hover:text-primary-600"
               >
                 Reset sort
@@ -196,7 +149,7 @@ export default function SpeciesGroups() {
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={sortRows(rows)} emptyContent="No species found">
+            <TableBody items={cascadingSort(rows, sortDescriptors, numericColumns)} emptyContent="No species found">
               {(item) => (
                 <TableRow key={item.code} onClick={() => handleRowClick(item.code)} className="cursor-pointer">
                   {(columnKey) => {

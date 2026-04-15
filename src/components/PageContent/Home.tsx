@@ -7,70 +7,68 @@ export default function Home() {
   const latestDaySummary = useMemo(() => {
     const allBirdEvents = Object.values(birdEventsMap);
 
-    // Filter and sort by date to find the latest capture day
-    const sortedEvents = allBirdEvents
-      .filter((event) => event.date)
-      .sort((a, b) => {
-        // date is in format YYYY-MM-DD, so string comparison works
-        return b.date.localeCompare(a.date);
-      });
-
-    if (sortedEvents.length === 0) {
-      return {
-        daysAgo: "?",
-        banders: ["?"],
-        scribes: ["?"],
-        uniqueSpeciesCount: "?",
-        mostCapturedSpecies: "?",
-        totalCaptures: "?",
-      };
+    // Find the latest date in a single pass (no need to sort)
+    let latestDate = "";
+    for (const event of allBirdEvents) {
+      if (event.date && event.date > latestDate) {
+        latestDate = event.date;
+      }
     }
 
-    // Get the latest date
-    const latestDate = sortedEvents[0].date;
+    if (!latestDate) {
+      return null;
+    }
 
     // Get all events from the latest date
-    const latestDayEvents = sortedEvents.filter((event) => event.date === latestDate);
+    const latestDayEvents = allBirdEvents.filter((event) => event.date === latestDate);
 
-    // Calculate days ago
-    const latestDateObj = new Date(latestDate);
+    // Calculate days ago using date-only comparison to avoid timezone issues
+    const [y, m, d] = latestDate.split("-").map(Number);
+    const latestDateObj = new Date(y, m - 1, d);
     const now = new Date();
-    const daysAgo = Math.floor((now.getTime() - latestDateObj.getTime()) / (1000 * 60 * 60 * 24));
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysAgo = Math.round((todayStart.getTime() - latestDateObj.getTime()) / (1000 * 60 * 60 * 24));
 
     // Get unique banders and scribes
     const banders = [...new Set(latestDayEvents.map((e) => e.bander).filter(Boolean))];
     const scribes = [...new Set(latestDayEvents.map((e) => e.scribe).filter(Boolean))];
 
-    // Count species
-    const speciesCounts: Record<string, number> = {};
-    latestDayEvents.forEach((event) => {
-      if (event.species) {
-        speciesCounts[event.species] = (speciesCounts[event.species] || 0) + 1;
-      }
-    });
-
-    const uniqueSpeciesCount = Object.keys(speciesCounts).length;
-
-    // Find most captured species
+    // Count species in a single pass
+    const speciesCounts = new Map<string, number>();
     let mostCapturedSpecies = "";
     let maxCount = 0;
-    Object.entries(speciesCounts).forEach(([species, count]) => {
+    for (const event of latestDayEvents) {
+      if (!event.species) continue;
+      const count = (speciesCounts.get(event.species) ?? 0) + 1;
+      speciesCounts.set(event.species, count);
       if (count > maxCount) {
         maxCount = count;
-        mostCapturedSpecies = species;
+        mostCapturedSpecies = event.species;
       }
-    });
+    }
 
     return {
       daysAgo,
       banders,
       scribes,
-      uniqueSpeciesCount,
+      uniqueSpeciesCount: speciesCounts.size,
       mostCapturedSpecies,
       totalCaptures: latestDayEvents.length,
-      latestDate: latestDateObj.toLocaleDateString(),
     };
   }, [birdEventsMap]);
+
+  if (!latestDaySummary) {
+    return (
+      <div
+        className="flex items-center justify-start min-h-[calc(100vh-64px)] p-12 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url(https://oommbo.org/wp-content/uploads/2024/04/hp-hero.svg)" }}
+      >
+        <div className="max-w-2xl ml-24 font-medium text-5xl">
+          <p className="leading-relaxed text-foreground">No banding data available yet.</p>
+        </div>
+      </div>
+    );
+  }
 
   const { daysAgo, banders, scribes, uniqueSpeciesCount, mostCapturedSpecies, totalCaptures } = latestDaySummary;
 

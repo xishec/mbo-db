@@ -47,28 +47,7 @@ class Logger {
     // Notify listeners
     this.notifyListeners();
 
-    // // Also log to console for development
-    // const emoji = this.getEmojiForLevel(level);
-    // const timestamp = new Date(entry.timestamp).toLocaleTimeString();
-    // console.log(`${emoji} [${timestamp}] [${category}] ${message}`, data ?? "");
   }
-
-  // private getEmojiForLevel(level: LogLevel): string {
-  //   switch (level) {
-  //     case LogLevel.DEBUG:
-  //       return "🔍";
-  //     case LogLevel.INFO:
-  //       return "ℹ️";
-  //     case LogLevel.WARN:
-  //       return "⚠️";
-  //     case LogLevel.ERROR:
-  //       return "❌";
-  //     case LogLevel.SYNC:
-  //       return "🔄";
-  //     default:
-  //       return "📝";
-  //   }
-  // }
 
   debug(category: string, message: string, data?: unknown) {
     this.addLog(LogLevel.DEBUG, category, message, data);

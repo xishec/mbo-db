@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
@@ -33,7 +33,7 @@ import {
 } from "./indexedDB";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
-import { onAuthStateChanged, type User } from "firebase/auth";
+import { onAuthStateChanged, signOut as firebaseSignOut, type User } from "firebase/auth";
 
 type FavoriteRateResult = {
   value: string;
@@ -339,7 +339,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setBandGroupsMap(data.bandGroupsMap ?? {});
       setMagicTable(data.magicTable ?? { pyle: {} });
       setDETsMap(data.DETsMap ?? {});
-      console.log("DETsMap loaded:", Object.keys(data.DETsMap ?? {}).length, "entries");
       setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
     };
@@ -433,6 +432,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       // 1. Write the bird event itself
       await set(ref(db, `${environment}/birdEventsMap/${birdEventId}`), birdEvent);
+      state.birdEventsMap[birdEventId] = birdEvent;
 
       // 2. If this event modifies a previous event, update the previous event's modifiedEventId
       if (previousEventId && state.birdEventsMap[previousEventId]) {
@@ -441,14 +441,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           modifiedEventId: birdEventId,
         };
         await set(ref(db, `${environment}/birdEventsMap/${previousEventId}`), updatedPreviousEvent);
-        // Update local state to reflect the change
         state.birdEventsMap[previousEventId] = updatedPreviousEvent;
       }
 
       // 3. Update band ID index (only if not already indexed)
       const existingBirdEventIds = state.bandIdToBirdEventIdsMap[band.id] || [];
       if (!existingBirdEventIds.includes(birdEventId)) {
-        await set(ref(db, `${environment}/bandIdToBirdEventIdsMap/${band.id}`), [...existingBirdEventIds, birdEventId]);
+        const updatedIds = [...existingBirdEventIds, birdEventId];
+        await set(ref(db, `${environment}/bandIdToBirdEventIdsMap/${band.id}`), updatedIds);
+        state.bandIdToBirdEventIdsMap[band.id] = updatedIds;
       }
 
       // 4. Update band group map (only for new captures)
@@ -456,17 +457,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const bandGroupMapKey = getBandGroupMapKey(band);
         const existingBandGroup = state.bandGroupsMap[bandGroupMapKey];
         if (!existingBandGroup) {
-          // Create new band group
-          await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}`), {
-            id: bandGroupMapKey,
-            newCaptureIds: [birdEventId],
-          });
+          const newBandGroup = { id: bandGroupMapKey, newCaptureIds: [birdEventId] };
+          await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}`), newBandGroup);
+          state.bandGroupsMap[bandGroupMapKey] = newBandGroup;
         } else if (!existingBandGroup.newCaptureIds.includes(birdEventId)) {
-          // Append to existing band group
-          await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}/newCaptureIds`), [
-            ...existingBandGroup.newCaptureIds,
-            birdEventId,
-          ]);
+          const updatedCaptureIds = [...existingBandGroup.newCaptureIds, birdEventId];
+          await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}/newCaptureIds`), updatedCaptureIds);
+          existingBandGroup.newCaptureIds = updatedCaptureIds;
         }
       }
 
@@ -478,10 +475,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (isNewCapture) {
           const existingBandGroupIds = existingProgram.bandGroupIds || [];
           if (!existingBandGroupIds.includes(bandGroupMapKey)) {
-            await set(ref(db, `${environment}/programsMap/${programId}/bandGroupIds`), [
-              ...existingBandGroupIds,
-              bandGroupMapKey,
-            ]);
+            const updatedBandGroupIds = [...existingBandGroupIds, bandGroupMapKey];
+            await set(ref(db, `${environment}/programsMap/${programId}/bandGroupIds`), updatedBandGroupIds);
+            existingProgram.bandGroupIds = updatedBandGroupIds;
           }
         }
 
@@ -489,10 +485,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!isNewCapture) {
           const existingRecaptureIds = existingProgram.recaptureIds || [];
           if (!existingRecaptureIds.includes(birdEventId)) {
-            await set(ref(db, `${environment}/programsMap/${programId}/recaptureIds`), [
-              ...existingRecaptureIds,
-              birdEventId,
-            ]);
+            const updatedRecaptureIds = [...existingRecaptureIds, birdEventId];
+            await set(ref(db, `${environment}/programsMap/${programId}/recaptureIds`), updatedRecaptureIds);
+            existingProgram.recaptureIds = updatedRecaptureIds;
           }
         }
       }
@@ -558,6 +553,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         magicTable,
         bandSizeToBandIdMap,
         dismissedConflictsMap,
+        DETsMap,
         ...overrides,
       });
     },
@@ -570,6 +566,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       magicTable,
       bandSizeToBandIdMap,
       dismissedConflictsMap,
+      DETsMap,
     ]
   );
 
@@ -673,7 +670,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         succeeded: successCount,
         total: pendingEvents.length,
         remaining: remainingCount,
-        bandSizeToBandIdMap,
       });
     } catch (err) {
       logger.error("SyncQueue", "Error syncing queue", err);
@@ -682,10 +678,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     isOnline,
     reconstructBandObjects,
     updateReactStateFromCache,
-    bandSizeToBandIdMap,
     syncBirdEventToRTDB,
     updateLastModifiedTimestamp,
   ]);
+
+  // Auto-sync when coming back online
+  const wasOnlineRef = useRef(isOnline);
+  useEffect(() => {
+    if (isOnline && !wasOnlineRef.current) {
+      logger.info("AutoSync", "Back online — syncing pending events");
+      syncQueue();
+    }
+    wasOnlineRef.current = isOnline;
+  }, [isOnline, syncQueue]);
 
   const incrementBandSize = useCallback(
     async (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string): Promise<Record<BandSize, string>> => {
@@ -815,13 +820,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // New programsMap
         const existingProgram = programsMap[captureData.programId];
+        if (!existingProgram) {
+          throw new Error(`Program "${captureData.programId}" not found`);
+        }
+
         const bandGroupMapKey = getBandGroupMapKey(band);
-        let newBandGroupIds = existingProgram?.bandGroupIds || [];
+        let newBandGroupIds = existingProgram.bandGroupIds || [];
         if (isNewCapture && !newBandGroupIds.includes(bandGroupMapKey)) {
           newBandGroupIds = [...newBandGroupIds, bandGroupMapKey];
         }
 
-        let newRecaptureIds = existingProgram?.recaptureIds || [];
+        let newRecaptureIds = existingProgram.recaptureIds || [];
         if (!isNewCapture) {
           newRecaptureIds = [...newRecaptureIds, newBirdEvent.id];
         }
@@ -829,11 +838,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const newProgramsMap = {
           ...programsMap,
           [captureData.programId]: {
-            id: captureData.programId,
-            displayName: existingProgram.displayName,
+            ...existingProgram,
             bandGroupIds: newBandGroupIds,
             recaptureIds: newRecaptureIds,
-          } as Program,
+          },
         };
 
         // New yearsToProgramMap
@@ -1036,18 +1044,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           },
         };
 
-        // Update IndexedDB first
-        const updatedDatabaseData = {
-          yearsToProgramMap,
-          programsMap: newProgramsMap,
-          bandIdToBirdEventIdsMap,
-          birdEventsMap,
-          bandGroupsMap,
-          magicTable,
-          bandSizeToBandIdMap,
-          dismissedConflictsMap,
-        };
-        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, updatedDatabaseData);
+        // Update IndexedDB
+        await saveCompleteStateToIndexedDB({ programsMap: newProgramsMap });
 
         // Update lastModified timestamp in RTDB and IndexedDB
         await updateLastModifiedTimestamp();
@@ -1071,13 +1069,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       user,
       isOnline,
       programsMap,
-      yearsToProgramMap,
-      bandIdToBirdEventIdsMap,
-      birdEventsMap,
-      bandGroupsMap,
-      magicTable,
-      bandSizeToBandIdMap,
-      dismissedConflictsMap,
+      saveCompleteStateToIndexedDB,
       updateLastModifiedTimestamp,
     ]
   );
@@ -1235,6 +1227,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         error,
         isLoggedIn: !!user,
         isAdmin,
+        userEmail: user?.email ?? null,
+        signOut: async () => { await firebaseSignOut(auth); },
         selectedProgram,
         selectProgram: setSelectedProgram,
         yearsToProgramMap,

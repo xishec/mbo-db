@@ -9,6 +9,7 @@ import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 import { useData } from "../../../../services/useData";
 import SpeciesTooltip from "../../../Helper/Info/SpeciesTooltip";
 import AgeTooltip from "../../../Helper/Info/AgeTooltip";
+import { useCascadingSort, cascadingSort } from "../../../../hooks/useCascadingSort";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
@@ -72,7 +73,7 @@ export default function BirdEventsTable({
   birdEventIdToHighlight,
 }: BirdEventsTableProps) {
   const { programsMap, isLoggedIn } = useData();
-  const [sortDescriptors, setSortDescriptors] = useState<SortDescriptor[]>(
+  const { sortDescriptors, handleSortChange } = useCascadingSort(
     initialSortDescriptors ?? [
       { column: "date", direction: "descending" },
       { column: "time", direction: "descending" },
@@ -113,62 +114,25 @@ export default function BirdEventsTable({
     return { birdEventsMap: eventsMap, rows: tableRows };
   }, [birdEvents, showHistory, programId, showOtherPrograms]);
 
+  const numericColumns = useMemo(
+    () => new Set<string>(TABLE_COLUMNS.filter((col) => col.type === "number").map((col) => col.key)),
+    []
+  );
+
   // Sort birdEvents based on multiple sortDescriptors (cascading sort)
-  const sortedRows = useMemo(() => {
-    if (sortDescriptors.length === 0) return rows;
-
-    // Numeric columns that should be sorted numerically - determined by column type
-    const numericColumns = new Set<string>(TABLE_COLUMNS.filter(col => col.type === 'number').map(col => col.key));
-
-    return [...rows].sort((a, b) => {
-      for (const descriptor of sortDescriptors) {
-        const column = descriptor.column as keyof TableRow;
-        const first = a[column];
-        const second = b[column];
-
-        let cmp: number;
-
-        if (numericColumns.has(column)) {
-          const firstNum = parseFloat(String(first)) || 0;
-          const secondNum = parseFloat(String(second)) || 0;
-          
-          // Special handling for bandLastTwoDigits: 00 should come after 99
-          if (column === "bandLastTwoDigits") {
-            const firstVal = firstNum || 100;
-            const secondVal = secondNum || 100;
-            cmp = firstVal - secondVal;
-          } else {
-            cmp = firstNum - secondNum;
-          }
-        } else {
-          // String comparison works for date (YYYY-MM-DD), time, and other text columns
-          cmp = String(first).localeCompare(String(second));
+  const sortedRows = useMemo(
+    () =>
+      cascadingSort(rows, sortDescriptors, numericColumns, (column, a, b) => {
+        // Special handling for bandLastTwoDigits: 00 should come after 99
+        if (column === "bandLastTwoDigits") {
+          const firstVal = parseFloat(String(a[column])) || 100;
+          const secondVal = parseFloat(String(b[column])) || 100;
+          return firstVal - secondVal;
         }
-
-        if (cmp !== 0) {
-          return descriptor.direction === "descending" ? -cmp : cmp;
-        }
-      }
-      return 0;
-    });
-  }, [rows, sortDescriptors]);
-
-  const handleSortChange = useCallback((descriptor: SortDescriptor) => {
-    setSortDescriptors((prev) => {
-      const existingIndex = prev.findIndex((d) => d.column === descriptor.column);
-
-      if (existingIndex === 0) {
-        const updated = [...prev];
-        updated[0] = descriptor;
-        return updated;
-      } else if (existingIndex > 0) {
-        const updated = prev.filter((d) => d.column !== descriptor.column);
-        return [descriptor, ...updated];
-      } else {
-        return [descriptor, ...prev].slice(0, 3);
-      }
-    });
-  }, []);
+        return undefined;
+      }),
+    [rows, sortDescriptors, numericColumns]
+  );
 
   const handleInspectBandId = useCallback(
     (eventId: string) => {
@@ -283,7 +247,6 @@ export default function BirdEventsTable({
           maxTableHeight={maxTableHeight}
           selectionMode="single"
           selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
-          // selectedKeys={birdEventIdToHighlight ? new Set([]) : new Set()}
           disallowEmptySelection
           color="primary"
           classNames={{

@@ -58,7 +58,6 @@ export default function AddBirdEventModal({
     birdEventsMap,
     addBirdEvent,
     bandSizeToBandIdMap,
-    incrementBandSize,
     speciesInfoMap,
   } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
@@ -443,13 +442,9 @@ export default function AddBirdEventModal({
             : BandSize.Other;
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
+        setIsSaving(false);
         if (shouldContinue) {
-          await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
-
-          setIsSaving(false);
           focusTo("species");
-        } else {
-          setIsSaving(false);
         }
       } catch (err) {
         console.error("Failed to save capture:", err);
@@ -457,7 +452,7 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, bandSize, addBirdEvent, birdEventToModify?.id, incrementBandSize, focusTo, handleClose]
+    [formData, bandSize, addBirdEvent, birdEventToModify?.id, focusTo, handleClose]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);
