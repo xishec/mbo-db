@@ -67,6 +67,7 @@ export default function AddBirdEventModal({
   const [isSaving, setIsSaving] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
+  const suppressFocusRef = useRef(false);
 
   // Get sorted columns based on capture type
   const sortedColumns = useMemo(
@@ -152,7 +153,11 @@ export default function AddBirdEventModal({
             bandLastTwoDigits,
           }));
           setLastBandId("");
-          focusTo("bander");
+          // Don't override focus during save-and-next (which focuses species)
+          if (!suppressFocusRef.current) {
+            focusTo("bander");
+          }
+          suppressFocusRef.current = false;
         }
       }
     }
@@ -323,7 +328,7 @@ export default function AddBirdEventModal({
         age: formData.age,
         date: formData.date,
         time: formData.time,
-        fat: "",
+        fat: formData.fat,
       },
       pastBirdEvents,
       magicTable
@@ -351,7 +356,7 @@ export default function AddBirdEventModal({
       if (currentIndex < sortedColumns.length - 1) {
         const nextKey = sortedColumns
           .slice(currentIndex + 1)
-          .find((col) => !["birdEventType", "date", "time", "birdStatus"].includes(col.key))?.key;
+          .find((col) => !["programId", "birdEventType", "date", "time", "birdStatus"].includes(col.key))?.key;
         if (!nextKey) return;
 
         inputRefs.current.get(nextKey)?.focus();
@@ -367,7 +372,7 @@ export default function AddBirdEventModal({
         const prevKey = sortedColumns
           .slice(0, currentIndex)
           .reverse()
-          .find((col) => !["birdEventType", "date", "time", "birdStatus"].includes(col.key))?.key;
+          .find((col) => !["programId", "birdEventType", "date", "time", "birdStatus"].includes(col.key))?.key;
         if (!prevKey) return;
 
         inputRefs.current.get(prevKey)?.focus();
@@ -400,7 +405,7 @@ export default function AddBirdEventModal({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, field: keyof CaptureFormData) => {
-      if ((e.key === "Backspace" || e.key === "Delete") && formData[field] === "") {
+      if ((e.key === "Backspace" || e.key === "Delete") && (e.target as HTMLInputElement).value === "") {
         e.preventDefault();
         focusPrevInput(field);
       } else if (e.key === "Tab") {
@@ -412,7 +417,7 @@ export default function AddBirdEventModal({
         }
       }
     },
-    [formData, focusNextInput, focusPrevInput]
+    [focusNextInput, focusPrevInput]
   );
 
   const handleClose = useCallback(() => {
@@ -429,11 +434,6 @@ export default function AddBirdEventModal({
   const handleSave = useCallback(
     async (shouldContinue: boolean = false) => {
       setIsSaving(true);
-      
-      // Close modal immediately for better UX (optimistic UI)
-      if (!shouldContinue) {
-        handleClose();
-      }
 
       try {
         const bandSizeToSend =
@@ -444,7 +444,25 @@ export default function AddBirdEventModal({
 
         setIsSaving(false);
         if (shouldContinue) {
+          // Clear bird-specific fields; preserve workflow fields (bander, scribe, date, time, net)
+          setFormData((prev) => ({
+            ...prev,
+            species: "",
+            wing: "",
+            age: "",
+            howAged: "",
+            sex: "",
+            howSexed: "",
+            fat: "",
+            weight: "",
+            birdStatus: DEFAULT_BIRD_STATUS,
+            notes: "",
+          }));
+          setLastBandId("");
+          suppressFocusRef.current = true;
           focusTo("species");
+        } else {
+          handleClose();
         }
       } catch (err) {
         console.error("Failed to save capture:", err);
@@ -605,9 +623,7 @@ export default function AddBirdEventModal({
           isDismissable: true,
           isOpen,
           onOpenChange: handleModalOpenChange,
-          className: `${birdEventToModify ? "!max-w-[calc(100%-8rem)]" : "!max-w-[calc(100%-8rem)]"} ${
-            shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""
-          }`,
+          className: `!max-w-[calc(100%-8rem)] ${shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""}`,
           scrollBehavior: "inside",
         }}
       >

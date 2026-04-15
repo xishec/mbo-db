@@ -214,7 +214,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
 export function formatFieldValue(field: keyof CaptureFormData, value: string): string {
   switch (field) {
     case "bandGroup": {
-      return value.replace(/\D/g, "").slice(0, 8);
+      return value.replace(/\D/g, "").slice(0, 7);
     }
     case "bandLastTwoDigits":
       return value.replace(/\D/g, "").slice(0, 2);
@@ -224,7 +224,7 @@ export function formatFieldValue(field: keyof CaptureFormData, value: string): s
         .toUpperCase()
         .slice(0, 4);
     case "wing":
-      return value.replace(/\D/g, "");
+      return value.replace(/\D/g, "").slice(0, 4);
     case "age":
     case "howAged":
       return value.replace(/[^0-9]/g, "").slice(0, 1);
