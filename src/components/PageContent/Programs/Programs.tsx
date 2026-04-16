@@ -159,7 +159,7 @@ export default function Programs() {
             color="secondary"
           >
             <TableHeader>
-              <TableColumn>Program Name</TableColumn>
+              <TableColumn width={300}>Program Name</TableColumn>
               <TableColumn>First Capture</TableColumn>
               <TableColumn>Last Capture</TableColumn>
             </TableHeader>
@@ -171,8 +171,8 @@ export default function Programs() {
                   return (
                     <TableRow key={programId}>
                       <TableCell>{program?.displayName}</TableCell>
-                      <TableCell className="text-default-500 text-sm">{program?.firstCaptureDate ?? ""}</TableCell>
-                      <TableCell className="text-default-500 text-sm">{program?.lastCaptureDate ?? ""}</TableCell>
+                      <TableCell>{program?.firstCaptureDate ?? ""}</TableCell>
+                      <TableCell>{program?.lastCaptureDate ?? ""}</TableCell>
                     </TableRow>
                   );
                 })}

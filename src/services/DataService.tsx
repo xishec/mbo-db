@@ -849,12 +849,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           newRecaptureIds = [...newRecaptureIds, newBirdEvent.id];
         }
 
+        const eventDate = captureData.date;
+        const newFirstCaptureDate =
+          !existingProgram.firstCaptureDate || eventDate < existingProgram.firstCaptureDate
+            ? eventDate
+            : existingProgram.firstCaptureDate;
+        const newLastCaptureDate =
+          !existingProgram.lastCaptureDate || eventDate > existingProgram.lastCaptureDate
+            ? eventDate
+            : existingProgram.lastCaptureDate;
+
         const newProgramsMap = {
           ...programsMap,
           [captureData.programId]: {
             ...existingProgram,
             bandGroupIds: newBandGroupIds,
             recaptureIds: newRecaptureIds,
+            firstCaptureDate: newFirstCaptureDate,
+            lastCaptureDate: newLastCaptureDate,
           },
         };
 
