@@ -43,6 +43,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     bandIdToBirdEventIdsMap,
     magicTable,
     pendingCount,
+    lastSyncedAt,
     isOnline,
     isLoggedIn,
     userEmail,
@@ -99,10 +100,15 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 {isOnline ? "Online" : "Offline"}
               </Chip>
             </Badge>
-            {isOnline && (
+            {isOnline && pendingCount > 0 && (
               <Button isIconOnly variant="light" aria-label="Sync" onPress={() => syncQueue()}>
                 <ArrowPathIcon className="w-5 h-5" />
               </Button>
+            )}
+            {!isOnline && lastSyncedAt && (
+              <span className="text-xs text-default-500">
+                Last synced {new Date(lastSyncedAt).toLocaleDateString()} {new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
             )}
           </div>
         </NavbarBrand>

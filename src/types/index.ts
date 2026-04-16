@@ -205,6 +205,7 @@ export interface DataContextType {
   // Offline support
   isOnline: boolean;
   pendingCount: number;
+  lastSyncedAt: number | null;
   forceOffline: boolean;
   setForceOffline: (force: boolean) => void;
 

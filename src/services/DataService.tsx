@@ -88,6 +88,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [forceOffline, setForceOffline] = useState(false);
   const actualIsOnline = useOnlineStatus();
   const isOnline = forceOffline ? false : actualIsOnline;
@@ -282,6 +283,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!needsFetch && cachedData) {
           logger.info("DataLoad", `Using cached ${CURRENT_ENVIRONMENT}/ data (up to date)`);
           populateStateFromData(cachedData);
+          setLastSyncedAt(cachedTimestamp);
           setIsLoading(false);
           return;
         }
@@ -290,6 +292,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (firebaseTimestamp === null && cachedData && cachedTimestamp) {
           logger.info("DataLoad", `Offline — using cached ${CURRENT_ENVIRONMENT}/ data (last synced ${new Date(cachedTimestamp).toLocaleString()})`);
           populateStateFromData(cachedData);
+          setLastSyncedAt(cachedTimestamp);
           setIsLoading(false);
           return;
         }
@@ -310,6 +313,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
 
           populateStateFromData(data);
+          setLastSyncedAt(firebaseTimestamp ?? Date.now());
 
           const loadStats = {
             yearsToProgramMap: Object.keys(data.yearsToProgramMap ?? {}).length,
@@ -336,6 +340,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (fallbackData && fallbackTimestamp) {
               logger.info("DataLoad", "Using cached data as fallback after error");
               populateStateFromData(fallbackData);
+              setLastSyncedAt(fallbackTimestamp);
               return;
             }
           } catch {
@@ -562,6 +567,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const now = Date.now();
     await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`), now);
     await saveLastUpdated(CURRENT_ENVIRONMENT, now);
+    setLastSyncedAt(now);
   }, []);
 
   /**
@@ -1251,6 +1257,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         speciesInfoMap,
         isOnline,
         pendingCount,
+        lastSyncedAt,
         forceOffline,
         setForceOffline,
         addBirdEvent,
