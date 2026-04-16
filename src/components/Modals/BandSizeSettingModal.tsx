@@ -1,5 +1,5 @@
 import { Button, Input } from "@heroui/react";
-import { useState, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useData } from "../../services/useData";
 import { BandSize } from "../../types";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -14,20 +14,26 @@ interface BandSizeSettingModalProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
+function buildBandSizeMap(bandSizeToBandIdMap: Record<BandSize, string>): Record<BandSize, string> {
+  const map = {} as Record<BandSize, string>;
+  for (const bandSize of Object.values(BandSize)) {
+    map[bandSize] = bandSizeToBandIdMap?.[bandSize] || "";
+  }
+  return map;
+}
+
 export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeSettingModalProps) {
   const { bandSizeToBandIdMap, updateBandSizeMap } = useData();
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
-  // Initialize from bandSizeToBandIdMap - store as single 9-digit string
-  const initialBandSizeMap = useMemo(() => {
-    const initialMap = {} as Record<BandSize, string>;
-    Object.values(BandSize).forEach((bandSize) => {
-      initialMap[bandSize] = bandSizeToBandIdMap?.[bandSize] || "";
-    });
-    return initialMap;
-  }, [bandSizeToBandIdMap]);
+  const [bandSizeMap, setBandSizeMap] = useState<Record<BandSize, string>>(() => buildBandSizeMap(bandSizeToBandIdMap));
 
-  const [bandSizeMap, setBandSizeMap] = useState<Record<BandSize, string>>(initialBandSizeMap);
+  // Re-sync from context whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setBandSizeMap(buildBandSizeMap(bandSizeToBandIdMap));
+    }
+  }, [isOpen, bandSizeToBandIdMap]);
 
   const handleInputChange = (bandSize: BandSize, field: "bandGroup" | "bandLastTwoDigits", value: string) => {
     // Only allow digits

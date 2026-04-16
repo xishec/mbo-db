@@ -3,6 +3,7 @@ import { Button, Input, Textarea } from "@heroui/react";
 import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "../../../types/DET";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDate } from "../../../services/weatherService";
+import WeatherDisplay from "../../Helper/WeatherDisplay";
 import DETObserverHoursModal from "./DETObserverHoursModal";
 import DETNetHoursModal from "./DETNetHoursModal";
 import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
@@ -338,134 +339,15 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Weather */}
                   <div>
                     <p className="text-small pb-1">Weather at MBO</p>
-                    <div className="border rounded-medium border border-default-100 py-2 px-3">
-                      {isLoadingWeather ? (
-                        <p className="text-sm text-gray-600">Loading weather data...</p>
-                      ) : weather ? (
-                        <div className="text-sm text-gray-600 space-y-2">
-                          {/* Temperature Section */}
-                          <div className="grid grid-cols-2 gap-3">
-                            {weather.dailyMeanTemp !== undefined && (
-                              <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Mean Daily Temp</p>
-                                <p className="font-medium">{weather.dailyMeanTemp.toFixed(1)}°C</p>
-                              </div>
-                            )}
-                            {weather.dailyHighTemp !== undefined && (
-                              <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Daily High</p>
-                                <p className="font-medium">{weather.dailyHighTemp.toFixed(1)}°C</p>
-                              </div>
-                            )}
-                            {weather.dailyLowTemp !== undefined && (
-                              <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Daily Low</p>
-                                <p className="font-medium">{weather.dailyLowTemp.toFixed(1)}°C</p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Precipitation Section */}
-                          <div className="border-t border-default-100 pt-2">
-                            <p className="text-xs font-semibold text-gray-700 mb-1.5">Precipitation</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {weather.totalRainfallMm !== undefined && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-0.5">Total Rain</p>
-                                  <p className="font-medium">{weather.totalRainfallMm.toFixed(1)} mm</p>
-                                </div>
-                              )}
-                              {weather.totalSnowCm !== undefined && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-0.5">Total Snow</p>
-                                  <p className="font-medium">{weather.totalSnowCm.toFixed(1)} cm</p>
-                                </div>
-                              )}
-                              {weather.daysWithRainfall !== undefined && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-0.5">Days with Rainfall</p>
-                                  <p className="font-medium">{weather.daysWithRainfall}</p>
-                                </div>
-                              )}
-                              {weather.daysWithSnowfall !== undefined && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-0.5">Days with Snowfall</p>
-                                  <p className="font-medium">{weather.daysWithSnowfall}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Snow Depth Section */}
-                          {(weather.meanSnowDepthCm !== undefined || weather.maxSnowDepthCm !== undefined) && (
-                            <div className="border-t border-default-100 pt-2">
-                              <p className="text-xs font-semibold text-gray-700 mb-1.5">Snow Depth</p>
-                              <div className="grid grid-cols-2 gap-3">
-                                {weather.meanSnowDepthCm !== undefined && (
-                                  <div>
-                                    <p className="text-xs text-gray-500 mb-0.5">Mean</p>
-                                    <p className="font-medium">{weather.meanSnowDepthCm.toFixed(1)} cm</p>
-                                  </div>
-                                )}
-                                {weather.maxSnowDepthCm !== undefined && (
-                                  <div>
-                                    <p className="text-xs text-gray-500 mb-0.5">Max</p>
-                                    <p className="font-medium">{weather.maxSnowDepthCm.toFixed(1)} cm</p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Wind & Cloud Section */}
-                          <div className="border-t border-default-100 pt-2">
-                            <p className="text-xs font-semibold text-gray-700 mb-1.5">Wind & Conditions</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {weather.windSpeed !== undefined && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-0.5">Wind Speed</p>
-                                  <p className="font-medium">
-                                    {weather.windSpeed.toFixed(1)} km/h
-                                    {weather.windDirection && ` ${weather.windDirection}`}
-                                  </p>
-                                </div>
-                              )}
-                              {weather.cloudCoverage !== undefined && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-0.5">Cloud Coverage</p>
-                                  <p className="font-medium">{weather.cloudCoverage.toFixed(0)}%</p>
-                                </div>
-                              )}
-                              {weather.humidity !== undefined && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-0.5">Humidity</p>
-                                  <p className="font-medium">{weather.humidity.toFixed(0)}%</p>
-                                </div>
-                              )}
-                              {weather.description && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-0.5">Conditions</p>
-                                  <p className="font-medium">{weather.description}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Check if no data at all */}
-                          {(!weather.dailyHighTemp && !weather.dailyLowTemp && !weather.dailyMeanTemp && !weather.cloudCoverage && !weather.totalRainfallMm && !weather.windSpeed && !weather.totalSnowCm && !weather.meanSnowDepthCm) && (
-                            <p className="text-gray-400">No weather data available</p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-600">No weather data available</p>
-                      )}
+                    <div className="rounded-medium border border-default-100 py-2 px-3">
+                      <WeatherDisplay weather={weather} isLoading={isLoadingWeather} />
                     </div>
                   </div>
 
                   {/* Observer Hours */}
                   <div>
                     <p className="text-small pb-1">Observer Hours</p>
-                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
+                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
                       </p>
@@ -483,7 +365,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Net Hours */}
                   <div>
                     <p className="text-small pb-1">Net Hours</p>
-                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
+                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
                         {netHours.nets?.length || 0}
@@ -502,7 +384,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Unified Species Data Entry */}
                   <div>
                     <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
-                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
+                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
                       <div className="text-sm text-gray-600 space-y-1">
                         <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
                         <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
@@ -543,7 +425,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Visitors */}
                   <div>
                     <p className="text-small pb-1">Visitors</p>
-                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
+                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
                       </p>
@@ -571,7 +453,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Injuries */}
                   <div>
                     <p className="text-small pb-1">Injuries</p>
-                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
+                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
                       </p>
@@ -589,7 +471,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   {/* Released */}
                   <div>
                     <p className="text-small pb-1">Released</p>
-                    <div className="flex justify-between items-center border rounded-medium border border-default-100 py-2 px-3">
+                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
                       <p className="text-sm text-gray-600">
                         {released.length} released record{released.length !== 1 ? "s" : ""}
                       </p>

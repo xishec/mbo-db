@@ -35,6 +35,13 @@ export default function DETNetHoursModal({
   const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
   const lastAddedIndexRef = useRef<number | null>(null);
 
+  // Re-sync from props when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setNetHours(initialNetHours);
+    }
+  }, [isOpen, initialNetHours]);
+
   // Focus the first input of the newly added row
   useEffect(() => {
     if (lastAddedIndexRef.current !== null) {
@@ -86,7 +93,8 @@ export default function DETNetHoursModal({
   }, [netHours.nets]);
 
   const handleSave = () => {
-    onSave(netHours);
+    // Ensure total reflects the current computed value before saving
+    onSave({ ...netHours, total: totalNetHours.toFixed(1) });
     onOpenChange();
   };
 

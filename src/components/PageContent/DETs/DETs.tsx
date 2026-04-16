@@ -4,6 +4,7 @@ import type { DET } from "../../../types/DET";
 import { Calendar, Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
 import SpeciesTooltip from "../../Helper/Info/SpeciesTooltip";
+import WeatherDisplay from "../../Helper/WeatherDisplay";
 import PageHeader from "../PageHeader";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/DET/AddDETModal";
@@ -188,134 +189,15 @@ export default function DETs() {
           {/* Weather */}
           <div>
             <p className="text-small font-semibold mb-2">Weather at MBO</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
-              {isLoadingWeather ? (
-                <p className="text-sm text-gray-600">Loading weather data...</p>
-              ) : selectedDET.weather ? (
-                <div className="text-sm text-gray-600 space-y-2">
-                  {/* Temperature Section */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {selectedDET.weather.dailyMeanTemp !== undefined && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-0.5">Mean Daily Temp</p>
-                        <p className="font-medium">{selectedDET.weather.dailyMeanTemp.toFixed(1)}°C</p>
-                      </div>
-                    )}
-                    {selectedDET.weather.dailyHighTemp !== undefined && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-0.5">Daily High</p>
-                        <p className="font-medium">{selectedDET.weather.dailyHighTemp.toFixed(1)}°C</p>
-                      </div>
-                    )}
-                    {selectedDET.weather.dailyLowTemp !== undefined && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-0.5">Daily Low</p>
-                        <p className="font-medium">{selectedDET.weather.dailyLowTemp.toFixed(1)}°C</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Precipitation Section */}
-                  <div className="border-t border-default-100 pt-2">
-                    <p className="text-xs font-semibold text-gray-700 mb-1.5">Precipitation</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedDET.weather.totalRainfallMm !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-0.5">Total Rain</p>
-                          <p className="font-medium">{selectedDET.weather.totalRainfallMm.toFixed(1)} mm</p>
-                        </div>
-                      )}
-                      {selectedDET.weather.totalSnowCm !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-0.5">Total Snow</p>
-                          <p className="font-medium">{selectedDET.weather.totalSnowCm.toFixed(1)} cm</p>
-                        </div>
-                      )}
-                      {selectedDET.weather.daysWithRainfall !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-0.5">Days with Rainfall</p>
-                          <p className="font-medium">{selectedDET.weather.daysWithRainfall}</p>
-                        </div>
-                      )}
-                      {selectedDET.weather.daysWithSnowfall !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-0.5">Days with Snowfall</p>
-                          <p className="font-medium">{selectedDET.weather.daysWithSnowfall}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Snow Depth Section */}
-                  {(selectedDET.weather.meanSnowDepthCm !== undefined || selectedDET.weather.maxSnowDepthCm !== undefined) && (
-                    <div className="border-t border-default-100 pt-2">
-                      <p className="text-xs font-semibold text-gray-700 mb-1.5">Snow Depth</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {selectedDET.weather.meanSnowDepthCm !== undefined && (
-                          <div>
-                            <p className="text-xs text-gray-500 mb-0.5">Mean</p>
-                            <p className="font-medium">{selectedDET.weather.meanSnowDepthCm.toFixed(1)} cm</p>
-                          </div>
-                        )}
-                        {selectedDET.weather.maxSnowDepthCm !== undefined && (
-                          <div>
-                            <p className="text-xs text-gray-500 mb-0.5">Max</p>
-                            <p className="font-medium">{selectedDET.weather.maxSnowDepthCm.toFixed(1)} cm</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Wind & Cloud Section */}
-                  <div className="border-t border-default-100 pt-2">
-                    <p className="text-xs font-semibold text-gray-700 mb-1.5">Wind & Conditions</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedDET.weather.windSpeed !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-0.5">Wind Speed</p>
-                          <p className="font-medium">
-                            {selectedDET.weather.windSpeed.toFixed(1)} km/h
-                            {selectedDET.weather.windDirection && ` ${selectedDET.weather.windDirection}`}
-                          </p>
-                        </div>
-                      )}
-                      {selectedDET.weather.cloudCoverage !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-0.5">Cloud Coverage</p>
-                          <p className="font-medium">{selectedDET.weather.cloudCoverage.toFixed(0)}%</p>
-                        </div>
-                      )}
-                      {selectedDET.weather.humidity !== undefined && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-0.5">Humidity</p>
-                          <p className="font-medium">{selectedDET.weather.humidity.toFixed(0)}%</p>
-                        </div>
-                      )}
-                      {selectedDET.weather.description && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-0.5">Conditions</p>
-                          <p className="font-medium">{selectedDET.weather.description}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Check if no data at all */}
-                  {(!selectedDET.weather.dailyHighTemp && !selectedDET.weather.dailyLowTemp && !selectedDET.weather.dailyMeanTemp && !selectedDET.weather.cloudCoverage && !selectedDET.weather.totalRainfallMm && !selectedDET.weather.windSpeed && !selectedDET.weather.totalSnowCm && !selectedDET.weather.meanSnowDepthCm) && (
-                    <p className="text-gray-400">No weather data available</p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600">No weather data available</p>
-              )}
+            <div className="rounded-medium border border-default-100 py-2 px-3">
+              <WeatherDisplay weather={selectedDET.weather} isLoading={isLoadingWeather} />
             </div>
           </div>
 
           {/* Observer Hours */}
           <div>
             <p className="text-small font-semibold mb-2">Observer Hours</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600">
                 Total: {selectedDET.observerHours?.total || 0} hours | Observers: {selectedDET.observerHours?.observers?.length || 0}
               </p>
@@ -334,7 +216,7 @@ export default function DETs() {
           {/* Net Hours */}
           <div>
             <p className="text-small font-semibold mb-2">Net Hours</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600">
                 Total: {selectedDET.netHours?.total || "0"} | Hummingbird Trap: {selectedDET.netHours?.hummingbirdTrapTotal || "0"} | Nets:{" "}
                 {selectedDET.netHours?.nets?.length || 0}
@@ -354,7 +236,7 @@ export default function DETs() {
           {/* Species Data */}
           <div>
             <p className="text-small font-semibold mb-2">Species Data (Obs, Cns, Ret, DET)</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <div className="space-y-3">
                 {renderSpeciesCategory("Observed", selectedDET.observedSpeciesCount, "primary", "No observed species")}
                 {renderSpeciesCategory("Census", selectedDET.censusSpeciesCount || {}, "primary", "No census species")}
@@ -369,7 +251,7 @@ export default function DETs() {
           {/* Narrative */}
           <div>
             <p className="text-small font-semibold mb-2">Narrative</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedDET.narrative || "—"}</p>
             </div>
           </div>
@@ -377,7 +259,7 @@ export default function DETs() {
           {/* Deviations */}
           <div>
             <p className="text-small font-semibold mb-2">Deviations</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedDET.deviations || "—"}</p>
             </div>
           </div>
@@ -385,7 +267,7 @@ export default function DETs() {
           {/* Visitors */}
           <div>
             <p className="text-small font-semibold mb-2">Visitors</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600 mb-2">
                 {selectedDET.visitors?.length || 0} visitor{selectedDET.visitors?.length !== 1 ? "s" : ""}
               </p>
@@ -404,7 +286,7 @@ export default function DETs() {
           {/* Station Management */}
           <div>
             <p className="text-small font-semibold mb-2">Station Management</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedDET.stationManagement || "—"}</p>
             </div>
           </div>
@@ -412,7 +294,7 @@ export default function DETs() {
           {/* Injuries */}
           <div>
             <p className="text-small font-semibold mb-2">Injuries</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600 mb-2">
                 {selectedDET.injuries?.length || 0} injury record{selectedDET.injuries?.length !== 1 ? "s" : ""}
               </p>
@@ -454,7 +336,7 @@ export default function DETs() {
           {/* Released */}
           <div>
             <p className="text-small font-semibold mb-2">Released</p>
-            <div className="border rounded-medium border border-default-100 py-2 px-3">
+            <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600 mb-2">
                 {selectedDET.released?.length || 0} released record{selectedDET.released?.length !== 1 ? "s" : ""}
               </p>

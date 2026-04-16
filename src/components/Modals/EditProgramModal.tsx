@@ -1,5 +1,5 @@
 import { Button, Input } from "@heroui/react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useData } from "../../services/useData";
 import type { Program } from "../../types";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -21,7 +21,15 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Reset error when modal opens/closes
+  // Sync displayName from props when modal opens or program changes
+  useEffect(() => {
+    if (isOpen && program) {
+      setDisplayName(program.displayName);
+      setError("");
+    }
+  }, [isOpen, program]);
+
+  // Reset error when modal closes
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setError("");

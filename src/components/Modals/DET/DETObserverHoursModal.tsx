@@ -35,6 +35,13 @@ export default function DETObserverHoursModal({
   const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
   const lastAddedIndexRef = useRef<number | null>(null);
 
+  // Re-sync from props when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setObserverHours(initialObserverHours);
+    }
+  }, [isOpen, initialObserverHours]);
+
   // Focus the first input of the newly added row
   useEffect(() => {
     if (lastAddedIndexRef.current !== null) {
@@ -54,7 +61,7 @@ export default function DETObserverHoursModal({
       name: "",
       initials: "",
       hoursObserved: 0,
-      class: 0,
+      class: 1,
       totalHours: 0,
     };
     const updated = [...(observerHours.observers || []), newObserver];
@@ -142,7 +149,7 @@ export default function DETObserverHoursModal({
             <ModalBodyShell>
               <div className="flex flex-col gap-4">
                 {/* Summary Row */}
-                <div className="border rounded-medium border border-default-100 p-3 ">
+                <div className="rounded-medium border border-default-100 p-3 ">
                   <div className="flex items-center gap-4 w-full">
                     <div className="font-semibold text-sm whitespace-nowrap flex-shrink-0">Total Observer Hours</div>
                     <div className="text-xs text-gray-600 whitespace-nowrap text-center flex-grow min-w-0">

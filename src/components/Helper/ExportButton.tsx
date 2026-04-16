@@ -8,27 +8,27 @@ interface ExportButtonProps {
   additionalComments?: Record<string, string>;
 }
 
+function formatTimestampForExport(updatedAt: string | undefined): string {
+  if (!updatedAt) return "";
+  const timestamp = parseInt(updatedAt, 10);
+  if (isNaN(timestamp)) return updatedAt;
+  const date = new Date(timestamp);
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
 export default function ExportButton({
   birdEvents,
   filename = "bird_events.csv",
   additionalComments = {},
 }: ExportButtonProps) {
-  const formatUpdatedAt = (updatedAt: string | undefined): string => {
-    if (!updatedAt) return "";
-    const timestamp = parseInt(updatedAt, 10);
-    if (isNaN(timestamp)) return updatedAt;
-    const date = new Date(timestamp);
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    });
-  };
-
   const handleExport = () => {
     if (birdEvents.length === 0) {
       return;
@@ -79,7 +79,7 @@ export default function ExportButton({
       event.scribe,
       event.net,
       event.birdStatus,
-      formatUpdatedAt(event.updatedAt),
+      formatTimestampForExport(event.updatedAt),
       event.notes,
       additionalComments[event.id] || "",
     ]);

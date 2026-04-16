@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
@@ -256,9 +256,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
         const cachedTimestamp = await getLastUpdated(CURRENT_ENVIRONMENT);
 
-        // Get the lastModified timestamp from Firebase
-        const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`));
-        const firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
+        // Try to get the lastModified timestamp from Firebase
+        // This may fail if offline — that's okay, we'll fall back to cache
+        let firebaseTimestamp: number | null = null;
+        try {
+          const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`));
+          firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
+        } catch (firebaseErr) {
+          logger.warn("DataLoad", "Cannot reach Firebase — will use cached data if available", firebaseErr);
+        }
 
         // Log timestamps for debugging
         logger.debug("DataLoad", "Cache timestamp", {
@@ -275,6 +281,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         if (!needsFetch && cachedData) {
           logger.info("DataLoad", `Using cached ${CURRENT_ENVIRONMENT}/ data (up to date)`);
+          populateStateFromData(cachedData);
+          setIsLoading(false);
+          return;
+        }
+
+        // If we can't reach Firebase but have previously-synced cached data, use it
+        if (firebaseTimestamp === null && cachedData && cachedTimestamp) {
+          logger.info("DataLoad", `Offline — using cached ${CURRENT_ENVIRONMENT}/ data (last synced ${new Date(cachedTimestamp).toLocaleString()})`);
           populateStateFromData(cachedData);
           setIsLoading(false);
           return;
@@ -315,6 +329,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         logger.error("DataLoad", `Error loading ${CURRENT_ENVIRONMENT}/ data`, err);
         if (!cancelled) {
+          // Last resort: try to use previously-synced cached data on unexpected errors
+          try {
+            const fallbackData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
+            const fallbackTimestamp = await getLastUpdated(CURRENT_ENVIRONMENT);
+            if (fallbackData && fallbackTimestamp) {
+              logger.info("DataLoad", "Using cached data as fallback after error");
+              populateStateFromData(fallbackData);
+              return;
+            }
+          } catch {
+            // IndexedDB also failed — nothing we can do
+          }
           setError(err instanceof Error ? err.message : "Failed to load data");
         }
       } finally {
@@ -539,35 +565,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Saves complete application state to IndexedDB cache.
-   * This is the single source of truth for offline data.
+   * Saves data to IndexedDB cache using read-modify-write pattern.
+   * Reads current IndexedDB state first to avoid overwriting data written
+   * by other code paths (e.g. updateDETInCache, concurrent addBirdEvent calls).
    */
   const saveCompleteStateToIndexedDB = useCallback(
-    async (overrides?: Partial<DatabaseData>): Promise<void> => {
+    async (overrides: Partial<DatabaseData>): Promise<void> => {
+      const current = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
       await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
-        yearsToProgramMap,
-        programsMap,
-        bandIdToBirdEventIdsMap,
-        birdEventsMap,
-        bandGroupsMap,
-        magicTable,
-        bandSizeToBandIdMap,
-        dismissedConflictsMap,
-        DETsMap,
+        yearsToProgramMap: current?.yearsToProgramMap ?? {},
+        programsMap: current?.programsMap ?? {},
+        bandIdToBirdEventIdsMap: current?.bandIdToBirdEventIdsMap ?? {},
+        birdEventsMap: current?.birdEventsMap ?? {},
+        bandGroupsMap: current?.bandGroupsMap ?? {},
+        magicTable: current?.magicTable ?? { pyle: {} },
+        bandSizeToBandIdMap: current?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
+        dismissedConflictsMap: current?.dismissedConflictsMap ?? {},
+        DETsMap: current?.DETsMap ?? {},
         ...overrides,
       });
     },
-    [
-      yearsToProgramMap,
-      programsMap,
-      bandIdToBirdEventIdsMap,
-      birdEventsMap,
-      bandGroupsMap,
-      magicTable,
-      bandSizeToBandIdMap,
-      dismissedConflictsMap,
-      DETsMap,
-    ]
+    []
   );
 
   /**
@@ -681,16 +699,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     syncBirdEventToRTDB,
     updateLastModifiedTimestamp,
   ]);
-
-  // Auto-sync when coming back online
-  const wasOnlineRef = useRef(isOnline);
-  useEffect(() => {
-    if (isOnline && !wasOnlineRef.current) {
-      logger.info("AutoSync", "Back online — syncing pending events");
-      syncQueue();
-    }
-    wasOnlineRef.current = isOnline;
-  }, [isOnline, syncQueue]);
 
   const incrementBandSize = useCallback(
     async (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string): Promise<Record<BandSize, string>> => {
