@@ -160,15 +160,22 @@ export default function Programs() {
           >
             <TableHeader>
               <TableColumn>Program Name</TableColumn>
+              <TableColumn>First Capture</TableColumn>
+              <TableColumn>Last Capture</TableColumn>
             </TableHeader>
             <TableBody emptyContent={selectedYear ? "No programs found" : "Select a year"}>
               {[...programs]
                 .sort((a, b) => a.localeCompare(b))
-                .map((programId) => (
-                  <TableRow key={programId}>
-                    <TableCell>{programsMap[programId]?.displayName}</TableCell>
-                  </TableRow>
-                ))}
+                .map((programId) => {
+                  const program = programsMap[programId];
+                  return (
+                    <TableRow key={programId}>
+                      <TableCell>{program?.displayName}</TableCell>
+                      <TableCell className="text-default-500 text-sm">{program?.firstCaptureDate ?? ""}</TableCell>
+                      <TableCell className="text-default-500 text-sm">{program?.lastCaptureDate ?? ""}</TableCell>
+                    </TableRow>
+                  );
+                })}
             </TableBody>
           </Table>
         </div>

@@ -8,19 +8,57 @@ import { fetchWeatherForDateRange } from "../src/services/weatherService.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Parse a single CSV line respecting quoted fields
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (nextChar === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ",") {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+}
+
 // Parse CSV helper
 function parseCSV(content: string): Record<string, string>[] {
+  content = content.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const lines = content.split("\n");
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(",").map((h) => h.trim());
+  const headers = parseCSVLine(lines[0]);
   const data: Record<string, string>[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
 
-    const values = line.split(",").map((v) => v.trim());
+    const values = parseCSVLine(line);
     const row: Record<string, string> = {};
 
     headers.forEach((header, idx) => {
@@ -31,6 +69,20 @@ function parseCSV(content: string): Record<string, string>[] {
   }
 
   return data;
+}
+
+/**
+ * Convert "M/D/YYYY 0:00:00" or "YYYY-MM-DD" to "YYYY-MM-DD"
+ */
+function normalizeDate(value: string): string {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (match) {
+    const [, month, day, year] = match;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  return value;
 }
 
 // Read CSV files
@@ -51,7 +103,7 @@ const DETsMap = new Map<string, DET>();
 
 // Process daily records
 dailyRecords.forEach((record) => {
-  const date = record.DateEx;
+  const date = normalizeDate(record.DateEx);
   if (!date) return;
 
   DETsMap.set(date, {
@@ -91,7 +143,7 @@ dailyRecords.forEach((record) => {
 
 // Process species records
 speciesRecords.forEach((record) => {
-  const date = record.DateEx;
+  const date = normalizeDate(record.DateEx);
   if (!date || !DETsMap.has(date)) return;
 
   const detMap = DETsMap.get(date)!;
@@ -125,7 +177,7 @@ speciesRecords.forEach((record) => {
 // Process net hours records
 const netsByDate = new Map<string, Net[]>();
 netHoursRecords.forEach((record) => {
-  const date = record.DateEx;
+  const date = normalizeDate(record.DateEx);
   if (!date) return;
 
   if (!netsByDate.has(date)) {

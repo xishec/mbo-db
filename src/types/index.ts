@@ -18,6 +18,8 @@ export interface Program {
   displayName: string;
   bandGroupIds: string[];
   recaptureIds: string[];
+  firstCaptureDate?: string;
+  lastCaptureDate?: string;
 }
 
 export class Band {

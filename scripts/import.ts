@@ -88,8 +88,8 @@ function parseCSVLine(line: string): string[] {
  * Parse CSV content into array of RawCaptureData
  */
 export function parseCSV(csvContent: string): BirdEvent[] {
-  // Remove BOM if present
-  csvContent = csvContent.replace(/^\uFEFF/, "");
+  // Remove BOM and normalize line endings
+  csvContent = csvContent.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
   const rows = csvContent.split("\n");
   const headers = parseCSVLine(rows[0]);
@@ -117,6 +117,38 @@ export function parseCSV(csvContent: string): BirdEvent[] {
 // WingChord,
 // Weight,
 // Fat,
+
+/**
+ * Convert "M/D/YYYY 0:00:00" or "YYYY-MM-DD" to "YYYY-MM-DD"
+ */
+function normalizeDate(value: string): string {
+  if (!value) return "";
+  // Already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  // M/D/YYYY with optional time
+  const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (match) {
+    const [, month, day, year] = match;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  return value;
+}
+
+/**
+ * Extract time from "12/30/1899 H:MM:SS" or "HH:MM" formats
+ * Normalizes to "HH:MM" with zero-padded hour
+ */
+function normalizeTime(value: string): string {
+  if (!value) return "";
+  // Extract time portion after space if present (e.g. "12/30/1899 9:20:00")
+  const timePart = value.includes(" ") ? value.slice(value.indexOf(" ") + 1) : value;
+  // Match H:MM or HH:MM (with optional :SS)
+  const match = timePart.match(/^(\d{1,2}):(\d{2})/);
+  if (match) {
+    return match[1].padStart(2, "0") + ":" + match[2];
+  }
+  return "";
+}
 
 function parseCSVRow(headers: string[], values: string[]): BirdEvent {
   const birdEvent = {} as BirdEvent;
@@ -159,7 +191,7 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
         birdEvent.weight = Number(value);
         break;
       case HEADERS.CaptureDate:
-        birdEvent.date = value;
+        birdEvent.date = normalizeDate(value);
         break;
       case HEADERS.Bander:
         birdEvent.bander = value;
@@ -180,7 +212,7 @@ function parseCSVRow(headers: string[], values: string[]): BirdEvent {
         birdEvent.birdStatus = value;
         break;
       case HEADERS.WeightTime:
-        birdEvent.time = value.slice(0, 5);
+        birdEvent.time = normalizeTime(value);
         break;
       default:
         break;
@@ -223,6 +255,9 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   const bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap = {};
 
   for (const birdEvent of birdEvents) {
+    if (!birdEvent.date) continue;
+    if (!birdEvent.programId) birdEvent.programId = "NONE";
+
     // birdEventsMap
     const birdEventId = birdEvent.id;
     birdEventsMap[birdEventId] = birdEvent;
@@ -270,6 +305,14 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
       }
       if (!isNewCapture && !programsMap[programId].recaptureIds.includes(birdEventId)) {
         programsMap[programId].recaptureIds.push(birdEventId);
+      }
+
+      // Track first/last capture dates
+      const date = birdEvent.date;
+      if (date) {
+        const prog = programsMap[programId];
+        if (!prog.firstCaptureDate || date < prog.firstCaptureDate) prog.firstCaptureDate = date;
+        if (!prog.lastCaptureDate || date > prog.lastCaptureDate) prog.lastCaptureDate = date;
       }
     }
 
