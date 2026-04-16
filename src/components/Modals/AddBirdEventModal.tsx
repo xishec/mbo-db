@@ -283,7 +283,7 @@ export default function AddBirdEventModal({
     const wingValue = formData.wing ? Number(formData.wing) : null;
     const weightValue = formData.weight ? Number(formData.weight) : null;
 
-    const pyleRange = getApplicableRange(pyleSpeciesRange, sexCode);
+    const pyleRange = getApplicableRange(pyleSpeciesRange ?? undefined, sexCode);
 
     // Range validation for wing and weight
     const rangeValidation = {

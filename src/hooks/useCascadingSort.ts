@@ -37,7 +37,7 @@ export function useCascadingSort(initial: SortDescriptor[] = []) {
  * numericColumns: set of column keys that should be compared numerically.
  * specialSort: optional per-column override (return a number or undefined to fall through).
  */
-export function cascadingSort<T extends Record<string, unknown>>(
+export function cascadingSort<T>(
   rows: T[],
   sortDescriptors: SortDescriptor[],
   numericColumns: Set<string>,
@@ -55,8 +55,8 @@ export function cascadingSort<T extends Record<string, unknown>>(
       }
 
       if (cmp === undefined) {
-        const first = a[column];
-        const second = b[column];
+        const first = (a as Record<string, unknown>)[column];
+        const second = (b as Record<string, unknown>)[column];
 
         if (numericColumns.has(column)) {
           cmp = (parseFloat(String(first)) || 0) - (parseFloat(String(second)) || 0);
