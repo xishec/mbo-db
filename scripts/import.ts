@@ -13,6 +13,7 @@ import {
   BirdEventsMap,
   BandGroupsMap,
   BandGroup,
+  BandersMap,
   generateBirdEventId,
 } from "../src/types";
 
@@ -37,7 +38,8 @@ async function main() {
   }
 }
 
-main();
+const isDirectRun = process.argv[1]?.endsWith("import.ts");
+if (isDirectRun) main();
 
 /**
  * Parse a single CSV line respecting quoted fields (handles commas inside quotes)
@@ -253,6 +255,7 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   const bandGroupsMap: BandGroupsMap = {};
   const programsMap: ProgramsMap = {};
   const bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap = {};
+  const bandersMap: BandersMap = {};
 
   for (const birdEvent of birdEvents) {
     if (!birdEvent.date) continue;
@@ -278,7 +281,8 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
       ? (parseInt(birdEvent.band.bandGroupId, 10) - 1).toString().padStart(7, "0")
       : birdEvent.band.bandGroupId;
     const birdEventType = birdEvent.birdEventType;
-    if (bandGroupMapKey && (birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None)) {
+    const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
+    if (bandGroupMapKey && isNewCapture) {
       if (!bandGroupsMap[bandGroupMapKey]) {
         bandGroupsMap[bandGroupMapKey] = {
           id: bandGroupMapKey,
@@ -299,7 +303,6 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
           recaptureIds: [],
         };
       }
-      const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
       if (isNewCapture && !programsMap[programId].bandGroupIds.includes(bandGroupMapKey)) {
         programsMap[programId].bandGroupIds.push(bandGroupMapKey);
       }
@@ -318,6 +321,18 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
 
     // BandIdToBirdEventIdsMap
     (bandIdToBirdEventIdsMap[birdEvent.band.id] ??= []).push(birdEventId);
+
+    // bandersMap
+    const banderCode = birdEvent.bander;
+    if (banderCode && isNewCapture) {
+      if (!bandersMap[banderCode]) bandersMap[banderCode] = { code: banderCode, fullName: "", totalBanded: 0, totalScribed: 0 };
+      bandersMap[banderCode].totalBanded++;
+    }
+    const scribeCode = birdEvent.scribe;
+    if (scribeCode) {
+      if (!bandersMap[scribeCode]) bandersMap[scribeCode] = { code: scribeCode, fullName: "", totalBanded: 0, totalScribed: 0 };
+      bandersMap[scribeCode].totalScribed++;
+    }
   }
 
   console.log("Uploading data to RTDB...");
@@ -327,6 +342,7 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   await writeObjectToDB(db, `${ENVIRONMENT}/bandIdToBirdEventIdsMap`, bandIdToBirdEventIdsMap);
   await writeObjectToDB(db, `${ENVIRONMENT}/birdEventsMap`, birdEventsMap);
   await writeObjectToDB(db, `${ENVIRONMENT}/bandGroupsMap`, bandGroupsMap);
+  await db.ref(`${ENVIRONMENT}/bandersMap`).set(bandersMap);
 
   // Set lastModified timestamp to signal clients that data has been updated
   await db.ref(`${ENVIRONMENT}/metadata/lastModified`).set(Date.now());

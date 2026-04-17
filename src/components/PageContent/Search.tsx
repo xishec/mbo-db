@@ -30,11 +30,14 @@ const NUMBER_OPERATORS = [
   { key: "not_defined", label: "is not defined" },
 ];
 
+type LogicOperator = "AND" | "OR";
+
 interface Filter {
   id: string;
   property: (typeof TABLE_COLUMNS)[number]["key"];
   operator: string;
   value: string;
+  logic: LogicOperator;
 }
 
 export default function Search() {
@@ -54,6 +57,7 @@ export default function Search() {
   const [currentProperty, setCurrentProperty] = useState<(typeof TABLE_COLUMNS)[number]["key"] | "">("");
   const [currentOperator, setCurrentOperator] = useState<string>("");
   const [currentValue, setCurrentValue] = useState<string>("");
+  const [currentLogic, setCurrentLogic] = useState<LogicOperator>("AND");
 
   // Get property type for current selection
   const currentPropertyType = useMemo(() => {
@@ -86,13 +90,14 @@ export default function Search() {
       property: currentProperty,
       operator: currentOperator,
       value: currentValue,
+      logic: currentLogic,
     };
 
     setFilters((prev) => [...prev, newFilter]);
     setCurrentProperty("");
     setCurrentOperator("");
     setCurrentValue("");
-  }, [currentProperty, currentOperator, currentValue, operatorRequiresValue]);
+  }, [currentProperty, currentOperator, currentValue, operatorRequiresValue, currentLogic]);
 
   // Remove a filter
   const removeFilter = useCallback((filterId: string) => {
@@ -132,67 +137,65 @@ export default function Search() {
     }
   };
 
-  // Apply filters to birdEvents
+  // Evaluate a single filter against a bird event
+  const matchesFilter = useCallback((birdEvent: BirdEvent, filter: Filter): boolean => {
+    const rawValue = getEventValue(birdEvent, filter.property);
+    const propType = TABLE_COLUMNS.find((p: CaptureColumn) => p.key === filter.property)?.type ?? "string";
+
+    if (filter.operator === "defined") {
+      return rawValue !== undefined && rawValue !== null && rawValue !== "";
+    }
+    if (filter.operator === "not_defined") {
+      return rawValue === undefined || rawValue === null || rawValue === "";
+    }
+
+    if (propType === "number") {
+      const birdEventValue = Number(rawValue) || 0;
+      const filterValue = Number(filter.value) || 0;
+
+      switch (filter.operator) {
+        case "equals": return birdEventValue === filterValue;
+        case "not_equals": return birdEventValue !== filterValue;
+        case "greater_than": return birdEventValue > filterValue;
+        case "greater_than_or_equal": return birdEventValue >= filterValue;
+        case "less_than": return birdEventValue < filterValue;
+        case "less_than_or_equal": return birdEventValue <= filterValue;
+        default: return true;
+      }
+    } else {
+      const birdEventValue = String(rawValue ?? "").toLowerCase();
+      const filterValue = filter.value.toLowerCase();
+
+      switch (filter.operator) {
+        case "equals": return birdEventValue === filterValue;
+        case "not_equals": return birdEventValue !== filterValue;
+        case "contains": return birdEventValue.includes(filterValue);
+        case "not_contains": return !birdEventValue.includes(filterValue);
+        case "starts_with": return birdEventValue.startsWith(filterValue);
+        case "ends_with": return birdEventValue.endsWith(filterValue);
+        default: return true;
+      }
+    }
+  }, []);
+
+  // Apply filters: AND before OR
+  // Split into AND-groups at OR boundaries, evaluate each group with every(), combine with some()
   const filteredBirdEvents = useMemo(() => {
     if (filters.length === 0) return allBirdEvents;
 
-    return allBirdEvents.filter((birdEvent: BirdEvent) => {
-      return filters.every((filter) => {
-        const rawValue = getEventValue(birdEvent, filter.property);
-        const propType = TABLE_COLUMNS.find((p: CaptureColumn) => p.key === filter.property)?.type ?? "string";
+    // Split filters into AND-groups separated by OR
+    const andGroups: Filter[][] = [[]];
+    for (const filter of filters) {
+      if (filter.logic === "OR" && andGroups[andGroups.length - 1].length > 0) {
+        andGroups.push([]);
+      }
+      andGroups[andGroups.length - 1].push(filter);
+    }
 
-        // Handle defined/not_defined operators (work for both types)
-        if (filter.operator === "defined") {
-          return rawValue !== undefined && rawValue !== null && rawValue !== "";
-        }
-        if (filter.operator === "not_defined") {
-          return rawValue === undefined || rawValue === null || rawValue === "";
-        }
-
-        if (propType === "number") {
-          const birdEventValue = Number(rawValue) || 0;
-          const filterValue = Number(filter.value) || 0;
-
-          switch (filter.operator) {
-            case "equals":
-              return birdEventValue === filterValue;
-            case "not_equals":
-              return birdEventValue !== filterValue;
-            case "greater_than":
-              return birdEventValue > filterValue;
-            case "greater_than_or_equal":
-              return birdEventValue >= filterValue;
-            case "less_than":
-              return birdEventValue < filterValue;
-            case "less_than_or_equal":
-              return birdEventValue <= filterValue;
-            default:
-              return true;
-          }
-        } else {
-          const birdEventValue = String(rawValue ?? "").toLowerCase();
-          const filterValue = filter.value.toLowerCase();
-
-          switch (filter.operator) {
-            case "equals":
-              return birdEventValue === filterValue;
-            case "not_equals":
-              return birdEventValue !== filterValue;
-            case "contains":
-              return birdEventValue.includes(filterValue);
-            case "not_contains":
-              return !birdEventValue.includes(filterValue);
-            case "starts_with":
-              return birdEventValue.startsWith(filterValue);
-            case "ends_with":
-              return birdEventValue.endsWith(filterValue);
-            default:
-              return true;
-          }
-        }
-      });
-    });
-  }, [allBirdEvents, filters]);
+    return allBirdEvents.filter((birdEvent: BirdEvent) =>
+      andGroups.some((group) => group.every((filter) => matchesFilter(birdEvent, filter)))
+    );
+  }, [allBirdEvents, filters, matchesFilter]);
 
   // Get operator label for display
   const getOperatorLabel = (operator: string, propertyKey: string) => {
@@ -216,6 +219,23 @@ export default function Search() {
       <div className="w-full flex flex-col gap-4">
         {/* Filter Builder */}
         <div className="w-full flex flex-wrap gap-3 items-end">
+          {filters.length > 0 && (
+            <Select
+              label="Logic"
+              variant="bordered"
+              labelPlacement="outside"
+              size="md"
+              selectedKeys={[currentLogic]}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as LogicOperator | undefined;
+                if (selected) setCurrentLogic(selected);
+              }}
+              className="w-24"
+            >
+              <SelectItem key="AND">AND</SelectItem>
+              <SelectItem key="OR">OR</SelectItem>
+            </Select>
+          )}
           <Select
             label="Property"
             placeholder="Select property"
@@ -277,8 +297,11 @@ export default function Search() {
         {filters.length > 0 && (
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-sm">Active filters:</span>
-            {filters.map((filter) => (
+            {filters.map((filter, index) => (
               <div key={filter.id} className="flex items-center gap-1">
+                {index > 0 && (
+                  <span className="text-xs font-semibold text-default-500 px-1">{filter.logic}</span>
+                )}
                 <Chip onClose={() => removeFilter(filter.id)} variant="flat" color="secondary" size="md">
                   {getPropertyLabel(filter.property as string)} {getOperatorLabel(filter.operator, filter.property)}
                   {filter.operator !== "defined" && filter.operator !== "not_defined" && ` "${filter.value}"`}

@@ -10,7 +10,6 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-  User,
   Badge,
   Chip,
 } from "@heroui/react";
@@ -113,7 +112,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
           </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-12" justify="center">
-          {(["home", "programs", "search", "DETs", "species", "reports"] as const).map((page) => (
+          {(["home", "programs", "search", "DETs", "species", "banders", "reports"] as const).map((page) => (
             <NavbarItem key={page} isActive={activePage === page}>
               <Link
                 aria-current={activePage === page ? "page" : undefined}
@@ -156,15 +155,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
                   <div className="flex items-center gap-4 cursor-pointer">
-                    <User
-                      as="button"
-                      name={userEmail}
-                      className="transition-transform"
-                      avatarProps={{
-                        size: "sm",
-                        name: userEmail?.[0].toUpperCase(),
-                      }}
-                    />
+                    <span className="text-sm">{userEmail}</span>
                     <ChevronDownIcon className="w-5 h-5" />
                   </div>
                 </DropdownTrigger>

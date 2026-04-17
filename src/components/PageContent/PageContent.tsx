@@ -3,6 +3,7 @@ import Search from "./Search";
 import Home from "./Home";
 import DETs from "./DETs/DETs";
 import SpeciesGroups from "./SpeciesGroups";
+import Banders from "./Banders";
 import Reports from "./Reports/Reports";
 
 interface PageContentProps {
@@ -18,6 +19,7 @@ export default function PageContent({ activePage }: PageContentProps) {
         {activePage === "search" && <Search />}
         {activePage === "DETs" && <DETs />}
         {activePage === "species" && <SpeciesGroups />}
+        {activePage === "banders" && <Banders />}
         {activePage === "reports" && <Reports />}
       </div>
     </div>

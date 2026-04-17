@@ -13,6 +13,7 @@ import {
   type BirdEvent,
   type DismissedConflictsMap,
   type DETsMap,
+  type BandersMap,
   BandSize,
   type PendingBirdEvent,
   type PendingDETEvent,
@@ -109,6 +110,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
   const [dismissedConflictsMap, setDismissedConflictsMap] = useState<DismissedConflictsMap>({});
   const [DETsMap, setDETsMap] = useState<DETsMap>({});
+  const [bandersMap, setBandersMap] = useState<BandersMap>({});
 
   /**
    * Compute SpeciesInfoMap from birdEventsMap
@@ -372,6 +374,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setDETsMap(data.DETsMap ?? {});
       setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
+      setBandersMap(data.bandersMap ?? {});
     };
 
     loadAlphaData();
@@ -879,12 +882,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             : [...existingProgramsInYear, captureData.programId],
         };
 
+        // Update bandersMap
+        const newBandersMap = { ...bandersMap };
+        const banderCode = captureData.bander;
+        if (banderCode && isNewCapture) {
+          const existing = newBandersMap[banderCode] ?? { code: banderCode, fullName: "", totalBanded: 0, totalScribed: 0 };
+          newBandersMap[banderCode] = { ...existing, totalBanded: existing.totalBanded + 1 };
+        }
+        const scribeCode = captureData.scribe;
+        if (scribeCode) {
+          const existing = newBandersMap[scribeCode] ?? { code: scribeCode, fullName: "", totalBanded: 0, totalScribed: 0 };
+          newBandersMap[scribeCode] = { ...existing, totalScribed: existing.totalScribed + 1 };
+        }
+
         // Update React state
         setBirdEventsMap(newBirdEventsMap);
         setBandIdToBirdEventIdsMap(newBandIdToBirdEventIdsMap);
         setBandGroupsMap(newBandGroupsMap);
         setProgramsMap(newProgramsMap);
         setYearsToProgramMap(newYearsToProgramMap);
+        setBandersMap(newBandersMap);
 
         // Update selectedProgram if it's the one we just modified
         setSelectedProgram((current) => {
@@ -900,6 +917,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           birdEventsMap: newBirdEventsMap,
           bandGroupsMap: newBandGroupsMap,
           bandSizeToBandIdMap: updatedBandSizeMap,
+          bandersMap: newBandersMap,
         });
 
         // 6. Handle online vs offline sync
@@ -931,6 +949,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       bandIdToBirdEventIdsMap,
       birdEventsMap,
       bandGroupsMap,
+      bandersMap,
       isOnline,
       programsMap,
       syncQueue,
@@ -1246,6 +1265,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
+  const updateBanderName = useCallback(
+    async (code: string, fullName: string) => {
+      if (!user) {
+        throw new Error("Must be logged in to update bander name");
+      }
+
+      try {
+        const trimmed = fullName.trim();
+        const existing = bandersMap[code];
+        if (!existing) return;
+
+        const updated = { ...existing, fullName: trimmed };
+        const newBandersMap = { ...bandersMap, [code]: updated };
+        setBandersMap(newBandersMap);
+
+        await saveCompleteStateToIndexedDB({ bandersMap: newBandersMap });
+
+        if (isOnline) {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandersMap/${code}/fullName`), trimmed);
+          await updateLastModifiedTimestamp();
+        }
+      } catch (err) {
+        logger.error("UpdateBanderName", `Error updating bander ${code}`, err);
+        throw err;
+      }
+    },
+    [user, isOnline, bandersMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+  );
+
   return (
     <DataContext.Provider
       value={{
@@ -1266,6 +1314,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandSizeToBandIdMap,
         dismissedConflictsMap,
         DETsMap,
+        bandersMap,
         speciesInfoMap,
         isOnline,
         pendingCount,
@@ -1281,6 +1330,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         dismissConflict,
         resetDismissedConflicts,
         saveDET,
+        updateBanderName,
       }}
     >
       {children}
