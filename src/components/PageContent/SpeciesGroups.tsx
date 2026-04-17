@@ -142,8 +142,9 @@ export default function SpeciesGroups() {
                 <TableColumn
                   key={column.key}
                   allowsSorting
-                  className={`${column.align === "end" ? "text-right" : ""} ${column.key === "groupName" ? "whitespace-nowrap" : ""
-                    }`}
+                  className={`${column.align === "end" ? "text-right" : ""} ${
+                    column.key === "groupName" ? "whitespace-nowrap" : ""
+                  }`}
                 >
                   {column.label}
                 </TableColumn>
@@ -155,7 +156,11 @@ export default function SpeciesGroups() {
                   {(columnKey) => {
                     const value = item[columnKey as keyof SpeciesRow];
                     if (columnKey === "code") {
-                      return <TableCell className="font-mono text-default-900">{value}</TableCell>;
+                      return (
+                        <TableCell height={50} className="font-mono text-default-900">
+                          {value}
+                        </TableCell>
+                      );
                     }
                     if (columnKey === "groupName") {
                       return <TableCell className="text-default-900 whitespace-nowrap">{value}</TableCell>;
