@@ -376,6 +376,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
     };
 
+    const CONSTANTS_CACHE_KEY = `constants_${CURRENT_ENVIRONMENT}`;
+
     const loadConstants = async () => {
       try {
         const constantsSnapshot = await get(ref(db, `constants/${CURRENT_ENVIRONMENT}`));
@@ -383,13 +385,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           const constants = constantsSnapshot.val();
           setMagicTable(constants.magicTable ?? { pyle: {} });
           setVolunteersMap(constants.volunteersMap ?? {});
+          // Cache constants in IndexedDB for offline use
+          await saveDataToIndexedDB(CONSTANTS_CACHE_KEY, constants);
           logger.info("DataLoad", "Loaded constants", {
             hasMagicTable: !!constants.magicTable,
             volunteersCount: Object.keys(constants.volunteersMap ?? {}).length,
           });
         }
       } catch (err) {
-        logger.warn("DataLoad", "Failed to load constants — using defaults", err);
+        // Offline fallback: load from IndexedDB cache
+        logger.warn("DataLoad", "Cannot reach Firebase for constants — trying cache", err);
+        try {
+          const cached = await getDataFromIndexedDB(CONSTANTS_CACHE_KEY);
+          if (cached) {
+            const constants = cached as unknown as { magicTable?: MagicTable; volunteersMap?: VolunteersMap };
+            setMagicTable(constants.magicTable ?? { pyle: {} });
+            setVolunteersMap(constants.volunteersMap ?? {});
+            logger.info("DataLoad", "Loaded constants from cache");
+          }
+        } catch {
+          logger.error("DataLoad", "Failed to load constants from cache");
+        }
       }
     };
 
@@ -722,6 +738,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Sync volunteer counts (stored in constants path, may have been updated offline)
+      if (Object.keys(volunteersMap).length > 0) {
+        try {
+          await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap`), volunteersMap);
+          logger.sync("SyncQueue", "Synced volunteersMap to RTDB");
+        } catch (err) {
+          logger.error("SyncQueue", "Failed to sync volunteersMap", err);
+        }
+      }
+
       // Update pending count
       const remainingCount = await getQueueCount();
       setPendingCount(remainingCount);
@@ -739,6 +765,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [
     isOnline,
+    volunteersMap,
     reconstructBandObjects,
     updateReactStateFromCache,
     syncBirdEventToRTDB,
@@ -972,7 +999,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandSizeToBandIdMap: updatedBandSizeMap,
         });
 
-        // 6. Handle online vs offline sync
+        // 6. Sync volunteer counts to constants path
+        if (isOnline) {
+          await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap`), newVolunteersMap);
+        }
+
+        // 7. Handle online vs offline sync
         if (isOnline) {
           // Online: update timestamp and sync immediately
           await updateLastModifiedTimestamp();
