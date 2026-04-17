@@ -31,7 +31,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState<Set<string>>(new Set(["all"]));
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set(["all"]));
-  const { forceOffline, setForceOffline } = useData();
+  const { forceOffline, setForceOffline, triggerTestMilestone } = useData();
 
   // Subscribe to log updates
   useEffect(() => {
@@ -134,6 +134,9 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
             <Switch isSelected={forceOffline} onValueChange={setForceOffline}>
               Force Offline
             </Switch>
+            <Button size="sm" variant="flat" color="warning" onPress={triggerTestMilestone}>
+              Test Milestone
+            </Button>
             <div className="flex gap-2">
               {Object.entries(stats.byLevel).map(([level, count]) => (
                 <Chip key={level} color={getLevelColor(level as LogLevel)} variant="flat">

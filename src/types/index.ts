@@ -12,9 +12,9 @@ export type BandIdToBirdEventIdsMap = Record<string, string[]>;
 export type BandSizeToBandIdMap = Record<BandSize, string>;
 export type DismissedConflictsMap = Record<string, boolean>;
 export type DETsMap = Record<string, DET>;
-export type BandersMap = Record<string, Bander>;
+export type VolunteersMap = Record<string, Volunteer>;
 
-export interface Bander {
+export interface Volunteer {
   code: string;
   fullName: string;
   totalBanded: number;
@@ -178,11 +178,9 @@ export interface DatabaseData {
   bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
   birdEventsMap: BirdEventsMap;
   bandGroupsMap: BandGroupsMap;
-  magicTable: MagicTable;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
   DETsMap?: DETsMap;
-  bandersMap?: BandersMap;
 }
 
 // Service types
@@ -211,7 +209,7 @@ export interface DataContextType {
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
   DETsMap: DETsMap;
-  bandersMap: BandersMap;
+  volunteersMap: VolunteersMap;
   speciesInfoMap: SpeciesInfoMap;
 
   // Offline support
@@ -239,7 +237,11 @@ export interface DataContextType {
   dismissConflict: (conflictId: string) => Promise<void>;
   resetDismissedConflicts: () => Promise<void>;
   saveDET: (det: DET) => Promise<void>;
-  updateBanderName: (code: string, fullName: string) => Promise<void>;
+  updateVolunteerName: (code: string, fullName: string) => Promise<void>;
+  addVolunteer: (code: string, fullName: string) => Promise<void>;
+  milestone: { banderCode: string; count: number } | null;
+  clearMilestone: () => void;
+  triggerTestMilestone: () => void;
 }
 
 // Form types

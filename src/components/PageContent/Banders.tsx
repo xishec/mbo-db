@@ -6,7 +6,7 @@ import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
 import PageHeader from "./PageHeader";
 
-type BanderRow = {
+type Row = {
   code: string;
   fullName: string;
   totalBanded: number;
@@ -14,16 +14,16 @@ type BanderRow = {
 };
 
 const COLUMNS = [
-  { key: "code" as const, label: "Code", type: "string" as const },
-  { key: "fullName" as const, label: "Full Name", type: "string" as const },
-  { key: "totalBanded" as const, label: "Banded", type: "number" as const, align: "end" as const },
-  { key: "totalScribed" as const, label: "Scribed", type: "number" as const, align: "end" as const },
+  { key: "code" as const, label: "Code", type: "string" as const, width: 100 },
+  { key: "fullName" as const, label: "Full Name", type: "string" as const, width: 300 },
+  { key: "totalBanded" as const, label: "Banded", type: "number" as const, align: "end" as const, width: 150 },
+  { key: "totalScribed" as const, label: "Scribed", type: "number" as const, align: "end" as const, width: 150 },
 ];
 
 const numericColumns = new Set<string>(COLUMNS.filter((c) => c.type === "number").map((c) => c.key));
 
-export default function Banders() {
-  const { bandersMap, isLoggedIn, updateBanderName } = useData();
+export default function Volunteers() {
+  const { volunteersMap, isLoggedIn, updateVolunteerName, addVolunteer } = useData();
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
     { column: "totalBanded", direction: "descending" },
   ]);
@@ -31,9 +31,13 @@ export default function Banders() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newCode, setNewCode] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [addError, setAddError] = useState("");
 
-  const rows = useMemo<BanderRow[]>(() => {
-    const allRows = Object.values(bandersMap).map((b) => ({
+  const rows = useMemo<Row[]>(() => {
+    const allRows = Object.values(volunteersMap).map((b) => ({
       code: b.code,
       fullName: b.fullName || "",
       totalBanded: b.totalBanded,
@@ -46,7 +50,7 @@ export default function Banders() {
     }
 
     return allRows;
-  }, [bandersMap, search]);
+  }, [volunteersMap, search]);
 
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
 
@@ -54,18 +58,33 @@ export default function Banders() {
     <div className="h-full w-full max-w-7xl mx-auto flex flex-col items-center pt-4 p-8 gap-4">
       <div className="w-full">
         <PageHeader
-          title="Banders"
-          subtitle={`${Object.keys(bandersMap).length} banders and scribes`}
+          title="Volunteers"
+          subtitle={`${Object.keys(volunteersMap).length} volunteers`}
           actions={
-            sortDescriptors.length > 0 ? (
-              <button
-                type="button"
-                onClick={resetSort}
-                className="text-sm font-medium text-primary hover:text-primary-600"
-              >
-                Reset sort
-              </button>
-            ) : null
+            <div className="flex items-center gap-2">
+              {sortDescriptors.length > 0 && (
+                <button
+                  type="button"
+                  onClick={resetSort}
+                  className="text-sm font-medium text-primary hover:text-primary-600"
+                >
+                  Reset sort
+                </button>
+              )}
+              {isLoggedIn && (
+                <Button
+                  color="secondary"
+                  onPress={() => {
+                    setNewCode("");
+                    setNewFullName("");
+                    setAddError("");
+                    setIsAddModalOpen(true);
+                  }}
+                >
+                  Add Volunteer
+                </Button>
+              )}
+            </div>
           }
         />
       </div>
@@ -84,7 +103,7 @@ export default function Banders() {
       <div className="w-full pb-[200px]">
         <div className="overflow-hidden rounded-medium border border-default-200">
           <Table
-            aria-label="Banders table"
+            aria-label="Volunteers table"
             isVirtualized
             maxTableHeight={800}
             sortDescriptor={sortDescriptors[0]}
@@ -97,16 +116,21 @@ export default function Banders() {
           >
             <TableHeader columns={COLUMNS}>
               {(column) => (
-                <TableColumn key={column.key} allowsSorting className={column.align === "end" ? "text-right" : ""}>
+                <TableColumn
+                  key={column.key}
+                  allowsSorting
+                  className={column.align === "end" ? "text-right" : ""}
+                  width={column.width}
+                >
                   {column.label}
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={sortedRows} emptyContent="No banders found">
+            <TableBody items={sortedRows} emptyContent="No volunteer found">
               {(item) => (
                 <TableRow key={item.code}>
                   {(columnKey) => {
-                    const value = item[columnKey as keyof BanderRow];
+                    const value = item[columnKey as keyof Row];
                     if (columnKey === "code") {
                       return <TableCell className="font-mono font-bold text-default-900">{value}</TableCell>;
                     }
@@ -160,7 +184,7 @@ export default function Banders() {
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                if (editingCode) updateBanderName(editingCode, editingName);
+                if (editingCode) updateVolunteerName(editingCode, editingName);
                 setIsEditModalOpen(false);
               }
             }}
@@ -173,11 +197,67 @@ export default function Banders() {
           <Button
             {...modalPrimaryButtonProps}
             onPress={() => {
-              if (editingCode) updateBanderName(editingCode, editingName);
+              if (editingCode) updateVolunteerName(editingCode, editingName);
               setIsEditModalOpen(false);
             }}
           >
             Save
+          </Button>
+        </ModalFooterShell>
+      </ModalShell>
+
+      <ModalShell
+        modalProps={{
+          isDismissable: true,
+          isOpen: isAddModalOpen,
+          onOpenChange: setIsAddModalOpen,
+          placement: "top-center",
+        }}
+      >
+        <ModalHeaderShell>Add Volunteer</ModalHeaderShell>
+        <ModalBodyShell>
+          {addError && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{addError}</div>}
+          <Input
+            label="Code"
+            placeholder="2-3 letter code (e.g. SNL)"
+            {...modalInputProps}
+            value={newCode}
+            onValueChange={(v) => {
+              setNewCode(v.toUpperCase());
+              setAddError("");
+            }}
+            maxLength={3}
+            autoFocus
+          />
+          <Input
+            label="Full Name"
+            placeholder="Enter full name"
+            {...modalInputProps}
+            value={newFullName}
+            onValueChange={setNewFullName}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newCode.length >= 2) {
+                addVolunteer(newCode, newFullName)
+                  .then(() => setIsAddModalOpen(false))
+                  .catch((err) => setAddError(err instanceof Error ? err.message : "Failed"));
+              }
+            }}
+          />
+        </ModalBodyShell>
+        <ModalFooterShell>
+          <Button {...modalCancelButtonProps} onPress={() => setIsAddModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            {...modalPrimaryButtonProps}
+            isDisabled={newCode.length < 2}
+            onPress={() => {
+              addVolunteer(newCode, newFullName)
+                .then(() => setIsAddModalOpen(false))
+                .catch((err) => setAddError(err instanceof Error ? err.message : "Failed"));
+            }}
+          >
+            Add
           </Button>
         </ModalFooterShell>
       </ModalShell>

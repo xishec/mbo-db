@@ -112,7 +112,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
           </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-12" justify="center">
-          {(["home", "programs", "search", "DETs", "species", "banders", "reports"] as const).map((page) => (
+          {(["home", "programs", "search", "DETs", "species", "volunteers", "reports"] as const).map((page) => (
             <NavbarItem key={page} isActive={activePage === page}>
               <Link
                 aria-current={activePage === page ? "page" : undefined}

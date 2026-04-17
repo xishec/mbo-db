@@ -13,13 +13,13 @@ import {
   type BirdEvent,
   type DismissedConflictsMap,
   type DETsMap,
-  type BandersMap,
+  type VolunteersMap,
   BandSize,
   type PendingBirdEvent,
   type PendingDETEvent,
   type SpeciesInfoMap,
 } from "../types";
-import { Band, BirdEventType, generateBirdEventId, type Program, getBandGroupMapKey, type DET } from "../types";
+import { Band, BirdEventType, generateBirdEventId, type Program, type Volunteer, getBandGroupMapKey, type DET } from "../types";
 import { DataContext } from "./DataContext";
 import {
   saveDataToIndexedDB,
@@ -35,6 +35,7 @@ import {
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
 import { onAuthStateChanged, signOut as firebaseSignOut, type User } from "firebase/auth";
+import { VOLUNTEER_NAMES } from "../data/volunteerNames";
 
 type FavoriteRateResult = {
   value: string;
@@ -91,6 +92,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [forceOffline, setForceOffline] = useState(false);
+  const [milestone, setMilestone] = useState<{ banderCode: string; count: number } | null>(null);
   const actualIsOnline = useOnlineStatus();
   const isOnline = forceOffline ? false : actualIsOnline;
 
@@ -110,7 +112,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
   const [dismissedConflictsMap, setDismissedConflictsMap] = useState<DismissedConflictsMap>({});
   const [DETsMap, setDETsMap] = useState<DETsMap>({});
-  const [bandersMap, setBandersMap] = useState<BandersMap>({});
+  const [volunteersMap, setVolunteersMap] = useState<VolunteersMap>({});
 
   /**
    * Compute SpeciesInfoMap from birdEventsMap
@@ -324,7 +326,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             birdEventsMap: Object.keys(data.birdEventsMap ?? {}).length,
             bandGroupsMap: Object.keys(data.bandGroupsMap ?? {}).length,
             DETsMap: Object.keys(data.DETsMap ?? {}).length,
-            hasMagicTable: !!data.magicTable,
           };
           logger.info("DataLoad", `Loaded ${CURRENT_ENVIRONMENT}/ data`, loadStats);
         } else {
@@ -370,14 +371,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         )
       );
       setBandGroupsMap(data.bandGroupsMap ?? {});
-      setMagicTable(data.magicTable ?? { pyle: {} });
       setDETsMap(data.DETsMap ?? {});
       setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
-      setBandersMap(data.bandersMap ?? {});
+    };
+
+    const loadConstants = async () => {
+      try {
+        const constantsSnapshot = await get(ref(db, `constants/${CURRENT_ENVIRONMENT}`));
+        if (constantsSnapshot.exists()) {
+          const constants = constantsSnapshot.val();
+          setMagicTable(constants.magicTable ?? { pyle: {} });
+          setVolunteersMap(constants.volunteersMap ?? {});
+          logger.info("DataLoad", "Loaded constants", {
+            hasMagicTable: !!constants.magicTable,
+            volunteersCount: Object.keys(constants.volunteersMap ?? {}).length,
+          });
+        }
+      } catch (err) {
+        logger.warn("DataLoad", "Failed to load constants — using defaults", err);
+      }
     };
 
     loadAlphaData();
+    loadConstants();
 
     return () => {
       cancelled = true;
@@ -587,7 +604,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandIdToBirdEventIdsMap: current?.bandIdToBirdEventIdsMap ?? {},
         birdEventsMap: current?.birdEventsMap ?? {},
         bandGroupsMap: current?.bandGroupsMap ?? {},
-        magicTable: current?.magicTable ?? { pyle: {} },
         bandSizeToBandIdMap: current?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
         dismissedConflictsMap: current?.dismissedConflictsMap ?? {},
         DETsMap: current?.DETsMap ?? {},
@@ -674,15 +690,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await updateLastModifiedTimestamp();
       }
 
-      // Always sync bandSizeToBandIdMap
+      // Sync cached maps that may have been modified offline
       if (cachedData.bandSizeToBandIdMap) {
         try {
           await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), cachedData.bandSizeToBandIdMap);
-          // Update React state to match what we just synced
           setBandSizeToBandIdMap(cachedData.bandSizeToBandIdMap);
           logger.sync("SyncQueue", "Synced bandSizeToBandIdMap to RTDB");
         } catch (err) {
           logger.error("SyncQueue", "Failed to sync bandSizeToBandIdMap", err);
+        }
+      }
+
+
+
+      if (cachedData.dismissedConflictsMap) {
+        try {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), cachedData.dismissedConflictsMap);
+          setDismissedConflictsMap(cachedData.dismissedConflictsMap);
+          logger.sync("SyncQueue", "Synced dismissedConflictsMap to RTDB");
+        } catch (err) {
+          logger.error("SyncQueue", "Failed to sync dismissedConflictsMap", err);
+        }
+      }
+
+      if (cachedData.programsMap) {
+        try {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`), cachedData.programsMap);
+          logger.sync("SyncQueue", "Synced programsMap to RTDB");
+        } catch (err) {
+          logger.error("SyncQueue", "Failed to sync programsMap", err);
         }
       }
 
@@ -740,6 +776,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        // Validate bander/scribe exist in volunteersMap
+        if (captureData.bander && !volunteersMap[captureData.bander]) {
+          throw new Error(`Unknown bander code "${captureData.bander}". Add them in the Volunteers page first.`);
+        }
+        if (captureData.scribe && !volunteersMap[captureData.scribe]) {
+          throw new Error(`Unknown scribe code "${captureData.scribe}". Add them in the Volunteers page first.`);
+        }
+
         // 1. Create Band and BirdEvent objects
         const birdEventType = captureData.birdEventType as BirdEventType;
 
@@ -882,17 +926,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             : [...existingProgramsInYear, captureData.programId],
         };
 
-        // Update bandersMap
-        const newBandersMap = { ...bandersMap };
+        // Update volunteersMap
+        const newVolunteersMap = { ...volunteersMap };
         const banderCode = captureData.bander;
         if (banderCode && isNewCapture) {
-          const existing = newBandersMap[banderCode] ?? { code: banderCode, fullName: "", totalBanded: 0, totalScribed: 0 };
-          newBandersMap[banderCode] = { ...existing, totalBanded: existing.totalBanded + 1 };
+          const existing = newVolunteersMap[banderCode] ?? { code: banderCode, fullName: VOLUNTEER_NAMES[banderCode] ?? "", totalBanded: 0, totalScribed: 0 };
+          newVolunteersMap[banderCode] = { ...existing, totalBanded: existing.totalBanded + 1 };
         }
         const scribeCode = captureData.scribe;
         if (scribeCode) {
-          const existing = newBandersMap[scribeCode] ?? { code: scribeCode, fullName: "", totalBanded: 0, totalScribed: 0 };
-          newBandersMap[scribeCode] = { ...existing, totalScribed: existing.totalScribed + 1 };
+          const existing = newVolunteersMap[scribeCode] ?? { code: scribeCode, fullName: VOLUNTEER_NAMES[scribeCode] ?? "", totalBanded: 0, totalScribed: 0 };
+          newVolunteersMap[scribeCode] = { ...existing, totalScribed: existing.totalScribed + 1 };
+        }
+
+        // Check for 1000-milestone on bander
+        if (banderCode && isNewCapture) {
+          const oldCount = volunteersMap[banderCode]?.totalBanded ?? 0;
+          const newCount = newVolunteersMap[banderCode].totalBanded;
+          if (Math.floor(newCount / 1000) > Math.floor(oldCount / 1000)) {
+            setMilestone({ banderCode, count: newCount });
+          }
         }
 
         // Update React state
@@ -901,7 +954,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setBandGroupsMap(newBandGroupsMap);
         setProgramsMap(newProgramsMap);
         setYearsToProgramMap(newYearsToProgramMap);
-        setBandersMap(newBandersMap);
+        setVolunteersMap(newVolunteersMap);
 
         // Update selectedProgram if it's the one we just modified
         setSelectedProgram((current) => {
@@ -917,7 +970,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           birdEventsMap: newBirdEventsMap,
           bandGroupsMap: newBandGroupsMap,
           bandSizeToBandIdMap: updatedBandSizeMap,
-          bandersMap: newBandersMap,
         });
 
         // 6. Handle online vs offline sync
@@ -949,7 +1001,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       bandIdToBirdEventIdsMap,
       birdEventsMap,
       bandGroupsMap,
-      bandersMap,
+      volunteersMap,
       isOnline,
       programsMap,
       syncQueue,
@@ -1265,33 +1317,47 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
-  const updateBanderName = useCallback(
+  const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
       if (!user) {
-        throw new Error("Must be logged in to update bander name");
+        throw new Error("Must be logged in to update volunteer name");
       }
 
       try {
         const trimmed = fullName.trim();
-        const existing = bandersMap[code];
+        const existing = volunteersMap[code];
         if (!existing) return;
 
         const updated = { ...existing, fullName: trimmed };
-        const newBandersMap = { ...bandersMap, [code]: updated };
-        setBandersMap(newBandersMap);
+        setVolunteersMap({ ...volunteersMap, [code]: updated });
 
-        await saveCompleteStateToIndexedDB({ bandersMap: newBandersMap });
-
-        if (isOnline) {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandersMap/${code}/fullName`), trimmed);
-          await updateLastModifiedTimestamp();
-        }
+        await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap/${code}/fullName`), trimmed);
       } catch (err) {
-        logger.error("UpdateBanderName", `Error updating bander ${code}`, err);
+        logger.error("UpdateVolunteerName", `Error updating volunteer ${code}`, err);
         throw err;
       }
     },
-    [user, isOnline, bandersMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+    [user, volunteersMap]
+  );
+
+  const addVolunteer = useCallback(
+    async (code: string, fullName: string) => {
+      if (!user) {
+        throw new Error("Must be logged in to add volunteer");
+      }
+
+      const trimmedCode = code.trim().toUpperCase();
+      const trimmedName = fullName.trim();
+      if (!trimmedCode) throw new Error("Code is required");
+      if (volunteersMap[trimmedCode]) throw new Error(`Volunteer "${trimmedCode}" already exists`);
+
+      const newVolunteer: Volunteer = { code: trimmedCode, fullName: trimmedName, totalBanded: 0, totalScribed: 0 };
+      setVolunteersMap({ ...volunteersMap, [trimmedCode]: newVolunteer });
+
+      await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap/${trimmedCode}`), newVolunteer);
+      logger.info("AddVolunteer", `Added volunteer ${trimmedCode}`);
+    },
+    [user, volunteersMap]
   );
 
   return (
@@ -1314,7 +1380,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandSizeToBandIdMap,
         dismissedConflictsMap,
         DETsMap,
-        bandersMap,
+        volunteersMap,
         speciesInfoMap,
         isOnline,
         pendingCount,
@@ -1330,7 +1396,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         dismissConflict,
         resetDismissedConflicts,
         saveDET,
-        updateBanderName,
+        updateVolunteerName,
+        addVolunteer,
+        milestone,
+        clearMilestone: () => setMilestone(null),
+        triggerTestMilestone: () => setMilestone({ banderCode: "TST", count: 3000 }),
       }}
     >
       {children}

@@ -13,7 +13,6 @@ import {
   BirdEventsMap,
   BandGroupsMap,
   BandGroup,
-  BandersMap,
   generateBirdEventId,
 } from "../src/types";
 
@@ -25,10 +24,6 @@ async function main() {
 
     console.log("Starting RTDB import...");
     await CSVToRTDB(csvContent, db);
-
-    console.log("Importing magic table...");
-    const { importMagicTable } = await import("./importMagicTable");
-    await importMagicTable();
 
     console.log("✅ Import completed successfully!");
     process.exit(0);
@@ -255,7 +250,6 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   const bandGroupsMap: BandGroupsMap = {};
   const programsMap: ProgramsMap = {};
   const bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap = {};
-  const bandersMap: BandersMap = {};
 
   for (const birdEvent of birdEvents) {
     if (!birdEvent.date) continue;
@@ -322,17 +316,6 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
     // BandIdToBirdEventIdsMap
     (bandIdToBirdEventIdsMap[birdEvent.band.id] ??= []).push(birdEventId);
 
-    // bandersMap
-    const banderCode = birdEvent.bander;
-    if (banderCode && isNewCapture) {
-      if (!bandersMap[banderCode]) bandersMap[banderCode] = { code: banderCode, fullName: "", totalBanded: 0, totalScribed: 0 };
-      bandersMap[banderCode].totalBanded++;
-    }
-    const scribeCode = birdEvent.scribe;
-    if (scribeCode) {
-      if (!bandersMap[scribeCode]) bandersMap[scribeCode] = { code: scribeCode, fullName: "", totalBanded: 0, totalScribed: 0 };
-      bandersMap[scribeCode].totalScribed++;
-    }
   }
 
   console.log("Uploading data to RTDB...");
@@ -342,7 +325,6 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   await writeObjectToDB(db, `${ENVIRONMENT}/bandIdToBirdEventIdsMap`, bandIdToBirdEventIdsMap);
   await writeObjectToDB(db, `${ENVIRONMENT}/birdEventsMap`, birdEventsMap);
   await writeObjectToDB(db, `${ENVIRONMENT}/bandGroupsMap`, bandGroupsMap);
-  await db.ref(`${ENVIRONMENT}/bandersMap`).set(bandersMap);
 
   // Set lastModified timestamp to signal clients that data has been updated
   await db.ref(`${ENVIRONMENT}/metadata/lastModified`).set(Date.now());
