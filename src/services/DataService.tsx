@@ -999,7 +999,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandSizeToBandIdMap: updatedBandSizeMap,
         });
 
-        // 6. Sync volunteer counts to constants path
+        // 6. Persist updated volunteer counts
+        await persistVolunteersToCache(newVolunteersMap);
         if (isOnline) {
           await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap`), newVolunteersMap);
         }
@@ -1041,6 +1042,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       bandSizeToBandIdMap,
       incrementBandSize,
       saveCompleteStateToIndexedDB,
+      persistVolunteersToCache,
       updateLastModifiedTimestamp,
     ]
   );
@@ -1349,6 +1351,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
+  const persistVolunteersToCache = useCallback(
+    async (newMap: VolunteersMap) => {
+      const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
+      try {
+        const cached = await getDataFromIndexedDB(constantsCacheKey) as unknown as Record<string, unknown> | null;
+        await saveDataToIndexedDB(constantsCacheKey, { ...cached, volunteersMap: newMap } as unknown as DatabaseData);
+      } catch {
+        logger.warn("Volunteers", "Failed to update constants cache");
+      }
+    },
+    []
+  );
+
   const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
       if (!user) {
@@ -1361,7 +1376,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!existing) return;
 
         const updated = { ...existing, fullName: trimmed };
-        setVolunteersMap({ ...volunteersMap, [code]: updated });
+        const newMap = { ...volunteersMap, [code]: updated };
+        setVolunteersMap(newMap);
+        await persistVolunteersToCache(newMap);
 
         await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap/${code}/fullName`), trimmed);
       } catch (err) {
@@ -1369,7 +1386,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [user, volunteersMap]
+    [user, volunteersMap, persistVolunteersToCache]
   );
 
   const addVolunteer = useCallback(
@@ -1384,12 +1401,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (volunteersMap[trimmedCode]) throw new Error(`Volunteer "${trimmedCode}" already exists`);
 
       const newVolunteer: Volunteer = { code: trimmedCode, fullName: trimmedName, totalBanded: 0, totalScribed: 0 };
-      setVolunteersMap({ ...volunteersMap, [trimmedCode]: newVolunteer });
+      const newMap = { ...volunteersMap, [trimmedCode]: newVolunteer };
+      setVolunteersMap(newMap);
+      await persistVolunteersToCache(newMap);
 
       await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap/${trimmedCode}`), newVolunteer);
       logger.info("AddVolunteer", `Added volunteer ${trimmedCode}`);
     },
-    [user, volunteersMap]
+    [user, volunteersMap, persistVolunteersToCache]
   );
 
   return (
