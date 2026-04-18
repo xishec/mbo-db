@@ -975,8 +975,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             : [...existingProgramsInYear, captureData.programId],
         };
 
-        // Update volunteersMap
-        const newVolunteersMap = { ...volunteersMap };
+        // Update volunteersMap — read from cache to avoid stale closure
+        const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
+        const cachedConstants = await getDataFromIndexedDB(constantsCacheKey) as unknown as { volunteersMap?: VolunteersMap } | null;
+        const latestVolunteersMap = cachedConstants?.volunteersMap ?? volunteersMap;
+        const newVolunteersMap = { ...latestVolunteersMap };
         const banderCode = captureData.bander;
         if (banderCode && isNewCapture) {
           const existing = newVolunteersMap[banderCode] ?? {
@@ -1000,7 +1003,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Check for 1000-milestone on bander
         if (banderCode && isNewCapture) {
-          const oldCount = volunteersMap[banderCode]?.totalBanded ?? 0;
+          const oldCount = latestVolunteersMap[banderCode]?.totalBanded ?? 0;
           const newCount = newVolunteersMap[banderCode].totalBanded;
           if (Math.floor(newCount / 1000) > Math.floor(oldCount / 1000)) {
             setMilestone({ banderCode, count: newCount });

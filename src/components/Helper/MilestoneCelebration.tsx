@@ -42,7 +42,7 @@ export default function MilestoneCelebration() {
 
   const bander = volunteersMap[milestone.banderCode];
   const displayName = bander?.fullName || milestone.banderCode;
-  const milestoneNumber = Math.floor(milestone.count / 1000) * 1000;
+  const milestoneNumber = milestone.count;
 
   const handleClose = () => {
     setVisible(false);

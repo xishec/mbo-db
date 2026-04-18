@@ -26,7 +26,7 @@ import {
   isInRange,
 } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
-import SpeciesRangeTable from "../Helper/Info/PyleTable";
+import PyleTable from "../Helper/Info/PyleTable";
 import SpeciesFunFacts from "../Helper/Info/SpeciesFunFacts";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
@@ -446,6 +446,7 @@ export default function AddBirdEventModal({
 
   const handleSave = useCallback(
     async (shouldContinue: boolean = false) => {
+      if (isSaving) return;
       setIsSaving(true);
 
       try {
@@ -455,7 +456,6 @@ export default function AddBirdEventModal({
             : BandSize.Other;
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
-        setIsSaving(false);
         if (shouldContinue) {
           // Clear bird-specific fields; preserve workflow fields (bander, scribe, date, time, net)
           setFormData((prev) => ({
@@ -473,9 +473,10 @@ export default function AddBirdEventModal({
           }));
           setLastBandId("");
           suppressFocusRef.current = true;
+          setIsSaving(false);
           focusTo("species");
         } else {
-          handleClose();
+          onOpenChange(false);
         }
       } catch (err) {
         console.error("Failed to save capture:", err);
@@ -483,7 +484,7 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, bandSize, addBirdEvent, birdEventToModify?.id, focusTo, handleClose]
+    [formData, bandSize, addBirdEvent, birdEventToModify?.id, isSaving, focusTo, onOpenChange]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);
@@ -632,6 +633,7 @@ export default function AddBirdEventModal({
   );
 
   const shouldShowPastBirdEvents = pastBirdEvents.length > 0 && !birdEventToModify;
+  const showValidation = !isSaving;
 
   return (
     <>
@@ -659,10 +661,11 @@ export default function AddBirdEventModal({
               </div>
             </ModalHeaderShell>
             <ModalBodyShell>
+              <div className={isSaving ? "opacity-50 pointer-events-none" : ""} style={isSaving ? { minHeight: "inherit", overflow: "hidden" } : undefined}>
               {formData.species.length === 4 && (
-                <div className="flex gap-4">
+                <div className="w-full grid grid-cols-2 gap-4 mb-4">
                   {pyleSpeciesRange && (
-                    <SpeciesRangeTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} />
+                    <PyleTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} withCard />
                   )}
                   <SpeciesFunFacts 
                     speciesCode={formData.species} 
@@ -673,8 +676,8 @@ export default function AddBirdEventModal({
               <Table
                 aria-label="New capture form"
                 classNames={{
-                  base: "table-fixed",
-                  table: "table-fixed",
+                  base: "table-fixed w-full",
+                  table: "table-fixed w-full",
                 }}
               >
                 <TableHeader columns={sortedColumns.filter((column) => !["actions", "updatedAt"].includes(column.key))}>
@@ -697,12 +700,16 @@ export default function AddBirdEventModal({
                 </TableBody>
               </Table>
 
-              <ValidationMessages
-                messages={validationState.existingErrors.map((e) => ({ text: e.reason, severity: e.severity }))}
-                title="Existing Errors in Past Captures:"
-              />
+              {showValidation && (
+                <ValidationMessages
+                  messages={validationState.existingErrors.map((e) => ({ text: e.reason, severity: e.severity }))}
+                  title="Existing Errors in Past Captures:"
+                />
+              )}
 
-              <ValidationMessages messages={validationState.warningMessages} title="Warnings for Current Entry:" />
+              {showValidation && (
+                <ValidationMessages messages={validationState.warningMessages} title="Warnings for Current Entry:" />
+              )}
 
               {shouldShowPastBirdEvents && (
                 <div className="mt-4">
@@ -712,6 +719,7 @@ export default function AddBirdEventModal({
                   <BirdEventsTable birdEvents={pastBirdEvents} maxTableHeight={300} allowInspectHistory />
                 </div>
               )}
+              </div>
             </ModalBodyShell>
             <ModalFooterShell>
               <Button {...modalCancelButtonProps} onPress={handleClose}>
