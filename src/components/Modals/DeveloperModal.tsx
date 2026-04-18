@@ -3,6 +3,7 @@ import { Button, Switch } from "@heroui/react";
 import { get, ref, set, update } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT } from "../../firebase";
 import { useData } from "../../services/useData";
+import { clearAllIndexedDB } from "../../services/indexedDB";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 
@@ -46,7 +47,8 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
         }
       }
 
-      alert("Done! Reload the app to see changes.");
+      await clearAllIndexedDB();
+      window.location.reload();
     } catch (err) {
       alert("Failed: " + (err instanceof Error ? err.message : err));
     } finally {
