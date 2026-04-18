@@ -50,38 +50,37 @@ export default function DETUnifiedSpeciesModal({
   const [DETSpeciesCount, setDETSpeciesCount] = useState<Record<string, number>>(initialDETSpeciesCount);
   const [customSpeciesCodes, setCustomSpeciesCodes] = useState<Set<string>>(new Set());
   const [newSpeciesCode, setNewSpeciesCode] = useState("");
-  const processedInitialDataRef = useRef(false);
 
+  const wasOpenRef = useRef(false);
   useEffect(() => {
     if (!isOpen) {
-      processedInitialDataRef.current = false;
+      wasOpenRef.current = false;
       return;
     }
+
+    // Only sync from props when modal first opens
+    if (wasOpenRef.current) return;
+    wasOpenRef.current = true;
 
     setObservedSpeciesCount(initialObservedSpeciesCount);
     setCensusSpeciesCount(initialCensusSpeciesCount);
     setReturnSpeciesCount(initialReturnSpeciesCount);
     setDETSpeciesCount(initialDETSpeciesCount);
 
-    // Only process initial data once when modal opens
-    if (!processedInitialDataRef.current) {
-      // Collect all species codes from the counts to identify custom species
-      const allSpeciesCodes = new Set<string>();
-      Object.keys(initialObservedSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
-      Object.keys(initialCensusSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
-      Object.keys(initialReturnSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
-      Object.keys(initialDETSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+    // Collect all species codes from the counts to identify custom species
+    const allSpeciesCodes = new Set<string>();
+    Object.keys(initialObservedSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+    Object.keys(initialCensusSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+    Object.keys(initialReturnSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+    Object.keys(initialDETSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
 
-      // Find custom species (not in DET enum)
-      const custom = new Set<string>();
-      allSpeciesCodes.forEach((code) => {
-        if (!DET_SPECIES_CODES_SET.has(code)) {
-          custom.add(code);
-        }
-      });
-      setCustomSpeciesCodes(custom);
-      processedInitialDataRef.current = true;
-    }
+    const custom = new Set<string>();
+    allSpeciesCodes.forEach((code) => {
+      if (!DET_SPECIES_CODES_SET.has(code)) {
+        custom.add(code);
+      }
+    });
+    setCustomSpeciesCodes(custom);
   }, [
     initialObservedSpeciesCount,
     initialCensusSpeciesCount,
@@ -237,7 +236,8 @@ export default function DETUnifiedSpeciesModal({
       modalProps={{
         isOpen,
         onOpenChange,
-        className: "!max-w-[calc(100%-8rem)]",
+        className: "!max-w-[calc(100%-8rem)] !h-[calc(100%-4rem)]",
+        scrollBehavior: "inside",
       }}
     >
       {(onClose) => (
@@ -273,9 +273,6 @@ export default function DETUnifiedSpeciesModal({
                 <div className="overflow-hidden rounded-medium border border-default-100">
                   <Table
                     aria-label="Species data entry table"
-                    isVirtualized
-                    maxTableHeight={600}
-                    rowHeight={60}
                     isHeaderSticky
                     removeWrapper
                     classNames={{
@@ -322,75 +319,45 @@ export default function DETUnifiedSpeciesModal({
                               </div>
                             </TableCell>
                             <TableCell className="p-1">
-                              <Input
+                              <input
                                 type="number"
-                                value={String(observedSpeciesCount[code] || "")}
-                                onValueChange={(val) => updateObservedCount(code, val)}
-                                {...modalInputProps}
+                                defaultValue={observedSpeciesCount[code] || ""}
+                                onBlur={(e) => updateObservedCount(code, e.target.value)}
                                 min={0}
-                                classNames={{
-                                  input: "text-center",
-                                }}
+                                className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
                               />
                             </TableCell>
                             <TableCell className="p-1">
-                              <Input
+                              <input
                                 type="number"
-                                value={String(censusSpeciesCount[code] || "")}
-                                onValueChange={(val) => updateCensusCount(code, val)}
-                                {...modalInputProps}
+                                defaultValue={censusSpeciesCount[code] || ""}
+                                onBlur={(e) => updateCensusCount(code, e.target.value)}
                                 min={0}
-                                classNames={{
-                                  input: "text-center",
-                                }}
+                                className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
                               />
                             </TableCell>
                             <TableCell className="p-1">
-                              <Input
-                                type="number"
-                                value=""
-                                {...modalInputProps}
-                                isDisabled
-                                placeholder="—"
-                                classNames={{
-                                  input: "text-center",
-                                }}
-                              />
+                              <span className="block text-center text-sm text-default-300">—</span>
                             </TableCell>
                             <TableCell className="p-1">
-                              <Input
-                                type="number"
-                                value=""
-                                {...modalInputProps}
-                                isDisabled
-                                placeholder="—"
-                                classNames={{
-                                  input: "text-center",
-                                }}
-                              />
+                              <span className="block text-center text-sm text-default-300">—</span>
                             </TableCell>
                             <TableCell className="p-1">
-                              <Input
+                              <input
                                 type="number"
-                                value={String(returnSpeciesCount[code] || "")}
-                                onValueChange={(val) => updateReturnCount(code, val)}
-                                {...modalInputProps}
+                                defaultValue={returnSpeciesCount[code] || ""}
+                                onBlur={(e) => updateReturnCount(code, e.target.value)}
                                 min={0}
-                                classNames={{
-                                  input: "text-center",
-                                }}
+                                className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
                               />
                             </TableCell>
                             <TableCell className="p-1">
-                              <Input
+                              <input
                                 type="number"
-                                value={String(DETSpeciesCount[code] || "")}
-                                onValueChange={(val) => updateDETCount(code, val)}
-                                {...modalInputProps}
+                                defaultValue={DETSpeciesCount[code] || ""}
+                                onBlur={(e) => updateDETCount(code, e.target.value)}
                                 min={0}
-                                classNames={{
-                                  input: "text-center",
-                                }}
+                                className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
                               />
                             </TableCell>
                           </TableRow>

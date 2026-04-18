@@ -181,6 +181,7 @@ export interface DatabaseData {
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
   DETsMap?: DETsMap;
+  volunteersMap?: VolunteersMap;
 }
 
 // Service types
@@ -217,7 +218,6 @@ export interface DataContextType {
   pendingCount: number;
   lastSyncedAt: number | null;
   forceOffline: boolean;
-  setForceOffline: (force: boolean) => void;
   modeChosen: boolean;
   chooseOnline: () => void;
   chooseOffline: () => void;

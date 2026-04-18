@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@heroui/react";
 import Navigation from "./components/Navigation";
 import PageContent from "./components/PageContent/PageContent";
@@ -12,6 +12,13 @@ import mboLogo from "./assets/mbo-logo.svg";
 
 function ModeSelector() {
   const { modeChosen, chooseOnline, chooseOffline } = useData();
+  const [hasCache, setHasCache] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    import("./services/indexedDB").then(({ getLastUpdated }) =>
+      getLastUpdated(CURRENT_ENVIRONMENT).then((ts) => setHasCache(ts !== null))
+    ).catch(() => setHasCache(false));
+  }, []);
 
   if (modeChosen) return null;
 
@@ -25,8 +32,14 @@ function ModeSelector() {
           <Button color="primary" size="lg" className="w-full" onPress={chooseOnline}>
             Online
           </Button>
-          <Button variant="bordered" size="lg" className="w-full" onPress={chooseOffline}>
-            Offline
+          <Button
+            variant="bordered"
+            size="lg"
+            className="w-full"
+            onPress={chooseOffline}
+            isDisabled={hasCache === false || hasCache === null}
+          >
+            Offline{hasCache === false ? " (no cached data)" : ""}
           </Button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Button, Chip, Switch } from "@heroui/react";
+import { Button, Chip } from "@heroui/react";
 import { useData } from "../../services/useData";
 import { getQueuedEvents } from "../../services/indexedDB";
 import { logger, type LogEntry, LogLevel } from "../../services/logger";
@@ -73,7 +73,7 @@ interface ActivityModalProps {
 }
 
 export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
-  const { birdEventsMap, pendingCount, isOnline, isAdmin, forceOffline, setForceOffline, syncQueue } = useData();
+  const { birdEventsMap, pendingCount, isOnline, isAdmin, syncQueue } = useData();
   const [logs, setLogs] = useState<LogEntry[]>(logger.getLogs());
   const [queuedEvents, setQueuedEvents] = useState<PendingEvent[]>([]);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
@@ -131,9 +131,6 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Switch size="sm" isSelected={forceOffline} onValueChange={setForceOffline}>
-                Force Offline
-              </Switch>
               {isOnline && isAdmin && pendingCount > 0 && (
                 <Button color="primary" variant="flat" size="sm" onPress={() => syncQueue()}>
                   Sync Now

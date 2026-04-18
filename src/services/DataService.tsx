@@ -43,7 +43,6 @@ import {
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
 import { onAuthStateChanged, signOut as firebaseSignOut, type User } from "firebase/auth";
-import { VOLUNTEER_NAMES } from "../data/volunteerNames";
 
 type FavoriteRateResult = {
   value: string;
@@ -133,6 +132,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [dismissedConflictsMap, setDismissedConflictsMap] = useState<DismissedConflictsMap>({});
   const [DETsMap, setDETsMap] = useState<DETsMap>({});
   const [volunteersMap, setVolunteersMap] = useState<VolunteersMap>({});
+  const [volunteersFullNameMap, setVolunteersFullNameMap] = useState<Record<string, string>>({});
 
   /**
    * Compute SpeciesInfoMap from birdEventsMap
@@ -267,7 +267,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!modeChosen) return;
     let cancelled = false;
 
-    const loadAlphaData = async () => {
+    const loadData = async () => {
       try {
         logger.info("DataLoad", `Checking for ${CURRENT_ENVIRONMENT}/ data updates...`);
 
@@ -275,17 +275,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
         const cachedTimestamp = await getLastUpdated(CURRENT_ENVIRONMENT);
 
-        // If no network, go straight to cache
-        if (!navigator.onLine) {
+        // If offline (no network or user chose offline), go straight to cache
+        if (forceOffline) {
           if (cachedData && cachedTimestamp) {
-            logger.info("DataLoad", "No network — using cached data");
+            logger.info("DataLoad", "Offline — using cached data");
             populateStateFromData(cachedData);
             setLastSyncedAt(cachedTimestamp);
-            setForceOffline(true);
             setIsLoading(false);
             return;
           }
-          setError("No network and no cached data. Connect to the internet and reload.");
+          setError("No cached data available. Connect to the internet and reload.");
           setIsLoading(false);
           return;
         }
@@ -414,22 +413,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setDETsMap(data.DETsMap ?? {});
       setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
+      setVolunteersMap(data.volunteersMap ?? {});
     };
 
     const CONSTANTS_CACHE_KEY = `constants_${CURRENT_ENVIRONMENT}`;
 
     const loadConstants = async () => {
-      const pendingEvents = await getQueuedEvents();
-      const hasPendingBirdEvents = pendingEvents.some((e) => e.type === "bird-event");
-
-      // If no network, load from cache
-      if (!navigator.onLine) {
+      if (forceOffline) {
         try {
           const cached = await getDataFromIndexedDB(CONSTANTS_CACHE_KEY);
           if (cached) {
-            const constants = cached as unknown as { magicTable?: MagicTable; volunteersMap?: VolunteersMap };
+            const constants = cached as unknown as { magicTable?: MagicTable; volunteersFullNameMap?: Record<string, string> };
             setMagicTable(constants.magicTable ?? { pyle: {} });
-            setVolunteersMap(constants.volunteersMap ?? {});
+            setVolunteersFullNameMap(constants.volunteersFullNameMap ?? {});
             logger.info("DataLoad", "No network — loaded constants from cache");
           }
         } catch {
@@ -443,38 +439,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (constantsSnapshot.exists()) {
           const rtdbConstants = constantsSnapshot.val();
           setMagicTable(rtdbConstants.magicTable ?? { pyle: {} });
-
-          if (hasPendingBirdEvents) {
-            // Use cached volunteersMap (has offline count increments), but take magicTable from RTDB
-            const cached = await getDataFromIndexedDB(CONSTANTS_CACHE_KEY);
-            const cachedConstants = cached as unknown as { volunteersMap?: VolunteersMap } | null;
-            const volunteersToUse = cachedConstants?.volunteersMap ?? rtdbConstants.volunteersMap ?? {};
-            setVolunteersMap(volunteersToUse);
-            // Update cache with fresh magicTable but keep local volunteersMap
-            await saveDataToIndexedDB(CONSTANTS_CACHE_KEY, { ...rtdbConstants, volunteersMap: volunteersToUse });
-            logger.info("DataLoad", "Loaded constants (kept cached volunteersMap due to pending events)", {
-              volunteersCount: Object.keys(volunteersToUse).length,
-              pendingBirdEvents: pendingEvents.filter((e) => e.type === "bird-event").length,
-            });
-          } else {
-            // No pending events — safe to use RTDB data
-            setVolunteersMap(rtdbConstants.volunteersMap ?? {});
-            await saveDataToIndexedDB(CONSTANTS_CACHE_KEY, rtdbConstants);
-            logger.info("DataLoad", "Loaded constants from RTDB", {
-              hasMagicTable: !!rtdbConstants.magicTable,
-              volunteersCount: Object.keys(rtdbConstants.volunteersMap ?? {}).length,
-            });
-          }
+          setVolunteersFullNameMap(rtdbConstants.volunteersFullNameMap ?? {});
+          await saveDataToIndexedDB(CONSTANTS_CACHE_KEY, rtdbConstants);
+          logger.info("DataLoad", "Loaded constants", {
+            hasMagicTable: !!rtdbConstants.magicTable,
+            namesCount: Object.keys(rtdbConstants.volunteersFullNameMap ?? {}).length,
+          });
         }
       } catch (err) {
-        // Offline fallback: load from IndexedDB cache
         logger.warn("DataLoad", "Cannot reach Firebase for constants — trying cache", err);
         try {
           const cached = await getDataFromIndexedDB(CONSTANTS_CACHE_KEY);
           if (cached) {
-            const constants = cached as unknown as { magicTable?: MagicTable; volunteersMap?: VolunteersMap };
+            const constants = cached as unknown as { magicTable?: MagicTable; volunteersFullNameMap?: Record<string, string> };
             setMagicTable(constants.magicTable ?? { pyle: {} });
-            setVolunteersMap(constants.volunteersMap ?? {});
+            setVolunteersFullNameMap(constants.volunteersFullNameMap ?? {});
             logger.info("DataLoad", "Loaded constants from cache");
           }
         } catch {
@@ -483,7 +462,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    loadAlphaData();
+    loadData();
     loadConstants();
 
     return () => {
@@ -497,7 +476,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
 
       if (currentUser) {
-        if (navigator.onLine) {
+        if (!forceOfflineRef.current) {
           try {
             const roleRef = ref(db, `users/${currentUser.uid}/role`);
             const snapshot = await get(roleRef);
@@ -505,8 +484,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           } catch {
             setIsAdmin(false);
           }
-        } else {
-          setIsAdmin(false);
         }
       } else {
         setIsAdmin(false);
@@ -547,117 +524,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       ])
     );
   }, []);
-
-  /**
-   * Syncs a single bird event to Firebase RTDB with all its relationships.
-   * This is the core delta sync operation - only writes changed data.
-   *
-   * Updates up to five related nodes atomically:
-   * 1. birdEventsMap/{eventId} - The event itself
-   * 2. birdEventsMap/{previousEventId} - Previous event's modifiedEventId (if applicable)
-   * 3. bandIdToBirdEventIdsMap/{bandId} - Index by band ID
-   * 4. bandGroupsMap/{bandGroupId} - New captures by band group
-   * 5. programsMap/{programId} - Program's captures and recaptures
-   */
-  const syncBirdEventToRTDB = useCallback(
-    async (
-      birdEvent: BirdEvent,
-      environment: string,
-      state: {
-        bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
-        bandGroupsMap: BandGroupsMap;
-        programsMap: ProgramsMap;
-        birdEventsMap: BirdEventsMap;
-      }
-    ): Promise<void> => {
-      const { band, id: birdEventId, birdEventType, programId, previousEventId } = birdEvent;
-      const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
-
-      // 1. Write the bird event itself
-      await set(ref(db, `${environment}/birdEventsMap/${birdEventId}`), birdEvent);
-      state.birdEventsMap[birdEventId] = birdEvent;
-
-      // 2. If this event modifies a previous event, update the previous event's modifiedEventId
-      if (previousEventId && state.birdEventsMap[previousEventId]) {
-        const updatedPreviousEvent = {
-          ...state.birdEventsMap[previousEventId],
-          modifiedEventId: birdEventId,
-        };
-        await set(ref(db, `${environment}/birdEventsMap/${previousEventId}`), updatedPreviousEvent);
-        state.birdEventsMap[previousEventId] = updatedPreviousEvent;
-      }
-
-      // 3. Update band ID index — always write (may exist locally but not in RTDB)
-      const existingBirdEventIds = state.bandIdToBirdEventIdsMap[band.id] || [];
-      if (!existingBirdEventIds.includes(birdEventId)) {
-        existingBirdEventIds.push(birdEventId);
-        state.bandIdToBirdEventIdsMap[band.id] = existingBirdEventIds;
-      }
-      await set(ref(db, `${environment}/bandIdToBirdEventIdsMap/${band.id}`), state.bandIdToBirdEventIdsMap[band.id]);
-
-      // 4. Update band group map (only for new captures) — always write
-      if (isNewCapture) {
-        const bandGroupMapKey = getBandGroupMapKey(band);
-        const existingBandGroup = state.bandGroupsMap[bandGroupMapKey];
-        if (!existingBandGroup) {
-          state.bandGroupsMap[bandGroupMapKey] = { id: bandGroupMapKey, newCaptureIds: [birdEventId] };
-        } else if (!existingBandGroup.newCaptureIds.includes(birdEventId)) {
-          existingBandGroup.newCaptureIds.push(birdEventId);
-        }
-        await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}`), state.bandGroupsMap[bandGroupMapKey]);
-      }
-
-      // 5. Update program map — always write
-      const existingProgram = state.programsMap[programId];
-      if (existingProgram) {
-        const bandGroupMapKey = getBandGroupMapKey(band);
-        if (isNewCapture) {
-          const existingBandGroupIds = existingProgram.bandGroupIds || [];
-          if (!existingBandGroupIds.includes(bandGroupMapKey)) {
-            existingBandGroupIds.push(bandGroupMapKey);
-            existingProgram.bandGroupIds = existingBandGroupIds;
-          }
-        }
-        if (!isNewCapture) {
-          const existingRecaptureIds = existingProgram.recaptureIds || [];
-          if (!existingRecaptureIds.includes(birdEventId)) {
-            existingRecaptureIds.push(birdEventId);
-            existingProgram.recaptureIds = existingRecaptureIds;
-          }
-        }
-        await set(ref(db, `${environment}/programsMap/${programId}`), existingProgram);
-      }
-    },
-    []
-  );
-
-  /**
-   * Updates all React state from IndexedDB cache.
-   * This ensures React state stays synchronized with IndexedDB after background syncs.
-   */
-  const updateReactStateFromCache = useCallback(
-    (state: {
-      yearsToProgramMap: YearToProgramMap;
-      programsMap: ProgramsMap;
-      bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
-      birdEventsMap: BirdEventsMap;
-      bandGroupsMap: BandGroupsMap;
-    }) => {
-      setYearsToProgramMap(state.yearsToProgramMap);
-      setProgramsMap(state.programsMap);
-      setBandIdToBirdEventIdsMap(state.bandIdToBirdEventIdsMap);
-      setBirdEventsMap(state.birdEventsMap);
-      setBandGroupsMap(state.bandGroupsMap);
-
-      // Update selectedProgram to prevent stale object references
-      setSelectedProgram((current) => {
-        if (!current) return null;
-        const updated = state.programsMap[current.id];
-        return updated || current;
-      });
-    },
-    []
-  );
 
   // Update pending count on mount
   useEffect(() => {
@@ -723,129 +589,194 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * - Failed events stay in queue for automatic retry on next sync
    * - Partial success is okay - we continue with remaining events
    */
+  /**
+   * Rebuilds all derived maps from birdEventsMap.
+   * This is the single source of truth — all index maps are computed from events.
+   */
+  const rebuildMapsFromEvents = useCallback(
+    (allEvents: BirdEventsMap, existingPrograms: ProgramsMap, fullNameMap: Record<string, string>) => {
+      const bandIdMap: BandIdToBirdEventIdsMap = {};
+      const bandGroups: BandGroupsMap = {};
+      const programs: ProgramsMap = {};
+      const years: YearToProgramMap = {};
+      const volCounts: VolunteersMap = {};
+
+      for (const [id, ev] of Object.entries(allEvents)) {
+        if (!ev || !ev.date || ev.modifiedEventId) continue;
+
+        const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
+        const bandId = ev.band?.bandPrefix && ev.band?.bandSuffix
+          ? new Band(ev.band.bandPrefix, ev.band.bandSuffix).id
+          : "";
+        const bgKey = ev.band ? getBandGroupMapKey(new Band(ev.band.bandPrefix, ev.band.bandSuffix)) : "";
+        const pid = ev.programId || "NONE";
+        const year = ev.date.slice(0, 4);
+
+        // bandIdToBirdEventIdsMap
+        if (bandId) {
+          if (!bandIdMap[bandId]) bandIdMap[bandId] = [];
+          if (!bandIdMap[bandId].includes(id)) bandIdMap[bandId].push(id);
+        }
+
+        // bandGroupsMap
+        if (bgKey && isNewCapture) {
+          if (!bandGroups[bgKey]) bandGroups[bgKey] = { id: bgKey, newCaptureIds: [] };
+          if (!bandGroups[bgKey].newCaptureIds.includes(id)) bandGroups[bgKey].newCaptureIds.push(id);
+        }
+
+        // programsMap
+        if (!programs[pid]) {
+          const existing = existingPrograms[pid];
+          programs[pid] = { id: pid, displayName: existing?.displayName ?? pid, bandGroupIds: [], recaptureIds: [] };
+        }
+        if (isNewCapture && bgKey && !programs[pid].bandGroupIds.includes(bgKey)) programs[pid].bandGroupIds.push(bgKey);
+        if (!isNewCapture && !programs[pid].recaptureIds.includes(id)) programs[pid].recaptureIds.push(id);
+        if (!programs[pid].firstCaptureDate || ev.date < programs[pid].firstCaptureDate) programs[pid].firstCaptureDate = ev.date;
+        if (!programs[pid].lastCaptureDate || ev.date > programs[pid].lastCaptureDate) programs[pid].lastCaptureDate = ev.date;
+
+        // yearsToProgramMap
+        if (!years[year]) years[year] = [];
+        if (!years[year].includes(pid)) years[year].push(pid);
+
+        // volunteer counts
+        if (ev.bander && isNewCapture) {
+          if (!volCounts[ev.bander]) volCounts[ev.bander] = { code: ev.bander, fullName: fullNameMap[ev.bander] ?? "", totalBanded: 0, totalScribed: 0 };
+          volCounts[ev.bander].totalBanded++;
+        }
+        if (ev.scribe) {
+          if (!volCounts[ev.scribe]) volCounts[ev.scribe] = { code: ev.scribe, fullName: fullNameMap[ev.scribe] ?? "", totalBanded: 0, totalScribed: 0 };
+          volCounts[ev.scribe].totalScribed++;
+        }
+      }
+
+      // Preserve programs that exist but have no events
+      for (const [pid, prog] of Object.entries(existingPrograms)) {
+        if (!programs[pid]) programs[pid] = { ...prog };
+      }
+
+      return { bandIdMap, bandGroups, programs, years, volCounts };
+    },
+    []
+  );
+
   const syncQueue = useCallback(async () => {
     if (!isOnline) return;
 
     try {
       const pendingEvents = await getQueuedEvents();
-
       logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
 
-      // Read current state from IndexedDB (single source of truth)
-      const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-      if (!cachedData) {
-        logger.error("SyncQueue", "Cannot sync: No cached data in IndexedDB");
-        return;
-      }
-
-      // Reconstruct Band objects from serialized data
-      const reconstructedBirdEventsMap = reconstructBandObjects(cachedData.birdEventsMap ?? {});
-
-      // Build state object for sync operations
-      const state = {
-        yearsToProgramMap: cachedData.yearsToProgramMap ?? {},
-        programsMap: cachedData.programsMap ?? {},
-        bandIdToBirdEventIdsMap: cachedData.bandIdToBirdEventIdsMap ?? {},
-        birdEventsMap: reconstructedBirdEventsMap,
-        bandGroupsMap: cachedData.bandGroupsMap ?? {},
-      };
-
-      // Process each pending event
+      // 1. Write each queued bird event to RTDB
       let successCount = 0;
       for (const pending of pendingEvents) {
         try {
           if (pending.type === "bird-event") {
-            // Handle BirdEvent sync
             const birdEvent = pending.pendingEvent as BirdEvent;
-            await syncBirdEventToRTDB(birdEvent, pending.environment, state);
+            await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.id}`), birdEvent);
 
-            logger.sync("SyncQueue", `Synced bird event ${successCount + 1}/${pendingEvents.length}`, {
-              eventId: birdEvent.id,
-            });
+            // If this modifies a previous event, update it too
+            if (birdEvent.previousEventId) {
+              const prevSnap = await get(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}`));
+              if (prevSnap.exists()) {
+                await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`), birdEvent.id);
+              }
+            }
+
+            logger.sync("SyncQueue", `Synced bird event ${successCount + 1}/${pendingEvents.length}`, { eventId: birdEvent.id });
           } else if (pending.type === "det") {
-            // Handle DET sync
             await set(ref(db, `${pending.environment}/DETsMap/${pending.det.date}`), pending.det);
-
-            logger.sync("SyncQueue", `Synced DET ${successCount + 1}/${pendingEvents.length}`, {
-              date: pending.det.date,
-            });
+            logger.sync("SyncQueue", `Synced DET ${successCount + 1}/${pendingEvents.length}`, { date: pending.det.date });
           }
-
-          // Remove from queue only after successful sync
           await removeFromQueue(pending.id);
           successCount++;
         } catch (err) {
           logger.error("SyncQueue", `Failed to sync event ${pending.id}`, err);
-          // Leave in queue to retry later - continue with remaining events
         }
       }
 
-      // Always update lastModified — programs/maps may have changed even without queued events
-      await updateLastModifiedTimestamp();
+      // 2. Read the full birdEventsMap from RTDB and rebuild all derived maps
+      logger.sync("SyncQueue", "Rebuilding derived maps from RTDB birdEventsMap...");
+      const [eventsSnap, existingProgramsSnap] = await Promise.all([
+        get(ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap`)),
+        get(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`)),
+      ]);
 
-      // Sync cached maps that may have been modified offline
-      if (cachedData.bandSizeToBandIdMap) {
-        try {
+      if (eventsSnap.exists()) {
+        const allEvents = eventsSnap.val() as BirdEventsMap;
+        const existingPrograms = existingProgramsSnap.exists() ? existingProgramsSnap.val() as ProgramsMap : {};
+        // Load fullNameMap from constants cache
+        const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
+        const cachedConstants = await getDataFromIndexedDB(constantsCacheKey) as unknown as { volunteersFullNameMap?: Record<string, string> } | null;
+        const fullNameMap = cachedConstants?.volunteersFullNameMap ?? volunteersFullNameMap;
+
+        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, existingPrograms, fullNameMap);
+
+        // 3. Write rebuilt maps to RTDB
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap`), bandGroups);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`), programs);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap`), years);
+        // bandIdToBirdEventIdsMap is too large for single set — write in batches
+        const bandIdEntries = Object.entries(bandIdMap);
+        for (let i = 0; i < bandIdEntries.length; i += 1000) {
+          const batch: Record<string, string[]> = {};
+          for (const [k, v] of bandIdEntries.slice(i, i + 1000)) batch[k] = v;
+          const { update } = await import("firebase/database");
+          await update(ref(db, `${CURRENT_ENVIRONMENT}/bandIdToBirdEventIdsMap`), batch);
+        }
+
+        // Write volunteersMap to env path
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap`), volCounts);
+
+        // Sync bandSizeToBandIdMap from local cache
+        const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
+        if (cachedData?.bandSizeToBandIdMap) {
           await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), cachedData.bandSizeToBandIdMap);
-          setBandSizeToBandIdMap(cachedData.bandSizeToBandIdMap);
-          logger.sync("SyncQueue", "Synced bandSizeToBandIdMap to RTDB");
-        } catch (err) {
-          logger.error("SyncQueue", "Failed to sync bandSizeToBandIdMap", err);
         }
+
+        // 4. Update timestamps
+        await updateLastModifiedTimestamp();
+
+        // 5. Save rebuilt data to IndexedDB and update React state
+        const rebuiltBirdEventsMap = reconstructBandObjects(allEvents);
+        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+          birdEventsMap: allEvents,
+          bandIdToBirdEventIdsMap: bandIdMap,
+          bandGroupsMap: bandGroups,
+          programsMap: programs,
+          yearsToProgramMap: years,
+          bandSizeToBandIdMap: cachedData?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
+          dismissedConflictsMap: cachedData?.dismissedConflictsMap ?? {},
+          DETsMap: cachedData?.DETsMap ?? {},
+          volunteersMap: volCounts,
+        });
+        await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
+
+        setBirdEventsMap(rebuiltBirdEventsMap);
+        setBandIdToBirdEventIdsMap(bandIdMap);
+        setBandGroupsMap(bandGroups);
+        setProgramsMap(programs);
+        setYearsToProgramMap(years);
+        setVolunteersMap(volCounts);
+
+        logger.sync("SyncQueue", "Rebuild complete", {
+          bands: Object.keys(bandIdMap).length,
+          groups: Object.keys(bandGroups).length,
+          programs: Object.keys(programs).length,
+        });
       }
 
-      if (cachedData.dismissedConflictsMap) {
-        try {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), cachedData.dismissedConflictsMap);
-          setDismissedConflictsMap(cachedData.dismissedConflictsMap);
-          logger.sync("SyncQueue", "Synced dismissedConflictsMap to RTDB");
-        } catch (err) {
-          logger.error("SyncQueue", "Failed to sync dismissedConflictsMap", err);
-        }
-      }
-
-      // Bulk-sync all maps from local state (includes mutations from syncBirdEventToRTDB above)
-      try {
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`), state.programsMap);
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap`), state.yearsToProgramMap);
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap`), state.bandGroupsMap);
-        // bandIdToBirdEventIdsMap is too large for single set — already written per-event above
-        logger.sync("SyncQueue", "Synced all maps to RTDB");
-      } catch (err) {
-        logger.error("SyncQueue", "Failed to sync maps", err);
-      }
-
-      // Sync volunteer counts (stored in constants path, may have been updated offline)
-      if (Object.keys(volunteersMap).length > 0) {
-        try {
-          await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap`), volunteersMap);
-          logger.sync("SyncQueue", "Synced volunteersMap to RTDB");
-        } catch (err) {
-          logger.error("SyncQueue", "Failed to sync volunteersMap", err);
-        }
-      }
-
-      // Update pending count
       const remainingCount = await getQueueCount();
       setPendingCount(remainingCount);
 
-      // Sync React state with IndexedDB/RTDB
-      updateReactStateFromCache(state);
-
-      logger.sync("SyncQueue", `Queue sync completed`, {
-        succeeded: successCount,
-        total: pendingEvents.length,
-        remaining: remainingCount,
-      });
+      logger.sync("SyncQueue", `Queue sync completed`, { succeeded: successCount, total: pendingEvents.length, remaining: remainingCount });
     } catch (err) {
       logger.error("SyncQueue", "Error syncing queue", err);
     }
   }, [
     isOnline,
-    volunteersMap,
     reconstructBandObjects,
-    updateReactStateFromCache,
-    syncBirdEventToRTDB,
+    rebuildMapsFromEvents,
+    volunteersFullNameMap,
     updateLastModifiedTimestamp,
   ]);
 
@@ -873,15 +804,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [bandSizeToBandIdMap, isOnline]
   );
 
-  const persistVolunteersToCache = useCallback(async (newMap: VolunteersMap) => {
-    const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
-    try {
-      const cached = (await getDataFromIndexedDB(constantsCacheKey)) as unknown as Record<string, unknown> | null;
-      await saveDataToIndexedDB(constantsCacheKey, { ...cached, volunteersMap: newMap } as unknown as DatabaseData);
-    } catch {
-      logger.warn("Volunteers", "Failed to update constants cache");
-    }
-  }, []);
+
 
   const addBirdEvent = useCallback(
     async (captureData: CaptureFormData, bandSize: BandSize, previousEventId: string | undefined) => {
@@ -892,25 +815,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       try {
         // 1. Create Band and BirdEvent objects
         const birdEventType = captureData.birdEventType as BirdEventType;
-
-        // Ensure inputs have correct padding (defensive)
         const bandGroup = captureData.bandGroup.padStart(7, "0");
         const bandLastTwoDigits = captureData.bandLastTwoDigits.padStart(2, "0");
-
         const bandPrefix = bandGroup.substring(0, 4);
         const bandSuffix = bandGroup.substring(4) + bandLastTwoDigits;
         const band = new Band(bandPrefix, bandSuffix);
         const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
 
         const newBirdEvent: BirdEvent = {
-          id: generateBirdEventId(
-            band.id,
-            captureData.date,
-            captureData.net,
-            captureData.wing,
-            captureData.weight,
-            previousEventId !== undefined
-          ),
+          id: generateBirdEventId(band.id, captureData.date, captureData.net, captureData.wing, captureData.weight, previousEventId !== undefined),
           programId: captureData.programId,
           band,
           species: captureData.species,
@@ -931,250 +844,118 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           previousEventId: previousEventId || null,
           modifiedEventId: null,
           birdEventType,
-          updatedAt: previousEventId
-            ? String(Date.now())
-            : String(Date.parse(`${captureData.date} ${captureData.time}`)),
+          updatedAt: previousEventId ? String(Date.now()) : String(Date.parse(`${captureData.date} ${captureData.time}`)),
         };
 
         // 2. Queue the bird event for sync
-        const pendingBirdEvent: PendingBirdEvent = {
+        await addToQueue({
           id: crypto.randomUUID(),
           type: "bird-event",
           pendingEvent: newBirdEvent,
           timestamp: Date.now(),
           environment: CURRENT_ENVIRONMENT,
           action: previousEventId ? "modified" : "added",
-        };
-        await addToQueue(pendingBirdEvent);
+        } as PendingBirdEvent);
 
-        // 3. Calculate all new state values first
-        const year = captureData.date.substring(0, 4);
-
-        // New birdEventsMap - update previous event if this is a modification
-        let newBirdEventsMap = { ...birdEventsMap, [newBirdEvent.id]: newBirdEvent };
+        // 3. Update React state for immediate UI feedback
+        const newBirdEventsMap = { ...birdEventsMap, [newBirdEvent.id]: newBirdEvent };
         if (previousEventId && birdEventsMap[previousEventId]) {
-          newBirdEventsMap = {
-            ...newBirdEventsMap,
-            [previousEventId]: {
-              ...birdEventsMap[previousEventId],
-              modifiedEventId: newBirdEvent.id,
-            },
-          };
+          newBirdEventsMap[previousEventId] = { ...birdEventsMap[previousEventId], modifiedEventId: newBirdEvent.id };
         }
 
-        // New bandGroupsMap (for React state — IndexedDB merge happens atomically in step 5)
-        const newBandGroupsMap = { ...bandGroupsMap };
-        if (isNewCapture) {
-          const bandGroupMapKey = getBandGroupMapKey(band);
-          newBandGroupsMap[bandGroupMapKey] = {
-            id: bandGroupMapKey,
-            newCaptureIds: [...(bandGroupsMap[bandGroupMapKey]?.newCaptureIds || []), newBirdEvent.id],
-          };
-        }
-
-        // New bandIdToBirdEventIdsMap (for React state)
         const newBandIdToBirdEventIdsMap = {
           ...bandIdToBirdEventIdsMap,
           [band.id]: [...(bandIdToBirdEventIdsMap[band.id] || []), newBirdEvent.id],
         };
 
-        // 4. Increment band size if applicable
-        const updatedBandSizeMap =
-          bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits
-            ? await incrementBandSize(bandSize, captureData.bandGroup, captureData.bandLastTwoDigits)
-            : bandSizeToBandIdMap;
+        const newBandGroupsMap = { ...bandGroupsMap };
+        if (isNewCapture) {
+          const bgKey = getBandGroupMapKey(band);
+          newBandGroupsMap[bgKey] = {
+            id: bgKey,
+            newCaptureIds: [...(bandGroupsMap[bgKey]?.newCaptureIds || []), newBirdEvent.id],
+          };
+        }
 
-        // New programsMap
         const existingProgram = programsMap[captureData.programId];
-        if (!existingProgram) {
-          throw new Error(`Program "${captureData.programId}" not found`);
-        }
-
+        if (!existingProgram) throw new Error(`Program "${captureData.programId}" not found`);
         const bandGroupMapKey = getBandGroupMapKey(band);
-        let newBandGroupIds = existingProgram.bandGroupIds || [];
-        if (isNewCapture && !newBandGroupIds.includes(bandGroupMapKey)) {
-          newBandGroupIds = [...newBandGroupIds, bandGroupMapKey];
-        }
-
-        let newRecaptureIds = existingProgram.recaptureIds || [];
-        if (!isNewCapture) {
-          newRecaptureIds = [...newRecaptureIds, newBirdEvent.id];
-        }
-
+        const year = captureData.date.substring(0, 4);
         const eventDate = captureData.date;
-        const newFirstCaptureDate =
-          !existingProgram.firstCaptureDate || eventDate < existingProgram.firstCaptureDate
-            ? eventDate
-            : existingProgram.firstCaptureDate;
-        const newLastCaptureDate =
-          !existingProgram.lastCaptureDate || eventDate > existingProgram.lastCaptureDate
-            ? eventDate
-            : existingProgram.lastCaptureDate;
 
         const newProgramsMap = {
           ...programsMap,
           [captureData.programId]: {
             ...existingProgram,
-            bandGroupIds: newBandGroupIds,
-            recaptureIds: newRecaptureIds,
-            firstCaptureDate: newFirstCaptureDate,
-            lastCaptureDate: newLastCaptureDate,
+            bandGroupIds: isNewCapture && !existingProgram.bandGroupIds.includes(bandGroupMapKey)
+              ? [...existingProgram.bandGroupIds, bandGroupMapKey] : existingProgram.bandGroupIds,
+            recaptureIds: !isNewCapture ? [...existingProgram.recaptureIds, newBirdEvent.id] : existingProgram.recaptureIds,
+            firstCaptureDate: !existingProgram.firstCaptureDate || eventDate < existingProgram.firstCaptureDate ? eventDate : existingProgram.firstCaptureDate,
+            lastCaptureDate: !existingProgram.lastCaptureDate || eventDate > existingProgram.lastCaptureDate ? eventDate : existingProgram.lastCaptureDate,
           },
         };
 
-        // New yearsToProgramMap
         const existingProgramsInYear = yearsToProgramMap[year] || [];
         const newYearsToProgramMap = {
           ...yearsToProgramMap,
-          [year]: existingProgramsInYear.includes(captureData.programId)
-            ? existingProgramsInYear
-            : [...existingProgramsInYear, captureData.programId],
+          [year]: existingProgramsInYear.includes(captureData.programId) ? existingProgramsInYear : [...existingProgramsInYear, captureData.programId],
         };
 
-        // Update volunteersMap — read from cache to avoid stale closure
-        const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
-        const cachedConstants = await getDataFromIndexedDB(constantsCacheKey) as unknown as { volunteersMap?: VolunteersMap } | null;
-        const latestVolunteersMap = cachedConstants?.volunteersMap ?? volunteersMap;
-        const newVolunteersMap = { ...latestVolunteersMap };
-        const banderCode = captureData.bander;
-        if (banderCode && isNewCapture) {
-          const existing = newVolunteersMap[banderCode] ?? {
-            code: banderCode,
-            fullName: VOLUNTEER_NAMES[banderCode] ?? "",
-            totalBanded: 0,
-            totalScribed: 0,
-          };
-          newVolunteersMap[banderCode] = { ...existing, totalBanded: existing.totalBanded + 1 };
-        }
-        const scribeCode = captureData.scribe;
-        if (scribeCode) {
-          const existing = newVolunteersMap[scribeCode] ?? {
-            code: scribeCode,
-            fullName: VOLUNTEER_NAMES[scribeCode] ?? "",
-            totalBanded: 0,
-            totalScribed: 0,
-          };
-          newVolunteersMap[scribeCode] = { ...existing, totalScribed: existing.totalScribed + 1 };
+        // Increment band size
+        if (bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits) {
+          await incrementBandSize(bandSize, captureData.bandGroup, captureData.bandLastTwoDigits);
         }
 
-        // Check for 1000-milestone on bander
-        if (banderCode && isNewCapture) {
-          const oldCount = latestVolunteersMap[banderCode]?.totalBanded ?? 0;
-          const newCount = newVolunteersMap[banderCode].totalBanded;
-          if (Math.floor(newCount / 1000) > Math.floor(oldCount / 1000)) {
-            setMilestone({ banderCode, count: newCount });
+        // Volunteer counts (React state only — rebuilt on sync)
+        const newVolunteersMap = { ...volunteersMap };
+        if (captureData.bander && isNewCapture) {
+          const existing = newVolunteersMap[captureData.bander] ?? { code: captureData.bander, fullName: volunteersFullNameMap[captureData.bander] ?? "", totalBanded: 0, totalScribed: 0 };
+          const oldCount = existing.totalBanded;
+          newVolunteersMap[captureData.bander] = { ...existing, totalBanded: oldCount + 1 };
+          if (Math.floor((oldCount + 1) / 1000) > Math.floor(oldCount / 1000)) {
+            setMilestone({ banderCode: captureData.bander, count: oldCount + 1 });
           }
-          // if (newCount === 7098) {
-          //   setMilestone({ banderCode, count: newCount });
-          // }
+        }
+        if (captureData.scribe) {
+          const existing = newVolunteersMap[captureData.scribe] ?? { code: captureData.scribe, fullName: volunteersFullNameMap[captureData.scribe] ?? "", totalBanded: 0, totalScribed: 0 };
+          newVolunteersMap[captureData.scribe] = { ...existing, totalScribed: existing.totalScribed + 1 };
         }
 
-        // Update React state
         setBirdEventsMap(newBirdEventsMap);
         setBandIdToBirdEventIdsMap(newBandIdToBirdEventIdsMap);
         setBandGroupsMap(newBandGroupsMap);
         setProgramsMap(newProgramsMap);
         setYearsToProgramMap(newYearsToProgramMap);
         setVolunteersMap(newVolunteersMap);
-
-        // Update selectedProgram if it's the one we just modified
         setSelectedProgram((current) => {
           if (!current || current.id !== captureData.programId) return current;
           return newProgramsMap[captureData.programId];
         });
 
-        // 5. Save to IndexedDB — atomic read-merge-write inside mutex
-        await idbMutex(async () => {
-          const fresh = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-
-          // Merge birdEventsMap
-          const mergedBirdEvents = { ...(fresh?.birdEventsMap ?? {}), ...newBirdEventsMap };
-
-          // Merge bandIdToBirdEventIdsMap entry
-          const mergedBandIdMap = { ...(fresh?.bandIdToBirdEventIdsMap ?? {}) };
-          const existingIds = mergedBandIdMap[band.id] || [];
-          if (!existingIds.includes(newBirdEvent.id)) {
-            mergedBandIdMap[band.id] = [...existingIds, newBirdEvent.id];
-          }
-
-          // Merge bandGroupsMap entry
-          const mergedBandGroups = { ...(fresh?.bandGroupsMap ?? {}) };
-          if (isNewCapture) {
-            const bgKey = getBandGroupMapKey(band);
-            const existingGroup = mergedBandGroups[bgKey];
-            const existingCaptureIds = existingGroup?.newCaptureIds || [];
-            if (!existingCaptureIds.includes(newBirdEvent.id)) {
-              mergedBandGroups[bgKey] = { id: bgKey, newCaptureIds: [...existingCaptureIds, newBirdEvent.id] };
-            }
-          }
-
-          // Merge programsMap entry — apply our deltas to the fresh program, not the stale closure one
-          const mergedPrograms = { ...(fresh?.programsMap ?? {}) };
-          const freshProgram = mergedPrograms[captureData.programId] ?? existingProgram;
-          const mergedBandGroupIds = [...(freshProgram.bandGroupIds || [])];
-          if (isNewCapture && !mergedBandGroupIds.includes(bandGroupMapKey)) {
-            mergedBandGroupIds.push(bandGroupMapKey);
-          }
-          const mergedRecaptureIds = [...(freshProgram.recaptureIds || [])];
-          if (!isNewCapture && !mergedRecaptureIds.includes(newBirdEvent.id)) {
-            mergedRecaptureIds.push(newBirdEvent.id);
-          }
-          mergedPrograms[captureData.programId] = {
-            ...freshProgram,
-            bandGroupIds: mergedBandGroupIds,
-            recaptureIds: mergedRecaptureIds,
-            firstCaptureDate: !freshProgram.firstCaptureDate || eventDate < freshProgram.firstCaptureDate
-              ? eventDate : freshProgram.firstCaptureDate,
-            lastCaptureDate: !freshProgram.lastCaptureDate || eventDate > freshProgram.lastCaptureDate
-              ? eventDate : freshProgram.lastCaptureDate,
-          };
-
-          // Merge yearsToProgramMap entry
-          const mergedYears = { ...(fresh?.yearsToProgramMap ?? {}) };
-          if (!mergedYears[year]) mergedYears[year] = [];
-          if (!mergedYears[year].includes(captureData.programId)) {
-            mergedYears[year] = [...mergedYears[year], captureData.programId];
-          }
-
-          await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
-            yearsToProgramMap: mergedYears,
-            programsMap: mergedPrograms,
-            bandIdToBirdEventIdsMap: mergedBandIdMap,
-            birdEventsMap: mergedBirdEvents,
-            bandGroupsMap: mergedBandGroups,
-            bandSizeToBandIdMap: updatedBandSizeMap,
-            dismissedConflictsMap: fresh?.dismissedConflictsMap ?? {},
-            DETsMap: fresh?.DETsMap ?? {},
-          });
-          // Update local timestamp so we don't overwrite local changes on next load
-          await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
+        // 4. Save all state to IndexedDB (so offline refresh works)
+        // Derived maps are best-effort for UI — rebuilt authoritatively on sync
+        await saveCompleteStateToIndexedDB({
+          birdEventsMap: newBirdEventsMap,
+          bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
+          bandGroupsMap: newBandGroupsMap,
+          programsMap: newProgramsMap,
+          yearsToProgramMap: newYearsToProgramMap,
         });
 
-        // 6. Persist updated volunteer counts
-        await persistVolunteersToCache(newVolunteersMap);
+        // 5. Online: fire-and-forget sync
         if (isOnline) {
-          await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap`), newVolunteersMap);
+          (async () => {
+            try {
+              await syncQueue();
+            } catch (err) {
+              logger.warn("AddBirdEvent", "Online sync failed — will retry on next sync", err);
+            }
+          })();
         }
 
-        // 7. Handle online vs offline sync
-        if (isOnline) {
-          // Online: update timestamp and sync immediately
-          await updateLastModifiedTimestamp();
-          await syncQueue();
-        } else {
-          // Offline: just log that event is queued
-          logger.info("AddBirdEvent", "Offline - event queued for sync when online", { eventId: newBirdEvent.id });
-        }
-
-        // 7. Update pending count
         const count = await getQueueCount();
         setPendingCount(count);
-
-        logger.info("AddBirdEvent", "Bird event added", {
-          eventId: newBirdEvent.id,
-          programId: captureData.programId,
-          bandSize,
-        });
+        logger.info("AddBirdEvent", "Bird event added", { eventId: newBirdEvent.id, programId: captureData.programId });
       } catch (err) {
         logger.error("AddBirdEvent", "Error adding bird event", err);
         throw err;
@@ -1186,23 +967,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       birdEventsMap,
       bandGroupsMap,
       volunteersMap,
+      volunteersFullNameMap,
       isOnline,
       programsMap,
       syncQueue,
       yearsToProgramMap,
-      bandSizeToBandIdMap,
       incrementBandSize,
-      idbMutex,
-      persistVolunteersToCache,
-      updateLastModifiedTimestamp,
+      saveCompleteStateToIndexedDB,
     ]
   );
 
   const addProgram = useCallback(
     async (programId: string, displayName: string, year: string) => {
-      if (!user && !forceOfflineRef.current) {
-        throw new Error("Must be logged in to add programs");
-      }
+      if (!user) throw new Error("Must be logged in to add programs");
+      if (!isOnline) throw new Error("Cannot add programs while offline");
       try {
         // Trim whitespace from displayName
         const trimmedDisplayName = displayName.trim();
@@ -1241,22 +1019,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setProgramsMap(newProgramsMap);
         setYearsToProgramMap(newYearsToProgramMap);
 
-        // Save to IndexedDB (works both online and offline)
-        await saveCompleteStateToIndexedDB({
-          yearsToProgramMap: newYearsToProgramMap,
-          programsMap: newProgramsMap,
-        });
+        // Write to RTDB
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}`), newProgramsMap[programId]);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), newYearsToProgramMap[year]);
+        await updateLastModifiedTimestamp();
 
-        // Sync to RTDB if online
-        if (isOnline) {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}`), newProgramsMap[programId]);
-          if (!yearsToProgramMap[year]) {
-            await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), [programId]);
-          } else if (!yearsToProgramMap[year].includes(programId)) {
-            await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), newYearsToProgramMap[year]);
-          }
-          await updateLastModifiedTimestamp();
-        }
+        // Save to IndexedDB
+        await saveCompleteStateToIndexedDB({ yearsToProgramMap: newYearsToProgramMap, programsMap: newProgramsMap });
 
         logger.info("AddProgram", "Program added", { programId, displayName: trimmedDisplayName, year });
       } catch (err) {
@@ -1269,9 +1038,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateProgram = useCallback(
     async (programId: string, newDisplayName: string) => {
-      if (!user && !forceOfflineRef.current) {
-        throw new Error("Must be logged in to update programs");
-      }
+      if (!user) throw new Error("Must be logged in to update programs");
+      if (!isOnline) throw new Error("Cannot update programs while offline");
       try {
         // Get the current program
         const currentProgram = programsMap[programId];
@@ -1316,14 +1084,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return newProgramsMap[programId];
         });
 
-        // Save to IndexedDB (works both online and offline)
-        await saveCompleteStateToIndexedDB({ programsMap: newProgramsMap });
+        // Write to RTDB
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}/displayName`), trimmedDisplayName);
+        await updateLastModifiedTimestamp();
 
-        // Sync to RTDB if online
-        if (isOnline) {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}/displayName`), trimmedDisplayName);
-          await updateLastModifiedTimestamp();
-        }
+        // Save to IndexedDB
+        await saveCompleteStateToIndexedDB({ programsMap: newProgramsMap });
 
         logger.info("UpdateProgram", "Program updated", { programId, newDisplayName: trimmedDisplayName });
       } catch (err) {
@@ -1336,9 +1102,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateBandSizeMap = useCallback(
     async (newBandSizeMap: Record<BandSize, string>) => {
-      if (!user && !forceOfflineRef.current) {
-        throw new Error("Must be logged in to update band size map");
-      }
+      if (!user) throw new Error("Must be logged in to update band size map");
+      if (!isOnline) throw new Error("Cannot update band sizes while offline");
 
       try {
         // Update React state immediately (works both online and offline)
@@ -1369,9 +1134,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const dismissConflict = useCallback(
     async (conflictId: string) => {
-      if (!user && !forceOfflineRef.current) {
-        throw new Error("Must be logged in to dismiss conflicts");
-      }
+      if (!user) throw new Error("Must be logged in to dismiss conflicts");
+      if (!isOnline) throw new Error("Cannot dismiss conflicts while offline");
 
       try {
         // Update React state immediately
@@ -1408,9 +1172,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    */
   const saveDET = useCallback(
     async (det: DET) => {
-      if (!user && !forceOfflineRef.current) {
-        throw new Error("Must be logged in to save DET");
-      }
+      if (!user) throw new Error("Must be logged in to save DET");
+      if (!isOnline) throw new Error("Cannot save DETs while offline");
 
       try {
         // Update React state immediately
@@ -1449,9 +1212,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetDismissedConflicts = useCallback(async () => {
-    if (!user && !forceOfflineRef.current) {
-      throw new Error("Must be logged in to reset dismissed conflicts");
-    }
+    if (!user) throw new Error("Must be logged in to reset dismissed conflicts");
+    if (!isOnline) throw new Error("Cannot reset dismissed conflicts while offline");
 
     try {
       // Update React state immediately
@@ -1479,9 +1241,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
-      if (!user && !forceOfflineRef.current) {
-        throw new Error("Must be logged in to update volunteer name");
-      }
+      if (!user) throw new Error("Must be logged in to update volunteer name");
       if (!isOnline) {
         throw new Error("Cannot update volunteers while offline");
       }
@@ -1494,25 +1254,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const updated = { ...existing, fullName: trimmed };
         const newMap = { ...volunteersMap, [code]: updated };
         setVolunteersMap(newMap);
-        await persistVolunteersToCache(newMap);
 
-        await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap/${code}/fullName`), trimmed);
+        // Update both env volunteersMap and constants fullNameMap
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${code}/fullName`), trimmed);
+        await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${code}`), trimmed);
+        setVolunteersFullNameMap((prev) => ({ ...prev, [code]: trimmed }));
+        await saveCompleteStateToIndexedDB({ volunteersMap: newMap });
       } catch (err) {
         logger.error("UpdateVolunteerName", `Error updating volunteer ${code}`, err);
         throw err;
       }
     },
-    [user, isOnline, volunteersMap, persistVolunteersToCache]
+    [user, isOnline, volunteersMap, saveCompleteStateToIndexedDB]
   );
 
   const addVolunteer = useCallback(
     async (code: string, fullName: string) => {
-      if (!user && !forceOfflineRef.current) {
-        throw new Error("Must be logged in to add volunteer");
-      }
-      if (!isOnline) {
-        throw new Error("Cannot add volunteers while offline");
-      }
+      if (!user) throw new Error("Must be logged in to add volunteer");
+      if (!isOnline) throw new Error("Cannot add volunteers while offline");
 
       const trimmedCode = code.trim().toUpperCase();
       const trimmedName = fullName.trim();
@@ -1522,12 +1281,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const newVolunteer: Volunteer = { code: trimmedCode, fullName: trimmedName, totalBanded: 0, totalScribed: 0 };
       const newMap = { ...volunteersMap, [trimmedCode]: newVolunteer };
       setVolunteersMap(newMap);
-      await persistVolunteersToCache(newMap);
 
-      await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap/${trimmedCode}`), newVolunteer);
+      // Write to env path and update constants fullNameMap
+      await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${trimmedCode}`), newVolunteer);
+      if (trimmedName) {
+        await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${trimmedCode}`), trimmedName);
+        setVolunteersFullNameMap((prev) => ({ ...prev, [trimmedCode]: trimmedName }));
+      }
+      await saveCompleteStateToIndexedDB({ volunteersMap: newMap });
       logger.info("AddVolunteer", `Added volunteer ${trimmedCode}`);
     },
-    [user, isOnline, volunteersMap, persistVolunteersToCache]
+    [user, isOnline, volunteersMap, saveCompleteStateToIndexedDB]
   );
 
   return (
@@ -1535,7 +1299,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoading,
         error,
-        isLoggedIn: !!user || forceOffline,
+        isLoggedIn: !!user || forceOfflineRef.current,
         isAdmin,
         userEmail: user?.email ?? null,
         signOut: async () => {
@@ -1558,7 +1322,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         pendingCount,
         lastSyncedAt,
         forceOffline,
-        setForceOffline,
+
         modeChosen,
         chooseOnline,
         chooseOffline,
