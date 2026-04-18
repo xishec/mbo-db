@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
@@ -103,6 +103,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [milestone, setMilestone] = useState<{ banderCode: string; count: number } | null>(null);
   const actualIsOnline = useOnlineStatus();
   const isOnline = forceOffline ? false : actualIsOnline;
+  const forceOfflineRef = useRef(forceOffline);
+  forceOfflineRef.current = forceOffline;
 
   const chooseOnline = useCallback(() => {
     setForceOffline(false);
@@ -312,6 +314,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         if (!needsFetch && cachedData) {
           logger.info("DataLoad", `Using cached ${CURRENT_ENVIRONMENT}/ data (up to date)`);
+          populateStateFromData(cachedData);
+          setLastSyncedAt(cachedTimestamp);
+          setIsLoading(false);
+          return;
+        }
+
+        // If local is newer than RTDB, we have unsynced changes — keep local
+        if (cachedData && cachedTimestamp && firebaseTimestamp && cachedTimestamp > firebaseTimestamp) {
+          logger.info("DataLoad", `Local data is newer than RTDB — using local cache (unsynced changes)`);
           populateStateFromData(cachedData);
           setLastSyncedAt(cachedTimestamp);
           setIsLoading(false);
@@ -701,6 +712,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         DETsMap: current?.DETsMap ?? {},
         ...overrides,
       });
+      await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
     });
   }, [idbMutex]);
 
@@ -887,7 +899,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addBirdEvent = useCallback(
     async (captureData: CaptureFormData, bandSize: BandSize, previousEventId: string | undefined) => {
-      if (!user && !forceOffline) {
+      if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to add bird events");
       }
 
@@ -965,7 +977,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
 
         // New bandGroupsMap (for React state — IndexedDB merge happens atomically in step 5)
-        let newBandGroupsMap = { ...bandGroupsMap };
+        const newBandGroupsMap = { ...bandGroupsMap };
         if (isNewCapture) {
           const bandGroupMapKey = getBandGroupMapKey(band);
           newBandGroupsMap[bandGroupMapKey] = {
@@ -1148,6 +1160,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             dismissedConflictsMap: fresh?.dismissedConflictsMap ?? {},
             DETsMap: fresh?.DETsMap ?? {},
           });
+          // Update local timestamp so we don't overwrite local changes on next load
+          await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
         });
 
         // 6. Persist updated volunteer counts
@@ -1200,7 +1214,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addProgram = useCallback(
     async (programId: string, displayName: string, year: string) => {
-      if (!user && !forceOffline) {
+      if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to add programs");
       }
       try {
@@ -1269,7 +1283,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateProgram = useCallback(
     async (programId: string, newDisplayName: string) => {
-      if (!user && !forceOffline) {
+      if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to update programs");
       }
       try {
@@ -1336,7 +1350,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateBandSizeMap = useCallback(
     async (newBandSizeMap: Record<BandSize, string>) => {
-      if (!user && !forceOffline) {
+      if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to update band size map");
       }
 
@@ -1369,7 +1383,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const dismissConflict = useCallback(
     async (conflictId: string) => {
-      if (!user && !forceOffline) {
+      if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to dismiss conflicts");
       }
 
@@ -1408,7 +1422,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    */
   const saveDET = useCallback(
     async (det: DET) => {
-      if (!user && !forceOffline) {
+      if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to save DET");
       }
 
@@ -1449,7 +1463,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetDismissedConflicts = useCallback(async () => {
-    if (!user && !forceOffline) {
+    if (!user && !forceOfflineRef.current) {
       throw new Error("Must be logged in to reset dismissed conflicts");
     }
 
@@ -1479,7 +1493,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
-      if (!user && !forceOffline) {
+      if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to update volunteer name");
       }
       if (!isOnline) {
@@ -1507,7 +1521,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addVolunteer = useCallback(
     async (code: string, fullName: string) => {
-      if (!user && !forceOffline) {
+      if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to add volunteer");
       }
       if (!isOnline) {
