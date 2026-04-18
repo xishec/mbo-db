@@ -15,7 +15,7 @@ import {
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { CodeBracketIcon, ExclamationTriangleIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
@@ -42,6 +42,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     pendingCount,
     lastSyncedAt,
     isOnline,
+    isAdmin,
     isLoggedIn,
     userEmail,
     syncQueue,
@@ -49,6 +50,20 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     dismissedConflictsMap,
     signOut: handleSignOut,
   } = useData();
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      await syncQueue();
+      alert("Sync completed successfully!");
+    } catch {
+      alert("Sync failed. Please try again.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleLogsOpen = () => !isLoading && onLogsOpen();
   const handleErrorsOpen = () => !isLoading && onErrorsOpen();
@@ -94,8 +109,15 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 {isOnline ? "Online" : "Offline"}
               </Chip>
             </Badge>
-            {isOnline && pendingCount > 0 && (
-              <Button isIconOnly variant="light" aria-label="Sync" onPress={() => syncQueue()}>
+            {isOnline && isAdmin && (
+              <Button
+                isIconOnly
+                variant="light"
+                aria-label="Sync"
+                isDisabled={isSyncing || isLoading}
+                isLoading={isSyncing}
+                onPress={handleSync}
+              >
                 <ArrowPathIcon className="w-5 h-5" />
               </Button>
             )}

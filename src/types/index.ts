@@ -218,6 +218,9 @@ export interface DataContextType {
   lastSyncedAt: number | null;
   forceOffline: boolean;
   setForceOffline: (force: boolean) => void;
+  modeChosen: boolean;
+  chooseOnline: () => void;
+  chooseOffline: () => void;
 
   // Actions
   addBirdEvent: (

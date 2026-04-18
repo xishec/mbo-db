@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Switch, Select, SelectItem } from "@heroui/react";
+import { Button, Select, SelectItem } from "@heroui/react";
 import { get, ref, set, update } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, setEnvironment, type Environment } from "../../firebase";
 import { useData } from "../../services/useData";
@@ -13,7 +13,7 @@ interface DeveloperModalProps {
 }
 
 export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
-  const { forceOffline, setForceOffline, triggerTestMilestone } = useData();
+  const { triggerTestMilestone, programsMap, yearsToProgramMap, bandGroupsMap, bandIdToBirdEventIdsMap } = useData();
   const [isCopying, setIsCopying] = useState(false);
 
   const handleCopyFromProd = async () => {
@@ -87,11 +87,47 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
             <SelectItem key="alpha">alpha</SelectItem>
             <SelectItem key="prod">prod</SelectItem>
           </Select>
-          <Switch isSelected={forceOffline} onValueChange={setForceOffline}>
-            Force Offline
-          </Switch>
           <Button size="sm" variant="flat" color="warning" onPress={triggerTestMilestone}>
             Test Milestone
+          </Button>
+          <Button
+            size="sm"
+            variant="flat"
+            color="primary"
+            onPress={async () => {
+              await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`), Date.now());
+              alert("Timestamp updated — other clients will refresh on next load");
+            }}
+          >
+            Invalidate clients
+          </Button>
+          <Button
+            size="sm"
+            variant="flat"
+            color="danger"
+            onPress={async () => {
+              const bgCount = Object.keys(bandGroupsMap).length;
+              if (!confirm(`Push local maps to ${CURRENT_ENVIRONMENT}? (${bgCount} band groups)`)) return;
+              try {
+                await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`), programsMap);
+                await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap`), yearsToProgramMap);
+                await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap`), bandGroupsMap);
+
+                const BATCH_SIZE = 1000;
+                const entries = Object.entries(bandIdToBirdEventIdsMap);
+                for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+                  const batch = Object.fromEntries(entries.slice(i, i + BATCH_SIZE));
+                  await update(ref(db, `${CURRENT_ENVIRONMENT}/bandIdToBirdEventIdsMap`), batch);
+                }
+
+                await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`), Date.now());
+                alert(`Pushed to ${CURRENT_ENVIRONMENT}!`);
+              } catch (err) {
+                alert("Failed: " + (err instanceof Error ? err.message : err));
+              }
+            }}
+          >
+            Push local to RTDB
           </Button>
           {CURRENT_ENVIRONMENT === "alpha" && (
             <Button

@@ -99,9 +99,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [forceOffline, setForceOffline] = useState(false);
+  const [modeChosen, setModeChosen] = useState(false);
   const [milestone, setMilestone] = useState<{ banderCode: string; count: number } | null>(null);
   const actualIsOnline = useOnlineStatus();
   const isOnline = forceOffline ? false : actualIsOnline;
+
+  const chooseOnline = useCallback(() => {
+    setForceOffline(false);
+    setModeChosen(true);
+  }, []);
+
+  const chooseOffline = useCallback(() => {
+    setForceOffline(true);
+    setModeChosen(true);
+  }, []);
 
   // User authentication
   const [user, setUser] = useState<User | null>(null);
@@ -251,6 +262,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // Load entire alpha/ on mount
   useEffect(() => {
+    if (!modeChosen) return;
     let cancelled = false;
 
     const loadAlphaData = async () => {
@@ -261,8 +273,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
         const cachedTimestamp = await getLastUpdated(CURRENT_ENVIRONMENT);
 
-        // Try to get the lastModified timestamp from Firebase
-        // This may fail if offline — that's okay, we'll fall back to cache
+        // If no network, go straight to cache
+        if (!navigator.onLine) {
+          if (cachedData && cachedTimestamp) {
+            logger.info("DataLoad", "No network — using cached data");
+            populateStateFromData(cachedData);
+            setLastSyncedAt(cachedTimestamp);
+            setForceOffline(true);
+            setIsLoading(false);
+            return;
+          }
+          setError("No network and no cached data. Connect to the internet and reload.");
+          setIsLoading(false);
+          return;
+        }
+
+        // Online — try to get the lastModified timestamp from Firebase
         let firebaseTimestamp: number | null = null;
         try {
           const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`));
@@ -382,10 +408,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const CONSTANTS_CACHE_KEY = `constants_${CURRENT_ENVIRONMENT}`;
 
     const loadConstants = async () => {
-      // Check if there are pending events — if so, prefer cached volunteersMap
-      // to preserve offline count increments that haven't been synced yet
       const pendingEvents = await getQueuedEvents();
       const hasPendingBirdEvents = pendingEvents.some((e) => e.type === "bird-event");
+
+      // If no network, load from cache
+      if (!navigator.onLine) {
+        try {
+          const cached = await getDataFromIndexedDB(CONSTANTS_CACHE_KEY);
+          if (cached) {
+            const constants = cached as unknown as { magicTable?: MagicTable; volunteersMap?: VolunteersMap };
+            setMagicTable(constants.magicTable ?? { pyle: {} });
+            setVolunteersMap(constants.volunteersMap ?? {});
+            logger.info("DataLoad", "No network — loaded constants from cache");
+          }
+        } catch {
+          logger.error("DataLoad", "Failed to load constants from cache");
+        }
+        return;
+      }
 
       try {
         const constantsSnapshot = await get(ref(db, `constants/${CURRENT_ENVIRONMENT}`));
@@ -438,7 +478,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [modeChosen, forceOffline]);
 
   // Monitor auth state and check if user is admin
   useEffect(() => {
@@ -446,13 +486,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
 
       if (currentUser) {
-        // Check if user is admin from database
-        try {
-          const roleRef = ref(db, `users/${currentUser.uid}/role`);
-          const snapshot = await get(roleRef);
-          setIsAdmin(snapshot.val() === "admin");
-        } catch (error) {
-          logger.error("Auth", "Error checking admin status", error);
+        if (navigator.onLine) {
+          try {
+            const roleRef = ref(db, `users/${currentUser.uid}/role`);
+            const snapshot = await get(roleRef);
+            setIsAdmin(snapshot.val() === "admin");
+          } catch {
+            setIsAdmin(false);
+          }
+        } else {
           setIsAdmin(false);
         }
       } else {
@@ -630,24 +672,37 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
+   * Mutex for serializing IndexedDB writes.
+   * Prevents concurrent read-modify-write cycles from overwriting each other.
+   */
+  const idbMutex = useMemo(() => {
+    let queue = Promise.resolve();
+    return (fn: () => Promise<void>) => {
+      queue = queue.then(fn, fn);
+      return queue;
+    };
+  }, []);
+
+  /**
    * Saves data to IndexedDB cache using read-modify-write pattern.
-   * Reads current IndexedDB state first to avoid overwriting data written
-   * by other code paths (e.g. updateDETInCache, concurrent addBirdEvent calls).
+   * Serialized via mutex to prevent concurrent writes from losing data.
    */
   const saveCompleteStateToIndexedDB = useCallback(async (overrides: Partial<DatabaseData>): Promise<void> => {
-    const current = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-    await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
-      yearsToProgramMap: current?.yearsToProgramMap ?? {},
-      programsMap: current?.programsMap ?? {},
-      bandIdToBirdEventIdsMap: current?.bandIdToBirdEventIdsMap ?? {},
-      birdEventsMap: current?.birdEventsMap ?? {},
-      bandGroupsMap: current?.bandGroupsMap ?? {},
-      bandSizeToBandIdMap: current?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
-      dismissedConflictsMap: current?.dismissedConflictsMap ?? {},
-      DETsMap: current?.DETsMap ?? {},
-      ...overrides,
+    await idbMutex(async () => {
+      const current = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
+      await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+        yearsToProgramMap: current?.yearsToProgramMap ?? {},
+        programsMap: current?.programsMap ?? {},
+        bandIdToBirdEventIdsMap: current?.bandIdToBirdEventIdsMap ?? {},
+        birdEventsMap: current?.birdEventsMap ?? {},
+        bandGroupsMap: current?.bandGroupsMap ?? {},
+        bandSizeToBandIdMap: current?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
+        dismissedConflictsMap: current?.dismissedConflictsMap ?? {},
+        DETsMap: current?.DETsMap ?? {},
+        ...overrides,
+      });
     });
-  }, []);
+  }, [idbMutex]);
 
   /**
    * Syncs pending events from queue to Firebase RTDB.
@@ -668,7 +723,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const pendingEvents = await getQueuedEvents();
-      if (pendingEvents.length === 0) return;
 
       logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
 
@@ -721,10 +775,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Update lastModified timestamp only if we synced bird events
-      if (successCount > 0) {
-        await updateLastModifiedTimestamp();
-      }
+      // Always update lastModified — programs/maps may have changed even without queued events
+      await updateLastModifiedTimestamp();
 
       // Sync cached maps that may have been modified offline
       if (cachedData.bandSizeToBandIdMap) {
@@ -753,6 +805,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           logger.sync("SyncQueue", "Synced programsMap to RTDB");
         } catch (err) {
           logger.error("SyncQueue", "Failed to sync programsMap", err);
+        }
+      }
+
+      if (cachedData.yearsToProgramMap) {
+        try {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap`), cachedData.yearsToProgramMap);
+          logger.sync("SyncQueue", "Synced yearsToProgramMap to RTDB");
+        } catch (err) {
+          logger.error("SyncQueue", "Failed to sync yearsToProgramMap", err);
         }
       }
 
@@ -826,7 +887,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addBirdEvent = useCallback(
     async (captureData: CaptureFormData, bandSize: BandSize, previousEventId: string | undefined) => {
-      if (!user) {
+      if (!user && !forceOffline) {
         throw new Error("Must be logged in to add bird events");
       }
 
@@ -903,24 +964,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           };
         }
 
-        // New bandIdToBirdEventIdsMap
+        // New bandGroupsMap (for React state — IndexedDB merge happens atomically in step 5)
+        let newBandGroupsMap = { ...bandGroupsMap };
+        if (isNewCapture) {
+          const bandGroupMapKey = getBandGroupMapKey(band);
+          newBandGroupsMap[bandGroupMapKey] = {
+            id: bandGroupMapKey,
+            newCaptureIds: [...(bandGroupsMap[bandGroupMapKey]?.newCaptureIds || []), newBirdEvent.id],
+          };
+        }
+
+        // New bandIdToBirdEventIdsMap (for React state)
         const newBandIdToBirdEventIdsMap = {
           ...bandIdToBirdEventIdsMap,
           [band.id]: [...(bandIdToBirdEventIdsMap[band.id] || []), newBirdEvent.id],
         };
-
-        // New bandGroupsMap
-        let newBandGroupsMap = bandGroupsMap;
-        if (isNewCapture) {
-          const bandGroupMapKey = getBandGroupMapKey(band);
-          newBandGroupsMap = {
-            ...bandGroupsMap,
-            [bandGroupMapKey]: {
-              id: bandGroupMapKey,
-              newCaptureIds: [...(bandGroupsMap[bandGroupMapKey]?.newCaptureIds || []), newBirdEvent.id],
-            },
-          };
-        }
 
         // 4. Increment band size if applicable
         const updatedBandSizeMap =
@@ -1027,14 +1085,69 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return newProgramsMap[captureData.programId];
         });
 
-        // 5. Save to IndexedDB (works both online and offline)
-        await saveCompleteStateToIndexedDB({
-          yearsToProgramMap: newYearsToProgramMap,
-          programsMap: newProgramsMap,
-          bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
-          birdEventsMap: newBirdEventsMap,
-          bandGroupsMap: newBandGroupsMap,
-          bandSizeToBandIdMap: updatedBandSizeMap,
+        // 5. Save to IndexedDB — atomic read-merge-write inside mutex
+        await idbMutex(async () => {
+          const fresh = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
+
+          // Merge birdEventsMap
+          const mergedBirdEvents = { ...(fresh?.birdEventsMap ?? {}), ...newBirdEventsMap };
+
+          // Merge bandIdToBirdEventIdsMap entry
+          const mergedBandIdMap = { ...(fresh?.bandIdToBirdEventIdsMap ?? {}) };
+          const existingIds = mergedBandIdMap[band.id] || [];
+          if (!existingIds.includes(newBirdEvent.id)) {
+            mergedBandIdMap[band.id] = [...existingIds, newBirdEvent.id];
+          }
+
+          // Merge bandGroupsMap entry
+          const mergedBandGroups = { ...(fresh?.bandGroupsMap ?? {}) };
+          if (isNewCapture) {
+            const bgKey = getBandGroupMapKey(band);
+            const existingGroup = mergedBandGroups[bgKey];
+            const existingCaptureIds = existingGroup?.newCaptureIds || [];
+            if (!existingCaptureIds.includes(newBirdEvent.id)) {
+              mergedBandGroups[bgKey] = { id: bgKey, newCaptureIds: [...existingCaptureIds, newBirdEvent.id] };
+            }
+          }
+
+          // Merge programsMap entry — apply our deltas to the fresh program, not the stale closure one
+          const mergedPrograms = { ...(fresh?.programsMap ?? {}) };
+          const freshProgram = mergedPrograms[captureData.programId] ?? existingProgram;
+          const mergedBandGroupIds = [...(freshProgram.bandGroupIds || [])];
+          if (isNewCapture && !mergedBandGroupIds.includes(bandGroupMapKey)) {
+            mergedBandGroupIds.push(bandGroupMapKey);
+          }
+          const mergedRecaptureIds = [...(freshProgram.recaptureIds || [])];
+          if (!isNewCapture && !mergedRecaptureIds.includes(newBirdEvent.id)) {
+            mergedRecaptureIds.push(newBirdEvent.id);
+          }
+          mergedPrograms[captureData.programId] = {
+            ...freshProgram,
+            bandGroupIds: mergedBandGroupIds,
+            recaptureIds: mergedRecaptureIds,
+            firstCaptureDate: !freshProgram.firstCaptureDate || eventDate < freshProgram.firstCaptureDate
+              ? eventDate : freshProgram.firstCaptureDate,
+            lastCaptureDate: !freshProgram.lastCaptureDate || eventDate > freshProgram.lastCaptureDate
+              ? eventDate : freshProgram.lastCaptureDate,
+          };
+
+          // Merge yearsToProgramMap entry
+          const mergedYears = { ...(fresh?.yearsToProgramMap ?? {}) };
+          if (!mergedYears[year]) mergedYears[year] = [];
+          if (!mergedYears[year].includes(captureData.programId)) {
+            mergedYears[year] = [...mergedYears[year], captureData.programId];
+          }
+
+          await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+            yearsToProgramMap: mergedYears,
+            programsMap: mergedPrograms,
+            bandIdToBirdEventIdsMap: mergedBandIdMap,
+            birdEventsMap: mergedBirdEvents,
+            bandGroupsMap: mergedBandGroups,
+            bandSizeToBandIdMap: updatedBandSizeMap,
+            dismissedConflictsMap: fresh?.dismissedConflictsMap ?? {},
+            DETsMap: fresh?.DETsMap ?? {},
+          });
         });
 
         // 6. Persist updated volunteer counts
@@ -1079,7 +1192,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       yearsToProgramMap,
       bandSizeToBandIdMap,
       incrementBandSize,
-      saveCompleteStateToIndexedDB,
+      idbMutex,
       persistVolunteersToCache,
       updateLastModifiedTimestamp,
     ]
@@ -1087,7 +1200,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addProgram = useCallback(
     async (programId: string, displayName: string, year: string) => {
-      if (!user) {
+      if (!user && !forceOffline) {
         throw new Error("Must be logged in to add programs");
       }
       try {
@@ -1156,7 +1269,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateProgram = useCallback(
     async (programId: string, newDisplayName: string) => {
-      if (!user) {
+      if (!user && !forceOffline) {
         throw new Error("Must be logged in to update programs");
       }
       try {
@@ -1223,7 +1336,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateBandSizeMap = useCallback(
     async (newBandSizeMap: Record<BandSize, string>) => {
-      if (!user) {
+      if (!user && !forceOffline) {
         throw new Error("Must be logged in to update band size map");
       }
 
@@ -1256,7 +1369,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const dismissConflict = useCallback(
     async (conflictId: string) => {
-      if (!user) {
+      if (!user && !forceOffline) {
         throw new Error("Must be logged in to dismiss conflicts");
       }
 
@@ -1295,7 +1408,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    */
   const saveDET = useCallback(
     async (det: DET) => {
-      if (!user) {
+      if (!user && !forceOffline) {
         throw new Error("Must be logged in to save DET");
       }
 
@@ -1336,7 +1449,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetDismissedConflicts = useCallback(async () => {
-    if (!user) {
+    if (!user && !forceOffline) {
       throw new Error("Must be logged in to reset dismissed conflicts");
     }
 
@@ -1366,7 +1479,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
-      if (!user) {
+      if (!user && !forceOffline) {
         throw new Error("Must be logged in to update volunteer name");
       }
       if (!isOnline) {
@@ -1394,7 +1507,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addVolunteer = useCallback(
     async (code: string, fullName: string) => {
-      if (!user) {
+      if (!user && !forceOffline) {
         throw new Error("Must be logged in to add volunteer");
       }
       if (!isOnline) {
@@ -1422,7 +1535,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       value={{
         isLoading,
         error,
-        isLoggedIn: !!user,
+        isLoggedIn: !!user || forceOffline,
         isAdmin,
         userEmail: user?.email ?? null,
         signOut: async () => {
@@ -1446,6 +1559,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         lastSyncedAt,
         forceOffline,
         setForceOffline,
+        modeChosen,
+        chooseOnline,
+        chooseOffline,
         addBirdEvent,
         addProgram,
         updateProgram,

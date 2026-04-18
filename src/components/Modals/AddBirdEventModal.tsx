@@ -80,6 +80,7 @@ export default function AddBirdEventModal({
   useEffect(() => {
     if (!isOpen) {
       setWasOpen(false);
+      setIsSaving(false);
       return;
     }
 
