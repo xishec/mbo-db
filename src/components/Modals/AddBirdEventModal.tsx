@@ -58,6 +58,7 @@ export default function AddBirdEventModal({
     birdEventsMap,
     addBirdEvent,
     bandSizeToBandIdMap,
+    volunteersMap,
     speciesInfoMap,
   } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
@@ -341,14 +342,26 @@ export default function AddBirdEventModal({
       }
     }
 
+    // Volunteer validation
+    const banderUnknown = formData.bander.length >= 2 && !volunteersMap[formData.bander];
+    const scribeUnknown = formData.scribe.length >= 2 && !volunteersMap[formData.scribe];
+    if (banderUnknown) {
+      messages.push({ text: `Unknown bander "${formData.bander}". Add them in Volunteers page first.`, severity: "danger" });
+    }
+    if (scribeUnknown) {
+      messages.push({ text: `Unknown scribe "${formData.scribe}". Add them in Volunteers page first.`, severity: "danger" });
+    }
+
     return {
       rangeValidation,
       sexConflict,
+      banderUnknown,
+      scribeUnknown,
       incompleteFields,
       existingErrors,
       warningMessages: messages,
     };
-  }, [formData, pastBirdEvents, magicTable, sortedColumns, sexCode, pyleSpeciesRange]);
+  }, [formData, pastBirdEvents, magicTable, sortedColumns, sexCode, pyleSpeciesRange, volunteersMap]);
 
   const focusNextInput = useCallback(
     (currentField: keyof CaptureFormData) => {
@@ -478,7 +491,7 @@ export default function AddBirdEventModal({
 
   const getInputColor = useCallback(
     (columnKey: keyof CaptureFormData): "danger" | "warning" | null => {
-      const { rangeValidation, sexConflict, incompleteFields } = validationState;
+      const { rangeValidation, sexConflict, banderUnknown, scribeUnknown, incompleteFields } = validationState;
 
       // Wing range validation
       if (columnKey === "wing") {
@@ -494,6 +507,10 @@ export default function AddBirdEventModal({
       if (columnKey === "sex" && sexConflict) {
         return "danger";
       }
+
+      // Volunteer validation
+      if (columnKey === "bander" && banderUnknown) return "danger";
+      if (columnKey === "scribe" && scribeUnknown) return "danger";
 
       // Incomplete field validation
       if (incompleteFields.has(columnKey)) {

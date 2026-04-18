@@ -382,18 +382,38 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const CONSTANTS_CACHE_KEY = `constants_${CURRENT_ENVIRONMENT}`;
 
     const loadConstants = async () => {
+      // Check if there are pending events — if so, prefer cached volunteersMap
+      // to preserve offline count increments that haven't been synced yet
+      const pendingEvents = await getQueuedEvents();
+      const hasPendingBirdEvents = pendingEvents.some((e) => e.type === "bird-event");
+
       try {
         const constantsSnapshot = await get(ref(db, `constants/${CURRENT_ENVIRONMENT}`));
         if (constantsSnapshot.exists()) {
-          const constants = constantsSnapshot.val();
-          setMagicTable(constants.magicTable ?? { pyle: {} });
-          setVolunteersMap(constants.volunteersMap ?? {});
-          // Cache constants in IndexedDB for offline use
-          await saveDataToIndexedDB(CONSTANTS_CACHE_KEY, constants);
-          logger.info("DataLoad", "Loaded constants", {
-            hasMagicTable: !!constants.magicTable,
-            volunteersCount: Object.keys(constants.volunteersMap ?? {}).length,
-          });
+          const rtdbConstants = constantsSnapshot.val();
+          setMagicTable(rtdbConstants.magicTable ?? { pyle: {} });
+
+          if (hasPendingBirdEvents) {
+            // Use cached volunteersMap (has offline count increments), but take magicTable from RTDB
+            const cached = await getDataFromIndexedDB(CONSTANTS_CACHE_KEY);
+            const cachedConstants = cached as unknown as { volunteersMap?: VolunteersMap } | null;
+            const volunteersToUse = cachedConstants?.volunteersMap ?? rtdbConstants.volunteersMap ?? {};
+            setVolunteersMap(volunteersToUse);
+            // Update cache with fresh magicTable but keep local volunteersMap
+            await saveDataToIndexedDB(CONSTANTS_CACHE_KEY, { ...rtdbConstants, volunteersMap: volunteersToUse });
+            logger.info("DataLoad", "Loaded constants (kept cached volunteersMap due to pending events)", {
+              volunteersCount: Object.keys(volunteersToUse).length,
+              pendingBirdEvents: pendingEvents.filter((e) => e.type === "bird-event").length,
+            });
+          } else {
+            // No pending events — safe to use RTDB data
+            setVolunteersMap(rtdbConstants.volunteersMap ?? {});
+            await saveDataToIndexedDB(CONSTANTS_CACHE_KEY, rtdbConstants);
+            logger.info("DataLoad", "Loaded constants from RTDB", {
+              hasMagicTable: !!rtdbConstants.magicTable,
+              volunteersCount: Object.keys(rtdbConstants.volunteersMap ?? {}).length,
+            });
+          }
         }
       } catch (err) {
         // Offline fallback: load from IndexedDB cache
@@ -811,14 +831,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // Validate bander/scribe exist in volunteersMap
-        if (captureData.bander && !volunteersMap[captureData.bander]) {
-          throw new Error(`Unknown bander code "${captureData.bander}". Add them in the Volunteers page first.`);
-        }
-        if (captureData.scribe && !volunteersMap[captureData.scribe]) {
-          throw new Error(`Unknown scribe code "${captureData.scribe}". Add them in the Volunteers page first.`);
-        }
-
         // 1. Create Band and BirdEvent objects
         const birdEventType = captureData.birdEventType as BirdEventType;
 
