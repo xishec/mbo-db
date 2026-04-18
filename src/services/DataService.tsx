@@ -587,52 +587,45 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         state.birdEventsMap[previousEventId] = updatedPreviousEvent;
       }
 
-      // 3. Update band ID index (only if not already indexed)
+      // 3. Update band ID index — always write (may exist locally but not in RTDB)
       const existingBirdEventIds = state.bandIdToBirdEventIdsMap[band.id] || [];
       if (!existingBirdEventIds.includes(birdEventId)) {
-        const updatedIds = [...existingBirdEventIds, birdEventId];
-        await set(ref(db, `${environment}/bandIdToBirdEventIdsMap/${band.id}`), updatedIds);
-        state.bandIdToBirdEventIdsMap[band.id] = updatedIds;
+        existingBirdEventIds.push(birdEventId);
+        state.bandIdToBirdEventIdsMap[band.id] = existingBirdEventIds;
       }
+      await set(ref(db, `${environment}/bandIdToBirdEventIdsMap/${band.id}`), state.bandIdToBirdEventIdsMap[band.id]);
 
-      // 4. Update band group map (only for new captures)
+      // 4. Update band group map (only for new captures) — always write
       if (isNewCapture) {
         const bandGroupMapKey = getBandGroupMapKey(band);
         const existingBandGroup = state.bandGroupsMap[bandGroupMapKey];
         if (!existingBandGroup) {
-          const newBandGroup = { id: bandGroupMapKey, newCaptureIds: [birdEventId] };
-          await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}`), newBandGroup);
-          state.bandGroupsMap[bandGroupMapKey] = newBandGroup;
+          state.bandGroupsMap[bandGroupMapKey] = { id: bandGroupMapKey, newCaptureIds: [birdEventId] };
         } else if (!existingBandGroup.newCaptureIds.includes(birdEventId)) {
-          const updatedCaptureIds = [...existingBandGroup.newCaptureIds, birdEventId];
-          await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}/newCaptureIds`), updatedCaptureIds);
-          existingBandGroup.newCaptureIds = updatedCaptureIds;
+          existingBandGroup.newCaptureIds.push(birdEventId);
         }
+        await set(ref(db, `${environment}/bandGroupsMap/${bandGroupMapKey}`), state.bandGroupsMap[bandGroupMapKey]);
       }
 
-      // 5. Update program map
+      // 5. Update program map — always write
       const existingProgram = state.programsMap[programId];
       if (existingProgram) {
         const bandGroupMapKey = getBandGroupMapKey(band);
-        // Update band group IDs for new captures
         if (isNewCapture) {
           const existingBandGroupIds = existingProgram.bandGroupIds || [];
           if (!existingBandGroupIds.includes(bandGroupMapKey)) {
-            const updatedBandGroupIds = [...existingBandGroupIds, bandGroupMapKey];
-            await set(ref(db, `${environment}/programsMap/${programId}/bandGroupIds`), updatedBandGroupIds);
-            existingProgram.bandGroupIds = updatedBandGroupIds;
+            existingBandGroupIds.push(bandGroupMapKey);
+            existingProgram.bandGroupIds = existingBandGroupIds;
           }
         }
-
-        // Update recapture IDs for recaptures
         if (!isNewCapture) {
           const existingRecaptureIds = existingProgram.recaptureIds || [];
           if (!existingRecaptureIds.includes(birdEventId)) {
-            const updatedRecaptureIds = [...existingRecaptureIds, birdEventId];
-            await set(ref(db, `${environment}/programsMap/${programId}/recaptureIds`), updatedRecaptureIds);
-            existingProgram.recaptureIds = updatedRecaptureIds;
+            existingRecaptureIds.push(birdEventId);
+            existingProgram.recaptureIds = existingRecaptureIds;
           }
         }
+        await set(ref(db, `${environment}/programsMap/${programId}`), existingProgram);
       }
     },
     []
@@ -811,22 +804,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      if (cachedData.programsMap) {
-        try {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`), cachedData.programsMap);
-          logger.sync("SyncQueue", "Synced programsMap to RTDB");
-        } catch (err) {
-          logger.error("SyncQueue", "Failed to sync programsMap", err);
-        }
-      }
-
-      if (cachedData.yearsToProgramMap) {
-        try {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap`), cachedData.yearsToProgramMap);
-          logger.sync("SyncQueue", "Synced yearsToProgramMap to RTDB");
-        } catch (err) {
-          logger.error("SyncQueue", "Failed to sync yearsToProgramMap", err);
-        }
+      // Bulk-sync all maps from local state (includes mutations from syncBirdEventToRTDB above)
+      try {
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`), state.programsMap);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap`), state.yearsToProgramMap);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap`), state.bandGroupsMap);
+        // bandIdToBirdEventIdsMap is too large for single set — already written per-event above
+        logger.sync("SyncQueue", "Synced all maps to RTDB");
+      } catch (err) {
+        logger.error("SyncQueue", "Failed to sync maps", err);
       }
 
       // Sync volunteer counts (stored in constants path, may have been updated offline)

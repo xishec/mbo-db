@@ -5,11 +5,14 @@ export default function Home() {
   const { birdEventsMap } = useData();
 
   const latestDaySummary = useMemo(() => {
-    const allBirdEvents = Object.values(birdEventsMap);
+    // Filter out modified/superseded events
+    const activeEvents = Object.values(birdEventsMap).filter(
+      (event) => event && !event.modifiedEventId
+    );
 
-    // Find the latest date in a single pass (no need to sort)
+    // Find the latest date in a single pass
     let latestDate = "";
-    for (const event of allBirdEvents) {
+    for (const event of activeEvents) {
       if (event.date && event.date > latestDate) {
         latestDate = event.date;
       }
@@ -19,8 +22,8 @@ export default function Home() {
       return null;
     }
 
-    // Get all events from the latest date
-    const latestDayEvents = allBirdEvents.filter((event) => event.date === latestDate);
+    // Get all active events from the latest date
+    const latestDayEvents = activeEvents.filter((event) => event.date === latestDate);
 
     // Calculate days ago using date-only comparison to avoid timezone issues
     const [y, m, d] = latestDate.split("-").map(Number);

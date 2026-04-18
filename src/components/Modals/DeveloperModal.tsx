@@ -106,6 +106,18 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
             variant="flat"
             color="danger"
             onPress={async () => {
+              if (!confirm("Clear local cache and reload?")) return;
+              await clearAllIndexedDB();
+              window.location.reload();
+            }}
+          >
+            Clear local cache
+          </Button>
+          <Button
+            size="sm"
+            variant="flat"
+            color="danger"
+            onPress={async () => {
               const bgCount = Object.keys(bandGroupsMap).length;
               if (!confirm(`Push local maps to ${CURRENT_ENVIRONMENT}? (${bgCount} band groups)`)) return;
               try {
