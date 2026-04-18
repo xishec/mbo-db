@@ -19,7 +19,15 @@ import {
   type PendingDETEvent,
   type SpeciesInfoMap,
 } from "../types";
-import { Band, BirdEventType, generateBirdEventId, type Program, type Volunteer, getBandGroupMapKey, type DET } from "../types";
+import {
+  Band,
+  BirdEventType,
+  generateBirdEventId,
+  type Program,
+  type Volunteer,
+  getBandGroupMapKey,
+  type DET,
+} from "../types";
 import { DataContext } from "./DataContext";
 import {
   saveDataToIndexedDB,
@@ -50,8 +58,7 @@ type BandStats = {
   latestTime: number;
 };
 
-const getEventTimestamp = (event: BirdEvent): number =>
-  Date.parse(`${event.date}T${event.time}`);
+const getEventTimestamp = (event: BirdEvent): number => Date.parse(`${event.date}T${event.time}`);
 
 const computeFavoriteRate = (
   events: BirdEvent[],
@@ -127,9 +134,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const infoMap: SpeciesInfoMap = {};
 
     // Filter out modified events
-    const validEvents = Object.values(birdEventsMap).filter(
-      (event) => event && !event.modifiedEventId
-    );
+    const validEvents = Object.values(birdEventsMap).filter((event) => event && !event.modifiedEventId);
 
     if (validEvents.length === 0) return infoMap;
 
@@ -151,9 +156,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (events.length === 0) continue;
 
       // Biggest: largest wing
-      const biggest = events.reduce((max, event) =>
-        event.wing > max.wing ? event : max
-      );
+      const biggest = events.reduce((max, event) => (event.wing > max.wing ? event : max));
 
       // Fattest: highest fat, if same fat compare weight
       const fattest = events.reduce((max, event) => {
@@ -218,10 +221,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // (oldestEvent will remain null, which will be handled in the component)
 
       // Favorite bander: most repeated bander string
-      const { value: favoriteBander, rate: favoriteBanderRate } = computeFavoriteRate(
-        events,
-        (event) => event.bander
-      );
+      const { value: favoriteBander, rate: favoriteBanderRate } = computeFavoriteRate(events, (event) => event.bander);
 
       // Favorite net: most repeated net string
       const { value: favoriteNet, rate: favoriteNetRate } = computeFavoriteRate(events, (event) => event.net);
@@ -294,7 +294,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // If we can't reach Firebase but have previously-synced cached data, use it
         if (firebaseTimestamp === null && cachedData && cachedTimestamp) {
-          logger.info("DataLoad", `Offline — using cached ${CURRENT_ENVIRONMENT}/ data (last synced ${new Date(cachedTimestamp).toLocaleString()})`);
+          logger.info(
+            "DataLoad",
+            `Offline — using cached ${CURRENT_ENVIRONMENT}/ data (last synced ${new Date(cachedTimestamp).toLocaleString()})`
+          );
           populateStateFromData(cachedData);
           setLastSyncedAt(cachedTimestamp);
           setIsLoading(false);
@@ -611,23 +614,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * Reads current IndexedDB state first to avoid overwriting data written
    * by other code paths (e.g. updateDETInCache, concurrent addBirdEvent calls).
    */
-  const saveCompleteStateToIndexedDB = useCallback(
-    async (overrides: Partial<DatabaseData>): Promise<void> => {
-      const current = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-      await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
-        yearsToProgramMap: current?.yearsToProgramMap ?? {},
-        programsMap: current?.programsMap ?? {},
-        bandIdToBirdEventIdsMap: current?.bandIdToBirdEventIdsMap ?? {},
-        birdEventsMap: current?.birdEventsMap ?? {},
-        bandGroupsMap: current?.bandGroupsMap ?? {},
-        bandSizeToBandIdMap: current?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
-        dismissedConflictsMap: current?.dismissedConflictsMap ?? {},
-        DETsMap: current?.DETsMap ?? {},
-        ...overrides,
-      });
-    },
-    []
-  );
+  const saveCompleteStateToIndexedDB = useCallback(async (overrides: Partial<DatabaseData>): Promise<void> => {
+    const current = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
+    await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
+      yearsToProgramMap: current?.yearsToProgramMap ?? {},
+      programsMap: current?.programsMap ?? {},
+      bandIdToBirdEventIdsMap: current?.bandIdToBirdEventIdsMap ?? {},
+      birdEventsMap: current?.birdEventsMap ?? {},
+      bandGroupsMap: current?.bandGroupsMap ?? {},
+      bandSizeToBandIdMap: current?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
+      dismissedConflictsMap: current?.dismissedConflictsMap ?? {},
+      DETsMap: current?.DETsMap ?? {},
+      ...overrides,
+    });
+  }, []);
 
   /**
    * Syncs pending events from queue to Firebase RTDB.
@@ -717,8 +717,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-
-
       if (cachedData.dismissedConflictsMap) {
         try {
           await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), cachedData.dismissedConflictsMap);
@@ -796,18 +794,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [bandSizeToBandIdMap, isOnline]
   );
 
-  const persistVolunteersToCache = useCallback(
-    async (newMap: VolunteersMap) => {
-      const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
-      try {
-        const cached = await getDataFromIndexedDB(constantsCacheKey) as unknown as Record<string, unknown> | null;
-        await saveDataToIndexedDB(constantsCacheKey, { ...cached, volunteersMap: newMap } as unknown as DatabaseData);
-      } catch {
-        logger.warn("Volunteers", "Failed to update constants cache");
-      }
-    },
-    []
-  );
+  const persistVolunteersToCache = useCallback(async (newMap: VolunteersMap) => {
+    const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
+    try {
+      const cached = (await getDataFromIndexedDB(constantsCacheKey)) as unknown as Record<string, unknown> | null;
+      await saveDataToIndexedDB(constantsCacheKey, { ...cached, volunteersMap: newMap } as unknown as DatabaseData);
+    } catch {
+      logger.warn("Volunteers", "Failed to update constants cache");
+    }
+  }, []);
 
   const addBirdEvent = useCallback(
     async (captureData: CaptureFormData, bandSize: BandSize, previousEventId: string | undefined) => {
@@ -865,7 +860,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           previousEventId: previousEventId || null,
           modifiedEventId: null,
           birdEventType,
-          updatedAt: previousEventId ? String(Date.now()) : String(Date.parse(`${captureData.date} ${captureData.time}`)),
+          updatedAt: previousEventId
+            ? String(Date.now())
+            : String(Date.parse(`${captureData.date} ${captureData.time}`)),
         };
 
         // 2. Queue the bird event for sync
@@ -970,12 +967,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const newVolunteersMap = { ...volunteersMap };
         const banderCode = captureData.bander;
         if (banderCode && isNewCapture) {
-          const existing = newVolunteersMap[banderCode] ?? { code: banderCode, fullName: VOLUNTEER_NAMES[banderCode] ?? "", totalBanded: 0, totalScribed: 0 };
+          const existing = newVolunteersMap[banderCode] ?? {
+            code: banderCode,
+            fullName: VOLUNTEER_NAMES[banderCode] ?? "",
+            totalBanded: 0,
+            totalScribed: 0,
+          };
           newVolunteersMap[banderCode] = { ...existing, totalBanded: existing.totalBanded + 1 };
         }
         const scribeCode = captureData.scribe;
         if (scribeCode) {
-          const existing = newVolunteersMap[scribeCode] ?? { code: scribeCode, fullName: VOLUNTEER_NAMES[scribeCode] ?? "", totalBanded: 0, totalScribed: 0 };
+          const existing = newVolunteersMap[scribeCode] ?? {
+            code: scribeCode,
+            fullName: VOLUNTEER_NAMES[scribeCode] ?? "",
+            totalBanded: 0,
+            totalScribed: 0,
+          };
           newVolunteersMap[scribeCode] = { ...existing, totalScribed: existing.totalScribed + 1 };
         }
 
@@ -986,6 +993,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           if (Math.floor(newCount / 1000) > Math.floor(oldCount / 1000)) {
             setMilestone({ banderCode, count: newCount });
           }
+          // if (newCount === 7098) {
+          //   setMilestone({ banderCode, count: newCount });
+          // }
         }
 
         // Update React state
@@ -1193,13 +1203,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [
-      user,
-      isOnline,
-      programsMap,
-      saveCompleteStateToIndexedDB,
-      updateLastModifiedTimestamp,
-    ]
+    [user, isOnline, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
   const updateBandSizeMap = useCallback(
@@ -1316,37 +1320,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, updateLastModifiedTimestamp]
   );
 
-  const resetDismissedConflicts = useCallback(
-    async () => {
-      if (!user) {
-        throw new Error("Must be logged in to reset dismissed conflicts");
+  const resetDismissedConflicts = useCallback(async () => {
+    if (!user) {
+      throw new Error("Must be logged in to reset dismissed conflicts");
+    }
+
+    try {
+      // Update React state immediately
+      const emptyMap = {};
+      setDismissedConflictsMap(emptyMap);
+
+      // Save to IndexedDB
+      await saveCompleteStateToIndexedDB({ dismissedConflictsMap: emptyMap });
+
+      // Handle online vs offline sync
+      if (isOnline) {
+        // Online: clear RTDB immediately
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), null);
+        await updateLastModifiedTimestamp();
+        logger.info("ResetDismissedConflicts", "All dismissed conflicts reset and synced to RTDB");
+      } else {
+        // Offline: will be synced when back online
+        logger.info("ResetDismissedConflicts", "All dismissed conflicts reset offline - will sync when online");
       }
-
-      try {
-        // Update React state immediately
-        const emptyMap = {};
-        setDismissedConflictsMap(emptyMap);
-
-        // Save to IndexedDB
-        await saveCompleteStateToIndexedDB({ dismissedConflictsMap: emptyMap });
-
-        // Handle online vs offline sync
-        if (isOnline) {
-          // Online: clear RTDB immediately
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), null);
-          await updateLastModifiedTimestamp();
-          logger.info("ResetDismissedConflicts", "All dismissed conflicts reset and synced to RTDB");
-        } else {
-          // Offline: will be synced when back online
-          logger.info("ResetDismissedConflicts", "All dismissed conflicts reset offline - will sync when online");
-        }
-      } catch (err) {
-        logger.error("ResetDismissedConflicts", "Error resetting dismissed conflicts", err);
-        throw err;
-      }
-    },
-    [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
-  );
+    } catch (err) {
+      logger.error("ResetDismissedConflicts", "Error resetting dismissed conflicts", err);
+      throw err;
+    }
+  }, [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]);
 
   const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
@@ -1409,7 +1410,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         isLoggedIn: !!user,
         isAdmin,
         userEmail: user?.email ?? null,
-        signOut: async () => { await firebaseSignOut(auth); },
+        signOut: async () => {
+          await firebaseSignOut(auth);
+        },
         selectedProgram,
         selectProgram: setSelectedProgram,
         yearsToProgramMap,
