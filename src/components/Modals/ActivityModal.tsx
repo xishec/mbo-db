@@ -82,7 +82,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
 
   useEffect(() => {
     const unsubscribe = logger.subscribe(setLogs);
-    return unsubscribe;
+    return () => { unsubscribe(); };
   }, []);
 
   useEffect(() => {

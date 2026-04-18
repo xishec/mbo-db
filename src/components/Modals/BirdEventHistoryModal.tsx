@@ -84,7 +84,7 @@ export function BirdEventHistoryModal({ isOpen, onClose }: RecentHistoryModalPro
 
   useEffect(() => {
     const unsubscribe = logger.subscribe(setLogs);
-    return unsubscribe;
+    return () => { unsubscribe(); };
   }, []);
 
   const recentActions = useMemo(() => {
