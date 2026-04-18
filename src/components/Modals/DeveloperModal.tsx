@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Switch } from "@heroui/react";
-import { get, ref, set } from "firebase/database";
+import { get, ref, set, update } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT } from "../../firebase";
 import { useData } from "../../services/useData";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -20,12 +20,21 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
 
     setIsCopying(true);
     try {
-      // Copy each top-level key separately to avoid "Write too large" error
+      // Copy each top-level key, batching large maps with update()
+      const BATCH_SIZE = 1000;
       const prodSnap = await get(ref(db, "prod"));
       if (prodSnap.exists()) {
         const prodData = prodSnap.val() as Record<string, unknown>;
         for (const [key, value] of Object.entries(prodData)) {
-          await set(ref(db, `alpha/${key}`), value);
+          if (value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > BATCH_SIZE) {
+            const entries = Object.entries(value as Record<string, unknown>);
+            for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+              const batch = Object.fromEntries(entries.slice(i, i + BATCH_SIZE));
+              await update(ref(db, `alpha/${key}`), batch);
+            }
+          } else {
+            await set(ref(db, `alpha/${key}`), value);
+          }
         }
       }
 
