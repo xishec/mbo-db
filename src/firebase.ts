@@ -6,7 +6,14 @@ import { getAuth } from "firebase/auth";
 
 // Environment configuration
 export type Environment = "alpha" | "beta" | "prod";
-export const CURRENT_ENVIRONMENT: Environment = (import.meta.env.VITE_ENVIRONMENT as Environment) || "alpha";
+const STORAGE_KEY = "mbo_environment";
+export const CURRENT_ENVIRONMENT: Environment =
+  (typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY) as Environment) || "prod";
+
+export function setEnvironment(env: Environment) {
+  localStorage.setItem(STORAGE_KEY, env);
+  window.location.reload();
+}
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

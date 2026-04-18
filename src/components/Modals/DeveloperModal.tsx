@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Button, Switch } from "@heroui/react";
+import { Button, Switch, Select, SelectItem } from "@heroui/react";
 import { get, ref, set, update } from "firebase/database";
-import { db, CURRENT_ENVIRONMENT } from "../../firebase";
+import { db, CURRENT_ENVIRONMENT, setEnvironment, type Environment } from "../../firebase";
 import { useData } from "../../services/useData";
 import { clearAllIndexedDB } from "../../services/indexedDB";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -71,6 +71,22 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
 
       <ModalBodyShell>
         <div className="flex flex-col gap-4">
+          <Select
+            label="Environment"
+            labelPlacement="outside"
+            variant="bordered"
+            size="sm"
+            selectedKeys={[CURRENT_ENVIRONMENT]}
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0] as Environment;
+              if (selected && selected !== CURRENT_ENVIRONMENT) {
+                clearAllIndexedDB().then(() => setEnvironment(selected));
+              }
+            }}
+          >
+            <SelectItem key="alpha">alpha</SelectItem>
+            <SelectItem key="prod">prod</SelectItem>
+          </Select>
           <Switch isSelected={forceOffline} onValueChange={setForceOffline}>
             Force Offline
           </Switch>
