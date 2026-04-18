@@ -14,7 +14,7 @@ interface AddProgramModalProps {
 }
 
 export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModalProps) {
-  const { addProgram } = useData();
+  const { addProgram, isOnline } = useData();
   const [displayName, setDisplayName] = useState("");
   const [year, setYear] = useState(() => new Date().getFullYear().toString());
   const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +60,11 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
         <p className="text-sm font-normal">Enter a display name and year for the new program</p>
       </ModalHeaderShell>
         <ModalBodyShell>
+          {!isOnline && (
+            <div className="bg-warning-50 border border-warning-200 rounded-medium p-3 text-sm text-warning-800">
+              You are currently offline. This program will be saved locally and synced when back online. Please make sure no one else adds the same program before you sync.
+            </div>
+          )}
           <Input
             label="Year"
             placeholder="Enter year"

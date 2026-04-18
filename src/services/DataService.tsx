@@ -796,6 +796,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [bandSizeToBandIdMap, isOnline]
   );
 
+  const persistVolunteersToCache = useCallback(
+    async (newMap: VolunteersMap) => {
+      const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
+      try {
+        const cached = await getDataFromIndexedDB(constantsCacheKey) as unknown as Record<string, unknown> | null;
+        await saveDataToIndexedDB(constantsCacheKey, { ...cached, volunteersMap: newMap } as unknown as DatabaseData);
+      } catch {
+        logger.warn("Volunteers", "Failed to update constants cache");
+      }
+    },
+    []
+  );
+
   const addBirdEvent = useCallback(
     async (captureData: CaptureFormData, bandSize: BandSize, previousEventId: string | undefined) => {
       if (!user) {
@@ -1052,10 +1065,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (!user) {
         throw new Error("Must be logged in to add programs");
       }
-      if (!isOnline) {
-        throw new Error("Cannot add programs while offline");
-      }
-
       try {
         // Trim whitespace from displayName
         const trimmedDisplayName = displayName.trim();
@@ -1069,22 +1078,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         );
         if (existingProgram) {
           throw new Error(`A program with the display name "${trimmedDisplayName}" already exists`);
-        }
-
-        // Create new program directly in Firebase
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}`), {
-          id: programId,
-          displayName: trimmedDisplayName,
-          bandGroupIds: [],
-          recaptureIds: [],
-        });
-
-        // Update yearsToProgramMap
-        if (!yearsToProgramMap[year]) {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), [programId]);
-        } else if (!yearsToProgramMap[year].includes(programId)) {
-          const updatedPrograms = [...yearsToProgramMap[year], programId];
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), updatedPrograms);
         }
 
         // Calculate new state
@@ -1110,14 +1103,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setProgramsMap(newProgramsMap);
         setYearsToProgramMap(newYearsToProgramMap);
 
-        // Update lastModified timestamp in RTDB and IndexedDB
-        await updateLastModifiedTimestamp();
-
-        // Update IndexedDB with new state
+        // Save to IndexedDB (works both online and offline)
         await saveCompleteStateToIndexedDB({
           yearsToProgramMap: newYearsToProgramMap,
           programsMap: newProgramsMap,
         });
+
+        // Sync to RTDB if online
+        if (isOnline) {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}`), newProgramsMap[programId]);
+          if (!yearsToProgramMap[year]) {
+            await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), [programId]);
+          } else if (!yearsToProgramMap[year].includes(programId)) {
+            await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), newYearsToProgramMap[year]);
+          }
+          await updateLastModifiedTimestamp();
+        }
 
         logger.info("AddProgram", "Program added", { programId, displayName: trimmedDisplayName, year });
       } catch (err) {
@@ -1133,10 +1134,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (!user) {
         throw new Error("Must be logged in to update programs");
       }
-      if (!isOnline) {
-        throw new Error("Cannot update programs while offline");
-      }
-
       try {
         // Get the current program
         const currentProgram = programsMap[programId];
@@ -1163,9 +1160,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           throw new Error(`A program with the display name "${trimmedDisplayName}" already exists`);
         }
 
-        // Update program in Firebase (only displayName can change, ID remains the same)
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}/displayName`), trimmedDisplayName);
-
         // Calculate new state
         const newProgramsMap = {
           ...programsMap,
@@ -1175,13 +1169,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           },
         };
 
-        // Update IndexedDB
-        await saveCompleteStateToIndexedDB({ programsMap: newProgramsMap });
-
-        // Update lastModified timestamp in RTDB and IndexedDB
-        await updateLastModifiedTimestamp();
-
-        // Update React state after successful persistence
+        // Update React state
         setProgramsMap(newProgramsMap);
 
         // Update selectedProgram if it's the one we just modified
@@ -1189,6 +1177,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           if (!current || current.id !== programId) return current;
           return newProgramsMap[programId];
         });
+
+        // Save to IndexedDB (works both online and offline)
+        await saveCompleteStateToIndexedDB({ programsMap: newProgramsMap });
+
+        // Sync to RTDB if online
+        if (isOnline) {
+          await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}/displayName`), trimmedDisplayName);
+          await updateLastModifiedTimestamp();
+        }
 
         logger.info("UpdateProgram", "Program updated", { programId, newDisplayName: trimmedDisplayName });
       } catch (err) {
@@ -1351,23 +1348,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
-  const persistVolunteersToCache = useCallback(
-    async (newMap: VolunteersMap) => {
-      const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
-      try {
-        const cached = await getDataFromIndexedDB(constantsCacheKey) as unknown as Record<string, unknown> | null;
-        await saveDataToIndexedDB(constantsCacheKey, { ...cached, volunteersMap: newMap } as unknown as DatabaseData);
-      } catch {
-        logger.warn("Volunteers", "Failed to update constants cache");
-      }
-    },
-    []
-  );
-
   const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
       if (!user) {
         throw new Error("Must be logged in to update volunteer name");
+      }
+      if (!isOnline) {
+        throw new Error("Cannot update volunteers while offline");
       }
 
       try {
@@ -1386,13 +1373,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [user, volunteersMap, persistVolunteersToCache]
+    [user, isOnline, volunteersMap, persistVolunteersToCache]
   );
 
   const addVolunteer = useCallback(
     async (code: string, fullName: string) => {
       if (!user) {
         throw new Error("Must be logged in to add volunteer");
+      }
+      if (!isOnline) {
+        throw new Error("Cannot add volunteers while offline");
       }
 
       const trimmedCode = code.trim().toUpperCase();
@@ -1408,7 +1398,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersMap/${trimmedCode}`), newVolunteer);
       logger.info("AddVolunteer", `Added volunteer ${trimmedCode}`);
     },
-    [user, volunteersMap, persistVolunteersToCache]
+    [user, isOnline, volunteersMap, persistVolunteersToCache]
   );
 
   return (

@@ -23,7 +23,7 @@ const COLUMNS = [
 const numericColumns = new Set<string>(COLUMNS.filter((c) => c.type === "number").map((c) => c.key));
 
 export default function Volunteers() {
-  const { volunteersMap, isLoggedIn, updateVolunteerName, addVolunteer } = useData();
+  const { volunteersMap, isLoggedIn, isOnline, updateVolunteerName, addVolunteer } = useData();
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
     { column: "totalBanded", direction: "descending" },
   ]);
@@ -74,6 +74,7 @@ export default function Volunteers() {
               {isLoggedIn && (
                 <Button
                   color="secondary"
+                  isDisabled={!isOnline}
                   onPress={() => {
                     setNewCode("");
                     setNewFullName("");
@@ -137,9 +138,9 @@ export default function Volunteers() {
                     if (columnKey === "fullName") {
                       return (
                         <TableCell
-                          className={`text-default-700 ${isLoggedIn ? "cursor-pointer hover:text-primary" : ""}`}
+                          className={`text-default-700 ${isLoggedIn && isOnline ? "cursor-pointer hover:text-primary" : ""}`}
                           onClick={(e) => {
-                            if (isLoggedIn) {
+                            if (isLoggedIn && isOnline) {
                               e.stopPropagation();
                               setEditingCode(item.code);
                               setEditingName(item.fullName);

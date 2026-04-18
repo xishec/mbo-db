@@ -1,58 +1,110 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button, Chip } from "@heroui/react";
 import { useData } from "../../services/useData";
 import CaptureHistoryModal from "./CaptureHistoryModal";
-import { formatUpdatedAt } from "../PageContent/Programs/Captures/helpers";
 import { MagnifyingGlassIcon } from "@heroicons/react/16/solid";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
+import { logger, type LogEntry, LogLevel } from "../../services/logger";
 
-enum ModificationType {
-  Addition = "Added",
-  Modification = "Modified",
+const ACTION_CATEGORIES = new Set([
+  "AddBirdEvent",
+  "AddProgram",
+  "UpdateProgram",
+  "SaveDET",
+  "DismissConflict",
+  "ResetDismissedConflicts",
+  "UpdateBandSizeMap",
+  "AddVolunteer",
+  "UpdateVolunteerName",
+  "SyncQueue",
+  "AutoSync",
+]);
+
+const MAX_ENTRIES = 30;
+
+function getCategoryColor(category: string): "success" | "primary" | "secondary" | "warning" | "danger" | "default" {
+  switch (category) {
+    case "AddBirdEvent": return "success";
+    case "AddProgram": return "primary";
+    case "UpdateProgram": return "warning";
+    case "SaveDET": return "secondary";
+    case "DismissConflict":
+    case "ResetDismissedConflicts": return "danger";
+    case "SyncQueue":
+    case "AutoSync": return "default";
+    case "AddVolunteer":
+    case "UpdateVolunteerName": return "primary";
+    default: return "default";
+  }
 }
 
-interface BirdEventHistoryModalProps {
+function getCategoryLabel(category: string): string {
+  switch (category) {
+    case "AddBirdEvent": return "Bird Event";
+    case "AddProgram": return "Add Program";
+    case "UpdateProgram": return "Edit Program";
+    case "SaveDET": return "DET";
+    case "DismissConflict": return "Dismiss Error";
+    case "ResetDismissedConflicts": return "Reset Errors";
+    case "UpdateBandSizeMap": return "Band Size";
+    case "AddVolunteer": return "Add Volunteer";
+    case "UpdateVolunteerName": return "Edit Volunteer";
+    case "SyncQueue": return "Sync";
+    case "AutoSync": return "Auto Sync";
+    default: return category;
+  }
+}
+
+function formatTime(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+}
+
+interface RecentHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModalProps) {
+export function BirdEventHistoryModal({ isOpen, onClose }: RecentHistoryModalProps) {
   const { birdEventsMap } = useData();
+  const [logs, setLogs] = useState<LogEntry[]>(logger.getLogs());
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [selectedBirdEventId, setSelectedBirdEventId] = useState<string | null>(null);
   const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
 
-  // Get the 10 most recent bird events based on updatedAt timestamp
-  const birdEvents = useMemo(() => {
-    const allBirdEvents = Object.values(birdEventsMap);
+  useEffect(() => {
+    const unsubscribe = logger.subscribe(setLogs);
+    return unsubscribe;
+  }, []);
 
-    // Filter out events without valid updatedAt and sort by timestamp (descending - newest first)
-    return allBirdEvents
-      .filter((event) => event.updatedAt && !isNaN(Number(event.updatedAt)))
-      .sort((a, b) => {
-        // updatedAt is stored as a string timestamp, convert directly to number
-        const dateA = Number(a.updatedAt);
-        const dateB = Number(b.updatedAt);
-        return dateB - dateA;
-      })
-      .slice(0, 10);
-  }, [birdEventsMap]);
+  const recentActions = useMemo(() => {
+    return logs
+      .filter((log) => ACTION_CATEGORIES.has(log.category) && log.level === LogLevel.INFO)
+      .slice(-MAX_ENTRIES)
+      .reverse();
+  }, [logs]);
 
-  const handleEventClick = (event: (typeof birdEvents)[0]) => {
-    if (event.band) {
+  const handleBirdEventClick = (log: LogEntry) => {
+    const data = log.data as Record<string, string> | undefined;
+    const eventId = data?.eventId;
+    if (!eventId) return;
+
+    const event = birdEventsMap[eventId];
+    if (event?.band) {
       setSelectedBandId(event.band.id);
-      setSelectedBirdEventId(event.id);
+      setSelectedBirdEventId(eventId);
       setIsCaptureHistoryModalOpen(true);
     }
-  };
-
-  const getModificationType = (event: (typeof birdEvents)[0]): ModificationType => {
-    if (event.previousEventId) {
-      return ModificationType.Modification;
-    }
-    return ModificationType.Addition;
   };
 
   return (
@@ -66,56 +118,67 @@ export function BirdEventHistoryModal({ isOpen, onClose }: BirdEventHistoryModal
           scrollBehavior: "inside",
         }}
       >
-          <ModalHeaderShell>
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl">Recent History</h2>
-                <p className="text-sm text-default-900 font-light">Showing the 10 most recently updated bird events</p>
-              </div>
-            </div>
-          </ModalHeaderShell>
+        <ModalHeaderShell>
+          <div>
+            <h2 className="text-xl">Recent Activity</h2>
+            <p className="text-sm text-default-600 font-light">
+              Last {recentActions.length} actions this session
+            </p>
+          </div>
+        </ModalHeaderShell>
 
-          <ModalBodyShell>
-            <div className="flex flex-col gap-2">
-              {birdEvents.map((event) => (
-                <div key={event.id} className="flex flex-row gap-2">
-                  <div
-                    className="flex-grow h-10 px-3 border border-default-200 rounded-medium hover:bg-default-100 cursor-pointer transition-colors flex items-center"
-                    onClick={() => handleEventClick(event)}
-                  >
-                    <div className="grid grid-cols-[25px_100px_170px_80px_100px_170px] gap-3 text-sm w-full items-center">
-                      <MagnifyingGlassIcon className="w-4 h-4 text-default-900 flex-shrink-0" />
-                      <span className="font-bold text-default-900">
-                        {event.band?.bandGroupId}
-                        {event.band?.last2digits}
+        <ModalBodyShell>
+          <div className="flex flex-col gap-2">
+            {recentActions.map((log) => {
+              const data = log.data as Record<string, string> | undefined;
+              const isBirdEvent = log.category === "AddBirdEvent" && data?.eventId;
+              const event = isBirdEvent ? birdEventsMap[data.eventId] : null;
+
+              return (
+                <div
+                  key={log.id}
+                  className={`h-10 px-3 border border-default-200 rounded-medium flex items-center gap-3 text-sm transition-colors ${
+                    isBirdEvent ? "hover:bg-default-100 cursor-pointer" : ""
+                  }`}
+                  onClick={isBirdEvent ? () => handleBirdEventClick(log) : undefined}
+                >
+                  {isBirdEvent && <MagnifyingGlassIcon className="w-4 h-4 text-default-400 flex-shrink-0" />}
+                  <Chip size="sm" variant="flat" color={getCategoryColor(log.category)}>
+                    {getCategoryLabel(log.category)}
+                  </Chip>
+
+                  {event ? (
+                    <>
+                      <span className="font-bold">
+                        {event.band?.bandGroupId}{event.band?.last2digits}
                       </span>
-                      <span className="text-default-900">
-                        {event.date} {event.time}
-                      </span>
-                      <span className="text-default-900 font-bold">
+                      <span className="font-bold">
                         <SpeciesTooltip speciesCode={event.species} />
                       </span>
-                      <Chip
-                        size="sm"
-                        variant="flat"
-                        color={getModificationType(event) === ModificationType.Modification ? "warning" : "success"}
-                      >
-                        {getModificationType(event)}
-                      </Chip>
-                      <span className="text-default-900">{formatUpdatedAt(event.updatedAt)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {birdEvents.length === 0 && <div className="text-center text-default-500 py-8">No bird events found</div>}
-            </div>
-          </ModalBodyShell>
+                      <span className="text-default-500">{event.date} {event.time}</span>
+                    </>
+                  ) : (
+                    <span className="text-default-700 truncate">{log.message}</span>
+                  )}
 
-          <ModalFooterShell>
-            <Button {...modalPrimaryButtonProps} onPress={onClose}>
-              Close
-            </Button>
-          </ModalFooterShell>
+                  <span className="ml-auto text-default-400 text-xs whitespace-nowrap">
+                    {formatTime(log.timestamp)}
+                  </span>
+                </div>
+              );
+            })}
+
+            {recentActions.length === 0 && (
+              <div className="text-center text-default-500 py-8">No recent activity</div>
+            )}
+          </div>
+        </ModalBodyShell>
+
+        <ModalFooterShell>
+          <Button {...modalPrimaryButtonProps} onPress={onClose}>
+            Close
+          </Button>
+        </ModalFooterShell>
       </ModalShell>
 
       <CaptureHistoryModal

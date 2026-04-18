@@ -92,6 +92,11 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
           )}
         </ModalHeaderShell>
         <ModalBodyShell>
+          {!isOnline && (
+            <div className="bg-warning-50 border border-warning-200 rounded-medium p-3 text-sm text-warning-800">
+              You are currently offline. Changes will be saved locally and synced when back online. Please make sure no one else edits this program before you sync.
+            </div>
+          )}
           <Input
             label="Display Name"
             placeholder="Enter display name (e.g., MBO Fall Migration)"
@@ -119,7 +124,7 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
           <Button
             {...modalPrimaryButtonProps}
             onPress={handleSubmit}
-            isDisabled={!displayName.trim() || !hasChanged || isDuplicate || !isOnline}
+            isDisabled={!displayName.trim() || !hasChanged || isDuplicate}
             isLoading={isLoading}
             className="flex-1"
           >

@@ -14,13 +14,12 @@ import {
   Chip,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-import { CodeBracketIcon, ExclamationTriangleIcon, ArrowPathIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { CodeBracketIcon, ExclamationTriangleIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useMemo } from "react";
 import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
-import { SyncQueueModal } from "./Modals/SyncQueueModal";
-import { BirdEventHistoryModal } from "./Modals/BirdEventHistoryModal";
+import { ActivityModal } from "./Modals/ActivityModal";
 import { useData } from "../services/useData";
 import { findBirdEventErrors } from "../types/birdEventErrors";
 import mboLogo from "../assets/mbo-logo.svg";
@@ -35,8 +34,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
-  const { isOpen: isSyncQueueOpen, onOpen: onSyncQueueOpen, onClose: onSyncQueueClose } = useDisclosure();
-  const { isOpen: isHistoryOpen, onOpen: onHistoryOpen, onClose: onHistoryClose } = useDisclosure();
+  const { isOpen: isActivityOpen, onOpen: onActivityOpen, onClose: onActivityClose } = useDisclosure();
   const {
     birdEventsMap,
     bandIdToBirdEventIdsMap,
@@ -52,14 +50,11 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     signOut: handleSignOut,
   } = useData();
 
-  // Wrapper functions to prevent modal opens during loading
   const handleLogsOpen = () => !isLoading && onLogsOpen();
   const handleErrorsOpen = () => !isLoading && onErrorsOpen();
-  const handleSyncQueueOpen = () => !isLoading && onSyncQueueOpen();
-  const handleHistoryOpen = () => !isLoading && onHistoryOpen();
+  const handleActivityOpen = () => !isLoading && onActivityOpen();
   const handleLoginOpen = () => !isLoading && onOpen();
 
-  // Calculate error count - only severe errors
   const errorCount = useMemo(() => {
     const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
     const severeErrors = allErrors.filter((error) => error.severity === "danger");
@@ -94,7 +89,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 variant="flat"
                 color={isOnline ? "primary" : "secondary"}
                 className="cursor-pointer"
-                onClick={handleSyncQueueOpen}
+                onClick={handleActivityOpen}
               >
                 {isOnline ? "Online" : "Offline"}
               </Chip>
@@ -112,7 +107,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
           </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-12" justify="center">
-          {(["home", "programs", "search", "DETs", "species", "volunteers", "reports"] as const).map((page) => (
+          {(["home", "programs", "DETs"] as const).map((page) => (
             <NavbarItem key={page} isActive={activePage === page}>
               <Link
                 aria-current={activePage === page ? "page" : undefined}
@@ -131,13 +126,37 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               </Link>
             </NavbarItem>
           ))}
+          <Dropdown>
+            <NavbarItem isActive={["search", "species", "volunteers", "reports"].includes(activePage)}>
+              <DropdownTrigger>
+                <Button
+                  variant="light"
+                  className={`text-md ${isLoading ? "pointer-events-none opacity-50" : ""} ${
+                    ["search", "species", "volunteers", "reports"].includes(activePage) ? "text-primary" : "text-foreground"
+                  }`}
+                  endContent={<ChevronDownIcon className="w-4 h-4" />}
+                >
+                  More
+                </Button>
+              </DropdownTrigger>
+            </NavbarItem>
+            <DropdownMenu
+              aria-label="More pages"
+              onAction={(key) => {
+                if (!isLoading) {
+                  selectProgram(null);
+                  onPageChange(key as string);
+                }
+              }}
+            >
+              <DropdownItem key="search">Search</DropdownItem>
+              <DropdownItem key="species">Species</DropdownItem>
+              <DropdownItem key="volunteers">Volunteers</DropdownItem>
+              <DropdownItem key="reports">Reports</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
         </NavbarContent>
         <NavbarContent justify="end">
-          <NavbarItem>
-            <Button isIconOnly variant="light" onPress={handleHistoryOpen} aria-label="View bird event history" isDisabled={isLoading}>
-              <ClockIcon className="w-5 h-5" />
-            </Button>
-          </NavbarItem>
           <NavbarItem>
             <Badge content={errorCount} color="danger" size="sm" showOutline={false} disableAnimation isInvisible={errorCount === 0}>
               <Button isIconOnly variant="light" onPress={handleErrorsOpen} aria-label="View errors" isDisabled={isLoading}>
@@ -146,7 +165,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             </Badge>
           </NavbarItem>
           <NavbarItem>
-            <Button isIconOnly variant="light" onPress={handleLogsOpen} aria-label="View logs" isDisabled={isLoading}>
+            <Button isIconOnly variant="light" onPress={handleLogsOpen} aria-label="Developer tools" isDisabled={isLoading}>
               <CodeBracketIcon className="w-5 h-5" />
             </Button>
           </NavbarItem>
@@ -177,8 +196,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
       <LoginModal isOpen={isOpen} onOpenChange={onOpenChange} />
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
       <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />
-      <SyncQueueModal isOpen={isSyncQueueOpen} onClose={onSyncQueueClose} />
-      <BirdEventHistoryModal isOpen={isHistoryOpen} onClose={onHistoryClose} />
+      <ActivityModal isOpen={isActivityOpen} onClose={onActivityClose} />
     </>
   );
 }
