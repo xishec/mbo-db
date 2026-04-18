@@ -20,16 +20,21 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
 
     setIsCopying(true);
     try {
-      const [prodSnap, prodConstantsSnap] = await Promise.all([
-        get(ref(db, "prod")),
-        get(ref(db, "constants/prod")),
-      ]);
-
+      // Copy each top-level key separately to avoid "Write too large" error
+      const prodSnap = await get(ref(db, "prod"));
       if (prodSnap.exists()) {
-        await set(ref(db, "alpha"), prodSnap.val());
+        const prodData = prodSnap.val() as Record<string, unknown>;
+        for (const [key, value] of Object.entries(prodData)) {
+          await set(ref(db, `alpha/${key}`), value);
+        }
       }
+
+      const prodConstantsSnap = await get(ref(db, "constants/prod"));
       if (prodConstantsSnap.exists()) {
-        await set(ref(db, "constants/alpha"), prodConstantsSnap.val());
+        const constData = prodConstantsSnap.val() as Record<string, unknown>;
+        for (const [key, value] of Object.entries(constData)) {
+          await set(ref(db, `constants/alpha/${key}`), value);
+        }
       }
 
       alert("Done! Reload the app to see changes.");
