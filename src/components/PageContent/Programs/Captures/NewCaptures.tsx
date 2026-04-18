@@ -1,10 +1,11 @@
-import { Autocomplete, AutocompleteItem, Spinner, Switch } from "@heroui/react";
+import { Select, SelectItem, Chip, Spinner, Switch } from "@heroui/react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
+import { BandSize } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
 
 export default function NewCaptures() {
-  const { selectedProgram, bandGroupsMap, birdEventsMap, isLoading } = useData();
+  const { selectedProgram, bandGroupsMap, birdEventsMap, bandSizeToBandIdMap, isLoading } = useData();
 
   // Get band group IDs for the selected program
   const bandGroupIds = useMemo(() => {
@@ -23,10 +24,30 @@ export default function NewCaptures() {
     return result;
   }, [bandGroupIds, bandGroupsMap, birdEventsMap]);
 
-  // Convert bandGroupToNewCaptures keys to sorted array for autocomplete
+  // Map band group ID to its band size label
+  const bandGroupToBandSize = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const [size, bandId] of Object.entries(bandSizeToBandIdMap)) {
+      if (size === BandSize.Other || !bandId || bandId.length < 7) continue;
+      const group = bandId.slice(0, 7);
+      map[group] = size;
+    }
+    return map;
+  }, [bandSizeToBandIdMap]);
+
+  // Convert bandGroupToNewCaptures keys to sorted array, ordered by band size then band group ID
   const bandGroupOptions = useMemo(() => {
-    return Object.keys(bandGroupToNewCaptures).sort();
-  }, [bandGroupToNewCaptures]);
+    const sizeOrder = Object.values(BandSize);
+    const groups = Object.keys(bandGroupToNewCaptures);
+    return groups.sort((a, b) => {
+      const sizeA = bandGroupToBandSize[a];
+      const sizeB = bandGroupToBandSize[b];
+      const orderA = sizeA ? sizeOrder.indexOf(sizeA as BandSize) : sizeOrder.length;
+      const orderB = sizeB ? sizeOrder.indexOf(sizeB as BandSize) : sizeOrder.length;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.localeCompare(b);
+    });
+  }, [bandGroupToNewCaptures, bandGroupToBandSize]);
 
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const [showOtherPrograms, setShowOtherPrograms] = useState(false);
@@ -74,27 +95,49 @@ export default function NewCaptures() {
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="flex items-center gap-4">
-        <Autocomplete
+        <Select
           label="Band Group"
           placeholder="Select a band group"
           variant="bordered"
-          selectedKey={effectiveBandGroupId}
-          onSelectionChange={(key) => setSelectedBandGroupId(key as string | null)}
+          selectedKeys={effectiveBandGroupId ? [effectiveBandGroupId] : []}
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0] as string | undefined;
+            setSelectedBandGroupId(selected ?? null);
+          }}
           size="md"
           labelPlacement="outside"
           className="max-w-xs"
+          renderValue={(items) => {
+            const item = items[0];
+            if (!item) return null;
+            const bgId = String(item.key);
+            const size = bandGroupToBandSize[bgId];
+            const count = bandGroupToNewCaptures[bgId]?.filter((e) => e.modifiedEventId == null).length ?? 0;
+            return (
+              <div className="flex items-center gap-2">
+                {size && <Chip size="sm" variant="flat" color="secondary">{size}</Chip>}
+                <span>{bgId}</span>
+                <span className="text-xs text-default-400 ml-auto">{count} used</span>
+              </div>
+            );
+          }}
         >
           {bandGroupOptions.map((bandGroupId) => {
             const count =
               bandGroupToNewCaptures[bandGroupId].filter((birdEvent) => birdEvent.modifiedEventId == null).length ?? 0;
             if (count === 0) return null;
+            const size = bandGroupToBandSize[bandGroupId];
             return (
-              <AutocompleteItem key={bandGroupId} endContent={`${count} used`}>
+              <SelectItem
+                key={bandGroupId}
+                startContent={size ? <Chip size="sm" variant="flat" color="secondary">{size}</Chip> : null}
+                endContent={<span className="text-xs text-default-400">{count} used</span>}
+              >
                 {bandGroupId}
-              </AutocompleteItem>
+              </SelectItem>
             );
           })}
-        </Autocomplete>
+        </Select>
         <Switch
           isSelected={showOtherPrograms}
           onValueChange={setShowOtherPrograms}

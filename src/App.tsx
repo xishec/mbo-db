@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@heroui/react";
 import Navigation from "./components/Navigation";
 import PageContent from "./components/PageContent/PageContent";
-import OfflineIndicator from "./components/Helper/OfflineIndicator";
 import LoadingProgressBar from "./components/Helper/LoadingProgressBar";
 import MilestoneCelebration from "./components/Helper/MilestoneCelebration";
 import { DataProvider } from "./services/DataService";
@@ -64,7 +63,6 @@ function AppContent() {
       {isLoading && <LoadingProgressBar />}
       <Navigation activePage={isLoading ? "home" : activePage} onPageChange={handlePageChange} isLoading={isLoading} />
       <PageContent activePage={isLoading ? "home" : activePage} />
-      <OfflineIndicator />
       <MilestoneCelebration />
       {CURRENT_ENVIRONMENT !== "prod" && (
         <div className="fixed bottom-0 right-0 p-2 text-xs text-gray-400 pointer-events-none">

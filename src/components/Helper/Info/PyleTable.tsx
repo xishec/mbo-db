@@ -41,7 +41,7 @@ export default function PyleTable({
   }
 
   const table = (
-    <Table aria-label={`${title} species range`} classNames={{ th: "text-xs", td: "text-xs py-2" }} removeWrapper>
+    <Table classNames={{ th: "text-xs", td: "text-xs py-2" }} removeWrapper>
       <TableHeader>
         <TableColumn>Sex</TableColumn>
         <TableColumn>Weight</TableColumn>
@@ -70,7 +70,7 @@ export default function PyleTable({
   return (
     <div className={containerClassName}>
       <h4 className="text-sm mb-2">
-        <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> statistics - {title}
+        <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> info - {title}
       </h4>
       <div className="flex-1 flex flex-col">
         {withCard ? (

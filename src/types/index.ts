@@ -200,7 +200,7 @@ export interface DataContextType {
   selectedProgram: Program | null;
   selectProgram: (program: Program | null) => void;
 
-  // All data from alpha/
+  // Data
   yearsToProgramMap: YearToProgramMap;
   programsMap: ProgramsMap;
   bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
@@ -232,11 +232,7 @@ export interface DataContextType {
   updateProgram: (programId: string, newDisplayName: string) => Promise<void>;
   syncQueue: () => Promise<void>;
   updateBandSizeMap: (bandSizeMap: BandSizeToBandIdMap) => Promise<void>;
-  incrementBandSize: (
-    bandSize: BandSize,
-    bandGroup: string,
-    bandLastTwoDigits: string
-  ) => Promise<Record<BandSize, string>>;
+  incrementBandSize: (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string) => Promise<Record<BandSize, string>>;
   dismissConflict: (conflictId: string) => Promise<void>;
   resetDismissedConflicts: () => Promise<void>;
   saveDET: (det: DET) => Promise<void>;

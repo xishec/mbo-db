@@ -57,6 +57,7 @@ export default function AddBirdEventModal({
     bandIdToBirdEventIdsMap,
     birdEventsMap,
     addBirdEvent,
+    incrementBandSize,
     bandSizeToBandIdMap,
     volunteersMap,
     speciesInfoMap,
@@ -458,7 +459,7 @@ export default function AddBirdEventModal({
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
         if (shouldContinue) {
-          // Clear bird-specific fields; preserve workflow fields (bander, scribe, date, time, net)
+          // Clear bird-specific fields first, then increment band
           setFormData((prev) => ({
             ...prev,
             species: "",
@@ -473,8 +474,13 @@ export default function AddBirdEventModal({
             notes: "",
           }));
           setLastBandId("");
-          suppressFocusRef.current = true;
           setIsSaving(false);
+
+          // Increment band size after fields are cleared
+          if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
+            suppressFocusRef.current = true;
+            await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
+          }
           focusTo("species");
         } else {
           onOpenChange(false);
@@ -485,7 +491,7 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, bandSize, addBirdEvent, birdEventToModify?.id, isSaving, focusTo, onOpenChange]
+    [formData, bandSize, addBirdEvent, incrementBandSize, birdEventToModify?.id, isSaving, focusTo, onOpenChange]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);

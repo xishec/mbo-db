@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { get, ref, set } from "firebase/database";
+import { get, ref, set, update } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
   type DatabaseData,
@@ -494,28 +494,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * THREE-TIER SYNC ARCHITECTURE (optimized for 50MB database)
-   * ============================================================
-   * React State (volatile) → IndexedDB (persistent cache) → Firebase RTDB (source of truth)
-   *
-   * This architecture enables:
-   * - Offline-first operation with minimal sync overhead
-   * - Delta sync: only changed events (~1-5KB each) instead of full 50MB upload
-   * - Fast sync times (milliseconds vs seconds for full sync)
-   * - Lower Firebase costs and better battery life
-   *
-   * Sync Flow:
-   * 1. User action → Update React state + IndexedDB immediately (optimistic UI)
-   * 2. Queue BirdEvent for background sync
-   * 3. When online → Process queue (sync only deltas to RTDB)
-   * 4. Update React state to reflect synced data
+   * SYNC ARCHITECTURE
+   * =================
+   * Offline: only addBirdEvent allowed — queued to IndexedDB, React state updated for UI
+   * Online: all actions write directly to RTDB
+   * Sync: write queued events to RTDB, then rebuild ALL derived maps from birdEventsMap
    */
 
-  /**
-   * Reconstructs Band class instances from serialized IndexedDB data.
-   * Band is a class with computed properties, so we need to reconstruct instances
-   * after deserialization from IndexedDB.
-   */
+  /** Reconstructs Band class instances from serialized IndexedDB data. */
   const reconstructBandObjects = useCallback((birdEventsMap: BirdEventsMap): BirdEventsMap => {
     return Object.fromEntries(
       Object.entries(birdEventsMap).map(([id, event]) => [
@@ -601,22 +587,28 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const years: YearToProgramMap = {};
       const volCounts: VolunteersMap = {};
 
+      // First pass: build bandIdToBirdEventIdsMap from ALL events (including superseded)
       for (const [id, ev] of Object.entries(allEvents)) {
-        if (!ev || !ev.date || ev.modifiedEventId) continue;
-
-        const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
+        if (!ev || !ev.date) continue;
         const bandId = ev.band?.bandPrefix && ev.band?.bandSuffix
           ? new Band(ev.band.bandPrefix, ev.band.bandSuffix).id
           : "";
-        const bgKey = ev.band ? getBandGroupMapKey(new Band(ev.band.bandPrefix, ev.band.bandSuffix)) : "";
-        const pid = ev.programId || "NONE";
-        const year = ev.date.slice(0, 4);
-
-        // bandIdToBirdEventIdsMap
         if (bandId) {
           if (!bandIdMap[bandId]) bandIdMap[bandId] = [];
           if (!bandIdMap[bandId].includes(id)) bandIdMap[bandId].push(id);
         }
+      }
+
+      // Second pass: build other derived maps from active events only
+      for (const [id, ev] of Object.entries(allEvents)) {
+        if (!ev || !ev.date || ev.modifiedEventId) continue;
+
+        const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
+        const bgKey = ev.band?.bandPrefix && ev.band?.bandSuffix
+          ? getBandGroupMapKey(new Band(ev.band.bandPrefix, ev.band.bandSuffix))
+          : "";
+        const pid = ev.programId || "NONE";
+        const year = ev.date.slice(0, 4);
 
         // bandGroupsMap
         if (bgKey && isNewCapture) {
@@ -720,7 +712,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         for (let i = 0; i < bandIdEntries.length; i += 1000) {
           const batch: Record<string, string[]> = {};
           for (const [k, v] of bandIdEntries.slice(i, i + 1000)) batch[k] = v;
-          const { update } = await import("firebase/database");
           await update(ref(db, `${CURRENT_ENVIRONMENT}/bandIdToBirdEventIdsMap`), batch);
         }
 
@@ -757,6 +748,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setProgramsMap(programs);
         setYearsToProgramMap(years);
         setVolunteersMap(volCounts);
+        setSelectedProgram((current) => {
+          if (!current) return null;
+          return programs[current.id] || current;
+        });
 
         logger.sync("SyncQueue", "Rebuild complete", {
           bands: Object.keys(bandIdMap).length,
@@ -790,18 +785,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         [bandSize]: nextBandId,
       };
 
-      // Update React state immediately
       setBandSizeToBandIdMap(updatedMap);
+      await saveCompleteStateToIndexedDB({ bandSizeToBandIdMap: updatedMap });
 
-      // When online, update RTDB immediately
-      // When offline, state is saved to IndexedDB via addBirdEvent and will sync when back online
       if (isOnline) {
         await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap/${bandSize}`), nextBandId);
       }
 
       return updatedMap;
     },
-    [bandSizeToBandIdMap, isOnline]
+    [bandSizeToBandIdMap, isOnline, saveCompleteStateToIndexedDB]
   );
 
 
@@ -901,11 +894,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           [year]: existingProgramsInYear.includes(captureData.programId) ? existingProgramsInYear : [...existingProgramsInYear, captureData.programId],
         };
 
-        // Increment band size
-        if (bandSize !== BandSize.Other && captureData.bandGroup && captureData.bandLastTwoDigits) {
-          await incrementBandSize(bandSize, captureData.bandGroup, captureData.bandLastTwoDigits);
-        }
-
         // Volunteer counts (React state only — rebuilt on sync)
         const newVolunteersMap = { ...volunteersMap };
         if (captureData.bander && isNewCapture) {
@@ -972,7 +960,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       programsMap,
       syncQueue,
       yearsToProgramMap,
-      incrementBandSize,
       saveCompleteStateToIndexedDB,
     ]
   );
