@@ -371,10 +371,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // If there are pending offline events, keep the cached bandSizeToBandIdMap
         // (it has offline increments that RTDB doesn't know about yet)
         const pendingCount = await getQueueCount();
+        const hasPending = pendingCount > 0;
         const rtdbBandSizeMap = bandSizeSnap.exists() ? bandSizeSnap.val() as Record<BandSize, string> : {} as Record<BandSize, string>;
-        const effectiveBandSizeMap = pendingCount > 0 && cachedData?.bandSizeToBandIdMap
-          ? cachedData.bandSizeToBandIdMap
-          : rtdbBandSizeMap;
 
         const data: DatabaseData = {
           birdEventsMap: birdEventsSnap.val(),
@@ -382,7 +380,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupsMap: bandGroupsSnap.exists() ? bandGroupsSnap.val() : {},
           bandIdToBirdEventIdsMap: bandIdMapSnap.exists() ? bandIdMapSnap.val() : {},
           yearsToProgramMap: yearsToProgramSnap.exists() ? yearsToProgramSnap.val() : {},
-          bandSizeToBandIdMap: effectiveBandSizeMap,
+          bandSizeToBandIdMap: hasPending && cachedData?.bandSizeToBandIdMap ? cachedData.bandSizeToBandIdMap : rtdbBandSizeMap,
           dismissedConflictsMap: dismissedSnap.exists() ? dismissedSnap.val() : {},
           DETsMap: DETsSnap.exists() ? DETsSnap.val() : {},
           volunteersMap: volunteersSnap.exists() ? volunteersSnap.val() : {},
@@ -1117,8 +1115,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateBandSizeMap = useCallback(
     async (newBandSizeMap: Record<BandSize, string>) => {
-      if (!user) throw new Error("Must be logged in to update band size map");
-      if (!isOnline) throw new Error("Cannot update band sizes while offline");
 
       try {
         // Update React state immediately (works both online and offline)

@@ -459,7 +459,11 @@ export default function AddBirdEventModal({
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
         if (shouldContinue) {
-          // Clear bird-specific fields first, then increment band
+          // Increment band size before clearing fields to avoid layout bouncing
+          if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
+            suppressFocusRef.current = true;
+            await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
+          }
           setFormData((prev) => ({
             ...prev,
             species: "",
@@ -475,14 +479,11 @@ export default function AddBirdEventModal({
           }));
           setLastBandId("");
           setIsSaving(false);
-
-          // Increment band size after fields are cleared
-          if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
-            suppressFocusRef.current = true;
-            await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
-          }
           focusTo("species");
         } else {
+          if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
+            await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
+          }
           onOpenChange(false);
         }
       } catch (err) {

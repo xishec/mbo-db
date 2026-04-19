@@ -207,7 +207,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
       <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />
       <ActivityModal isOpen={isActivityOpen} onClose={onActivityClose} />
-      <Modal isOpen={isSyncing || syncResult !== null} isDismissable={!isSyncing} onClose={clearSyncResult} size="sm">
+      <Modal isOpen={isSyncing || syncResult !== null} isDismissable={false} hideCloseButton onClose={clearSyncResult} size="sm">
         <ModalContent>
           <ModalBody>
             <div className="text-center py-6">

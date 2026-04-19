@@ -82,7 +82,10 @@ export default function Home() {
     >
       <div className="space-y-20 max-w-2xl ml-24 font-medium text-5xl">
         <p className="leading-relaxed text-foreground">
-          Latest banding was <span className="font-bold text-primary">{daysAgo}</span> day{daysAgo !== 1 ? "s" : ""} ago
+          Latest banding was{" "}
+          {daysAgo <= 0
+            ? <span className="font-bold text-primary">today</span>
+            : <><span className="font-bold text-primary">{daysAgo}</span> day{daysAgo !== 1 ? "s" : ""} ago</>}
           {banders.length > 0 && (
             <>
               {", "}by <span className="font-bold text-secondary">{banders.join(", ")}</span>
