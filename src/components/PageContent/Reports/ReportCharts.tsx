@@ -48,7 +48,7 @@ type BarChartProps = {
 export function BarChart({ data, ariaLabel, height = 240, valueFormatter }: BarChartProps) {
   if (!data.length) {
     return (
-      <div className="flex h-60 items-center justify-center text-sm text-default-500">
+      <div className="flex h-60 items-center justify-center text-sm text-default-700">
         No data available.
       </div>
     );
@@ -188,7 +188,7 @@ type LineChartProps = {
 export function LineChart({ data, ariaLabel, height = 240, valueFormatter }: LineChartProps) {
   if (!data.length) {
     return (
-      <div className="flex h-60 items-center justify-center text-sm text-default-500">
+      <div className="flex h-60 items-center justify-center text-sm text-default-700">
         No data available.
       </div>
     );
@@ -410,7 +410,7 @@ type MultiLineChartProps = {
 
 export function MultiLineChart({ series, ariaLabel, height = 260, valueFormatter }: MultiLineChartProps) {
   if (!series.length || !series[0].data.length) {
-    return <div className="flex h-60 items-center justify-center text-sm text-default-500">No data available.</div>;
+    return <div className="flex h-60 items-center justify-center text-sm text-default-700">No data available.</div>;
   }
 
   const baseWidth = 900;
@@ -541,7 +541,7 @@ type DailyTrendChartProps = {
 export function DailyTrendChart({ data, ariaLabel, height = 260, valueFormatter }: DailyTrendChartProps) {
   if (!data.length) {
     return (
-      <div className="flex h-60 items-center justify-center text-sm text-default-500">
+      <div className="flex h-60 items-center justify-center text-sm text-default-700">
         No data available.
       </div>
     );
@@ -581,7 +581,7 @@ export function DailyTrendChart({ data, ariaLabel, height = 260, valueFormatter 
 
   return (
     <div className="w-full">
-      <div className="mb-2 flex flex-wrap gap-4 text-xs text-default-500">
+      <div className="mb-2 flex flex-wrap gap-4 text-xs text-default-700">
         <span className="inline-flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-sm" style={{ background: barColor }} />
           Daily total

@@ -163,14 +163,14 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
                         <span className="font-bold">
                           <SpeciesTooltip speciesCode={pending.pendingEvent.species} />
                         </span>
-                        <span className="text-default-500">
+                        <span className="text-default-700">
                           {pending.pendingEvent.date} {pending.pendingEvent.time}
                         </span>
                       </>
                     ) : (
                       <>
                         <span className="font-bold">{pending.det.date}</span>
-                        <span className="text-default-500">{pending.det.programId}</span>
+                        <span className="text-default-700">{pending.det.programId}</span>
                       </>
                     )}
                     <span className="ml-auto text-xs text-warning-600">pending</span>
@@ -210,7 +210,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
                         <span className="font-bold">
                           <SpeciesTooltip speciesCode={event.species} />
                         </span>
-                        <span className="text-default-500">{event.date} {event.time}</span>
+                        <span className="text-default-700">{event.date} {event.time}</span>
                       </>
                     ) : (
                       <span className="text-default-700 truncate">{log.message}</span>
@@ -224,7 +224,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
               })}
 
               {recentActions.length === 0 && (
-                <div className="text-center text-default-500 py-8">No recent activity</div>
+                <div className="text-center text-default-700 py-8">No recent activity</div>
               )}
             </div>
           </div>

@@ -123,7 +123,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               </Button>
             )}
             {!isOnline && lastSyncedAt && (
-              <span className="text-xs text-default-500">
+              <span className="text-xs text-default-700">
                 Last synced {new Date(lastSyncedAt).toLocaleDateString()} {new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
             )}

@@ -26,7 +26,7 @@ function ModeSelector() {
       <div className="text-center max-w-sm mx-4">
         <img src={mboLogo} alt="MBO Logo" className="h-16 w-16 mx-auto mb-6" />
         <h1 className="text-2xl font-bold mb-2">MBO Database</h1>
-        <p className="text-default-500 mb-8">How would you like to start?</p>
+        <p className="text-default-700 mb-8">How would you like to start?</p>
         <div className="flex flex-col gap-3">
           <Button color="primary" size="lg" className="w-full" onPress={chooseOnline}>
             Online

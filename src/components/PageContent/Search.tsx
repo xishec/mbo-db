@@ -300,7 +300,7 @@ export default function Search() {
             {filters.map((filter, index) => (
               <div key={filter.id} className="flex items-center gap-1">
                 {index > 0 && (
-                  <span className="text-xs font-semibold text-default-500 px-1">{filter.logic}</span>
+                  <span className="text-xs font-semibold text-default-700 px-1">{filter.logic}</span>
                 )}
                 <Chip onClose={() => removeFilter(filter.id)} variant="flat" color="secondary" size="md">
                   {getPropertyLabel(filter.property as string)} {getOperatorLabel(filter.operator, filter.property)}

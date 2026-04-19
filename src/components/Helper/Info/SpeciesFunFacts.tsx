@@ -39,7 +39,7 @@ export default function SpeciesFunFacts({
 
   const getStatItemClass = (bandId: string) =>
     bandId === currentBandId
-      ? `${statItemClass} cursor-not-allowed text-default-500`
+      ? `${statItemClass} cursor-not-allowed text-default-700`
       : `${statItemClass} cursor-pointer hover:bg-default-100`;
 
   const renderCurrentBirdNote = (bandId: string) =>
