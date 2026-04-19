@@ -4,6 +4,7 @@ import Home from "./Home";
 import DETs from "./DETs/DETs";
 import SpeciesGroups from "./SpeciesGroups";
 import Volunteers from "./Banders";
+import FunStats from "./FunStats";
 import Reports from "./Reports/Reports";
 
 interface PageContentProps {
@@ -20,6 +21,7 @@ export default function PageContent({ activePage }: PageContentProps) {
         {activePage === "DETs" && <DETs />}
         {activePage === "species" && <SpeciesGroups />}
         {activePage === "volunteers" && <Volunteers />}
+        {activePage === "funstats" && <FunStats />}
         {activePage === "reports" && <Reports />}
       </div>
     </div>

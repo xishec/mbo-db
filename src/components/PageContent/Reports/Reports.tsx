@@ -1895,7 +1895,7 @@ export default function Reports() {
   return (
     <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-6 p-6 print:max-w-full print:p-4">
       <PageHeader
-        title="Annual Program Report"
+        title="Program Report"
         subtitle="Structured to mirror the 2019 MBO annual report with daily banding and census charts."
         actions={
           <Button color="secondary" onPress={handlePrint} isDisabled={!reportData?.groupAnalysis} className="print:hidden">

@@ -424,6 +424,8 @@ export default function DETs() {
                 gridHeaderCell: "text-default-900 font-normal",
                 header: "bg-default-000",
                 gridHeader: "shadow-none",
+                prevButton: "text-default-900 hover:bg-default-200",
+                nextButton: "text-default-900 hover:bg-default-200",
               }}
             />
           </CardBody>
