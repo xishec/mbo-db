@@ -93,6 +93,7 @@ const computeFavoriteRate = (
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState("Initializing...");
   const [error, setError] = useState<string | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -278,6 +279,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // If offline (no network or user chose offline), go straight to cache
         if (forceOffline) {
           if (cachedData && cachedTimestamp) {
+            setLoadingStatus("Loading cached data...");
             logger.info("DataLoad", "Offline — using cached data");
             populateStateFromData(cachedData);
             setLastSyncedAt(cachedTimestamp);
@@ -290,6 +292,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Online — try to get the lastModified timestamp from Firebase
+        setLoadingStatus("Checking for updates...");
         let firebaseTimestamp: number | null = null;
         try {
           const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`));
@@ -312,6 +315,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const needsFetch = !cachedData || !cachedTimestamp || !firebaseTimestamp || firebaseTimestamp > cachedTimestamp;
 
         if (!needsFetch && cachedData) {
+          setLoadingStatus("Cache is up to date");
           logger.info("DataLoad", `Using cached ${CURRENT_ENVIRONMENT}/ data (up to date)`);
           populateStateFromData(cachedData);
           setLastSyncedAt(cachedTimestamp);
@@ -321,6 +325,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // If local is newer than RTDB, we have unsynced changes — keep local
         if (cachedData && cachedTimestamp && firebaseTimestamp && cachedTimestamp > firebaseTimestamp) {
+          setLoadingStatus("Using local data (unsynced changes)");
           logger.info("DataLoad", `Local data is newer than RTDB — using local cache (unsynced changes)`);
           populateStateFromData(cachedData);
           setLastSyncedAt(cachedTimestamp);
@@ -330,6 +335,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // If we can't reach Firebase but have previously-synced cached data, use it
         if (firebaseTimestamp === null && cachedData && cachedTimestamp) {
+          setLoadingStatus("Using cached data (Firebase unreachable)");
           logger.info(
             "DataLoad",
             `Offline — using cached ${CURRENT_ENVIRONMENT}/ data (last synced ${new Date(cachedTimestamp).toLocaleString()})`
@@ -340,38 +346,74 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Fetch fresh data from Firebase
-        logger.info("DataLoad", `Fetching fresh ${CURRENT_ENVIRONMENT}/ data from Firebase RTDB...`);
-        const snapshot = await get(ref(db, CURRENT_ENVIRONMENT));
+        // Fetch data from Firebase — parallel by key for speed
+        logger.info("DataLoad", `Fetching ${CURRENT_ENVIRONMENT}/ data from Firebase RTDB...`);
+        const env = CURRENT_ENVIRONMENT;
+
+        // Fetch all keys in parallel, tracking progress per completion
+        let completed = 0;
+        const totalFetches = 9;
+        const trackFetch = <T,>(promise: Promise<T>, label: string): Promise<T> =>
+          promise.then((result) => {
+            completed++;
+            setLoadingStatus(`Downloading ${label}... (${completed}/${totalFetches})`);
+            return result;
+          });
+
+        const [
+          birdEventsSnap,
+          programsSnap,
+          bandGroupsSnap,
+          bandIdMapSnap,
+          yearsToProgramSnap,
+          bandSizeSnap,
+          dismissedSnap,
+          DETsSnap,
+          volunteersSnap,
+        ] = await Promise.all([
+          trackFetch(get(ref(db, `${env}/birdEventsMap`)), "bird events"),
+          trackFetch(get(ref(db, `${env}/programsMap`)), "programs"),
+          trackFetch(get(ref(db, `${env}/bandGroupsMap`)), "band groups"),
+          trackFetch(get(ref(db, `${env}/bandIdToBirdEventIdsMap`)), "band index"),
+          trackFetch(get(ref(db, `${env}/yearsToProgramMap`)), "years"),
+          trackFetch(get(ref(db, `${env}/bandSizeToBandIdMap`)), "band sizes"),
+          trackFetch(get(ref(db, `${env}/dismissedConflictsMap`)), "conflicts"),
+          trackFetch(get(ref(db, `${env}/DETsMap`)), "DETs"),
+          trackFetch(get(ref(db, `${env}/volunteersMap`)), "volunteers"),
+        ]);
 
         if (cancelled) return;
 
-        if (snapshot.exists()) {
-          const data = snapshot.val() as DatabaseData;
-
-          // Save to IndexedDB
-          await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
-          if (firebaseTimestamp) {
-            await saveLastUpdated(CURRENT_ENVIRONMENT, firebaseTimestamp);
-          }
-
-          populateStateFromData(data);
-          setLastSyncedAt(firebaseTimestamp ?? Date.now());
-
-          const loadStats = {
-            yearsToProgramMap: Object.keys(data.yearsToProgramMap ?? {}).length,
-            programsMap: Object.keys(data.programsMap ?? {}).length,
-            bandIdToBirdEventIdsMap: Object.keys(data.bandIdToBirdEventIdsMap ?? {}).length,
-            birdEventsMap: Object.keys(data.birdEventsMap ?? {}).length,
-            bandGroupsMap: Object.keys(data.bandGroupsMap ?? {}).length,
-            DETsMap: Object.keys(data.DETsMap ?? {}).length,
-          };
-          logger.info("DataLoad", `Loaded ${CURRENT_ENVIRONMENT}/ data`, loadStats);
-        } else {
-          const errorMsg = `Error: ${CURRENT_ENVIRONMENT}/ is missing from the database. Please run import scripts.`;
-          setError(errorMsg);
-          logger.error("DataLoad", errorMsg);
+        if (!birdEventsSnap.exists()) {
+          setError(`Error: ${CURRENT_ENVIRONMENT}/ is missing from the database. Please run import scripts.`);
+          return;
         }
+
+        const data: DatabaseData = {
+          birdEventsMap: birdEventsSnap.val(),
+          programsMap: programsSnap.exists() ? programsSnap.val() : {},
+          bandGroupsMap: bandGroupsSnap.exists() ? bandGroupsSnap.val() : {},
+          bandIdToBirdEventIdsMap: bandIdMapSnap.exists() ? bandIdMapSnap.val() : {},
+          yearsToProgramMap: yearsToProgramSnap.exists() ? yearsToProgramSnap.val() : {},
+          bandSizeToBandIdMap: bandSizeSnap.exists() ? bandSizeSnap.val() : ({} as Record<BandSize, string>),
+          dismissedConflictsMap: dismissedSnap.exists() ? dismissedSnap.val() : {},
+          DETsMap: DETsSnap.exists() ? DETsSnap.val() : {},
+          volunteersMap: volunteersSnap.exists() ? volunteersSnap.val() : {},
+        };
+
+        setLoadingStatus("Saving to local cache...");
+        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
+        if (firebaseTimestamp) await saveLastUpdated(CURRENT_ENVIRONMENT, firebaseTimestamp);
+
+        setLoadingStatus("Ready");
+        populateStateFromData(data);
+        setLastSyncedAt(firebaseTimestamp ?? Date.now());
+
+        logger.info("DataLoad", `Load complete`, {
+          events: Object.keys(data.birdEventsMap).length,
+          programs: Object.keys(data.programsMap).length,
+          bandGroups: Object.keys(data.bandGroupsMap).length,
+        });
       } catch (err) {
         logger.error("DataLoad", `Error loading ${CURRENT_ENVIRONMENT}/ data`, err);
         if (!cancelled) {
@@ -1285,6 +1327,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     <DataContext.Provider
       value={{
         isLoading,
+        loadingStatus,
         error,
         isLoggedIn: !!user || forceOfflineRef.current,
         isAdmin,

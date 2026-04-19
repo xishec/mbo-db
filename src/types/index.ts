@@ -188,6 +188,7 @@ export interface DatabaseData {
 export interface DataContextType {
   // Loading state
   isLoading: boolean;
+  loadingStatus: string;
   error: string | null;
 
   // User authentication

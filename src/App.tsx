@@ -60,7 +60,7 @@ function AppContent() {
 
   return (
     <>
-      {isLoading && <LoadingProgressBar />}
+      <LoadingProgressBar />
       <Navigation activePage={isLoading ? "home" : activePage} onPageChange={handlePageChange} isLoading={isLoading} />
       <PageContent activePage={isLoading ? "home" : activePage} />
       <MilestoneCelebration />
