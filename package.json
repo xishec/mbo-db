@@ -24,6 +24,7 @@
     "build:dir": "cross-env NODE_ENV=production tsc -b && vite build && electron-builder --dir",
     "build:mac": "cross-env NODE_ENV=production tsc -b && vite build && electron-builder --mac",
     "build:mac:arm64": "cross-env NODE_ENV=production tsc -b && vite build && electron-builder --mac dmg --arm64",
+    "copy:prod-to-alpha": "npx tsx scripts/copyProdToAlpha.ts",
     "build:win": "cross-env NODE_ENV=production tsc -b && vite build && electron-builder --win",
     "build:all": "cross-env NODE_ENV=production tsc -b && vite build && electron-builder -mw",
     "deploy": "npm run build:web && firebase deploy --only hosting",

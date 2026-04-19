@@ -187,11 +187,13 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               </Button>
             </Badge>
           </NavbarItem>
-          <NavbarItem>
-            <Button isIconOnly variant="light" onPress={handleLogsOpen} aria-label="Developer tools" isDisabled={isLoading}>
-              <CodeBracketIcon className="w-5 h-5" />
-            </Button>
-          </NavbarItem>
+          {isAdmin && (
+            <NavbarItem>
+              <Button isIconOnly variant="light" onPress={handleLogsOpen} aria-label="Developer tools" isDisabled={isLoading}>
+                <CodeBracketIcon className="w-5 h-5" />
+              </Button>
+            </NavbarItem>
+          )}
           <NavbarItem className="flex items-center">
             {forceOffline ? null : isLoggedIn ? (
               <Dropdown placement="bottom-end">

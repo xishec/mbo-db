@@ -458,7 +458,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setVolunteersMap(data.volunteersMap ?? {});
     };
 
-    const CONSTANTS_CACHE_KEY = `constants_${CURRENT_ENVIRONMENT}`;
+    const CONSTANTS_CACHE_KEY = `constants_cache`;
 
     const loadConstants = async () => {
       if (forceOffline) {
@@ -477,7 +477,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const constantsSnapshot = await get(ref(db, `constants/${CURRENT_ENVIRONMENT}`));
+        const constantsSnapshot = await get(ref(db, `constants`));
         if (constantsSnapshot.exists()) {
           const rtdbConstants = constantsSnapshot.val();
           setMagicTable(rtdbConstants.magicTable ?? { pyle: {} });
@@ -739,7 +739,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const allEvents = eventsSnap.val() as BirdEventsMap;
         const existingPrograms = existingProgramsSnap.exists() ? existingProgramsSnap.val() as ProgramsMap : {};
         // Load fullNameMap from constants cache
-        const constantsCacheKey = `constants_${CURRENT_ENVIRONMENT}`;
+        const constantsCacheKey = `constants_cache`;
         const cachedConstants = await getDataFromIndexedDB(constantsCacheKey) as unknown as { volunteersFullNameMap?: Record<string, string> } | null;
         const fullNameMap = cachedConstants?.volunteersFullNameMap ?? volunteersFullNameMap;
 
@@ -1286,7 +1286,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Update both env volunteersMap and constants fullNameMap
         await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${code}/fullName`), trimmed);
-        await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${code}`), trimmed);
+        await set(ref(db, `constants/volunteersFullNameMap/${code}`), trimmed);
         setVolunteersFullNameMap((prev) => ({ ...prev, [code]: trimmed }));
         await saveCompleteStateToIndexedDB({ volunteersMap: newMap });
       } catch (err) {
@@ -1314,7 +1314,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Write to env path and update constants fullNameMap
       await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${trimmedCode}`), newVolunteer);
       if (trimmedName) {
-        await set(ref(db, `constants/${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${trimmedCode}`), trimmedName);
+        await set(ref(db, `constants/volunteersFullNameMap/${trimmedCode}`), trimmedName);
         setVolunteersFullNameMap((prev) => ({ ...prev, [trimmedCode]: trimmedName }));
       }
       await saveCompleteStateToIndexedDB({ volunteersMap: newMap });

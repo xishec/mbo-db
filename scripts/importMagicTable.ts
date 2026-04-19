@@ -61,12 +61,8 @@ export async function importMagicTable(): Promise<void> {
   const pyleMagicTable = parseCSV(csvContent);
   console.log(`Parsed ${Object.keys(pyleMagicTable).length} species entries`);
 
-  // Write to constants/{env}/ path
-  const environments = ["alpha", "prod"];
-  for (const env of environments) {
-    console.log(`Uploading ${Object.keys(pyleMagicTable).length} species records to 'constants/${env}/magicTable/pyle'...`);
-    await database.ref(`constants/${env}/magicTable/pyle`).set(pyleMagicTable);
-  }
+  console.log(`Uploading ${Object.keys(pyleMagicTable).length} species records to 'constants/magicTable/pyle'...`);
+  await database.ref("constants/magicTable/pyle").set(pyleMagicTable);
 
-  console.log(`✅ Import to all environments complete!`);
+  console.log(`✅ Import complete!`);
 }
