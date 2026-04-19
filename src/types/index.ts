@@ -232,6 +232,9 @@ export interface DataContextType {
   addProgram: (programId: string, displayName: string, year: string) => Promise<void>;
   updateProgram: (programId: string, newDisplayName: string) => Promise<void>;
   syncQueue: () => Promise<void>;
+  isSyncing: boolean;
+  syncResult: "success" | "error" | null;
+  clearSyncResult: () => void;
   updateBandSizeMap: (bandSizeMap: BandSizeToBandIdMap) => Promise<void>;
   incrementBandSize: (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string) => Promise<Record<BandSize, string>>;
   dismissConflict: (conflictId: string) => Promise<void>;

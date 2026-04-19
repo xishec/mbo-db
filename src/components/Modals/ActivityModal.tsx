@@ -73,7 +73,7 @@ interface ActivityModalProps {
 }
 
 export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
-  const { birdEventsMap, pendingCount, isOnline, isAdmin, syncQueue } = useData();
+  const { birdEventsMap, pendingCount, isOnline } = useData();
   const [logs, setLogs] = useState<LogEntry[]>(logger.getLogs());
   const [queuedEvents, setQueuedEvents] = useState<PendingEvent[]>([]);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
@@ -130,13 +130,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
                 {pendingCount > 0 && ` · ${pendingCount} pending`}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              {isOnline && isAdmin && pendingCount > 0 && (
-                <Button color="primary" variant="flat" size="sm" onPress={() => syncQueue()}>
-                  Sync Now
-                </Button>
-              )}
-            </div>
+            <div className="flex items-center gap-3"></div>
           </div>
         </ModalHeaderShell>
 

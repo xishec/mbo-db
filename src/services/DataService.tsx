@@ -98,9 +98,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
-  const [forceOffline, setForceOffline] = useState(false);
+  const [forceOffline, setForceOffline] = useState(!navigator.onLine);
   const [modeChosen, setModeChosen] = useState(false);
   const [milestone, setMilestone] = useState<{ banderCode: string; count: number } | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<"success" | "error" | null>(null);
   const actualIsOnline = useOnlineStatus();
   const isOnline = forceOffline ? false : actualIsOnline;
   const forceOfflineRef = useRef(forceOffline);
@@ -278,11 +280,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // If offline (no network or user chose offline), go straight to cache
         if (forceOffline) {
-          if (cachedData && cachedTimestamp) {
+          if (cachedData) {
             setLoadingStatus("Loading cached data...");
             logger.info("DataLoad", "Offline — using cached data");
             populateStateFromData(cachedData);
-            setLastSyncedAt(cachedTimestamp);
+            setLastSyncedAt(cachedTimestamp ?? Date.now());
             setIsLoading(false);
             return;
           }
@@ -294,27 +296,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // Online — try to get the lastModified timestamp from Firebase
         setLoadingStatus("Checking for updates...");
         let firebaseTimestamp: number | null = null;
+        let firebaseReachable = true;
         try {
           const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`));
           firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
         } catch (firebaseErr) {
+          firebaseReachable = false;
           logger.warn("DataLoad", "Cannot reach Firebase — will use cached data if available", firebaseErr);
         }
 
-        // Log timestamps for debugging
-        logger.debug("DataLoad", "Cache timestamp", {
-          timestamp: cachedTimestamp,
-          formatted: cachedTimestamp ? new Date(cachedTimestamp).toLocaleString() : "None",
-        });
-        logger.debug("DataLoad", "Firebase timestamp", {
-          timestamp: firebaseTimestamp,
-          formatted: firebaseTimestamp ? new Date(firebaseTimestamp).toLocaleString() : "None",
-        });
-
-        // Determine if we need to fetch fresh data
-        const needsFetch = !cachedData || !cachedTimestamp || !firebaseTimestamp || firebaseTimestamp > cachedTimestamp;
-
-        if (!needsFetch && cachedData) {
+        // Use cache if it's up to date
+        if (cachedData && cachedTimestamp && firebaseTimestamp && firebaseTimestamp <= cachedTimestamp) {
           setLoadingStatus("Cache is up to date");
           logger.info("DataLoad", `Using cached ${CURRENT_ENVIRONMENT}/ data (up to date)`);
           populateStateFromData(cachedData);
@@ -323,25 +315,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // If local is newer than RTDB, we have unsynced changes — keep local
-        if (cachedData && cachedTimestamp && firebaseTimestamp && cachedTimestamp > firebaseTimestamp) {
-          setLoadingStatus("Using local data (unsynced changes)");
-          logger.info("DataLoad", `Local data is newer than RTDB — using local cache (unsynced changes)`);
-          populateStateFromData(cachedData);
-          setLastSyncedAt(cachedTimestamp);
-          setIsLoading(false);
-          return;
-        }
-
-        // If we can't reach Firebase but have previously-synced cached data, use it
-        if (firebaseTimestamp === null && cachedData && cachedTimestamp) {
+        // If we can't reach Firebase, fall back to cache
+        if (!firebaseReachable && cachedData) {
           setLoadingStatus("Using cached data (Firebase unreachable)");
-          logger.info(
-            "DataLoad",
-            `Offline — using cached ${CURRENT_ENVIRONMENT}/ data (last synced ${new Date(cachedTimestamp).toLocaleString()})`
-          );
+          logger.info("DataLoad", `Firebase unreachable — using cached data`);
           populateStateFromData(cachedData);
-          setLastSyncedAt(cachedTimestamp);
+          setLastSyncedAt(cachedTimestamp ?? Date.now());
           setIsLoading(false);
           return;
         }
@@ -389,13 +368,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // If there are pending offline events, keep the cached bandSizeToBandIdMap
+        // (it has offline increments that RTDB doesn't know about yet)
+        const pendingCount = await getQueueCount();
+        const rtdbBandSizeMap = bandSizeSnap.exists() ? bandSizeSnap.val() as Record<BandSize, string> : {} as Record<BandSize, string>;
+        const effectiveBandSizeMap = pendingCount > 0 && cachedData?.bandSizeToBandIdMap
+          ? cachedData.bandSizeToBandIdMap
+          : rtdbBandSizeMap;
+
         const data: DatabaseData = {
           birdEventsMap: birdEventsSnap.val(),
           programsMap: programsSnap.exists() ? programsSnap.val() : {},
           bandGroupsMap: bandGroupsSnap.exists() ? bandGroupsSnap.val() : {},
           bandIdToBirdEventIdsMap: bandIdMapSnap.exists() ? bandIdMapSnap.val() : {},
           yearsToProgramMap: yearsToProgramSnap.exists() ? yearsToProgramSnap.val() : {},
-          bandSizeToBandIdMap: bandSizeSnap.exists() ? bandSizeSnap.val() : ({} as Record<BandSize, string>),
+          bandSizeToBandIdMap: effectiveBandSizeMap,
           dismissedConflictsMap: dismissedSnap.exists() ? dismissedSnap.val() : {},
           DETsMap: DETsSnap.exists() ? DETsSnap.val() : {},
           volunteersMap: volunteersSnap.exists() ? volunteersSnap.val() : {},
@@ -403,7 +390,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         setLoadingStatus("Saving to local cache...");
         await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
-        if (firebaseTimestamp) await saveLastUpdated(CURRENT_ENVIRONMENT, firebaseTimestamp);
+        await saveLastUpdated(CURRENT_ENVIRONMENT, firebaseTimestamp ?? Date.now());
 
         setLoadingStatus("Ready");
         populateStateFromData(data);
@@ -738,12 +725,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (eventsSnap.exists()) {
         const allEvents = eventsSnap.val() as BirdEventsMap;
         const existingPrograms = existingProgramsSnap.exists() ? existingProgramsSnap.val() as ProgramsMap : {};
-        // Load fullNameMap from constants cache
-        const constantsCacheKey = `constants_cache`;
-        const cachedConstants = await getDataFromIndexedDB(constantsCacheKey) as unknown as { volunteersFullNameMap?: Record<string, string> } | null;
-        const fullNameMap = cachedConstants?.volunteersFullNameMap ?? volunteersFullNameMap;
 
-        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, existingPrograms, fullNameMap);
+        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, existingPrograms, volunteersFullNameMap);
 
         // 3. Write rebuilt maps to RTDB
         await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap`), bandGroups);
@@ -757,14 +740,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           await update(ref(db, `${CURRENT_ENVIRONMENT}/bandIdToBirdEventIdsMap`), batch);
         }
 
-        // Write volunteersMap to env path
+        // Write volunteersMap and bandSizeToBandIdMap to RTDB
         await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap`), volCounts);
-
-        // Sync bandSizeToBandIdMap from local cache
-        const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-        if (cachedData?.bandSizeToBandIdMap) {
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), cachedData.bandSizeToBandIdMap);
-        }
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), bandSizeToBandIdMap);
 
         // 4. Update timestamps
         await updateLastModifiedTimestamp();
@@ -777,9 +755,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupsMap: bandGroups,
           programsMap: programs,
           yearsToProgramMap: years,
-          bandSizeToBandIdMap: cachedData?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
-          dismissedConflictsMap: cachedData?.dismissedConflictsMap ?? {},
-          DETsMap: cachedData?.DETsMap ?? {},
+          bandSizeToBandIdMap,
+          dismissedConflictsMap,
+          DETsMap,
           volunteersMap: volCounts,
         });
         await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
@@ -815,6 +793,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     rebuildMapsFromEvents,
     volunteersFullNameMap,
     updateLastModifiedTimestamp,
+    bandSizeToBandIdMap,
+    dismissedConflictsMap,
+    DETsMap,
   ]);
 
   const incrementBandSize = useCallback(
@@ -945,6 +926,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           if (Math.floor((oldCount + 1) / 1000) > Math.floor(oldCount / 1000)) {
             setMilestone({ banderCode: captureData.bander, count: oldCount + 1 });
           }
+          // for testing
+          if (existing.totalBanded + 1 === 7879) {
+            setMilestone({ banderCode: captureData.bander, count: oldCount + 1 });
+          }
         }
         if (captureData.scribe) {
           const existing = newVolunteersMap[captureData.scribe] ?? { code: captureData.scribe, fullName: volunteersFullNameMap[captureData.scribe] ?? "", totalBanded: 0, totalScribed: 0 };
@@ -970,6 +955,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupsMap: newBandGroupsMap,
           programsMap: newProgramsMap,
           yearsToProgramMap: newYearsToProgramMap,
+          volunteersMap: newVolunteersMap,
         });
 
         // 5. Online: fire-and-forget sync
@@ -1323,6 +1309,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, volunteersMap, saveCompleteStateToIndexedDB]
   );
 
+  const triggerSync = useCallback(async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      await syncQueue();
+      setSyncResult("success");
+    } catch {
+      setSyncResult("error");
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [syncQueue]);
+
+  // Auto-sync when online load completes with pending items
+  useEffect(() => {
+    if (!isLoading && isOnline && pendingCount > 0) {
+      triggerSync();
+    }
+  }, [isLoading, isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <DataContext.Provider
       value={{
@@ -1359,7 +1365,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         addBirdEvent,
         addProgram,
         updateProgram,
-        syncQueue,
+        syncQueue: triggerSync,
+        isSyncing,
+        syncResult,
+        clearSyncResult: () => setSyncResult(null),
         updateBandSizeMap,
         incrementBandSize,
         dismissConflict,

@@ -12,16 +12,22 @@ import {
   DropdownItem,
   Badge,
   Chip,
+  Modal,
+  ModalContent,
+  ModalBody,
+  ModalFooter,
+  Spinner,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-import { CodeBracketIcon, ExclamationTriangleIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
-import { useMemo, useState } from "react";
+import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { useMemo } from "react";
 import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
 import { ActivityModal } from "./Modals/ActivityModal";
 import { useData } from "../services/useData";
 import { findBirdEventErrors } from "../types/birdEventErrors";
+import { CURRENT_ENVIRONMENT } from "../firebase";
 import mboLogo from "../assets/mbo-logo.svg";
 
 interface NavigationProps {
@@ -45,26 +51,14 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     isAdmin,
     isLoggedIn,
     userEmail,
-    syncQueue,
+    isSyncing,
+    syncResult,
+    clearSyncResult,
     selectProgram,
     dismissedConflictsMap,
     forceOffline,
     signOut: handleSignOut,
   } = useData();
-
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      await syncQueue();
-      alert("Sync completed successfully!");
-    } catch {
-      alert("Sync failed. Please try again.");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const handleLogsOpen = () => !isLoading && onLogsOpen();
   const handleErrorsOpen = () => !isLoading && onErrorsOpen();
@@ -80,7 +74,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
 
   return (
     <>
-      <Navbar maxWidth="full" classNames={{ wrapper: "px-8" }}>
+      <Navbar maxWidth="full" classNames={{ wrapper: "px-8", base: CURRENT_ENVIRONMENT !== "prod" ? "bg-primary-400" : "" }}>
         <NavbarBrand
           className="cursor-pointer"
           onClick={() => {
@@ -91,6 +85,9 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
           <img src={mboLogo} alt="MBO Logo" className="h-8 w-8 mr-2" />
           <p className="text-xl">
             <span className="font-bold">MBO</span> Database
+            {CURRENT_ENVIRONMENT !== "prod" && (
+              <span className="ml-2 text-xs font-normal text-warning-600">{CURRENT_ENVIRONMENT}</span>
+            )}
           </p>
           <div className="ml-4 flex items-center gap-2">
             <Badge
@@ -110,18 +107,6 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 {isOnline ? "Online" : "Offline"}
               </Chip>
             </Badge>
-            {isOnline && isAdmin && (
-              <Button
-                isIconOnly
-                variant="light"
-                aria-label="Sync"
-                isDisabled={isSyncing || isLoading}
-                isLoading={isSyncing}
-                onPress={handleSync}
-              >
-                <ArrowPathIcon className="w-5 h-5" />
-              </Button>
-            )}
             {!isOnline && lastSyncedAt && (
               <span className="text-xs text-default-700">
                 Last synced {new Date(lastSyncedAt).toLocaleDateString()} {new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -222,6 +207,39 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
       <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />
       <ActivityModal isOpen={isActivityOpen} onClose={onActivityClose} />
+      <Modal isOpen={isSyncing || syncResult !== null} isDismissable={!isSyncing} onClose={clearSyncResult} size="sm">
+        <ModalContent>
+          <ModalBody>
+            <div className="text-center py-6">
+              {isSyncing ? (
+                <>
+                  <Spinner size="lg" className="mb-4" />
+                  <p className="text-lg font-semibold">Syncing...</p>
+                  <p className="text-sm text-default-500 mt-1">Uploading events and rebuilding data</p>
+                </>
+              ) : syncResult === "success" ? (
+                <>
+                  <div className="text-4xl mb-3">✓</div>
+                  <p className="text-lg font-semibold text-success">Sync Complete</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-4xl mb-3">✗</div>
+                  <p className="text-lg font-semibold text-danger">Sync Failed</p>
+                  <p className="text-sm text-default-500 mt-1">Please try again</p>
+                </>
+              )}
+            </div>
+          </ModalBody>
+          {!isSyncing && (
+            <ModalFooter>
+              <Button color="primary" className="w-full" onPress={clearSyncResult}>
+                Close
+              </Button>
+            </ModalFooter>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 }

@@ -1,8 +1,7 @@
 import type { DatabaseData, PendingEvent, DET } from "../types";
-import { db, CURRENT_ENVIRONMENT } from "../firebase";
-import { ref, get } from "firebase/database";
 
 const DB_NAME = "mbo-db";
+const DB_VERSION = 1;
 
 // Store names
 const METADATA_STORE = "metadata";
@@ -15,61 +14,14 @@ interface MetadataEntry {
 }
 
 /**
- * Fetch dbVersion timestamp from RTDB to use as dynamic DB version
- */
-async function getDBVersion(): Promise<number> {
-  try {
-    const dbVersionRef = ref(db, `${CURRENT_ENVIRONMENT}/metadata/dbVersion`);
-    const snapshot = await get(dbVersionRef);
-    const dbVersion = snapshot.val();
-    
-    if (dbVersion && typeof dbVersion === 'number') {
-      console.log(`[IndexedDB] Using RTDB dbVersion as DB version: ${new Date(dbVersion).toLocaleString()} (${dbVersion})`);
-      return dbVersion;
-    }
-    
-    // Fallback to current timestamp if not found
-    console.warn("[IndexedDB] No dbVersion in RTDB, using current timestamp");
-    return Date.now();
-  } catch (error) {
-    console.error("[IndexedDB] Failed to fetch dbVersion from RTDB:", error);
-    // Fallback to current timestamp on error
-    return Date.now();
-  }
-}
-
-/**
  * Initialize IndexedDB and create object stores
  */
 async function openDB(): Promise<IDBDatabase> {
-  const DB_VERSION = await getDBVersion();
-  
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const db = request.result;
-      
-      // Verify all required stores exist
-      const hasAllStores = 
-        db.objectStoreNames.contains(METADATA_STORE) &&
-        db.objectStoreNames.contains(DATA_STORE) &&
-        db.objectStoreNames.contains(QUEUE_STORE);
-      
-      if (!hasAllStores) {
-        // Close and delete the database, then recreate
-        db.close();
-        const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
-        deleteRequest.onsuccess = () => {
-          // Retry opening with upgrade
-          openDB().then(resolve).catch(reject);
-        };
-        deleteRequest.onerror = () => reject(deleteRequest.error);
-      } else {
-        resolve(db);
-      }
-    };
+    request.onsuccess = () => resolve(request.result);
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
