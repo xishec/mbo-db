@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  overscroll-behavior: none;
+}
+
 @keyframes confetti-fall {
   0% {
     transform: translateY(0) rotate(0deg);

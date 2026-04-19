@@ -84,6 +84,35 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
     setReturnSpeciesCount(computedFromEvents.return_);
   }, [computedFromEvents]);
 
+  // Auto-calculate coverage code
+  useEffect(() => {
+    // Census: 1 if conducted, 0 if not
+    const hasCensus = !!censuser || Object.keys(censusSpeciesCount).length > 0;
+    const censusPoints = hasCensus ? 1 : 0;
+
+    // Banding: based on net hours total
+    const netTotal = parseFloat(netHours.total) || 0;
+    let bandingPoints = 0;
+    if (netTotal >= 75) bandingPoints = 2;
+    else if (netTotal >= 50) bandingPoints = 1.5;
+    else if (netTotal >= 25) bandingPoints = 1;
+    else if (netTotal >= 1) bandingPoints = 0.5;
+
+    // Observations: Class 1 hours + 50% Class 2 hours
+    const weightedHours = (observerHours.observers ?? []).reduce((sum, obs) => {
+      if (obs.class === 1) return sum + obs.hoursObserved;
+      if (obs.class === 2) return sum + obs.hoursObserved * 0.5;
+      return sum;
+    }, 0);
+    let obsPoints = 0;
+    if (weightedHours >= 9) obsPoints = 2;
+    else if (weightedHours >= 6) obsPoints = 1.5;
+    else if (weightedHours >= 3) obsPoints = 1;
+    else if (weightedHours >= 0.5) obsPoints = 0.5;
+
+    setCoverageCode(String(censusPoints + bandingPoints + obsPoints));
+  }, [censuser, censusSpeciesCount, netHours, observerHours]);
+
   // UI state
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -209,10 +238,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setError("Location is required");
       return;
     }
-    if (!coverageCode || isNaN(Number(coverageCode))) {
-      setError("Valid coverage code is required");
-      return;
-    }
 
     try {
       setIsSaving(true);
@@ -314,13 +339,12 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         placeholder="e.g., MBO"
                       />
                       <Input
-                        label="Coverage Code"
+                        label="Coverage Code (auto)"
                         {...modalInputProps}
+                        variant="flat"
                         type="number"
                         value={coverageCode}
-                        onValueChange={setCoverageCode}
-                        isRequired
-                        placeholder="e.g., 1"
+                        isReadOnly
                       />
                       <Input
                         label="Bander in Charge"

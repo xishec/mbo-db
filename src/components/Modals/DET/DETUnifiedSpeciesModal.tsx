@@ -224,8 +224,7 @@ export default function DETUnifiedSpeciesModal({
       modalProps={{
         isOpen,
         onOpenChange,
-        className: "!max-w-[calc(100%-8rem)] !h-[calc(100%-4rem)]",
-        scrollBehavior: "inside",
+        className: "!max-w-[1200px]",
       }}
     >
       {(onClose) => (
@@ -234,13 +233,12 @@ export default function DETUnifiedSpeciesModal({
           <ModalBodyShell>
             <div className="flex flex-col gap-4">
               {/* Table */}
-              <div className="overflow-hidden rounded-medium border border-default-100">
+              <div className="rounded-medium border border-default-100">
                 <Table
                   aria-label="Species data entry table"
                   isHeaderSticky
-                  removeWrapper
                   classNames={{
-                    wrapper: "rounded-medium",
+                    wrapper: "max-h-[600px] overscroll-contain",
                   }}
                 >
                   <TableHeader>
