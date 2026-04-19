@@ -1893,7 +1893,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-6 p-6 print:max-w-full print:p-4">
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4 print:max-w-full print:p-4">
       <PageHeader
         title="Program Report"
         subtitle="Structured to mirror the 2019 MBO annual report with daily banding and census charts."

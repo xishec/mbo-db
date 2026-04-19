@@ -49,7 +49,7 @@ function RankedList({ items, unit }: { items: RankedItem[]; unit: string }) {
 }
 
 export default function FunStats() {
-  const { birdEventsMap, volunteersMap, DETsMap } = useData();
+  const { birdEventsMap, volunteersMap } = useData();
 
   const now = today(getLocalTimeZone());
   const sevenDaysAgo = now.subtract({ days: 7 });
@@ -57,14 +57,20 @@ export default function FunStats() {
   const startDate = `${range.start.year}-${String(range.start.month).padStart(2, "0")}-${String(range.start.day).padStart(2, "0")}`;
   const endDate = `${range.end.year}-${String(range.end.month).padStart(2, "0")}-${String(range.end.day).padStart(2, "0")}`;
 
-  const detDatesSet = useMemo(() => new Set(Object.keys(DETsMap)), [DETsMap]);
+  const eventDatesSet = useMemo(() => {
+    const dates = new Set<string>();
+    for (const ev of Object.values(birdEventsMap)) {
+      if (ev?.date && !ev.modifiedEventId) dates.add(ev.date);
+    }
+    return dates;
+  }, [birdEventsMap]);
 
   const isDateUnavailable = useCallback(
     (date: DateValue) => {
       const dateStr = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
-      return !detDatesSet.has(dateStr);
+      return !eventDatesSet.has(dateStr);
     },
-    [detDatesSet]
+    [eventDatesSet]
   );
 
   const stats = useMemo(() => {
@@ -229,7 +235,7 @@ export default function FunStats() {
   }, [birdEventsMap, volunteersMap, startDate, endDate]);
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-6 p-6">
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4">
       <PageHeader
         title="Fun Stats"
         subtitle="Select a date range to view highlights. Bold dates have DET entries."
@@ -250,7 +256,7 @@ export default function FunStats() {
                 classNames={{
                   base: "bg-white",
                   title: "text-default-900",
-                  headerWrapper: "py-4",
+                  headerWrapper: "py-4 [&>button]:bg-transparent",
                   gridHeaderCell: "text-default-900 font-normal",
                   gridHeader: "shadow-none",
                   prevButton: "text-default-900 hover:bg-default-200",

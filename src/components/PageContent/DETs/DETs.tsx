@@ -394,20 +394,18 @@ export default function DETs() {
   );
 
   return (
-    <div className="h-full w-full max-w-7xl mx-auto flex flex-col items-center pt-4 p-8 gap-4">
-      <div className="w-full">
-        <PageHeader
-          title="Daily Effort Tables"
-          subtitle={`${availableDatesSet.size} DET entries available`}
-          actions={
-            isAdmin ? (
-              <Button color="secondary" onPress={handleAddNew}>
-                Add DET
-              </Button>
-            ) : null
-          }
-        />
-      </div>
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4">
+      <PageHeader
+        title="Daily Effort Tables"
+        subtitle={`${availableDatesSet.size} DET entries available`}
+        actions={
+          isAdmin ? (
+            <Button color="secondary" onPress={handleAddNew}>
+              Add DET
+            </Button>
+          ) : null
+        }
+      />
 
       <div className="w-full mb-4 flex gap-4 items-start">
         <Card className="" shadow="sm">

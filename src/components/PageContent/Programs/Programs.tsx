@@ -70,7 +70,7 @@ export default function Programs() {
 
   return (
     <div
-      className={`h-full w-full flex flex-col items-center pt-4 p-8 gap-4 ${
+      className={`h-full w-full flex flex-col pt-4 p-8 gap-4 ${
         selectedProgram ? "" : "max-w-7xl mx-auto"
       }`}
     >

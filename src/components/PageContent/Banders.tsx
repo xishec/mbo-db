@@ -55,7 +55,7 @@ export default function Volunteers() {
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
 
   return (
-    <div className="h-full w-full max-w-7xl mx-auto flex flex-col items-center pt-4 p-8 gap-4">
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4">
       <div className="w-full">
         <PageHeader
           title="Volunteers"
