@@ -315,6 +315,16 @@ export default function FunStats() {
             <p className="text-default-600 py-12">No events found in this date range.</p>
           ) : (
             <>
+              {/* Date range */}
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard title="From">
+                  <p className="text-xl font-bold">{startDate}</p>
+                </StatCard>
+                <StatCard title="To">
+                  <p className="text-xl font-bold">{endDate}</p>
+                </StatCard>
+              </div>
+
               {/* Overview */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <StatCard title="Species">
