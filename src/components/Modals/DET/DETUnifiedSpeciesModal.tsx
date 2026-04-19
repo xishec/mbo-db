@@ -1,36 +1,23 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import {
-        Button,
-  Input,
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Divider,
-} from "@heroui/react";
+import { Button, Input, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Divider } from "@heroui/react";
 import { SPECIES_MAP } from "../../../types/species";
 import { SPECIES_GROUPS, DET_SPECIES_CODES_SET, type SpeciesListItem } from "../../../types/DET";
 import SpeciesTooltip from "../../Helper/Info/SpeciesTooltip";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
-import {
-        modalInputProps,
-  modalCancelButtonProps,
-  modalPrimaryButtonProps,
-} from "../modalDefaults";
+import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
 
 interface DETUnifiedSpeciesModalProps {
   isOpen: boolean;
   onOpenChange: () => void;
   observedSpeciesCount: Record<string, number>;
   censusSpeciesCount: Record<string, number>;
+  bandedSpeciesCount: Record<string, number>;
+  repeatSpeciesCount: Record<string, number>;
   returnSpeciesCount: Record<string, number>;
   DETSpeciesCount: Record<string, number>;
   onSave: (data: {
     observedSpeciesCount: Record<string, number>;
     censusSpeciesCount: Record<string, number>;
-    returnSpeciesCount: Record<string, number>;
     DETSpeciesCount: Record<string, number>;
   }) => void;
 }
@@ -40,13 +27,14 @@ export default function DETUnifiedSpeciesModal({
   onOpenChange,
   observedSpeciesCount: initialObservedSpeciesCount,
   censusSpeciesCount: initialCensusSpeciesCount,
-  returnSpeciesCount: initialReturnSpeciesCount,
+  bandedSpeciesCount,
+  repeatSpeciesCount,
+  returnSpeciesCount,
   DETSpeciesCount: initialDETSpeciesCount,
   onSave,
 }: DETUnifiedSpeciesModalProps) {
   const [observedSpeciesCount, setObservedSpeciesCount] = useState<Record<string, number>>(initialObservedSpeciesCount);
   const [censusSpeciesCount, setCensusSpeciesCount] = useState<Record<string, number>>(initialCensusSpeciesCount);
-  const [returnSpeciesCount, setReturnSpeciesCount] = useState<Record<string, number>>(initialReturnSpeciesCount);
   const [DETSpeciesCount, setDETSpeciesCount] = useState<Record<string, number>>(initialDETSpeciesCount);
   const [customSpeciesCodes, setCustomSpeciesCodes] = useState<Set<string>>(new Set());
   const [newSpeciesCode, setNewSpeciesCode] = useState("");
@@ -64,14 +52,15 @@ export default function DETUnifiedSpeciesModal({
 
     setObservedSpeciesCount(initialObservedSpeciesCount);
     setCensusSpeciesCount(initialCensusSpeciesCount);
-    setReturnSpeciesCount(initialReturnSpeciesCount);
     setDETSpeciesCount(initialDETSpeciesCount);
 
     // Collect all species codes from the counts to identify custom species
     const allSpeciesCodes = new Set<string>();
     Object.keys(initialObservedSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
     Object.keys(initialCensusSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
-    Object.keys(initialReturnSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+    Object.keys(bandedSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+    Object.keys(repeatSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
+    Object.keys(returnSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
     Object.keys(initialDETSpeciesCount).forEach((code) => allSpeciesCodes.add(code));
 
     const custom = new Set<string>();
@@ -81,13 +70,7 @@ export default function DETUnifiedSpeciesModal({
       }
     });
     setCustomSpeciesCodes(custom);
-  }, [
-    initialObservedSpeciesCount,
-    initialCensusSpeciesCount,
-    initialReturnSpeciesCount,
-    initialDETSpeciesCount,
-    isOpen,
-  ]);
+  }, [initialObservedSpeciesCount, initialCensusSpeciesCount, initialDETSpeciesCount, isOpen]);
 
   // Memoize custom species list - only recalculates when customSpeciesCodes changes
   const customSpeciesList = useMemo(() => {
@@ -172,23 +155,6 @@ export default function DETUnifiedSpeciesModal({
     [addCustomSpeciesIfNeeded]
   );
 
-  const updateReturnCount = useCallback(
-    (speciesCode: string, value: string) => {
-      const numValue = value === "" ? 0 : Number(value) || 0;
-      if (numValue === 0) {
-        setReturnSpeciesCount((prev) => {
-          const updated = { ...prev };
-          delete updated[speciesCode];
-          return updated;
-        });
-      } else {
-        setReturnSpeciesCount((prev) => ({ ...prev, [speciesCode]: numValue }));
-        addCustomSpeciesIfNeeded(speciesCode);
-      }
-    },
-    [addCustomSpeciesIfNeeded]
-  );
-
   const updateDETCount = useCallback(
     (speciesCode: string, value: string) => {
       const numValue = value === "" ? 0 : Number(value) || 0;
@@ -221,11 +187,33 @@ export default function DETUnifiedSpeciesModal({
     setNewSpeciesCode("");
   }, [newSpeciesCode, customSpeciesCodes]);
 
+  // Get only species items (no group headers) for tab navigation
+  const speciesCodes = useMemo(
+    () => filteredSpeciesWithGroups.filter((item) => item.type === "species").map((item) => item.code),
+    [filteredSpeciesWithGroups]
+  );
+
+  const handleTabDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>, code: string, column: string) => {
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      const currentIdx = speciesCodes.indexOf(code);
+      const nextIdx = e.shiftKey ? currentIdx - 1 : currentIdx + 1;
+      if (nextIdx >= 0 && nextIdx < speciesCodes.length) {
+        const nextInput = document.querySelector<HTMLInputElement>(
+          `input[data-species="${speciesCodes[nextIdx]}"][data-column="${column}"]`
+        );
+        nextInput?.focus();
+        nextInput?.select();
+      }
+    },
+    [speciesCodes]
+  );
+
   const handleSave = () => {
     onSave({
       observedSpeciesCount,
       censusSpeciesCount,
-      returnSpeciesCount,
       DETSpeciesCount,
     });
     onOpenChange();
@@ -242,140 +230,141 @@ export default function DETUnifiedSpeciesModal({
     >
       {(onClose) => (
         <>
-            <ModalHeaderShell>Edit Species Data</ModalHeaderShell>
-            <ModalBodyShell>
-              <div className="flex flex-col gap-4">
-                {/* Add Custom Species */}
-                <div className="flex gap-2 items-end">
-                  <Input
-                    value={newSpeciesCode}
-                    onValueChange={setNewSpeciesCode}
-                    {...modalInputProps}
-                    placeholder="Enter custom species code"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleAddCustomSpecies();
-                      }
-                    }}
-                  />
-                  <Button
-                    color="primary"
-                    variant="flat"
-                    onPress={handleAddCustomSpecies}
-                    isDisabled={!newSpeciesCode.trim()}
-                    size="md"
-                  >
-                    Add
-                  </Button>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-hidden rounded-medium border border-default-100">
-                  <Table
-                    aria-label="Species data entry table"
-                    isHeaderSticky
-                    removeWrapper
-                    classNames={{
-                      wrapper: "rounded-medium",
-                    }}
-                  >
-                    <TableHeader>
-                      <TableColumn width={200}>Species</TableColumn>
-                      <TableColumn width={100}>Obs</TableColumn>
-                      <TableColumn width={100}>Cns</TableColumn>
-                      <TableColumn width={100}>Band</TableColumn>
-                      <TableColumn width={100}>Repeat</TableColumn>
-                      <TableColumn width={100}>Ret</TableColumn>
-                      <TableColumn width={100}>DET</TableColumn>
-                    </TableHeader>
-                    <TableBody items={filteredSpeciesWithGroups}>
-                      {(item) => {
-                        if (item.type === "group") {
-                          return (
-                            <TableRow key={`group-${item.groupName}`}>
-                              <TableCell colSpan={7}>
-                                <div className="flex items-center gap-2 py-2">
-                                  <Divider className="flex-1" />
-                                  <span className="font-medium text-sm px-2">
-                                    {item.groupName}
-                                  </span>
-                                  <Divider className="flex-1" />
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        }
-
-                        const code = item.code;
-                        const species = SPECIES_MAP[code];
+          <ModalHeaderShell>Edit Species Data</ModalHeaderShell>
+          <ModalBodyShell>
+            <div className="flex flex-col gap-4">
+              {/* Table */}
+              <div className="overflow-hidden rounded-medium border border-default-100">
+                <Table
+                  aria-label="Species data entry table"
+                  isHeaderSticky
+                  removeWrapper
+                  classNames={{
+                    wrapper: "rounded-medium",
+                  }}
+                >
+                  <TableHeader>
+                    <TableColumn width={200}>Species</TableColumn>
+                    <TableColumn width={100}>Obs</TableColumn>
+                    <TableColumn width={100}>Cns</TableColumn>
+                    <TableColumn width={100}>Band</TableColumn>
+                    <TableColumn width={100}>Repeat</TableColumn>
+                    <TableColumn width={100}>Ret</TableColumn>
+                    <TableColumn width={100}>DET</TableColumn>
+                  </TableHeader>
+                  <TableBody items={filteredSpeciesWithGroups}>
+                    {(item) => {
+                      if (item.type === "group") {
                         return (
-                          <TableRow key={code}>
-                            <TableCell>
-                              <div className="flex flex-col">
-                                <span className="font-medium text-sm"><SpeciesTooltip speciesCode={code} /></span>
-                                {species && species.speciesDescriptionMBO !== code && (
-                                  <span className="text-xs text-gray-500">{species.speciesDescriptionMBO}</span>
-                                )}
+                          <TableRow key={`group-${item.groupName}`}>
+                            <TableCell colSpan={7}>
+                              <div className="flex items-center gap-2 py-2">
+                                <Divider className="flex-1" />
+                                <span className="font-medium text-sm px-2">{item.groupName}</span>
+                                <Divider className="flex-1" />
                               </div>
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <input
-                                type="number"
-                                defaultValue={observedSpeciesCount[code] || ""}
-                                onBlur={(e) => updateObservedCount(code, e.target.value)}
-                                min={0}
-                                className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
-                              />
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <input
-                                type="number"
-                                defaultValue={censusSpeciesCount[code] || ""}
-                                onBlur={(e) => updateCensusCount(code, e.target.value)}
-                                min={0}
-                                className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
-                              />
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <span className="block text-center text-sm text-default-300">—</span>
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <span className="block text-center text-sm text-default-300">—</span>
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <input
-                                type="number"
-                                defaultValue={returnSpeciesCount[code] || ""}
-                                onBlur={(e) => updateReturnCount(code, e.target.value)}
-                                min={0}
-                                className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
-                              />
-                            </TableCell>
-                            <TableCell className="p-1">
-                              <input
-                                type="number"
-                                defaultValue={DETSpeciesCount[code] || ""}
-                                onBlur={(e) => updateDETCount(code, e.target.value)}
-                                min={0}
-                                className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
-                              />
                             </TableCell>
                           </TableRow>
                         );
-                      }}
-                    </TableBody>
-                  </Table>
-                </div>
+                      }
+
+                      const code = item.code;
+                      const species = SPECIES_MAP[code];
+                      return (
+                        <TableRow key={code}>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">
+                                <SpeciesTooltip speciesCode={code} />
+                              </span>
+                              {species && species.speciesDescriptionMBO !== code && (
+                                <span className="text-xs text-gray-500">{species.speciesDescriptionMBO}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <input
+                              type="number"
+                              data-species={code}
+                              data-column="obs"
+                              defaultValue={observedSpeciesCount[code] || ""}
+                              onBlur={(e) => updateObservedCount(code, e.target.value)}
+                              onKeyDown={(e) => handleTabDown(e, code, "obs")}
+                              min={0}
+                              className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <input
+                              type="number"
+                              data-species={code}
+                              data-column="cns"
+                              defaultValue={censusSpeciesCount[code] || ""}
+                              onBlur={(e) => updateCensusCount(code, e.target.value)}
+                              onKeyDown={(e) => handleTabDown(e, code, "cns")}
+                              min={0}
+                              className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <span className="block text-center text-sm">{bandedSpeciesCount[code] || ""}</span>
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <span className="block text-center text-sm">{repeatSpeciesCount[code] || ""}</span>
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <span className="block text-center text-sm">{returnSpeciesCount[code] || ""}</span>
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <input
+                              type="number"
+                              data-species={code}
+                              data-column="det"
+                              defaultValue={DETSpeciesCount[code] || ""}
+                              onBlur={(e) => updateDETCount(code, e.target.value)}
+                              onKeyDown={(e) => handleTabDown(e, code, "det")}
+                              min={0}
+                              className="w-full text-center text-sm border border-default-200 rounded-medium px-2 py-1.5 focus:outline-none focus:border-primary"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }}
+                  </TableBody>
+                </Table>
               </div>
-            </ModalBodyShell>
-            <ModalFooterShell>
-              <Button {...modalCancelButtonProps} onPress={onClose}>
-                Cancel
+            </div>
+          </ModalBodyShell>
+          <ModalFooterShell>
+            <div className="flex gap-2 items-end mr-auto max-w-sm">
+              <Input
+                value={newSpeciesCode}
+                onValueChange={setNewSpeciesCode}
+                {...modalInputProps}
+                placeholder="Custom species code"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleAddCustomSpecies();
+                  }
+                }}
+              />
+              <Button
+                color="primary"
+                variant="flat"
+                onPress={handleAddCustomSpecies}
+                isDisabled={!newSpeciesCode.trim()}
+                size="md"
+              >
+                Add
               </Button>
-              <Button {...modalPrimaryButtonProps} onPress={handleSave}>
-                Save
-              </Button>
-            </ModalFooterShell>
+            </div>
+            <Button {...modalCancelButtonProps} onPress={onClose}>
+              Cancel
+            </Button>
+            <Button {...modalPrimaryButtonProps} onPress={handleSave}>
+              Save
+            </Button>
+          </ModalFooterShell>
         </>
       )}
     </ModalShell>

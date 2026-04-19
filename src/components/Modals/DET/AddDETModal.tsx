@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Textarea } from "@heroui/react";
 import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "../../../types/DET";
+import { BirdEventType } from "../../../types";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDate } from "../../../services/weatherService";
+import { useData } from "../../../services/useData";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
 import DETObserverHoursModal from "./DETObserverHoursModal";
 import DETNetHoursModal from "./DETNetHoursModal";
@@ -26,6 +28,8 @@ interface AddDETModalProps {
 }
 
 export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET, mode }: AddDETModalProps) {
+  const { birdEventsMap } = useData();
+
   // Basic fields
   const [date, setDate] = useState("");
   const [programId, setProgramId] = useState("");
@@ -54,6 +58,31 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [returnSpeciesCount, setReturnSpeciesCount] = useState<Record<string, number>>({});
   const [DETSpeciesCount, setDETSpeciesCount] = useState<Record<string, number>>({});
   const [weather, setWeather] = useState<Weather | undefined>(undefined);
+
+  // Auto-compute banded/repeat species from bird events for the selected date
+  const computedFromEvents = useMemo(() => {
+    if (!date) return { banded: {} as Record<string, number>, repeat: {} as Record<string, number>, return_: {} as Record<string, number> };
+    const banded: Record<string, number> = {};
+    const repeat: Record<string, number> = {};
+    const return_: Record<string, number> = {};
+    for (const ev of Object.values(birdEventsMap)) {
+      if (!ev || ev.date !== date || ev.modifiedEventId || !ev.species) continue;
+      if (ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None) {
+        banded[ev.species] = (banded[ev.species] ?? 0) + 1;
+      } else if (ev.birdEventType === BirdEventType.Repeat) {
+        repeat[ev.species] = (repeat[ev.species] ?? 0) + 1;
+      } else if (ev.birdEventType === BirdEventType.Return) {
+        return_[ev.species] = (return_[ev.species] ?? 0) + 1;
+      }
+    }
+    return { banded, repeat, return_ };
+  }, [date, birdEventsMap]);
+
+  useEffect(() => {
+    setBandedSpeciesCount(computedFromEvents.banded);
+    setRepeatSpeciesCount(computedFromEvents.repeat);
+    setReturnSpeciesCount(computedFromEvents.return_);
+  }, [computedFromEvents]);
 
   // UI state
   const [isSaving, setIsSaving] = useState(false);
@@ -388,6 +417,8 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       <div className="text-sm text-gray-600 space-y-1">
                         <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
                         <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
+                        <p>Banded: {getSpeciesCountSummary(bandedSpeciesCount)}</p>
+                        <p>Repeats: {getSpeciesCountSummary(repeatSpeciesCount)}</p>
                         <p>Return: {getSpeciesCountSummary(returnSpeciesCount)}</p>
                         <p>DET: {getSpeciesCountSummary(DETSpeciesCount)}</p>
                       </div>
@@ -519,12 +550,13 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
         onOpenChange={() => setIsUnifiedSpeciesModalOpen(!isUnifiedSpeciesModalOpen)}
         observedSpeciesCount={observedSpeciesCount}
         censusSpeciesCount={censusSpeciesCount}
+        bandedSpeciesCount={bandedSpeciesCount}
+        repeatSpeciesCount={repeatSpeciesCount}
         returnSpeciesCount={returnSpeciesCount}
         DETSpeciesCount={DETSpeciesCount}
-        onSave={({ observedSpeciesCount, censusSpeciesCount, returnSpeciesCount, DETSpeciesCount }) => {
+        onSave={({ observedSpeciesCount, censusSpeciesCount, DETSpeciesCount }) => {
           setObservedSpeciesCount(observedSpeciesCount);
           setCensusSpeciesCount(censusSpeciesCount);
-          setReturnSpeciesCount(returnSpeciesCount);
           setDETSpeciesCount(DETSpeciesCount);
         }}
       />
