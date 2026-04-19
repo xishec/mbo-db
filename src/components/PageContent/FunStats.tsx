@@ -1,9 +1,11 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { Card, CardBody, RangeCalendar } from "@heroui/react";
-import { today, getLocalTimeZone } from "@internationalized/date";
+import { today, getLocalTimeZone, parseDate } from "@internationalized/date";
 import type { DateValue, RangeValue } from "@heroui/react";
 import { useData } from "../../services/useData";
 import { BirdEventType, type BirdEvent } from "../../types";
+import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
+import CaptureHistoryModal from "../Modals/CaptureHistoryModal";
 import PageHeader from "./PageHeader";
 
 function daysBetween(a: string, b: string): number {
@@ -32,16 +34,29 @@ interface RankedItem {
   detail?: string;
 }
 
-function RankedList({ items, unit }: { items: RankedItem[]; unit: string }) {
+function RankedList({ items, unit, isSpecies, onDetailClick }: {
+  items: RankedItem[];
+  unit: string;
+  isSpecies?: boolean;
+  onDetailClick?: (detail: string) => void;
+}) {
   if (items.length === 0) return <p className="text-sm text-default-600">No data</p>;
   return (
     <ol className="space-y-1">
       {items.map((item, i) => (
-        <li key={item.label} className="flex items-baseline gap-2 text-sm">
+        <li key={item.label + (item.detail ?? "")} className="flex items-baseline gap-2 text-sm">
           <span className="font-bold text-primary">{i + 1}.</span>
-          <span className="font-bold">{item.label}</span>
+          <span className="font-bold">{isSpecies ? <SpeciesTooltip speciesCode={item.label} /> : item.label}</span>
+          {item.detail && (
+            onDetailClick ? (
+              <span className="font-bold cursor-pointer hover:underline" onClick={() => onDetailClick(item.detail!)}>
+                {item.detail}
+              </span>
+            ) : (
+              <span className="text-default-600">({item.detail})</span>
+            )
+          )}
           <span className="text-default-600">{item.value} {unit}</span>
-          {item.detail && <span className="text-default-600">({item.detail})</span>}
         </li>
       ))}
     </ol>
@@ -51,12 +66,6 @@ function RankedList({ items, unit }: { items: RankedItem[]; unit: string }) {
 export default function FunStats() {
   const { birdEventsMap, volunteersMap } = useData();
 
-  const now = today(getLocalTimeZone());
-  const sevenDaysAgo = now.subtract({ days: 7 });
-  const [range, setRange] = useState<RangeValue<DateValue>>({ start: sevenDaysAgo, end: now });
-  const startDate = `${range.start.year}-${String(range.start.month).padStart(2, "0")}-${String(range.start.day).padStart(2, "0")}`;
-  const endDate = `${range.end.year}-${String(range.end.month).padStart(2, "0")}-${String(range.end.day).padStart(2, "0")}`;
-
   const eventDatesSet = useMemo(() => {
     const dates = new Set<string>();
     for (const ev of Object.values(birdEventsMap)) {
@@ -64,6 +73,26 @@ export default function FunStats() {
     }
     return dates;
   }, [birdEventsMap]);
+
+  const defaultRange = useMemo(() => {
+    const now = today(getLocalTimeZone());
+    if (eventDatesSet.size === 0) return { start: now, end: now };
+    const lastDate = [...eventDatesSet].sort().pop()!;
+    const d = parseDate(lastDate);
+    return { start: d, end: d };
+  }, [eventDatesSet]);
+
+  const [range, setRange] = useState<RangeValue<DateValue>>(defaultRange);
+  const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  useEffect(() => {
+    if (!hasInitialized && eventDatesSet.size > 0) {
+      setRange(defaultRange);
+      setHasInitialized(true);
+    }
+  }, [defaultRange, eventDatesSet.size, hasInitialized]);
+  const startDate = `${range.start.year}-${String(range.start.month).padStart(2, "0")}-${String(range.start.day).padStart(2, "0")}`;
+  const endDate = `${range.end.year}-${String(range.end.month).padStart(2, "0")}-${String(range.end.day).padStart(2, "0")}`;
 
   const isDateUnavailable = useCallback(
     (date: DateValue) => {
@@ -88,6 +117,7 @@ export default function FunStats() {
     const netCounts = new Map<string, number>();
     const banderCounts = new Map<string, number>();
     const scribeCounts = new Map<string, number>();
+    const speciesCounts = new Map<string, number>();
     let heaviest: BirdEvent | null = null;
     let fattest: BirdEvent | null = null;
 
@@ -128,6 +158,9 @@ export default function FunStats() {
       // Net productivity
       if (ev.net) netCounts.set(ev.net, (netCounts.get(ev.net) ?? 0) + 1);
 
+      // Species counts (all capture types)
+      if (ev.species) speciesCounts.set(ev.species, (speciesCounts.get(ev.species) ?? 0) + 1);
+
       // Bander/scribe counts
       if (ev.bander && isNewCapture) banderCounts.set(ev.bander, (banderCounts.get(ev.bander) ?? 0) + 1);
       if (ev.scribe) scribeCounts.set(ev.scribe, (scribeCounts.get(ev.scribe) ?? 0) + 1);
@@ -165,6 +198,12 @@ export default function FunStats() {
         }
       }
     }
+
+    // Top 3 most captured species
+    const topSpecies = [...speciesCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([sp, count]) => ({ label: sp, value: count }));
 
     // Top 3 nets
     const topNets = [...netCounts.entries()]
@@ -212,8 +251,9 @@ export default function FunStats() {
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 3)
       .map(([bandId, data]) => ({
-        label: `${data.species} (${bandId})`,
+        label: data.species,
         value: data.count,
+        detail: bandId,
       }));
 
     return {
@@ -222,6 +262,7 @@ export default function FunStats() {
       banded,
       repeat,
       returnCount,
+      topSpecies,
       topNets,
       topBanders,
       topScribes,
@@ -253,6 +294,7 @@ export default function FunStats() {
                 onChange={setRange}
                 isDateUnavailable={isDateUnavailable}
                 allowsNonContiguousRanges
+                errorMessage="Some dates have no banding data"
                 classNames={{
                   base: "bg-white",
                   title: "text-default-900",
@@ -290,7 +332,10 @@ export default function FunStats() {
               </div>
 
               {/* Rankings */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <StatCard title="Most Captured Species">
+                  <RankedList items={stats.topSpecies} unit="captures" isSpecies />
+                </StatCard>
                 <StatCard title="Most Productive Nets">
                   <RankedList items={stats.topNets} unit="birds" />
                 </StatCard>
@@ -308,7 +353,11 @@ export default function FunStats() {
                   {stats.heaviest ? (
                     <div>
                       <p className="text-2xl font-bold">{stats.heaviest.weight}g</p>
-                      <p className="text-sm text-default-600">{stats.heaviest.species} &middot; {stats.heaviest.date}</p>
+                      <div className="text-sm flex items-baseline gap-1">
+                        <SpeciesTooltip speciesCode={stats.heaviest.species} />
+                        <span className="font-bold cursor-pointer hover:underline" onClick={() => setSelectedBandId(stats.heaviest!.band.id)}>{stats.heaviest.band.id}</span>
+                      </div>
+                      <p className="text-sm text-default-600">{stats.heaviest.date}</p>
                     </div>
                   ) : (
                     <p className="text-sm text-default-600">No weight data</p>
@@ -317,10 +366,12 @@ export default function FunStats() {
                 <StatCard title="Fattest Bird">
                   {stats.fattest ? (
                     <div>
-                      <p className="text-2xl font-bold">Fat {stats.fattest.fat}</p>
-                      <p className="text-sm text-default-600">
-                        {stats.fattest.species} &middot; {stats.fattest.weight}g &middot; {stats.fattest.date}
-                      </p>
+                      <p className="text-2xl font-bold">Fat {stats.fattest.fat} &middot; {stats.fattest.weight}g</p>
+                      <div className="text-sm flex items-baseline gap-1">
+                        <SpeciesTooltip speciesCode={stats.fattest.species} />
+                        <span className="font-bold cursor-pointer hover:underline" onClick={() => setSelectedBandId(stats.fattest!.band.id)}>{stats.fattest.band.id}</span>
+                      </div>
+                      <p className="text-sm text-default-600">{stats.fattest.date}</p>
                     </div>
                   ) : (
                     <p className="text-sm text-default-600">No fat data</p>
@@ -330,9 +381,11 @@ export default function FunStats() {
                   {stats.oldestEvent ? (
                     <div>
                       <p className="text-2xl font-bold">{Math.round(stats.oldestSpanDays / 365 * 10) / 10} years</p>
-                      <p className="text-sm text-default-600">
-                        {stats.oldestEvent.species} &middot; {stats.oldestSpanDays} days &middot; {stats.oldestEvent.date}
-                      </p>
+                      <div className="text-sm flex items-baseline gap-1">
+                        <SpeciesTooltip speciesCode={stats.oldestEvent.species} />
+                        <span className="font-bold cursor-pointer hover:underline" onClick={() => setSelectedBandId(stats.oldestEvent!.band.id)}>{stats.oldestEvent.band.id}</span>
+                      </div>
+                      <p className="text-sm text-default-600">{stats.oldestSpanDays} days &middot; {stats.oldestEvent.date}</p>
                     </div>
                   ) : (
                     <p className="text-sm text-default-600">No recaptures</p>
@@ -342,17 +395,22 @@ export default function FunStats() {
 
               {/* Fun */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <StatCard title="Rarest Birds (longest gap since last seen)">
-                  <RankedList items={stats.rareBirds} unit="days" />
+                <StatCard title="Rarest Birds (longest gap since last captured)">
+                  <RankedList items={stats.rareBirds} unit="days" isSpecies />
                 </StatCard>
                 <StatCard title="Dummest Birds (most recaptured)">
-                  <RankedList items={stats.dummest} unit="recaptures" />
+                  <RankedList items={stats.dummest} unit="recaptures" isSpecies onDetailClick={setSelectedBandId} />
                 </StatCard>
               </div>
             </>
           )}
         </div>
       </div>
+      <CaptureHistoryModal
+        isOpen={selectedBandId !== null}
+        onOpenChange={() => setSelectedBandId(null)}
+        bandId={selectedBandId}
+      />
     </div>
   );
 }
