@@ -368,19 +368,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // If there are pending offline events, keep the cached bandSizeToBandIdMap
-        // (it has offline increments that RTDB doesn't know about yet)
-        const pendingCount = await getQueueCount();
-        const hasPending = pendingCount > 0;
-        const rtdbBandSizeMap = bandSizeSnap.exists() ? bandSizeSnap.val() as Record<BandSize, string> : {} as Record<BandSize, string>;
-
         const data: DatabaseData = {
           birdEventsMap: birdEventsSnap.val(),
           programsMap: programsSnap.exists() ? programsSnap.val() : {},
           bandGroupsMap: bandGroupsSnap.exists() ? bandGroupsSnap.val() : {},
           bandIdToBirdEventIdsMap: bandIdMapSnap.exists() ? bandIdMapSnap.val() : {},
           yearsToProgramMap: yearsToProgramSnap.exists() ? yearsToProgramSnap.val() : {},
-          bandSizeToBandIdMap: hasPending && cachedData?.bandSizeToBandIdMap ? cachedData.bandSizeToBandIdMap : rtdbBandSizeMap,
+          bandSizeToBandIdMap: bandSizeSnap.exists() ? bandSizeSnap.val() : ({} as Record<BandSize, string>),
           dismissedConflictsMap: dismissedSnap.exists() ? dismissedSnap.val() : {},
           DETsMap: DETsSnap.exists() ? DETsSnap.val() : {},
           volunteersMap: volunteersSnap.exists() ? volunteersSnap.val() : {},
@@ -821,7 +815,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
 
   const addBirdEvent = useCallback(
-    async (captureData: CaptureFormData, bandSize: BandSize, previousEventId: string | undefined) => {
+    async (captureData: CaptureFormData, _bandSize: BandSize, previousEventId: string | undefined) => {
       if (!user && !forceOfflineRef.current) {
         throw new Error("Must be logged in to add bird events");
       }
@@ -861,8 +855,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           updatedAt: previousEventId ? String(Date.now()) : String(Date.parse(`${captureData.date} ${captureData.time}`)),
         };
 
-        // 2. Queue the bird event for sync
-        await addToQueue({
+        // 2. Queue the bird event for sync (non-blocking)
+        const queuePromise = addToQueue({
           id: crypto.randomUUID(),
           type: "bird-event",
           pendingEvent: newBirdEvent,
@@ -924,10 +918,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           if (Math.floor((oldCount + 1) / 1000) > Math.floor(oldCount / 1000)) {
             setMilestone({ banderCode: captureData.bander, count: oldCount + 1 });
           }
-          // for testing
-          if (existing.totalBanded + 1 === 7879) {
-            setMilestone({ banderCode: captureData.bander, count: oldCount + 1 });
-          }
         }
         if (captureData.scribe) {
           const existing = newVolunteersMap[captureData.scribe] ?? { code: captureData.scribe, fullName: volunteersFullNameMap[captureData.scribe] ?? "", totalBanded: 0, totalScribed: 0 };
@@ -945,30 +935,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return newProgramsMap[captureData.programId];
         });
 
-        // 4. Save all state to IndexedDB (so offline refresh works)
-        // Derived maps are best-effort for UI — rebuilt authoritatively on sync
-        await saveCompleteStateToIndexedDB({
-          birdEventsMap: newBirdEventsMap,
-          bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
-          bandGroupsMap: newBandGroupsMap,
-          programsMap: newProgramsMap,
-          yearsToProgramMap: newYearsToProgramMap,
-          volunteersMap: newVolunteersMap,
-        });
+        // 4. Persist to IndexedDB and update pending count (non-blocking)
+        queuePromise.then(() =>
+          Promise.all([
+            saveCompleteStateToIndexedDB({
+              birdEventsMap: newBirdEventsMap,
+              bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
+              bandGroupsMap: newBandGroupsMap,
+              programsMap: newProgramsMap,
+              yearsToProgramMap: newYearsToProgramMap,
+              volunteersMap: newVolunteersMap,
+            }),
+            getQueueCount().then(setPendingCount),
+          ])
+        ).catch((err) => logger.error("AddBirdEvent", "IndexedDB save failed", err));
 
         // 5. Online: fire-and-forget sync
         if (isOnline) {
-          (async () => {
-            try {
-              await syncQueue();
-            } catch (err) {
-              logger.warn("AddBirdEvent", "Online sync failed — will retry on next sync", err);
-            }
-          })();
+          queuePromise.then(() => syncQueue()).catch((err) =>
+            logger.warn("AddBirdEvent", "Online sync failed — will retry on next sync", err)
+          );
         }
-
-        const count = await getQueueCount();
-        setPendingCount(count);
         logger.info("AddBirdEvent", "Bird event added", { eventId: newBirdEvent.id, programId: captureData.programId });
       } catch (err) {
         logger.error("AddBirdEvent", "Error adding bird event", err);

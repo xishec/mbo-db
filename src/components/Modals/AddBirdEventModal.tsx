@@ -10,6 +10,10 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
+  Spinner,
+  Modal,
+  ModalContent,
+  ModalBody,
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
@@ -458,12 +462,12 @@ export default function AddBirdEventModal({
             : BandSize.Other;
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
+        if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
+          suppressFocusRef.current = true;
+          await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
+        }
+
         if (shouldContinue) {
-          // Increment band size before clearing fields to avoid layout bouncing
-          if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
-            suppressFocusRef.current = true;
-            await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
-          }
           setFormData((prev) => ({
             ...prev,
             species: "",
@@ -481,9 +485,6 @@ export default function AddBirdEventModal({
           setIsSaving(false);
           focusTo("species");
         } else {
-          if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
-            await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
-          }
           onOpenChange(false);
         }
       } catch (err) {
@@ -641,14 +642,22 @@ export default function AddBirdEventModal({
   );
 
   const shouldShowPastBirdEvents = pastBirdEvents.length > 0 && !birdEventToModify;
-  const showValidation = !isSaving;
 
   return (
     <>
+      <Modal isOpen={isSaving} isDismissable={false} hideCloseButton size="sm">
+        <ModalContent>
+          <ModalBody>
+            <div className="flex items-center justify-center py-8">
+              <Spinner size="lg" label="Saving..." />
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
       <ModalShell
         modalProps={{
           isDismissable: true,
-          isOpen,
+          isOpen: isOpen && !isSaving,
           onOpenChange: handleModalOpenChange,
           className: `!max-w-[calc(100%-8rem)] ${shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""}`,
           scrollBehavior: "inside",
@@ -669,7 +678,7 @@ export default function AddBirdEventModal({
               </div>
             </ModalHeaderShell>
             <ModalBodyShell>
-              <div className={isSaving ? "opacity-50 pointer-events-none" : ""} style={isSaving ? { minHeight: "inherit", overflow: "hidden" } : undefined}>
+              <div>
               {formData.species.length === 4 && (
                 <div className="w-full grid grid-cols-2 gap-4 mb-4">
                   {pyleSpeciesRange && (
@@ -708,14 +717,14 @@ export default function AddBirdEventModal({
                 </TableBody>
               </Table>
 
-              {showValidation && (
+              {(
                 <ValidationMessages
                   messages={validationState.existingErrors.map((e) => ({ text: e.reason, severity: e.severity }))}
                   title="Existing Errors in Past Captures:"
                 />
               )}
 
-              {showValidation && (
+              {(
                 <ValidationMessages messages={validationState.warningMessages} title="Warnings for Current Entry:" />
               )}
 
