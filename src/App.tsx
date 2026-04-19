@@ -24,15 +24,17 @@ function ModeSelector() {
   const [showStaleWarning, setShowStaleWarning] = useState(false);
 
   useEffect(() => {
+    const timeout = setTimeout(() => setHasCache(false), 3000);
     import("./services/indexedDB").then(({ getDataFromIndexedDB, getLastUpdated }) =>
       Promise.all([
         getDataFromIndexedDB(CURRENT_ENVIRONMENT),
         getLastUpdated(CURRENT_ENVIRONMENT),
       ]).then(([data, ts]) => {
+        clearTimeout(timeout);
         setHasCache(data !== null);
         if (ts) setCacheAge(Date.now() - ts);
       })
-    ).catch(() => setHasCache(false));
+    ).catch(() => { clearTimeout(timeout); setHasCache(false); });
   }, []);
 
   useEffect(() => {
