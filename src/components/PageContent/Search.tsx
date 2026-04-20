@@ -344,8 +344,9 @@ export default function Search() {
               </div>
             )}
             <BirdEventsTable
-              birdEvents={filteredBirdEvents.slice(0, 999)}
+              birdEvents={filteredBirdEvents}
               maxTableHeight={600}
+              maxRows={999}
               allowInspectBandId
             />
           </div>

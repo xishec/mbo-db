@@ -58,6 +58,7 @@ interface BirdEventsTableProps {
   showHistory?: boolean;
   hiddenColumns?: string[];
   birdEventIdToHighlight?: string;
+  maxRows?: number;
 }
 
 export default function BirdEventsTable({
@@ -71,6 +72,7 @@ export default function BirdEventsTable({
   showHistory = false,
   hiddenColumns = [],
   birdEventIdToHighlight,
+  maxRows,
 }: BirdEventsTableProps) {
   const { programsMap, isLoggedIn } = useData();
   const { sortDescriptors, handleSortChange } = useCascadingSort(
@@ -122,16 +124,18 @@ export default function BirdEventsTable({
   // Sort birdEvents based on multiple sortDescriptors (cascading sort)
   const sortedRows = useMemo(
     () =>
-      cascadingSort(rows, sortDescriptors, numericColumns, (column, a, b) => {
-        // Special handling for bandLastTwoDigits: 00 should come after 99
-        if (column === "bandLastTwoDigits") {
-          const firstVal = parseFloat(String(a[column])) || 100;
-          const secondVal = parseFloat(String(b[column])) || 100;
-          return firstVal - secondVal;
-        }
-        return undefined;
-      }),
-    [rows, sortDescriptors, numericColumns]
+      (() => {
+        const sorted = cascadingSort(rows, sortDescriptors, numericColumns, (column, a, b) => {
+          if (column === "bandLastTwoDigits") {
+            const firstVal = parseFloat(String(a[column])) || 100;
+            const secondVal = parseFloat(String(b[column])) || 100;
+            return firstVal - secondVal;
+          }
+          return undefined;
+        });
+        return maxRows ? sorted.slice(0, maxRows) : sorted;
+      })(),
+    [rows, sortDescriptors, numericColumns, maxRows]
   );
 
   const handleInspectBandId = useCallback(
