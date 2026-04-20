@@ -485,21 +485,45 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const SETTINGS_CACHE_KEY = `settings_cache_${CURRENT_ENVIRONMENT}`;
+
     const loadSettings = async () => {
+      if (forceOffline) {
+        try {
+          const cached = await getDataFromIndexedDB(SETTINGS_CACHE_KEY);
+          if (cached) {
+            setAppSettings(cached as unknown as AppSettings);
+            logger.info("DataLoad", "Loaded settings from cache");
+          }
+        } catch {
+          logger.warn("DataLoad", "Could not load settings from cache");
+        }
+        return;
+      }
       try {
         const settingsSnap = await get(ref(db, `${CURRENT_ENVIRONMENT}/settings`));
         if (settingsSnap.exists()) {
-          setAppSettings(settingsSnap.val() as AppSettings);
+          const settings = settingsSnap.val() as AppSettings;
+          setAppSettings(settings);
+          await saveDataToIndexedDB(SETTINGS_CACHE_KEY, settings as unknown as DatabaseData);
           logger.info("DataLoad", "Loaded settings");
         }
       } catch {
-        logger.warn("DataLoad", "Could not load settings");
+        try {
+          const cached = await getDataFromIndexedDB(SETTINGS_CACHE_KEY);
+          if (cached) {
+            setAppSettings(cached as unknown as AppSettings);
+            logger.info("DataLoad", "Loaded settings from cache (fallback)");
+          }
+        } catch {
+          logger.warn("DataLoad", "Could not load settings");
+        }
       }
     };
 
     loadData();
     loadConstants();
-    if (!forceOffline) loadSettings();
+    loadSettings();
 
     return () => {
       cancelled = true;
@@ -1311,10 +1335,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!isOnline) throw new Error("Cannot update settings while offline");
     setAppSettings(newSettings);
     await set(ref(db, `${CURRENT_ENVIRONMENT}/settings`), newSettings);
+    await saveDataToIndexedDB(`settings_cache_${CURRENT_ENVIRONMENT}`, newSettings as unknown as DatabaseData);
     logger.info("Settings", "Settings updated");
   }, [isOnline]);
 
   const triggerSync = useCallback(async () => {
+    if (!isAdmin) return;
     setIsSyncing(true);
     setSyncResult(null);
     try {
@@ -1325,14 +1351,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsSyncing(false);
     }
-  }, [syncQueue]);
+  }, [syncQueue, isAdmin]);
 
-  // Auto-sync when online load completes with pending items
+  // Auto-sync when online, admin, and pending items exist
   useEffect(() => {
-    if (!isLoading && isOnline && pendingCount > 0) {
+    if (!isLoading && isOnline && isAdmin && pendingCount > 0) {
       triggerSync();
     }
-  }, [isLoading, isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoading, isOnline, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <DataContext.Provider

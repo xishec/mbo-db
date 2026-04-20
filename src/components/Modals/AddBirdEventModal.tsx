@@ -153,11 +153,18 @@ export default function AddBirdEventModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap]);
 
-  const SKIP_FOCUS_FIELDS = new Set(["actions", "programId", "birdEventType", "date", "time", "birdStatus", "updatedAt"]);
+  const skipFocusFields = useMemo(() => {
+    const skip = new Set(["actions", "programId", "birdEventType", "birdStatus", "updatedAt"]);
+    if (useCurrentTime) {
+      skip.add("date");
+      skip.add("time");
+    }
+    return skip;
+  }, [useCurrentTime]);
 
   const firstEditableField = useMemo(() => {
-    return sortedColumns.find((col) => !SKIP_FOCUS_FIELDS.has(col.key))?.key ?? "bandGroup";
-  }, [sortedColumns]);
+    return sortedColumns.find((col) => !skipFocusFields.has(col.key))?.key ?? "bandGroup";
+  }, [sortedColumns, skipFocusFields]);
 
   const focusTo = useCallback((fieldKey: string) => {
     setTimeout(() => {
@@ -363,7 +370,7 @@ export default function AddBirdEventModal({
       if (currentIndex < sortedColumns.length - 1) {
         const nextKey = sortedColumns
           .slice(currentIndex + 1)
-          .find((col) => !SKIP_FOCUS_FIELDS.has(col.key))?.key;
+          .find((col) => !skipFocusFields.has(col.key))?.key;
         if (nextKey) inputRefs.current.get(nextKey)?.focus();
       }
     },
@@ -377,7 +384,7 @@ export default function AddBirdEventModal({
         const prevKey = sortedColumns
           .slice(0, currentIndex)
           .reverse()
-          .find((col) => !SKIP_FOCUS_FIELDS.has(col.key))?.key;
+          .find((col) => !skipFocusFields.has(col.key))?.key;
         if (prevKey) inputRefs.current.get(prevKey)?.focus();
       }
     },
@@ -586,7 +593,8 @@ export default function AddBirdEventModal({
         );
       }
 
-      // Standard input field
+      const placeholder = columnKey === "date" ? "YYYY-MM-DD" : columnKey === "time" ? "HH:MM" : undefined;
+
       return (
         <Input
           ref={(el: HTMLInputElement | null) => {
@@ -597,6 +605,7 @@ export default function AddBirdEventModal({
           aria-label={column.label}
           type={column.type}
           maxLength={column.maxLength}
+          placeholder={placeholder}
           validationBehavior="aria"
           value={formData[columnKey]}
           onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
