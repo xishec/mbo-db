@@ -76,7 +76,7 @@ function ColumnOrderList({
   );
 
   return (
-    <div className="flex gap-1 overflow-x-auto py-4">
+    <div className="flex gap-1 overflow-x-auto pb-4">
       {blocks.map((block, blockIndex) => (
         <div
           key={block.join("-")}
@@ -142,17 +142,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
-  const handleReset = (tab: "capture" | "recapture") => {
-    if (tab === "capture") setCaptureOrder(DEFAULT_CAPTURE_ORDER);
-    else setRecaptureOrder(DEFAULT_RECAPTURE_ORDER);
-  };
-
   return (
     <ModalShell
       modalProps={{
         isOpen,
         onClose,
-        className: "!max-w-[1200px]",
+        className: "!max-w-[1500px]",
         scrollBehavior: "inside",
       }}
     >
