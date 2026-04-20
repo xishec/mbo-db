@@ -22,7 +22,7 @@ export default defineConfig({
         name: "MBO Database",
         short_name: "MBO DB",
         description: "Bird banding database for McGill Bird Observatory",
-        theme_color: "#3b82f6",
+        theme_color: "#ffffff",
         background_color: "#ffffff",
         display: "standalone",
         start_url: "/",
