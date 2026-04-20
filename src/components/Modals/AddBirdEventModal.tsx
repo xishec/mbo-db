@@ -610,7 +610,6 @@ export default function AddBirdEventModal({
           value={formData[columnKey]}
           onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
           onKeyDown={(e) => handleKeyDown(e, columnKey)}
-          onFocus={(e) => e.target.select()}
           isDisabled={isSaving}
           classNames={{
             input:
