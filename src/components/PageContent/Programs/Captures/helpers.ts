@@ -17,7 +17,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     maxLength: 7,
     minLength: 7,
     tableClassName: "w-[100px]",
-    inputClassName: "w-[100px]",
+    inputClassName: "w-[125px]",
   },
   {
     key: "bandLastTwoDigits",
@@ -35,11 +35,11 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     maxLength: 4,
     minLength: 4,
     tableClassName: "w-[75px]",
-    inputClassName: "w-[75px]",
+    inputClassName: "w-[100px]",
   },
-  { key: "birdEventType", type: "text", label: "Event Type", tableClassName: "w-[100px]", inputClassName: "w-[125px]" },
-  { key: "date", type: "text", label: "Date", maxLength: 10, tableClassName: "w-[100px]", inputClassName: "w-[120px]" },
-  { key: "time", type: "text", label: "Time", maxLength: 5, tableClassName: "w-[100px]", inputClassName: "w-[80px]" },
+  { key: "birdEventType", type: "text", label: "Event Type", tableClassName: "w-[100px]", inputClassName: "w-[150px]" },
+  { key: "date", type: "text", label: "Date", maxLength: 10, tableClassName: "w-[100px]", inputClassName: "" },
+  { key: "time", type: "text", label: "Time", maxLength: 5, tableClassName: "w-[100px]", inputClassName: "" },
   {
     key: "wing",
     type: "number",
@@ -47,7 +47,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     maxLength: 4,
     minLength: 2,
     tableClassName: "w-[75px]",
-    inputClassName: "w-[75px]",
+    inputClassName: "w-[100px]",
   },
   {
     key: "age",
@@ -101,7 +101,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     maxLength: 5,
     minLength: 2,
     tableClassName: "w-[75px]",
-    inputClassName: "w-[75px]",
+    inputClassName: "w-[100px]",
   },
   {
     key: "bander",
@@ -275,17 +275,10 @@ export function formatFieldValue(field: keyof CaptureFormData, value: string): s
         .replace(/[^a-zA-Z0-9]/g, "")
         .toUpperCase()
         .slice(0, 2);
-    case "time": {
-      const digits = value.replace(/\D/g, "").slice(0, 4);
-      if (digits.length <= 2) return digits;
-      return digits.slice(0, 2) + ":" + digits.slice(2);
-    }
-    case "date": {
-      const digits = value.replace(/\D/g, "").slice(0, 8);
-      if (digits.length <= 4) return digits;
-      if (digits.length <= 6) return digits.slice(0, 4) + "-" + digits.slice(4);
-      return digits.slice(0, 4) + "-" + digits.slice(4, 6) + "-" + digits.slice(6);
-    }
+    case "time":
+      return value.slice(0, 5);
+    case "date":
+      return value.slice(0, 10);
     default:
       return value;
   }

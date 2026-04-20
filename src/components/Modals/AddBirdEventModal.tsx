@@ -1,4 +1,16 @@
-import { Button, Input, Select, SelectItem, Switch, Spinner, Modal, ModalContent, ModalBody, Card, CardBody } from "@heroui/react";
+import {
+  Button,
+  Input,
+  Select,
+  SelectItem,
+  Switch,
+  Spinner,
+  Modal,
+  ModalContent,
+  ModalBody,
+  Card,
+  CardBody,
+} from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
@@ -7,11 +19,7 @@ import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEvent
 import BirdStatusModal from "./BirdStatusModal";
 import ValidationMessages from "../Helper/ValidationMessages";
 import { getSortedColumns } from "../PageContent/Programs/Captures/helpers";
-import {
-  formatFieldValue,
-  getApplicableRange,
-  getDefaultFormData,
-} from "../PageContent/Programs/Captures/helpers";
+import { formatFieldValue, getApplicableRange, getDefaultFormData } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import PyleTable from "../Helper/Info/PyleTable";
 import SpeciesFunFacts from "../Helper/Info/SpeciesFunFacts";
@@ -66,7 +74,7 @@ export default function AddBirdEventModal({
   );
 
   // Sum of all input column widths (excl. actions/updatedAt/notes) + gaps
-  const inputRowWidth = 1520;
+  const inputRowWidth = 1120;
 
   // Reset form data when modal opens
   useEffect(() => {
@@ -125,9 +133,9 @@ export default function AddBirdEventModal({
       setFormData(defaultData);
       setLastBandId("");
       setWasOpen(true);
-      const firstEmpty = sortedColumns.find((col) =>
-        !skipFocusFields.has(col.key) && !defaultData[col.key as keyof CaptureFormData]
-      )?.key ?? firstEditableField;
+      const firstEmpty =
+        sortedColumns.find((col) => !skipFocusFields.has(col.key) && !defaultData[col.key as keyof CaptureFormData])
+          ?.key ?? firstEditableField;
       focusTo(firstEmpty);
     } else if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
       // Modal already open — update band fields after incrementBandSize
@@ -277,7 +285,8 @@ export default function AddBirdEventModal({
     };
     const rangeValidation = {
       wing: {
-        pyle: wingValue !== null && pyleRange ? isInTolerance(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
+        pyle:
+          wingValue !== null && pyleRange ? isInTolerance(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
       },
       weight: {
         pyle:
@@ -406,10 +415,7 @@ export default function AddBirdEventModal({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, field: keyof CaptureFormData) => {
-      if ((e.key === "Backspace" || e.key === "Delete") && (e.target as HTMLInputElement).value === "") {
-        e.preventDefault();
-        focusPrevInput(field);
-      } else if (e.key === "Tab") {
+      if (e.key === "Tab") {
         e.preventDefault();
         if (e.shiftKey) {
           focusPrevInput(field);
@@ -505,7 +511,11 @@ export default function AddBirdEventModal({
       if (columnKey === "weight" && rangeValidation.weight.pyle === true) {
         const weightValue = Number(formData.weight);
         const pyleRange = getApplicableRange(pyleSpeciesRange ?? undefined, sexCode);
-        if (pyleRange && weightValue > 0 && (weightValue < pyleRange.weightLower || weightValue > pyleRange.weightUpper)) {
+        if (
+          pyleRange &&
+          weightValue > 0 &&
+          (weightValue < pyleRange.weightLower || weightValue > pyleRange.weightUpper)
+        ) {
           return "warning";
         }
       }
@@ -547,7 +557,6 @@ export default function AddBirdEventModal({
       // Determine readonly value
       const readonlyValue = (() => {
         if (column.key === "programId") return selectedProgram?.displayName;
-        if (useCurrentTime && (columnKey === "date" || columnKey === "time")) return formData[columnKey];
         if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
           return formData[columnKey];
         return null;
@@ -600,7 +609,69 @@ export default function AddBirdEventModal({
         );
       }
 
-      const placeholder = columnKey === "date" ? "YYYY-MM-DD" : columnKey === "time" ? "HH:MM" : undefined;
+      // Date: split into Year, Month, Day using HeroUI Input
+      if (column.key === "date") {
+        const parts = formData.date.split("-");
+        const year = parts[0] ?? "";
+        const month = parts[1] ?? "";
+        const day = parts[2] ?? "";
+        const updateDate = (y: string, m: string, d: string) => {
+          const yy = y.replace(/\D/g, "").slice(0, 4);
+          const mm = m.replace(/\D/g, "").slice(0, 2);
+          const dd = d.replace(/\D/g, "").slice(0, 2);
+          setFormData((prev) => ({ ...prev, date: `${yy}-${mm}-${dd}`.replace(/-+$/, "") }));
+        };
+        const subInputClass = "text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+        return (
+          <div className="flex gap-0.5 items-center">
+            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("date", el); }}
+              {...modalInputProps} className="w-[75px]" maxLength={4} value={year} isDisabled={isSaving || useCurrentTime}
+              classNames={{ input: subInputClass }}
+              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 4); updateDate(v, month, day); if (v.length === 4) inputRefs.current.get("date-month")?.focus(); }}
+              onKeyDown={(e) => { if (e.key === "Backspace" && year === "") focusPrevInput("date" as keyof CaptureFormData); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) focusPrevInput("date" as keyof CaptureFormData); else inputRefs.current.get("date-month")?.focus(); } }}
+            />
+            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("date-month", el); }}
+              {...modalInputProps} className="w-[50px]" maxLength={2} value={month} isDisabled={isSaving || useCurrentTime}
+              classNames={{ input: subInputClass }}
+              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); updateDate(year, v, day); if (v.length === 2) inputRefs.current.get("date-day")?.focus(); }}
+              onKeyDown={(e) => { if (e.key === "Backspace" && month === "") inputRefs.current.get("date")?.focus(); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) inputRefs.current.get("date")?.focus(); else inputRefs.current.get("date-day")?.focus(); } }}
+            />
+            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("date-day", el); }}
+              {...modalInputProps} className="w-[50px]" maxLength={2} value={day} isDisabled={isSaving || useCurrentTime}
+              classNames={{ input: subInputClass }}
+              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); updateDate(year, month, v); if (v.length === 2) focusNextInput("date" as keyof CaptureFormData); }}
+              onKeyDown={(e) => { if (e.key === "Backspace" && day === "") inputRefs.current.get("date-month")?.focus(); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) inputRefs.current.get("date-month")?.focus(); else focusNextInput("date" as keyof CaptureFormData); } }}
+            />
+          </div>
+        );
+      }
+
+      // Time: split into Hour, Minute using HeroUI Input
+      if (column.key === "time") {
+        const parts = formData.time.split(":");
+        const hour = parts[0] ?? "";
+        const minute = parts[1] ?? "";
+        const updateTime = (h: string, m: string) => {
+          setFormData((prev) => ({ ...prev, time: `${h.replace(/\D/g, "").slice(0, 2)}:${m.replace(/\D/g, "").slice(0, 2)}` }));
+        };
+        const subInputClass = "text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+        return (
+          <div className="flex gap-0.5 items-center">
+            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("time", el); }}
+              {...modalInputProps} className="w-[50px]" maxLength={2} value={hour} isDisabled={isSaving || useCurrentTime}
+              classNames={{ input: subInputClass }}
+              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); updateTime(v, minute); if (v.length === 2) inputRefs.current.get("time-minute")?.focus(); }}
+              onKeyDown={(e) => { if (e.key === "Backspace" && hour === "") focusPrevInput("time" as keyof CaptureFormData); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) focusPrevInput("time" as keyof CaptureFormData); else inputRefs.current.get("time-minute")?.focus(); } }}
+            />
+            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("time-minute", el); }}
+              {...modalInputProps} className="w-[50px]" maxLength={2} value={minute} isDisabled={isSaving || useCurrentTime}
+              classNames={{ input: subInputClass }}
+              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); updateTime(hour, v); if (v.length === 2) focusNextInput("time" as keyof CaptureFormData); }}
+              onKeyDown={(e) => { if (e.key === "Backspace" && minute === "") inputRefs.current.get("time")?.focus(); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) inputRefs.current.get("time")?.focus(); else focusNextInput("time" as keyof CaptureFormData); } }}
+            />
+          </div>
+        );
+      }
 
       return (
         <Input
@@ -612,7 +683,6 @@ export default function AddBirdEventModal({
           aria-label={column.label}
           type={column.type}
           maxLength={column.maxLength}
-          placeholder={placeholder}
           validationBehavior="aria"
           value={formData[columnKey]}
           onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
@@ -693,7 +763,7 @@ export default function AddBirdEventModal({
                   <CardBody className="flex flex-col gap-2 p-3">
                     <div className="flex gap-1">
                       {sortedColumns
-                        .filter((column) => !["actions", "updatedAt", "notes"].includes(column.key))
+                        .filter((column) => !["actions", "updatedAt", "notes", "date", "time", "bander", "scribe", "net", "birdStatus"].includes(column.key))
                         .map((column) => (
                           <div
                             key={column.key}
@@ -707,12 +777,28 @@ export default function AddBirdEventModal({
                           </div>
                         ))}
                     </div>
-                    {sortedColumns.find((c) => c.key === "notes") && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs text-default-900 font-medium px-1">Notes</span>
-                        {renderTableCell(sortedColumns.find((c) => c.key === "notes")!)}
-                      </div>
-                    )}
+                    <div className="flex gap-1 items-end">
+                      {sortedColumns
+                        .filter((column) => ["date", "time", "bander", "scribe", "net", "birdStatus"].includes(column.key))
+                        .map((column) => (
+                          <div
+                            key={column.key}
+                            className="flex flex-col gap-1 shrink-0"
+                            style={{ width: column.inputClassName?.match(/w-\[(\d+px)\]/)?.[1] ?? "auto" }}
+                          >
+                            <span className="text-xs text-default-900 font-medium px-1 truncate">
+                              {column.label}
+                            </span>
+                            {renderTableCell(column)}
+                          </div>
+                        ))}
+                      {sortedColumns.find((c) => c.key === "notes") && (
+                        <div className="flex flex-col gap-1 flex-1 min-w-0">
+                          <span className="text-xs text-default-900 font-medium px-1">Notes</span>
+                          {renderTableCell(sortedColumns.find((c) => c.key === "notes")!)}
+                        </div>
+                      )}
+                    </div>
                   </CardBody>
                 </Card>
 
@@ -737,11 +823,20 @@ export default function AddBirdEventModal({
                 Cancel
               </Button>
               {!birdEventToModify && (
-                <Button {...modalPrimaryButtonProps} variant="bordered" onPress={handleSaveAndNext} isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species}>
+                <Button
+                  {...modalPrimaryButtonProps}
+                  variant="bordered"
+                  onPress={handleSaveAndNext}
+                  isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species}
+                >
                   Save and Next
                 </Button>
               )}
-              <Button {...modalPrimaryButtonProps} onPress={handleSaveAndClose} isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species}>
+              <Button
+                {...modalPrimaryButtonProps}
+                onPress={handleSaveAndClose}
+                isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species}
+              >
                 Save
               </Button>
             </ModalFooterShell>
