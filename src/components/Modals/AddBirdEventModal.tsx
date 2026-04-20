@@ -374,7 +374,7 @@ export default function AddBirdEventModal({
         if (nextKey) inputRefs.current.get(nextKey)?.focus();
       }
     },
-    [sortedColumns]
+    [sortedColumns, skipFocusFields]
   );
 
   const focusPrevInput = useCallback(
@@ -388,7 +388,7 @@ export default function AddBirdEventModal({
         if (prevKey) inputRefs.current.get(prevKey)?.focus();
       }
     },
-    [sortedColumns]
+    [sortedColumns, skipFocusFields]
   );
 
   const handleInputChange = useCallback(
