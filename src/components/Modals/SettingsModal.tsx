@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button, Tab, Tabs } from "@heroui/react";
-import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
 import { useData } from "../../services/useData";
 import { TABLE_COLUMNS, RE_CAPTURE_COLUMN_ORDER } from "../PageContent/Programs/Captures/helpers";
 import type { AppSettings } from "../../types";
@@ -18,6 +18,41 @@ const DEFAULT_RECAPTURE_ORDER = RE_CAPTURE_COLUMN_ORDER.filter((k) => EDITABLE_K
 const COLUMN_LABELS: Record<string, string> = {};
 for (const col of TABLE_COLUMNS) COLUMN_LABELS[col.key] = col.label;
 
+// Columns that must stay together in fixed relative order
+const COLUMN_GROUPS: string[][] = [
+  ["bandGroup", "bandLastTwoDigits", "species"],
+  ["bander", "scribe"],
+  ["date", "time"],
+  ["wing", "age", "howAged", "sex", "howSexed", "fat", "weight"],
+];
+
+const KEY_TO_GROUP = new Map<string, string[]>();
+for (const group of COLUMN_GROUPS) {
+  for (const key of group) KEY_TO_GROUP.set(key, group);
+}
+
+// Collapse an order array into "blocks" — grouped keys become one block, ungrouped keys are solo blocks
+function toBlocks(order: string[]): string[][] {
+  const blocks: string[][] = [];
+  const seen = new Set<string>();
+  for (const key of order) {
+    if (seen.has(key)) continue;
+    const group = KEY_TO_GROUP.get(key);
+    if (group) {
+      blocks.push(group);
+      for (const k of group) seen.add(k);
+    } else {
+      blocks.push([key]);
+      seen.add(key);
+    }
+  }
+  return blocks;
+}
+
+function fromBlocks(blocks: string[][]): string[] {
+  return blocks.flat();
+}
+
 function ColumnOrderList({
   order,
   onChange,
@@ -27,45 +62,49 @@ function ColumnOrderList({
   onChange: (order: string[]) => void;
   isDisabled: boolean;
 }) {
-  const move = useCallback(
-    (index: number, direction: -1 | 1) => {
-      const newOrder = [...order];
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= newOrder.length) return;
-      [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
-      onChange(newOrder);
+  const blocks = toBlocks(order);
+
+  const moveBlock = useCallback(
+    (blockIndex: number, direction: -1 | 1) => {
+      const newBlocks = [...blocks.map((b) => [...b])];
+      const targetIndex = blockIndex + direction;
+      if (targetIndex < 0 || targetIndex >= newBlocks.length) return;
+      [newBlocks[blockIndex], newBlocks[targetIndex]] = [newBlocks[targetIndex], newBlocks[blockIndex]];
+      onChange(fromBlocks(newBlocks));
     },
-    [order, onChange]
+    [blocks, onChange]
   );
 
   return (
-    <div className="flex flex-col gap-1">
-      {order.map((key, index) => (
+    <div className="flex gap-1 overflow-x-auto py-4">
+      {blocks.map((block, blockIndex) => (
         <div
-          key={key}
-          className="flex items-center gap-2 px-3 py-2 rounded-medium border border-default-200 bg-default-50"
+          key={block.join("-")}
+          className="flex items-center gap-0.5 pl-1 pr-1 py-1 rounded-medium border border-default-200 bg-default-50"
         >
-          <span className="flex-1 text-sm font-medium">{COLUMN_LABELS[key] ?? key}</span>
-          <div className="flex gap-1">
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              isDisabled={isDisabled || index === 0}
-              onPress={() => move(index, -1)}
-            >
-              <ChevronUpIcon className="w-4 h-4" />
-            </Button>
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              isDisabled={isDisabled || index === order.length - 1}
-              onPress={() => move(index, 1)}
-            >
-              <ChevronDownIcon className="w-4 h-4" />
-            </Button>
-          </div>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="light"
+            isDisabled={isDisabled || blockIndex === 0}
+            onPress={() => moveBlock(blockIndex, -1)}
+            className="min-w-6 w-6 h-6"
+          >
+            <ChevronLeftIcon className="w-3 h-3" />
+          </Button>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {block.map((key) => COLUMN_LABELS[key] ?? key).join(" - ")}
+          </span>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="light"
+            isDisabled={isDisabled || blockIndex === blocks.length - 1}
+            onPress={() => moveBlock(blockIndex, 1)}
+            className="min-w-6 w-6 h-6"
+          >
+            <ChevronRightIcon className="w-3 h-3" />
+          </Button>
         </div>
       ))}
     </div>
@@ -113,7 +152,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       modalProps={{
         isOpen,
         onClose,
-        size: "md",
+        className: "!max-w-[1200px]",
         scrollBehavior: "inside",
       }}
     >
@@ -126,21 +165,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <ModalBodyShell>
             <Tabs aria-label="Column order settings" variant="underlined">
               <Tab key="capture" title="Capture">
-                <div className="flex justify-between items-center mb-3">
-                  <p className="text-sm text-default-600">Column order for new captures</p>
-                  <Button size="sm" variant="light" onPress={() => handleReset("capture")}>
-                    Reset
-                  </Button>
-                </div>
+                <p className="text-sm text-default-600 mb-3">Column order for new captures</p>
                 <ColumnOrderList order={captureOrder} onChange={setCaptureOrder} isDisabled={!isOnline} />
               </Tab>
               <Tab key="recapture" title="Recapture">
-                <div className="flex justify-between items-center mb-3">
-                  <p className="text-sm text-default-600">Column order for recaptures</p>
-                  <Button size="sm" variant="light" onPress={() => handleReset("recapture")}>
-                    Reset
-                  </Button>
-                </div>
+                <p className="text-sm text-default-600 mb-3">Column order for recaptures</p>
                 <ColumnOrderList order={recaptureOrder} onChange={setRecaptureOrder} isDisabled={!isOnline} />
               </Tab>
             </Tabs>
