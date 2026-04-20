@@ -165,11 +165,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <ModalBodyShell>
             <Tabs aria-label="Column order settings" variant="underlined">
               <Tab key="capture" title="Capture">
-                <p className="text-sm text-default-600 mb-3">Column order for new captures</p>
                 <ColumnOrderList order={captureOrder} onChange={setCaptureOrder} isDisabled={!isOnline} />
               </Tab>
               <Tab key="recapture" title="Recapture">
-                <p className="text-sm text-default-600 mb-3">Column order for recaptures</p>
                 <ColumnOrderList order={recaptureOrder} onChange={setRecaptureOrder} isDisabled={!isOnline} />
               </Tab>
             </Tabs>
