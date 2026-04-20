@@ -1,20 +1,4 @@
-import {
-  Button,
-  Input,
-        Select,
-  SelectItem,
-  Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  Spinner,
-  Modal,
-  ModalContent,
-  ModalBody,
-} from "@heroui/react";
+import { Button, Input, Select, SelectItem, Switch, Spinner, Modal, ModalContent, ModalBody, Card, CardBody } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
@@ -27,17 +11,12 @@ import {
   formatFieldValue,
   getApplicableRange,
   getDefaultFormData,
-  isInRange,
 } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import PyleTable from "../Helper/Info/PyleTable";
 import SpeciesFunFacts from "../Helper/Info/SpeciesFunFacts";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
-import {
-        modalInputProps,
-  modalCancelButtonProps,
-  modalPrimaryButtonProps,
-} from "./modalDefaults";
+import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface AddBirdEventModalProps {
   isOpen: boolean;
@@ -76,9 +55,18 @@ export default function AddBirdEventModal({
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
 
   const sortedColumns = useMemo(
-    () => getSortedColumns(isNewCapture, birdEventToModify?.id, appSettings.captureColumnOrder, appSettings.recaptureColumnOrder),
+    () =>
+      getSortedColumns(
+        isNewCapture,
+        birdEventToModify?.id,
+        appSettings.captureColumnOrder,
+        appSettings.recaptureColumnOrder
+      ),
     [isNewCapture, birdEventToModify?.id, appSettings.captureColumnOrder, appSettings.recaptureColumnOrder]
   );
+
+  // Sum of all input column widths (excl. actions/updatedAt/notes) + gaps
+  const inputRowWidth = 1520;
 
   // Reset form data when modal opens
   useEffect(() => {
@@ -137,7 +125,10 @@ export default function AddBirdEventModal({
       setFormData(defaultData);
       setLastBandId("");
       setWasOpen(true);
-      focusTo(firstEditableField);
+      const firstEmpty = sortedColumns.find((col) =>
+        !skipFocusFields.has(col.key) && !defaultData[col.key as keyof CaptureFormData]
+      )?.key ?? firstEditableField;
+      focusTo(firstEmpty);
     } else if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
       // Modal already open — update band fields after incrementBandSize
       const bandId = bandSizeToBandIdMap[bandSize];
@@ -227,9 +218,8 @@ export default function AddBirdEventModal({
       // For -00 bands, check the previous band group (business rule)
       const last2digits = bandId.slice(7, 9);
       const bandGroupId = bandId.slice(0, 7);
-      const bandGroupMapKey = last2digits === "00" 
-        ? (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0")
-        : bandGroupId;
+      const bandGroupMapKey =
+        last2digits === "00" ? (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0") : bandGroupId;
       if (bandGroupsMap[bandGroupMapKey] || isNewCapture) return BirdEventType.Banded;
       else return BirdEventType.Alien;
     } else {
@@ -241,15 +231,7 @@ export default function AddBirdEventModal({
       });
       return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
     }
-  }, [
-    bandId,
-    bandGroupsMap,
-    birdEventToModify,
-    formData.date,
-    formData.species,
-    pastBirdEvents,
-    isNewCapture,
-  ]);
+  }, [bandId, bandGroupsMap, birdEventToModify, formData.date, formData.species, pastBirdEvents, isNewCapture]);
 
   // Set birdEventType to suggested value only when modal opens or key dependencies change
   useEffect(() => {
@@ -287,15 +269,20 @@ export default function AddBirdEventModal({
 
     const pyleRange = getApplicableRange(pyleSpeciesRange ?? undefined, sexCode);
 
-    // Range validation for wing and weight
+    // Range validation for wing and weight (20% tolerance to match error messages)
+    const isInTolerance = (value: number, lower: number, upper: number): boolean | null => {
+      if (lower === 0 && upper === 0) return null;
+      if (value === 0) return false;
+      return value >= lower * 0.8 && value <= upper * 1.2;
+    };
     const rangeValidation = {
       wing: {
-        pyle: wingValue !== null && pyleRange ? isInRange(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
+        pyle: wingValue !== null && pyleRange ? isInTolerance(wingValue, pyleRange.wingLower, pyleRange.wingUpper) : null,
       },
       weight: {
         pyle:
           weightValue !== null && pyleRange
-            ? isInRange(weightValue, pyleRange.weightLower, pyleRange.weightUpper)
+            ? isInTolerance(weightValue, pyleRange.weightLower, pyleRange.weightUpper)
             : null,
       },
     };
@@ -347,10 +334,16 @@ export default function AddBirdEventModal({
     const banderUnknown = formData.bander.length >= 2 && !volunteersMap[formData.bander];
     const scribeUnknown = formData.scribe.length >= 2 && !volunteersMap[formData.scribe];
     if (banderUnknown) {
-      messages.push({ text: `Unknown bander "${formData.bander}". Add them in Volunteers page first.`, severity: "danger" });
+      messages.push({
+        text: `Unknown bander "${formData.bander}". Saving will auto-add them to the volunteer list.`,
+        severity: "warning",
+      });
     }
     if (scribeUnknown) {
-      messages.push({ text: `Unknown scribe "${formData.scribe}". Add them in Volunteers page first.`, severity: "danger" });
+      messages.push({
+        text: `Unknown scribe "${formData.scribe}". Saving will auto-add them to the volunteer list.`,
+        severity: "warning",
+      });
     }
 
     return {
@@ -368,9 +361,7 @@ export default function AddBirdEventModal({
     (currentField: keyof CaptureFormData) => {
       const currentIndex = sortedColumns.findIndex((col) => col.key === currentField);
       if (currentIndex < sortedColumns.length - 1) {
-        const nextKey = sortedColumns
-          .slice(currentIndex + 1)
-          .find((col) => !skipFocusFields.has(col.key))?.key;
+        const nextKey = sortedColumns.slice(currentIndex + 1).find((col) => !skipFocusFields.has(col.key))?.key;
         if (nextKey) inputRefs.current.get(nextKey)?.focus();
       }
     },
@@ -503,14 +494,30 @@ export default function AddBirdEventModal({
         if (rangeValidation.weight.pyle === false) return "danger";
       }
 
+      // Warning for values outside strict Pyle range but within 20% tolerance
+      if (columnKey === "wing" && rangeValidation.wing.pyle === true) {
+        const wingValue = Number(formData.wing);
+        const pyleRange = getApplicableRange(pyleSpeciesRange ?? undefined, sexCode);
+        if (pyleRange && wingValue > 0 && (wingValue < pyleRange.wingLower || wingValue > pyleRange.wingUpper)) {
+          return "warning";
+        }
+      }
+      if (columnKey === "weight" && rangeValidation.weight.pyle === true) {
+        const weightValue = Number(formData.weight);
+        const pyleRange = getApplicableRange(pyleSpeciesRange ?? undefined, sexCode);
+        if (pyleRange && weightValue > 0 && (weightValue < pyleRange.weightLower || weightValue > pyleRange.weightUpper)) {
+          return "warning";
+        }
+      }
+
       // Sex conflict validation
       if (columnKey === "sex" && sexConflict) {
         return "danger";
       }
 
       // Volunteer validation
-      if (columnKey === "bander" && banderUnknown) return "danger";
-      if (columnKey === "scribe" && scribeUnknown) return "danger";
+      if (columnKey === "bander" && banderUnknown) return "warning";
+      if (columnKey === "scribe" && scribeUnknown) return "warning";
 
       // Incomplete field validation
       if (incompleteFields.has(columnKey)) {
@@ -549,7 +556,7 @@ export default function AddBirdEventModal({
       // Readonly field with optional edit icon
       if (readonlyValue) {
         return (
-          <div className="px-3 py-2 text-sm text-default-600 font-light bg-default-50 rounded-medium border-medium border-default-200 whitespace-nowrap">
+          <div className="px-3 py-2 text-sm text-default-900 bg-default-50 rounded-medium border-medium border-default-50 whitespace-nowrap">
             {readonlyValue}
           </div>
         );
@@ -647,10 +654,11 @@ export default function AddBirdEventModal({
       </Modal>
       <ModalShell
         modalProps={{
-          isDismissable: true,
+          isDismissable: false,
           isOpen: isOpen && !isSaving,
           onOpenChange: handleModalOpenChange,
-          className: `!max-w-[calc(100%-8rem)] ${shouldShowPastBirdEvents ? "!h-[calc(100%-4rem)]" : ""}`,
+          className: "!max-h-[calc(100%-4rem)]",
+          style: { maxWidth: inputRowWidth + 64 },
           scrollBehavior: "inside",
         }}
       >
@@ -669,64 +677,59 @@ export default function AddBirdEventModal({
               </div>
             </ModalHeaderShell>
             <ModalBodyShell>
-              <div>
-              {formData.species.length === 4 && (
-                <div className="w-full grid grid-cols-2 gap-4 mb-4">
-                  {pyleSpeciesRange && (
-                    <PyleTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} withCard />
-                  )}
-                  <SpeciesFunFacts 
-                    speciesCode={formData.species} 
-                    speciesInfo={speciesInfoMap[formData.species] || null} 
-                  />
-                </div>
-              )}
-              <Table
-                aria-label="New capture form"
-                classNames={{
-                  base: "table-fixed w-full",
-                  table: "table-fixed w-full",
-                }}
-              >
-                <TableHeader columns={sortedColumns.filter((column) => !["actions", "updatedAt"].includes(column.key))}>
-                  {(column) => (
-                    <TableColumn key={column.key} className={column.inputClassName || ""}>
-                      {column.key === "howAged" || column.key === "howSexed" ? "" : column.label}
-                    </TableColumn>
-                  )}
-                </TableHeader>
-                <TableBody>
-                  <TableRow key="new-capture">
-                    {sortedColumns
-                      .filter((column) => !["actions", "updatedAt"].includes(column.key))
-                      .map((column) => (
-                        <TableCell key={column.key} className="p-1">
-                          {renderTableCell(column)}
-                        </TableCell>
-                      ))}
-                  </TableRow>
-                </TableBody>
-              </Table>
+              <div className="flex flex-col gap-4" style={{ width: inputRowWidth }}>
+                {formData.species.length === 4 && (
+                  <div className="grid grid-cols-2 gap-4">
+                    {pyleSpeciesRange && (
+                      <PyleTable title="Pyle" speciesCode={formData.species} speciesRange={pyleSpeciesRange} withCard />
+                    )}
+                    <SpeciesFunFacts
+                      speciesCode={formData.species}
+                      speciesInfo={speciesInfoMap[formData.species] || null}
+                    />
+                  </div>
+                )}
+                <Card shadow="sm">
+                  <CardBody className="flex flex-col gap-2 p-3">
+                    <div className="flex gap-1">
+                      {sortedColumns
+                        .filter((column) => !["actions", "updatedAt", "notes"].includes(column.key))
+                        .map((column) => (
+                          <div
+                            key={column.key}
+                            className="flex flex-col gap-1 shrink-0"
+                            style={{ width: column.inputClassName?.match(/w-\[(\d+px)\]/)?.[1] ?? "auto" }}
+                          >
+                            <span className="text-xs text-default-900 font-medium px-1 truncate">
+                              {column.key === "howAged" || column.key === "howSexed" ? "How" : column.label}
+                            </span>
+                            {renderTableCell(column)}
+                          </div>
+                        ))}
+                    </div>
+                    {sortedColumns.find((c) => c.key === "notes") && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-default-900 font-medium px-1">Notes</span>
+                        {renderTableCell(sortedColumns.find((c) => c.key === "notes")!)}
+                      </div>
+                    )}
+                  </CardBody>
+                </Card>
 
-              {(
                 <ValidationMessages
                   messages={validationState.existingErrors.map((e) => ({ text: e.reason, severity: e.severity }))}
                   title="Existing Errors in Past Captures:"
                 />
-              )}
-
-              {(
                 <ValidationMessages messages={validationState.warningMessages} title="Warnings for Current Entry:" />
-              )}
 
-              {shouldShowPastBirdEvents && (
-                <div className="mt-4">
-                  <h3 className="text-lg font-normal mb-2">
-                    Existing data for band <span className="font-bold">{bandId}</span> :
-                  </h3>
-                  <BirdEventsTable birdEvents={pastBirdEvents} maxTableHeight={300} allowInspectHistory />
-                </div>
-              )}
+                {shouldShowPastBirdEvents && (
+                  <div className="mt-2">
+                    <h3 className="text-lg font-normal mb-2">
+                      Existing data for band <span className="font-bold">{bandId}</span> :
+                    </h3>
+                    <BirdEventsTable birdEvents={pastBirdEvents} maxTableHeight={300} allowInspectHistory />
+                  </div>
+                )}
               </div>
             </ModalBodyShell>
             <ModalFooterShell>
@@ -734,15 +737,11 @@ export default function AddBirdEventModal({
                 Cancel
               </Button>
               {!birdEventToModify && (
-                <Button
-                  {...modalPrimaryButtonProps}
-                  variant="bordered"
-                  onPress={handleSaveAndNext}
-                >
+                <Button {...modalPrimaryButtonProps} variant="bordered" onPress={handleSaveAndNext} isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species}>
                   Save and Next
                 </Button>
               )}
-              <Button {...modalPrimaryButtonProps} onPress={handleSaveAndClose}>
+              <Button {...modalPrimaryButtonProps} onPress={handleSaveAndClose} isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species}>
                 Save
               </Button>
             </ModalFooterShell>

@@ -114,7 +114,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
     <>
       <ModalShell
         modalProps={{
-          isDismissable: true,
+          isDismissable: false,
           isOpen,
           onClose,
           className: "!max-w-[calc(100%-8rem)]",

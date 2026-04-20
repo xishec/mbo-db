@@ -148,7 +148,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         placement: "top-center",
         onOpenChange: handleClose,

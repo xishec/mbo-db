@@ -16,7 +16,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         onClose,
         size: "sm",

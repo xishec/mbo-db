@@ -49,7 +49,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         placement: "top-center",
         onOpenChange: handleClose,

@@ -26,7 +26,7 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         onOpenChange,
         size: "5xl",

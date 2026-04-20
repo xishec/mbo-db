@@ -76,7 +76,7 @@ export default function EditProgramModal({ isOpen, onOpenChange, program }: Edit
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         placement: "top-center",
         onOpenChange: handleClose,

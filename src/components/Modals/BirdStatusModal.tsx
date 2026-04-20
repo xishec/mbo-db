@@ -65,7 +65,7 @@ export default function BirdStatusModal({ isOpen, onOpenChange, currentStatus, o
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         onOpenChange,
         size: "2xl",

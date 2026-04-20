@@ -166,7 +166,7 @@ export default function Volunteers() {
 
       <ModalShell
         modalProps={{
-          isDismissable: true,
+          isDismissable: false,
           isOpen: isEditModalOpen,
           onOpenChange: setIsEditModalOpen,
           placement: "top-center",
@@ -209,7 +209,7 @@ export default function Volunteers() {
 
       <ModalShell
         modalProps={{
-          isDismissable: true,
+          isDismissable: false,
           isOpen: isAddModalOpen,
           onOpenChange: setIsAddModalOpen,
           placement: "top-center",

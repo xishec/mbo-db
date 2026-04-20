@@ -77,7 +77,7 @@ export default function MilestoneCelebration() {
           isOpen: visible,
           onOpenChange: (open) => { if (!open) handleClose(); },
           placement: "center",
-          isDismissable: true,
+          isDismissable: false,
         }}
       >
         <ModalBodyShell>

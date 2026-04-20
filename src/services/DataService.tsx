@@ -860,7 +860,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // 1. Create Band and BirdEvent objects
+        if (!captureData.bandGroup) throw new Error("Band group is required");
+        if (!captureData.bandLastTwoDigits) throw new Error("Band digit is required");
+        if (!captureData.species) throw new Error("Species is required");
+
         const birdEventType = captureData.birdEventType as BirdEventType;
         const bandGroup = captureData.bandGroup.padStart(7, "0");
         const bandLastTwoDigits = captureData.bandLastTwoDigits.padStart(2, "0");

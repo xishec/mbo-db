@@ -213,7 +213,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
     <>
       <ModalShell
         modalProps={{
-          isDismissable: true,
+          isDismissable: false,
           isOpen,
           onClose,
           className: "!max-w-[calc(100%-8rem)]",

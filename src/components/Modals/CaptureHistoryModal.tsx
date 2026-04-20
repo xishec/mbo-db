@@ -103,7 +103,7 @@ export default function CaptureHistoryModal({
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         onOpenChange,
         className: "!max-w-[calc(100%-8rem)]",

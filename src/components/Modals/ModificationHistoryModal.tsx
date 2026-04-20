@@ -37,7 +37,7 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         onOpenChange,
         className: "!max-w-[calc(100%-8rem)]",

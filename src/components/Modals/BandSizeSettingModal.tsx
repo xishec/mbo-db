@@ -90,7 +90,7 @@ export default function BandSizeSettingModal({ isOpen, onOpenChange }: BandSizeS
   return (
     <ModalShell
       modalProps={{
-        isDismissable: true,
+        isDismissable: false,
         isOpen,
         onOpenChange,
         size: "md",
