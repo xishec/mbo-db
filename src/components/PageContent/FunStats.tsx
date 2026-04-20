@@ -1,10 +1,5 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Card, CardBody, RangeCalendar } from "@heroui/react";
-import { today, getLocalTimeZone, parseDate } from "@internationalized/date";
-import type { RangeCalendarProps } from "@heroui/react";
-
-type CalendarRange = NonNullable<RangeCalendarProps["value"]>;
-type CalendarDate = CalendarRange["start"];
 import { useData } from "../../services/useData";
 import { BirdEventType, type BirdEvent } from "../../types";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
@@ -77,33 +72,24 @@ export default function FunStats() {
     return dates;
   }, [birdEventsMap]);
 
-  const defaultRange = useMemo(() => {
-    const now = today(getLocalTimeZone());
-    if (eventDatesSet.size === 0) return { start: now, end: now };
-    const lastDate = [...eventDatesSet].sort().pop()!;
-    const d = parseDate(lastDate);
-    return { start: d, end: d };
+  const defaultEndDate = useMemo(() => {
+    if (eventDatesSet.size === 0) return new Date().toISOString().split("T")[0];
+    return [...eventDatesSet].sort().pop()!;
   }, [eventDatesSet]);
 
-  const [range, setRange] = useState<CalendarRange>(defaultRange);
+  const [startDate, setStartDate] = useState(defaultEndDate);
+  const [endDate, setEndDate] = useState(defaultEndDate);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   useEffect(() => {
     if (!hasInitialized && eventDatesSet.size > 0) {
-      setRange(defaultRange);
+      setStartDate(defaultEndDate);
+      setEndDate(defaultEndDate);
       setHasInitialized(true);
     }
-  }, [defaultRange, eventDatesSet.size, hasInitialized]);
-  const startDate = `${range.start.year}-${String(range.start.month).padStart(2, "0")}-${String(range.start.day).padStart(2, "0")}`;
-  const endDate = `${range.end.year}-${String(range.end.month).padStart(2, "0")}-${String(range.end.day).padStart(2, "0")}`;
+  }, [defaultEndDate, eventDatesSet.size, hasInitialized]);
 
-  const isDateUnavailable = useCallback(
-    (date: CalendarDate) => {
-      const dateStr = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
-      return !eventDatesSet.has(dateStr);
-    },
-    [eventDatesSet]
-  );
+  const calendarRef = useRef<HTMLDivElement>(null);
 
   const stats = useMemo(() => {
     const events: BirdEvent[] = [];
@@ -291,11 +277,20 @@ export default function FunStats() {
           <Card shadow="sm">
             <CardBody className="p-0">
               <RangeCalendar
+                ref={calendarRef}
                 aria-label="Select date range"
                 showMonthAndYearPickers
-                value={range}
-                onChange={setRange}
-                isDateUnavailable={isDateUnavailable}
+                onChange={(val) => {
+                  if (!val) return;
+                  const fmt = (d: { year: number; month: number; day: number }) =>
+                    `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
+                  setStartDate(fmt(val.start));
+                  setEndDate(fmt(val.end));
+                }}
+                isDateUnavailable={(date) => {
+                  const dateStr = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
+                  return !eventDatesSet.has(dateStr);
+                }}
                 allowsNonContiguousRanges
                 errorMessage="Some dates have no banding data"
                 classNames={{
