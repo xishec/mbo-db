@@ -22,7 +22,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
   {
     key: "bandLastTwoDigits",
     type: "number",
-    label: "Band",
+    label: "Digit",
     maxLength: 2,
     minLength: 2,
     tableClassName: "w-[75px]",

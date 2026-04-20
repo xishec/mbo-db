@@ -1,7 +1,7 @@
 import { Input, Progress, Select, SelectItem, Chip, Button } from "@heroui/react";
 import { useState, useMemo, useCallback } from "react";
 import { useData } from "../../services/useData";
-import type { BirdEvent, CaptureColumn } from "../../types";
+import type { BirdEvent } from "../../types";
 import { TABLE_COLUMNS } from "./Programs/Captures/helpers";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import ExportButton from "../Helper/ExportButton";
@@ -40,6 +40,11 @@ interface Filter {
   logic: LogicOperator;
 }
 
+const SEARCH_COLUMNS = [
+  { key: "bandId", type: "text", label: "Band ID" },
+  ...TABLE_COLUMNS.filter((col) => col.key !== "actions" && col.key !== "bandGroup" && col.key !== "bandLastTwoDigits"),
+];
+
 export default function Search() {
   const { birdEventsMap, isLoading } = useData();
 
@@ -61,7 +66,7 @@ export default function Search() {
 
   // Get property type for current selection
   const currentPropertyType = useMemo(() => {
-    const prop = TABLE_COLUMNS.find((p: CaptureColumn) => p.key === currentProperty);
+    const prop = SEARCH_COLUMNS.find((p) => p.key === currentProperty);
     return prop?.type ?? "string";
   }, [currentProperty]);
 
@@ -107,6 +112,8 @@ export default function Search() {
   // Helper function to get value from BirdEvent based on property key
   const getEventValue = (event: BirdEvent, propertyKey: string): string | number | undefined => {
     switch (propertyKey) {
+      case "bandId":
+        return event.band.id;
       case "bandGroup":
         return event.band.bandGroupId;
       case "bandLastTwoDigits":
@@ -140,7 +147,7 @@ export default function Search() {
   // Evaluate a single filter against a bird event
   const matchesFilter = useCallback((birdEvent: BirdEvent, filter: Filter): boolean => {
     const rawValue = getEventValue(birdEvent, filter.property);
-    const propType = TABLE_COLUMNS.find((p: CaptureColumn) => p.key === filter.property)?.type ?? "string";
+    const propType = SEARCH_COLUMNS.find((p) => p.key === filter.property)?.type ?? "string";
 
     if (filter.operator === "defined") {
       return rawValue !== undefined && rawValue !== null && rawValue !== "";
@@ -199,14 +206,13 @@ export default function Search() {
 
   // Get operator label for display
   const getOperatorLabel = (operator: string, propertyKey: string) => {
-    const propType = TABLE_COLUMNS.find((p: CaptureColumn) => p.key === propertyKey)?.type ?? "string";
+    const propType = SEARCH_COLUMNS.find((p) => p.key === propertyKey)?.type ?? "string";
     const operators = propType === "number" ? NUMBER_OPERATORS : STRING_OPERATORS;
     return operators.find((o) => o.key === operator)?.label ?? operator;
   };
 
-  // Get property label for display
   const getPropertyLabel = (propertyKey: string) => {
-    return TABLE_COLUMNS.find((p: CaptureColumn) => p.key === propertyKey)?.label ?? propertyKey;
+    return SEARCH_COLUMNS.find((p) => p.key === propertyKey)?.label ?? propertyKey;
   };
 
   const canAddFilter = currentProperty && currentOperator && (operatorRequiresValue ? currentValue : true);
@@ -246,7 +252,7 @@ export default function Search() {
             onSelectionChange={handlePropertyChange}
             className="flex-1"
           >
-            {TABLE_COLUMNS.filter((col) => col.key !== "actions").map((prop: CaptureColumn) => (
+            {SEARCH_COLUMNS.map((prop) => (
               <SelectItem key={prop.key}>{prop.label}</SelectItem>
             ))}
           </Select>
