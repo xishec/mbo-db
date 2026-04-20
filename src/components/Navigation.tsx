@@ -17,6 +17,7 @@ import {
   ModalBody,
   ModalFooter,
   Spinner,
+  Tooltip,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
@@ -115,16 +116,17 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
           </div>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-12" justify="center">
-          {(["home", "programs", "DETs"] as const).map((page) => (
-            <NavbarItem key={page} isActive={activePage === page}>
+          {(["home", "programs", "DETs"] as const).map((page) => {
+            const disabled = isLoading || (page === "DETs" && !isOnline);
+            const link = (
               <Link
                 aria-current={activePage === page ? "page" : undefined}
                 color={activePage === page ? "primary" : "foreground"}
                 href="#"
-                className={`inline-block text-center ${isLoading ? "pointer-events-none opacity-50" : ""}`}
+                className={`inline-block text-center ${disabled ? "pointer-events-none opacity-50" : ""}`}
                 onClick={(e) => {
                   e.preventDefault();
-                  if (!isLoading) {
+                  if (!disabled) {
                     selectProgram(null);
                     onPageChange(page);
                   }
@@ -132,8 +134,15 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               >
                 {page === "DETs" ? "DETs" : page.charAt(0).toUpperCase() + page.slice(1)}
               </Link>
-            </NavbarItem>
-          ))}
+            );
+            return (
+              <NavbarItem key={page} isActive={activePage === page}>
+                {page === "DETs" && !isOnline ? (
+                  <Tooltip content="Requires internet connection">{link}</Tooltip>
+                ) : link}
+              </NavbarItem>
+            );
+          })}
           <Dropdown>
             <NavbarItem isActive={["search", "species", "volunteers", "reports", "funstats"].includes(activePage)}>
               <DropdownTrigger>
