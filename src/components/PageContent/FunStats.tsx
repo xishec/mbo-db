@@ -1,7 +1,10 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { Card, CardBody, RangeCalendar } from "@heroui/react";
-import { today, getLocalTimeZone, parseDate, type DateValue } from "@internationalized/date";
-import type { RangeValue } from "@react-types/shared";
+import { today, getLocalTimeZone, parseDate } from "@internationalized/date";
+import type { RangeCalendarProps } from "@heroui/react";
+
+type CalendarRange = NonNullable<RangeCalendarProps["value"]>;
+type CalendarDate = CalendarRange["start"];
 import { useData } from "../../services/useData";
 import { BirdEventType, type BirdEvent } from "../../types";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
@@ -82,7 +85,7 @@ export default function FunStats() {
     return { start: d, end: d };
   }, [eventDatesSet]);
 
-  const [range, setRange] = useState<RangeValue<DateValue>>(defaultRange);
+  const [range, setRange] = useState<CalendarRange>(defaultRange);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   useEffect(() => {
@@ -95,7 +98,7 @@ export default function FunStats() {
   const endDate = `${range.end.year}-${String(range.end.month).padStart(2, "0")}-${String(range.end.day).padStart(2, "0")}`;
 
   const isDateUnavailable = useCallback(
-    (date: DateValue) => {
+    (date: CalendarDate) => {
       const dateStr = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
       return !eventDatesSet.has(dateStr);
     },

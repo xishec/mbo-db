@@ -110,5 +110,8 @@
         }
       ]
     }
+  },
+  "overrides": {
+    "@internationalized/date": "$@internationalized/date"
   }
 }
