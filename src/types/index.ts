@@ -3,11 +3,6 @@ import type { DET } from "./DET";
 // Re-export DET type
 export type { DET } from "./DET";
 
-export interface AppSettings {
-  captureColumnOrder?: string[];
-  recaptureColumnOrder?: string[];
-}
-
 // Database structure types
 export type YearToProgramMap = Record<string, string[]>;
 export type ProgramsMap = Record<string, Program>;
@@ -218,8 +213,6 @@ export interface DataContextType {
   DETsMap: DETsMap;
   volunteersMap: VolunteersMap;
   speciesInfoMap: SpeciesInfoMap;
-  appSettings: AppSettings;
-  updateAppSettings: (settings: AppSettings) => Promise<void>;
 
   // Offline support
   isOnline: boolean;

@@ -18,7 +18,7 @@ import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
 import BirdStatusModal from "./BirdStatusModal";
 import ValidationMessages from "../Helper/ValidationMessages";
-import { getSortedColumns } from "../PageContent/Programs/Captures/helpers";
+import { TABLE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import PyleTable from "../Helper/Info/PyleTable";
@@ -52,7 +52,6 @@ export default function AddBirdEventModal({
     bandSizeToBandIdMap,
     volunteersMap,
     speciesInfoMap,
-    appSettings,
   } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -61,17 +60,6 @@ export default function AddBirdEventModal({
   const [isSaving, setIsSaving] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
-
-  const sortedColumns = useMemo(
-    () =>
-      getSortedColumns(
-        isNewCapture,
-        birdEventToModify?.id,
-        appSettings.captureColumnOrder,
-        appSettings.recaptureColumnOrder
-      ),
-    [isNewCapture, birdEventToModify?.id, appSettings.captureColumnOrder, appSettings.recaptureColumnOrder]
-  );
 
   // Sum of all input column widths (excl. actions/updatedAt/notes) + gaps
   const inputRowWidth = 1120;
@@ -134,7 +122,7 @@ export default function AddBirdEventModal({
       setLastBandId("");
       setWasOpen(true);
       const firstEmpty =
-        sortedColumns.find((col) => !skipFocusFields.has(col.key) && !defaultData[col.key as keyof CaptureFormData])
+        TABLE_COLUMNS.find((col) => !skipFocusFields.has(col.key) && !defaultData[col.key as keyof CaptureFormData])
           ?.key ?? firstEditableField;
       focusTo(firstEmpty);
     } else if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
@@ -162,8 +150,8 @@ export default function AddBirdEventModal({
   }, [useCurrentTime]);
 
   const firstEditableField = useMemo(() => {
-    return sortedColumns.find((col) => !skipFocusFields.has(col.key))?.key ?? "bandGroup";
-  }, [sortedColumns, skipFocusFields]);
+    return TABLE_COLUMNS.find((col) => !skipFocusFields.has(col.key))?.key ?? "bandGroup";
+  }, [TABLE_COLUMNS, skipFocusFields]);
 
   const focusTo = useCallback((fieldKey: string) => {
     setTimeout(() => {
@@ -306,7 +294,7 @@ export default function AddBirdEventModal({
 
     // Incomplete field validation
     const incompleteFields = new Set<string>();
-    for (const column of sortedColumns) {
+    for (const column of TABLE_COLUMNS) {
       const value = formData[column.key as keyof CaptureFormData];
       if (column.minLength && value.length > 0 && value.length < column.minLength) {
         incompleteFields.add(column.key);
@@ -333,7 +321,7 @@ export default function AddBirdEventModal({
     );
 
     // Add incomplete field warnings to messages
-    for (const column of sortedColumns) {
+    for (const column of TABLE_COLUMNS) {
       if (incompleteFields.has(column.key)) {
         messages.push({ text: `${column.label} is incomplete`, severity: "warning" });
       }
@@ -364,31 +352,31 @@ export default function AddBirdEventModal({
       existingErrors,
       warningMessages: messages,
     };
-  }, [formData, pastBirdEvents, magicTable, sortedColumns, sexCode, pyleSpeciesRange, volunteersMap]);
+  }, [formData, pastBirdEvents, magicTable, TABLE_COLUMNS, sexCode, pyleSpeciesRange, volunteersMap]);
 
   const focusNextInput = useCallback(
     (currentField: keyof CaptureFormData) => {
-      const currentIndex = sortedColumns.findIndex((col) => col.key === currentField);
-      if (currentIndex < sortedColumns.length - 1) {
-        const nextKey = sortedColumns.slice(currentIndex + 1).find((col) => !skipFocusFields.has(col.key))?.key;
+      const currentIndex = TABLE_COLUMNS.findIndex((col) => col.key === currentField);
+      if (currentIndex < TABLE_COLUMNS.length - 1) {
+        const nextKey = TABLE_COLUMNS.slice(currentIndex + 1).find((col) => !skipFocusFields.has(col.key))?.key;
         if (nextKey) inputRefs.current.get(nextKey)?.focus();
       }
     },
-    [sortedColumns, skipFocusFields]
+    [TABLE_COLUMNS, skipFocusFields]
   );
 
   const focusPrevInput = useCallback(
     (currentField: keyof CaptureFormData) => {
-      const currentIndex = sortedColumns.findIndex((col) => col.key === currentField);
+      const currentIndex = TABLE_COLUMNS.findIndex((col) => col.key === currentField);
       if (currentIndex > 0) {
-        const prevKey = sortedColumns
+        const prevKey = TABLE_COLUMNS
           .slice(0, currentIndex)
           .reverse()
           .find((col) => !skipFocusFields.has(col.key))?.key;
         if (prevKey) inputRefs.current.get(prevKey)?.focus();
       }
     },
-    [sortedColumns, skipFocusFields]
+    [TABLE_COLUMNS, skipFocusFields]
   );
 
   const handleInputChange = useCallback(
@@ -700,7 +688,7 @@ export default function AddBirdEventModal({
                 <Card shadow="sm">
                   <CardBody className="flex flex-col gap-2 p-3">
                     <div className="flex gap-1">
-                      {sortedColumns
+                      {TABLE_COLUMNS
                         .filter(
                           (column) =>
                             ![
@@ -758,7 +746,7 @@ export default function AddBirdEventModal({
                           </div>
                         ));
                       })()}
-                      {sortedColumns
+                      {TABLE_COLUMNS
                         .filter((column) => ["bander", "scribe", "net", "birdStatus"].includes(column.key))
                         .map((column) => (
                           <div
@@ -770,10 +758,10 @@ export default function AddBirdEventModal({
                             {renderTableCell(column)}
                           </div>
                         ))}
-                      {sortedColumns.find((c) => c.key === "notes") && (
+                      {TABLE_COLUMNS.find((c) => c.key === "notes") && (
                         <div className="flex flex-col gap-1 flex-1 min-w-0">
                           <span className="text-xs text-default-900 font-medium px-1">Notes</span>
-                          {renderTableCell(sortedColumns.find((c) => c.key === "notes")!)}
+                          {renderTableCell(TABLE_COLUMNS.find((c) => c.key === "notes")!)}
                         </div>
                       )}
                     </div>

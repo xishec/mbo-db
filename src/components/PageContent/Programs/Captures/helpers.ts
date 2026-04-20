@@ -143,56 +143,6 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
   { key: "notes", type: "text", label: "Notes", tableClassName: "w-[1000px]", inputClassName: "w-[1000px]" },
 ];
 
-// Column order for re-captures (isNewCapture = false)
-export const RE_CAPTURE_COLUMN_ORDER: string[] = [
-  "programId",
-  "birdEventType",
-  "bander",
-  "scribe",
-  "date",
-  "time",
-  "net",
-  "bandGroup",
-  "bandLastTwoDigits",
-  "species",
-  "wing",
-  "age",
-  "howAged",
-  "sex",
-  "howSexed",
-  "fat",
-  "weight",
-  "birdStatus",
-  "notes",
-];
-
-export function getSortedColumns(
-  isNewCapture: boolean,
-  birdEventToModifyId?: string,
-  captureColumnOrder?: string[],
-  recaptureColumnOrder?: string[],
-): CaptureColumn[] {
-  const order = (isNewCapture || birdEventToModifyId)
-    ? captureColumnOrder
-    : (recaptureColumnOrder ?? RE_CAPTURE_COLUMN_ORDER);
-
-  if (!order || order.length === 0) {
-    if (isNewCapture || birdEventToModifyId) return TABLE_COLUMNS;
-    return RE_CAPTURE_COLUMN_ORDER.map((key) => TABLE_COLUMNS.find((col) => col.key === key)).filter(
-      (col): col is CaptureColumn => col !== undefined
-    );
-  }
-
-  const ordered = order.map((key) => TABLE_COLUMNS.find((col) => col.key === key)).filter(
-    (col): col is CaptureColumn => col !== undefined
-  );
-  // Append any columns not in the order (safety net)
-  for (const col of TABLE_COLUMNS) {
-    if (!order.includes(col.key)) ordered.push(col);
-  }
-  return ordered;
-}
-
 
 export function isInRange(value: number, lower: number, upper: number): boolean | null {
   if (lower === 0 && upper === 0) return null;

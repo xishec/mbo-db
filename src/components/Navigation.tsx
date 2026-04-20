@@ -180,7 +180,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
         </NavbarContent>
         <NavbarContent justify="end">
           {isAdmin && (
-          <NavbarItem className="mr-4">
+          <NavbarItem className="mr-2">
             <Badge
               content={errorCount}
               color="secondary"

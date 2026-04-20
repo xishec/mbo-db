@@ -18,7 +18,6 @@ import {
   type PendingBirdEvent,
   type PendingDETEvent,
   type SpeciesInfoMap,
-  type AppSettings,
 } from "../types";
 import {
   Band,
@@ -137,7 +136,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [DETsMap, setDETsMap] = useState<DETsMap>({});
   const [volunteersMap, setVolunteersMap] = useState<VolunteersMap>({});
   const [volunteersFullNameMap, setVolunteersFullNameMap] = useState<Record<string, string>>({});
-  const [appSettings, setAppSettings] = useState<AppSettings>({});
 
   /**
    * Compute SpeciesInfoMap from birdEventsMap
@@ -485,45 +483,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    const SETTINGS_CACHE_KEY = `settings_cache_${CURRENT_ENVIRONMENT}`;
-
-    const loadSettings = async () => {
-      if (forceOffline) {
-        try {
-          const cached = await getDataFromIndexedDB(SETTINGS_CACHE_KEY);
-          if (cached) {
-            setAppSettings(cached as unknown as AppSettings);
-            logger.info("DataLoad", "Loaded settings from cache");
-          }
-        } catch {
-          logger.warn("DataLoad", "Could not load settings from cache");
-        }
-        return;
-      }
-      try {
-        const settingsSnap = await get(ref(db, `${CURRENT_ENVIRONMENT}/settings`));
-        if (settingsSnap.exists()) {
-          const settings = settingsSnap.val() as AppSettings;
-          setAppSettings(settings);
-          await saveDataToIndexedDB(SETTINGS_CACHE_KEY, settings as unknown as DatabaseData);
-          logger.info("DataLoad", "Loaded settings");
-        }
-      } catch {
-        try {
-          const cached = await getDataFromIndexedDB(SETTINGS_CACHE_KEY);
-          if (cached) {
-            setAppSettings(cached as unknown as AppSettings);
-            logger.info("DataLoad", "Loaded settings from cache (fallback)");
-          }
-        } catch {
-          logger.warn("DataLoad", "Could not load settings");
-        }
-      }
-    };
-
     loadData();
     loadConstants();
-    loadSettings();
 
     return () => {
       cancelled = true;
@@ -1334,13 +1295,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, volunteersMap, saveCompleteStateToIndexedDB]
   );
 
-  const updateAppSettings = useCallback(async (newSettings: AppSettings) => {
-    if (!isOnline) throw new Error("Cannot update settings while offline");
-    setAppSettings(newSettings);
-    await set(ref(db, `${CURRENT_ENVIRONMENT}/settings`), newSettings);
-    await saveDataToIndexedDB(`settings_cache_${CURRENT_ENVIRONMENT}`, newSettings as unknown as DatabaseData);
-    logger.info("Settings", "Settings updated");
-  }, [isOnline]);
 
   const triggerSync = useCallback(async () => {
     if (!isAdmin) return;
@@ -1388,8 +1342,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         DETsMap,
         volunteersMap,
         speciesInfoMap,
-        appSettings,
-        updateAppSettings,
         isOnline,
         pendingCount,
         lastSyncedAt,

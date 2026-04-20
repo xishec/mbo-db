@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useData } from "../../../../services/useData";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import BandSizeSettingModal from "../../../Modals/BandSizeSettingModal";
-import SettingsModal from "../../../Modals/SettingsModal";
 import { BandSize } from "../../../../types";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
@@ -18,8 +17,7 @@ export default function BirdEvents() {
   const [birdEventTabType, setBirdEventTabType] = useState<BirdEventTabType>(BirdEventTabType.NEW_CAPTURES);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onOpenChange: onSettingsOpenChange } = useDisclosure();
-  const { isOpen: isColumnSettingsOpen, onOpen: onColumnSettingsOpen, onClose: onColumnSettingsClose } = useDisclosure();
-  const { selectedProgram, isLoading, bandSizeToBandIdMap, isLoggedIn, isAdmin } = useData();
+  const { selectedProgram, isLoading, bandSizeToBandIdMap, isLoggedIn } = useData();
   const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(BandSize.Other);
 
   if (!selectedProgram) {
@@ -93,31 +91,21 @@ export default function BirdEvents() {
         isNewCapture={birdEventTabType === BirdEventTabType.NEW_CAPTURES}
       />
       <BandSizeSettingModal isOpen={isSettingsOpen} onOpenChange={onSettingsOpenChange} />
-      <SettingsModal isOpen={isColumnSettingsOpen} onClose={onColumnSettingsClose} />
 
       <div className="w-full flex items-end justify-between gap-4">
-        <div className="flex items-center gap-1">
-          <Tabs
-            color="secondary"
-            size="md"
-            selectedKey={birdEventTabType}
-            onSelectionChange={(key) => setBirdEventTabType(key as BirdEventTabType)}
-            classNames={{
-              tabContent: "text-gray-700",
-            }}
-          >
-            {Object.values(BirdEventTabType).map((value) => (
-              <Tab key={value} title={value} />
-            ))}
-          </Tabs>
-          {isAdmin && (
-            <Tooltip content="Column order settings" closeDelay={50}>
-              <Button isIconOnly size="md" variant="light" onPress={onColumnSettingsOpen} aria-label="Column order settings">
-                <Cog6ToothIcon className="w-5 h-5" />
-              </Button>
-            </Tooltip>
-          )}
-        </div>
+        <Tabs
+          color="secondary"
+          size="md"
+          selectedKey={birdEventTabType}
+          onSelectionChange={(key) => setBirdEventTabType(key as BirdEventTabType)}
+          classNames={{
+            tabContent: "text-gray-700",
+          }}
+        >
+          {Object.values(BirdEventTabType).map((value) => (
+            <Tab key={value} title={value} />
+          ))}
+        </Tabs>
 
         {isLoggedIn && addBirdEvent()}
       </div>
