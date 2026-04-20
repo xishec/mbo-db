@@ -18,6 +18,7 @@ import {
   type PendingBirdEvent,
   type PendingDETEvent,
   type SpeciesInfoMap,
+  type AppSettings,
 } from "../types";
 import {
   Band,
@@ -136,6 +137,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [DETsMap, setDETsMap] = useState<DETsMap>({});
   const [volunteersMap, setVolunteersMap] = useState<VolunteersMap>({});
   const [volunteersFullNameMap, setVolunteersFullNameMap] = useState<Record<string, string>>({});
+  const [appSettings, setAppSettings] = useState<AppSettings>({});
 
   /**
    * Compute SpeciesInfoMap from birdEventsMap
@@ -483,8 +485,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const loadSettings = async () => {
+      try {
+        const settingsSnap = await get(ref(db, `${CURRENT_ENVIRONMENT}/settings`));
+        if (settingsSnap.exists()) {
+          setAppSettings(settingsSnap.val() as AppSettings);
+          logger.info("DataLoad", "Loaded settings");
+        }
+      } catch {
+        logger.warn("DataLoad", "Could not load settings");
+      }
+    };
+
     loadData();
     loadConstants();
+    if (!forceOffline) loadSettings();
 
     return () => {
       cancelled = true;
@@ -1292,6 +1307,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, volunteersMap, saveCompleteStateToIndexedDB]
   );
 
+  const updateAppSettings = useCallback(async (newSettings: AppSettings) => {
+    if (!isOnline) throw new Error("Cannot update settings while offline");
+    setAppSettings(newSettings);
+    await set(ref(db, `${CURRENT_ENVIRONMENT}/settings`), newSettings);
+    logger.info("Settings", "Settings updated");
+  }, [isOnline]);
+
   const triggerSync = useCallback(async () => {
     setIsSyncing(true);
     setSyncResult(null);
@@ -1337,6 +1359,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         DETsMap,
         volunteersMap,
         speciesInfoMap,
+        appSettings,
+        updateAppSettings,
         isOnline,
         pendingCount,
         lastSyncedAt,

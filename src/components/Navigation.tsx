@@ -20,10 +20,11 @@ import {
   Tooltip,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { CodeBracketIcon, ExclamationTriangleIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useMemo } from "react";
 import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
+import SettingsModal from "./Modals/SettingsModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
 import { ActivityModal } from "./Modals/ActivityModal";
 import { useData } from "../services/useData";
@@ -42,6 +43,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
   const { isOpen: isActivityOpen, onOpen: onActivityOpen, onClose: onActivityClose } = useDisclosure();
+  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
   const {
     birdEventsMap,
     bandIdToBirdEventIdsMap,
@@ -179,6 +181,14 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
           </Dropdown>
         </NavbarContent>
         <NavbarContent justify="end">
+          {isAdmin && (
+          <NavbarItem>
+            <Button isIconOnly variant="light" onPress={onSettingsOpen} aria-label="Settings" isDisabled={isLoading}>
+              <Cog6ToothIcon className="w-5 h-5" />
+            </Button>
+          </NavbarItem>
+          )}
+          {isAdmin && (
           <NavbarItem className="mr-4">
             <Badge
               content={errorCount}
@@ -199,6 +209,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               </Button>
             </Badge>
           </NavbarItem>
+          )}
           {isAdmin && (
             <NavbarItem>
               <Button
@@ -240,6 +251,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
       <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />
       <ActivityModal isOpen={isActivityOpen} onClose={onActivityClose} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={onSettingsClose} />
       <Modal
         isOpen={isSyncing || syncResult !== null}
         isDismissable={false}

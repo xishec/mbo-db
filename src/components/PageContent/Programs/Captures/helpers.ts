@@ -166,14 +166,31 @@ export const RE_CAPTURE_COLUMN_ORDER: string[] = [
   "notes",
 ];
 
-export function getSortedColumns(isNewCapture: boolean, birdEventToModifyId?: string): CaptureColumn[] {
-  if (isNewCapture || birdEventToModifyId) {
-    return TABLE_COLUMNS;
+export function getSortedColumns(
+  isNewCapture: boolean,
+  birdEventToModifyId?: string,
+  captureColumnOrder?: string[],
+  recaptureColumnOrder?: string[],
+): CaptureColumn[] {
+  const order = (isNewCapture || birdEventToModifyId)
+    ? captureColumnOrder
+    : (recaptureColumnOrder ?? RE_CAPTURE_COLUMN_ORDER);
+
+  if (!order || order.length === 0) {
+    if (isNewCapture || birdEventToModifyId) return TABLE_COLUMNS;
+    return RE_CAPTURE_COLUMN_ORDER.map((key) => TABLE_COLUMNS.find((col) => col.key === key)).filter(
+      (col): col is CaptureColumn => col !== undefined
+    );
   }
 
-  return RE_CAPTURE_COLUMN_ORDER.map((key) => TABLE_COLUMNS.find((col) => col.key === key)).filter(
+  const ordered = order.map((key) => TABLE_COLUMNS.find((col) => col.key === key)).filter(
     (col): col is CaptureColumn => col !== undefined
   );
+  // Append any columns not in the order (safety net)
+  for (const col of TABLE_COLUMNS) {
+    if (!order.includes(col.key)) ordered.push(col);
+  }
+  return ordered;
 }
 
 

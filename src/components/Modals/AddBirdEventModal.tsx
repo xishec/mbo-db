@@ -65,6 +65,7 @@ export default function AddBirdEventModal({
     bandSizeToBandIdMap,
     volunteersMap,
     speciesInfoMap,
+    appSettings,
   } = useData();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -73,12 +74,10 @@ export default function AddBirdEventModal({
   const [isSaving, setIsSaving] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
-  const suppressFocusRef = useRef(false);
 
-  // Get sorted columns based on capture type
   const sortedColumns = useMemo(
-    () => getSortedColumns(isNewCapture, birdEventToModify?.id),
-    [isNewCapture, birdEventToModify?.id]
+    () => getSortedColumns(isNewCapture, birdEventToModify?.id, appSettings.captureColumnOrder, appSettings.recaptureColumnOrder),
+    [isNewCapture, birdEventToModify?.id, appSettings.captureColumnOrder, appSettings.recaptureColumnOrder]
   );
 
   // Reset form data when modal opens
@@ -128,48 +127,37 @@ export default function AddBirdEventModal({
       }
 
       // Populate bandGroup and bandLastTwoDigits from bandSize
-      let preFilled = false;
       if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
         const bandId = bandSizeToBandIdMap[bandSize];
         if (bandId.length === 9) {
-          const bandGroup = bandId.slice(0, 7);
-          const bandLastTwoDigits = bandId.slice(7, 9);
-          defaultData.bandGroup = bandGroup;
-          defaultData.bandLastTwoDigits = bandLastTwoDigits;
-          preFilled = true;
+          defaultData.bandGroup = bandId.slice(0, 7);
+          defaultData.bandLastTwoDigits = bandId.slice(7, 9);
         }
       }
       setFormData(defaultData);
       setLastBandId("");
       setWasOpen(true);
-      if (isNewCapture) {
-        focusTo(preFilled ? "species" : "bandGroup");
-      } else {
-        focusTo("bander");
-      }
-    } else {
-      // Modal already open - only update band fields if bandSize changed
-      if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
-        const bandId = bandSizeToBandIdMap[bandSize];
-        if (bandId.length === 9) {
-          const bandGroup = bandId.slice(0, 7);
-          const bandLastTwoDigits = bandId.slice(7, 9);
-          setFormData((prev) => ({
-            ...prev,
-            bandGroup,
-            bandLastTwoDigits,
-          }));
-          setLastBandId("");
-          // Don't override focus during save-and-next (which focuses species)
-          if (!suppressFocusRef.current) {
-            focusTo("bander");
-          }
-          suppressFocusRef.current = false;
-        }
+      focusTo(firstEditableField);
+    } else if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
+      // Modal already open — update band fields after incrementBandSize
+      const bandId = bandSizeToBandIdMap[bandSize];
+      if (bandId.length === 9) {
+        setFormData((prev) => ({
+          ...prev,
+          bandGroup: bandId.slice(0, 7),
+          bandLastTwoDigits: bandId.slice(7, 9),
+        }));
+        setLastBandId("");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap]);
+
+  const SKIP_FOCUS_FIELDS = new Set(["actions", "programId", "birdEventType", "date", "time", "birdStatus", "updatedAt"]);
+
+  const firstEditableField = useMemo(() => {
+    return sortedColumns.find((col) => !SKIP_FOCUS_FIELDS.has(col.key))?.key ?? "bandGroup";
+  }, [sortedColumns]);
 
   const focusTo = useCallback((fieldKey: string) => {
     setTimeout(() => {
@@ -375,10 +363,8 @@ export default function AddBirdEventModal({
       if (currentIndex < sortedColumns.length - 1) {
         const nextKey = sortedColumns
           .slice(currentIndex + 1)
-          .find((col) => !["programId", "birdEventType", "date", "time", "birdStatus"].includes(col.key))?.key;
-        if (!nextKey) return;
-
-        inputRefs.current.get(nextKey)?.focus();
+          .find((col) => !SKIP_FOCUS_FIELDS.has(col.key))?.key;
+        if (nextKey) inputRefs.current.get(nextKey)?.focus();
       }
     },
     [sortedColumns]
@@ -391,10 +377,8 @@ export default function AddBirdEventModal({
         const prevKey = sortedColumns
           .slice(0, currentIndex)
           .reverse()
-          .find((col) => !["programId", "birdEventType", "date", "time", "birdStatus"].includes(col.key))?.key;
-        if (!prevKey) return;
-
-        inputRefs.current.get(prevKey)?.focus();
+          .find((col) => !SKIP_FOCUS_FIELDS.has(col.key))?.key;
+        if (prevKey) inputRefs.current.get(prevKey)?.focus();
       }
     },
     [sortedColumns]
@@ -463,7 +447,6 @@ export default function AddBirdEventModal({
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
         if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
-          suppressFocusRef.current = true;
           await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
         }
 
