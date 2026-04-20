@@ -609,69 +609,7 @@ export default function AddBirdEventModal({
         );
       }
 
-      // Date: split into Year, Month, Day using HeroUI Input
-      if (column.key === "date") {
-        const parts = formData.date.split("-");
-        const year = parts[0] ?? "";
-        const month = parts[1] ?? "";
-        const day = parts[2] ?? "";
-        const updateDate = (y: string, m: string, d: string) => {
-          const yy = y.replace(/\D/g, "").slice(0, 4);
-          const mm = m.replace(/\D/g, "").slice(0, 2);
-          const dd = d.replace(/\D/g, "").slice(0, 2);
-          setFormData((prev) => ({ ...prev, date: `${yy}-${mm}-${dd}`.replace(/-+$/, "") }));
-        };
-        const subInputClass = "text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
-        return (
-          <div className="flex gap-0.5 items-center">
-            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("date", el); }}
-              {...modalInputProps} className="w-[75px]" maxLength={4} value={year} isDisabled={isSaving || useCurrentTime}
-              classNames={{ input: subInputClass }}
-              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 4); updateDate(v, month, day); if (v.length === 4) inputRefs.current.get("date-month")?.focus(); }}
-              onKeyDown={(e) => { if (e.key === "Backspace" && year === "") focusPrevInput("date" as keyof CaptureFormData); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) focusPrevInput("date" as keyof CaptureFormData); else inputRefs.current.get("date-month")?.focus(); } }}
-            />
-            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("date-month", el); }}
-              {...modalInputProps} className="w-[50px]" maxLength={2} value={month} isDisabled={isSaving || useCurrentTime}
-              classNames={{ input: subInputClass }}
-              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); updateDate(year, v, day); if (v.length === 2) inputRefs.current.get("date-day")?.focus(); }}
-              onKeyDown={(e) => { if (e.key === "Backspace" && month === "") inputRefs.current.get("date")?.focus(); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) inputRefs.current.get("date")?.focus(); else inputRefs.current.get("date-day")?.focus(); } }}
-            />
-            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("date-day", el); }}
-              {...modalInputProps} className="w-[50px]" maxLength={2} value={day} isDisabled={isSaving || useCurrentTime}
-              classNames={{ input: subInputClass }}
-              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); updateDate(year, month, v); if (v.length === 2) focusNextInput("date" as keyof CaptureFormData); }}
-              onKeyDown={(e) => { if (e.key === "Backspace" && day === "") inputRefs.current.get("date-month")?.focus(); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) inputRefs.current.get("date-month")?.focus(); else focusNextInput("date" as keyof CaptureFormData); } }}
-            />
-          </div>
-        );
-      }
-
-      // Time: split into Hour, Minute using HeroUI Input
-      if (column.key === "time") {
-        const parts = formData.time.split(":");
-        const hour = parts[0] ?? "";
-        const minute = parts[1] ?? "";
-        const updateTime = (h: string, m: string) => {
-          setFormData((prev) => ({ ...prev, time: `${h.replace(/\D/g, "").slice(0, 2)}:${m.replace(/\D/g, "").slice(0, 2)}` }));
-        };
-        const subInputClass = "text-sm text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
-        return (
-          <div className="flex gap-0.5 items-center">
-            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("time", el); }}
-              {...modalInputProps} className="w-[50px]" maxLength={2} value={hour} isDisabled={isSaving || useCurrentTime}
-              classNames={{ input: subInputClass }}
-              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); updateTime(v, minute); if (v.length === 2) inputRefs.current.get("time-minute")?.focus(); }}
-              onKeyDown={(e) => { if (e.key === "Backspace" && hour === "") focusPrevInput("time" as keyof CaptureFormData); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) focusPrevInput("time" as keyof CaptureFormData); else inputRefs.current.get("time-minute")?.focus(); } }}
-            />
-            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set("time-minute", el); }}
-              {...modalInputProps} className="w-[50px]" maxLength={2} value={minute} isDisabled={isSaving || useCurrentTime}
-              classNames={{ input: subInputClass }}
-              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 2); updateTime(hour, v); if (v.length === 2) focusNextInput("time" as keyof CaptureFormData); }}
-              onKeyDown={(e) => { if (e.key === "Backspace" && minute === "") inputRefs.current.get("time")?.focus(); if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) inputRefs.current.get("time")?.focus(); else focusNextInput("time" as keyof CaptureFormData); } }}
-            />
-          </div>
-        );
-      }
+      if (column.key === "date" || column.key === "time") return null;
 
       return (
         <Input
@@ -763,7 +701,20 @@ export default function AddBirdEventModal({
                   <CardBody className="flex flex-col gap-2 p-3">
                     <div className="flex gap-1">
                       {sortedColumns
-                        .filter((column) => !["actions", "updatedAt", "notes", "date", "time", "bander", "scribe", "net", "birdStatus"].includes(column.key))
+                        .filter(
+                          (column) =>
+                            ![
+                              "actions",
+                              "updatedAt",
+                              "notes",
+                              "date",
+                              "time",
+                              "bander",
+                              "scribe",
+                              "net",
+                              "birdStatus",
+                            ].includes(column.key)
+                        )
                         .map((column) => (
                           <div
                             key={column.key}
@@ -777,18 +728,45 @@ export default function AddBirdEventModal({
                           </div>
                         ))}
                     </div>
-                    <div className="flex gap-1 items-end">
+                    <div className="flex gap-1">
+                      {(() => {
+                        const dateParts = formData.date.split("-");
+                        const timeParts = formData.time.split(":");
+                        const disabled = isSaving || useCurrentTime;
+                        const cls = "text-sm text-start [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+                        const subs: { key: string; label: string; w: string; value: string; onUpdate: (v: string) => void; next?: string; prev?: string; maxLen: number; fieldKey: keyof CaptureFormData }[] = [
+                          { key: "date", label: "YYYY", w: "w-[75px]", value: dateParts[0] ?? "", maxLen: 4, next: "date-month", fieldKey: "date",
+                            onUpdate: (v) => setFormData((p) => ({ ...p, date: `${v}-${dateParts[1] ?? ""}-${dateParts[2] ?? ""}`.replace(/-+$/, "") })) },
+                          { key: "date-month", label: "MM", w: "w-[50px]", value: dateParts[1] ?? "", maxLen: 2, next: "date-day", prev: "date", fieldKey: "date",
+                            onUpdate: (v) => setFormData((p) => ({ ...p, date: `${dateParts[0] ?? ""}-${v}-${dateParts[2] ?? ""}`.replace(/-+$/, "") })) },
+                          { key: "date-day", label: "DD", w: "w-[50px]", value: dateParts[2] ?? "", maxLen: 2, next: "time", prev: "date-month", fieldKey: "date",
+                            onUpdate: (v) => setFormData((p) => ({ ...p, date: `${dateParts[0] ?? ""}-${dateParts[1] ?? ""}-${v}` })) },
+                          { key: "time", label: "HH", w: "w-[50px]", value: timeParts[0] ?? "", maxLen: 2, next: "time-minute", prev: "date-day", fieldKey: "time",
+                            onUpdate: (v) => setFormData((p) => ({ ...p, time: `${v}:${timeParts[1] ?? ""}` })) },
+                          { key: "time-minute", label: "MM", w: "w-[50px]", value: timeParts[1] ?? "", maxLen: 2, prev: "time", fieldKey: "time",
+                            onUpdate: (v) => setFormData((p) => ({ ...p, time: `${timeParts[0] ?? ""}:${v}` })) },
+                        ];
+                        return subs.map((s) => (
+                          <div key={s.key} className={`flex flex-col gap-1 shrink-0 ${s.w}`}>
+                            <span className="text-xs text-default-900 font-medium px-1 text-start">{s.label}</span>
+                            <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set(s.key, el); }}
+                              {...modalInputProps} maxLength={s.maxLen} value={s.value} isDisabled={disabled}
+                              classNames={{ input: cls }}
+                              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, s.maxLen); s.onUpdate(v); if (v.length === s.maxLen && s.next) inputRefs.current.get(s.next)?.focus(); }}
+                              onKeyDown={(e) => { if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) { if (s.prev) inputRefs.current.get(s.prev)?.focus(); else focusPrevInput(s.fieldKey); } else { if (s.next) inputRefs.current.get(s.next)?.focus(); else focusNextInput(s.fieldKey); } } }}
+                            />
+                          </div>
+                        ));
+                      })()}
                       {sortedColumns
-                        .filter((column) => ["date", "time", "bander", "scribe", "net", "birdStatus"].includes(column.key))
+                        .filter((column) => ["bander", "scribe", "net", "birdStatus"].includes(column.key))
                         .map((column) => (
                           <div
                             key={column.key}
                             className="flex flex-col gap-1 shrink-0"
                             style={{ width: column.inputClassName?.match(/w-\[(\d+px)\]/)?.[1] ?? "auto" }}
                           >
-                            <span className="text-xs text-default-900 font-medium px-1 truncate">
-                              {column.label}
-                            </span>
+                            <span className="text-xs text-default-900 font-medium px-1 truncate">{column.label}</span>
                             {renderTableCell(column)}
                           </div>
                         ))}
