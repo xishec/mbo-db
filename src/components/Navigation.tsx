@@ -75,7 +75,10 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
 
   return (
     <>
-      <Navbar maxWidth="full" classNames={{ wrapper: "px-8", base: CURRENT_ENVIRONMENT !== "prod" ? "bg-primary-400" : "" }}>
+      <Navbar
+        maxWidth="full"
+        classNames={{ wrapper: "px-8", base: CURRENT_ENVIRONMENT !== "prod" ? "bg-primary-400" : "" }}
+      >
         <NavbarBrand
           className="cursor-pointer"
           onClick={() => {
@@ -110,7 +113,8 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             </Badge>
             {!isOnline && lastSyncedAt && (
               <span className="text-xs text-default-700">
-                Last synced {new Date(lastSyncedAt).toLocaleDateString()} {new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                Data from {new Date(lastSyncedAt).toLocaleDateString()}{" "}
+                {new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
           </div>
@@ -137,9 +141,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             );
             return (
               <NavbarItem key={page} isActive={activePage === page}>
-                {page === "DETs" && !isOnline ? (
-                  <Tooltip content="Requires internet connection">{link}</Tooltip>
-                ) : link}
+                {page === "DETs" && !isOnline ? <Tooltip content="Requires internet connection">{link}</Tooltip> : link}
               </NavbarItem>
             );
           })}
@@ -149,7 +151,9 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 <Button
                   variant="light"
                   className={`text-md ${isLoading ? "pointer-events-none opacity-50" : ""} ${
-                    ["search", "species", "volunteers", "reports", "funstats"].includes(activePage) ? "text-primary" : "text-foreground"
+                    ["search", "species", "volunteers", "reports", "funstats"].includes(activePage)
+                      ? "text-primary"
+                      : "text-foreground"
                   }`}
                   endContent={<ChevronDownIcon className="w-4 h-4" />}
                 >
@@ -175,16 +179,35 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
           </Dropdown>
         </NavbarContent>
         <NavbarContent justify="end">
-          <NavbarItem>
-            <Badge content={errorCount} color="danger" size="sm" showOutline={false} disableAnimation isInvisible={errorCount === 0}>
-              <Button isIconOnly variant="light" onPress={handleErrorsOpen} aria-label="View errors" isDisabled={isLoading}>
+          <NavbarItem className="mr-4">
+            <Badge
+              content={errorCount}
+              color="secondary"
+              size="sm"
+              showOutline={false}
+              disableAnimation
+              isInvisible={errorCount === 0}
+            >
+              <Button
+                isIconOnly
+                variant="light"
+                onPress={handleErrorsOpen}
+                aria-label="View errors"
+                isDisabled={isLoading}
+              >
                 <ExclamationTriangleIcon className="w-5 h-5" />
               </Button>
             </Badge>
           </NavbarItem>
           {isAdmin && (
             <NavbarItem>
-              <Button isIconOnly variant="light" onPress={handleLogsOpen} aria-label="Developer tools" isDisabled={isLoading}>
+              <Button
+                isIconOnly
+                variant="light"
+                onPress={handleLogsOpen}
+                aria-label="Developer tools"
+                isDisabled={isLoading}
+              >
                 <CodeBracketIcon className="w-5 h-5" />
               </Button>
             </NavbarItem>
@@ -217,7 +240,13 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
       <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />
       <ActivityModal isOpen={isActivityOpen} onClose={onActivityClose} />
-      <Modal isOpen={isSyncing || syncResult !== null} isDismissable={false} hideCloseButton onClose={clearSyncResult} size="sm">
+      <Modal
+        isOpen={isSyncing || syncResult !== null}
+        isDismissable={false}
+        hideCloseButton
+        onClose={clearSyncResult}
+        size="sm"
+      >
         <ModalContent>
           <ModalBody>
             <div className="text-center py-6">

@@ -1,6 +1,6 @@
 import type { DatabaseData, PendingEvent, DET } from "../types";
 
-const DB_NAME = "mbo-db";
+const DB_NAME = "mbo-db-20260420";
 const DB_VERSION = 1;
 
 // Store names

@@ -4,7 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   define: {
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString().replace("T", " ").split(".")[0]),
+    __BUILD_TIME__: JSON.stringify(new Date().toLocaleString("en-CA", { timeZone: "America/Montreal", hour12: false })),
   },
   build: {
     sourcemap: false,

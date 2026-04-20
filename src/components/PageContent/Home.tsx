@@ -112,6 +112,7 @@ export default function Home() {
           )}
         </p>
       </div>
+      <p className="fixed bottom-4 left-4 text-xs text-default-400">Build: {__BUILD_TIME__}</p>
     </div>
   );
 }
