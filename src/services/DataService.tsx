@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { get, ref, set, update } from "firebase/database";
+import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
   type DatabaseData,
@@ -291,19 +291,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const loadData = async () => {
       try {
-        logger.info("DataLoad", `Checking for ${CURRENT_ENVIRONMENT}/ data updates...`);
-
-        // Check if we have cached data
+        logger.info("DataLoad", `Loading ${CURRENT_ENVIRONMENT}/ data...`);
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-        const cachedTimestamp = await getLastUpdated(CURRENT_ENVIRONMENT);
+        const cachedSyncedAt = await getLastUpdated(CURRENT_ENVIRONMENT);
 
-        // If offline (no network or user chose offline), go straight to cache
+        // Offline: use cache
         if (forceOffline) {
           if (cachedData) {
             setLoadingStatus("Loading cached data...");
-            logger.info("DataLoad", "Offline — using cached data");
             populateStateFromData(cachedData);
-            setLastSyncedAt(cachedTimestamp ?? Date.now());
+            setLastSyncedAt(cachedSyncedAt ?? Date.now());
             setIsLoading(false);
             return;
           }
@@ -312,133 +309,109 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Online — try to get the lastModified timestamp from Firebase
-        setLoadingStatus("Checking for updates...");
-        let firebaseTimestamp: number | null = null;
-        let firebaseReachable = true;
-        try {
-          const lastModifiedSnapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`));
-          firebaseTimestamp = lastModifiedSnapshot.exists() ? (lastModifiedSnapshot.val() as number) : null;
-        } catch (firebaseErr) {
-          firebaseReachable = false;
-          logger.warn("DataLoad", "Cannot reach Firebase — will use cached data if available", firebaseErr);
-        }
-
-        // Use cache if it's up to date
-        if (cachedData && cachedTimestamp && firebaseTimestamp && firebaseTimestamp <= cachedTimestamp) {
-          setLoadingStatus("Cache is up to date");
-          logger.info("DataLoad", `Using cached ${CURRENT_ENVIRONMENT}/ data (up to date)`);
-          populateStateFromData(cachedData);
-          setLastSyncedAt(cachedTimestamp);
-          setIsLoading(false);
-          return;
-        }
-
-        // If we can't reach Firebase, fall back to cache
-        if (!firebaseReachable && cachedData) {
-          setLoadingStatus("Using cached data (Firebase unreachable)");
-          logger.info("DataLoad", `Firebase unreachable — using cached data`);
-          populateStateFromData(cachedData);
-          setLastSyncedAt(cachedTimestamp ?? Date.now());
-          setIsLoading(false);
-          return;
-        }
-
-        // Fetch data from Firebase — parallel by key for speed
-        logger.info("DataLoad", `Fetching ${CURRENT_ENVIRONMENT}/ data from Firebase RTDB...`);
+        // Online: incremental or full load
         const env = CURRENT_ENVIRONMENT;
+        let allEvents: BirdEventsMap;
 
-        // Fetch all keys in parallel, tracking progress per completion
-        let completed = 0;
-        const totalFetches = 8;
-        const trackFetch = <T,>(promise: Promise<T>, label: string): Promise<T> =>
-          promise.then((result) => {
-            completed++;
-            setLoadingStatus(`Downloading ${label}... (${completed}/${totalFetches})`);
-            return result;
-          });
+        if (cachedData?.birdEventsMap && cachedSyncedAt) {
+          // Incremental: fetch only new events since last sync
+          setLoadingStatus("Checking for new events...");
+          try {
+            const { query: fbQuery, orderByChild, startAt } = await import("firebase/database");
+            const deltaSnap = await get(fbQuery(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(cachedSyncedAt)));
+            const deltaEvents = deltaSnap.exists() ? deltaSnap.val() as BirdEventsMap : {};
+            const deltaCount = Object.keys(deltaEvents).length;
+            logger.info("DataLoad", `Incremental: ${deltaCount} new events`);
+            setLoadingStatus(`Merging ${deltaCount} new events...`);
+            allEvents = { ...cachedData.birdEventsMap, ...deltaEvents };
+          } catch {
+            logger.warn("DataLoad", "Incremental load failed, falling back to full load");
+            setLoadingStatus("Downloading all events...");
+            const fullSnap = await get(ref(db, `${env}/birdEventsMap`));
+            allEvents = fullSnap.exists() ? fullSnap.val() : {};
+          }
+        } else {
+          // Full load: first time
+          setLoadingStatus("Downloading all events...");
+          const fullSnap = await get(ref(db, `${env}/birdEventsMap`));
+          if (!fullSnap.exists()) {
+            setError(`Error: ${CURRENT_ENVIRONMENT}/ is missing from the database.`);
+            return;
+          }
+          allEvents = fullSnap.val();
+        }
 
-        const [
-          birdEventsSnap,
-          programsSnap,
-          bandGroupsSnap,
-          bandIdMapSnap,
-          yearsToProgramSnap,
-          dismissedSnap,
-          DETsSnap,
-          volunteersSnap,
-        ] = await Promise.all([
-          trackFetch(get(ref(db, `${env}/birdEventsMap`)), "bird events"),
-          trackFetch(get(ref(db, `${env}/programsMap`)), "programs"),
-          trackFetch(get(ref(db, `${env}/bandGroupsMap`)), "band groups"),
-          trackFetch(get(ref(db, `${env}/bandIdToBirdEventIdsMap`)), "band index"),
-          trackFetch(get(ref(db, `${env}/yearsToProgramMap`)), "years"),
-          trackFetch(get(ref(db, `${env}/dismissedConflictsMap`)), "conflicts"),
-          trackFetch(get(ref(db, `${env}/DETsMap`)), "DETs"),
-          trackFetch(get(ref(db, `${env}/volunteersMap`)), "volunteers"),
+        if (cancelled) return;
+
+        // Fetch independent maps (small, always fetch)
+        setLoadingStatus("Downloading independent data...");
+        const [dismissedSnap, DETsSnap] = await Promise.all([
+          get(ref(db, `${env}/dismissedConflictsMap`)),
+          get(ref(db, `${env}/DETsMap`)),
         ]);
 
         if (cancelled) return;
 
-        if (!birdEventsSnap.exists()) {
-          setError(`Error: ${CURRENT_ENVIRONMENT}/ is missing from the database. Please run import scripts.`);
-          return;
-        }
+        // Rebuild all derived maps locally
+        setLoadingStatus("Rebuilding maps...");
+        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, volunteersFullNameMap);
+
+        const reconstructed = Object.fromEntries(
+          Object.entries(allEvents).map(([id, event]) => [
+            id,
+            { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null) },
+          ])
+        );
 
         const data: DatabaseData = {
-          birdEventsMap: birdEventsSnap.val(),
-          programsMap: programsSnap.exists() ? programsSnap.val() : {},
-          bandGroupsMap: bandGroupsSnap.exists() ? bandGroupsSnap.val() : {},
-          bandIdToBirdEventIdsMap: bandIdMapSnap.exists() ? bandIdMapSnap.val() : {},
-          yearsToProgramMap: yearsToProgramSnap.exists() ? yearsToProgramSnap.val() : {},
+          birdEventsMap: allEvents,
+          programsMap: programs,
+          bandGroupsMap: bandGroups,
+          bandIdToBirdEventIdsMap: bandIdMap,
+          yearsToProgramMap: years,
           bandSizeToBandIdMap: {} as Record<BandSize, string>,
           dismissedConflictsMap: dismissedSnap.exists() ? dismissedSnap.val() : {},
           DETsMap: DETsSnap.exists() ? DETsSnap.val() : {},
-          volunteersMap: volunteersSnap.exists() ? volunteersSnap.val() : {},
+          volunteersMap: volCounts,
         };
 
-        setLoadingStatus("Saving to local cache...");
+        setLoadingStatus("Saving to cache...");
+        const now = Date.now();
         await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
-        await saveLastUpdated(CURRENT_ENVIRONMENT, firebaseTimestamp ?? Date.now());
+        await saveLastUpdated(CURRENT_ENVIRONMENT, now);
 
+        setBirdEventsMap(reconstructed);
+        setBandIdToBirdEventIdsMap(bandIdMap);
+        setBandGroupsMap(bandGroups);
+        setProgramsMap(programs);
+        setYearsToProgramMap(years);
+        setVolunteersMap(volCounts);
+        setDismissedConflictsMap(data.dismissedConflictsMap);
+        setDETsMap(data.DETsMap ?? {});
+        setLastSyncedAt(now);
         setLoadingStatus("Ready");
-        populateStateFromData(data);
-        setLastSyncedAt(firebaseTimestamp ?? Date.now());
 
-        logger.info("DataLoad", `Load complete`, {
-          events: Object.keys(data.birdEventsMap).length,
-          programs: Object.keys(data.programsMap).length,
-          bandGroups: Object.keys(data.bandGroupsMap).length,
-        });
+        logger.info("DataLoad", `Load complete`, { events: Object.keys(allEvents).length });
       } catch (err) {
-        logger.error("DataLoad", `Error loading ${CURRENT_ENVIRONMENT}/ data`, err);
+        logger.error("DataLoad", `Error loading data`, err);
         if (!cancelled) {
-          // Last resort: try to use previously-synced cached data on unexpected errors
           try {
             const fallbackData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-            const fallbackTimestamp = await getLastUpdated(CURRENT_ENVIRONMENT);
-            if (fallbackData && fallbackTimestamp) {
-              logger.info("DataLoad", "Using cached data as fallback after error");
+            if (fallbackData) {
               populateStateFromData(fallbackData);
-              setLastSyncedAt(fallbackTimestamp);
+              setLastSyncedAt(Date.now());
               return;
             }
-          } catch {
-            // IndexedDB also failed — nothing we can do
-          }
+          } catch { /* IndexedDB also failed */ }
           setError(err instanceof Error ? err.message : "Failed to load data");
         }
       } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     const populateStateFromData = (data: DatabaseData) => {
-      setYearsToProgramMap(data.yearsToProgramMap ?? {});
-      setProgramsMap(data.programsMap ?? {});
-      setBandIdToBirdEventIdsMap(data.bandIdToBirdEventIdsMap ?? {});
+      const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(data.birdEventsMap ?? {}, volunteersFullNameMap);
       setBirdEventsMap(
         Object.fromEntries(
           Object.entries(data.birdEventsMap ?? {}).map(([id, event]) => [
@@ -447,10 +420,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ])
         )
       );
-      setBandGroupsMap(data.bandGroupsMap ?? {});
+      setBandIdToBirdEventIdsMap(bandIdMap);
+      setBandGroupsMap(bandGroups);
+      setProgramsMap(programs);
+      setYearsToProgramMap(years);
+      setVolunteersMap(volCounts);
       setDETsMap(data.DETsMap ?? {});
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
-      setVolunteersMap(data.volunteersMap ?? {});
     };
 
     const CONSTANTS_CACHE_KEY = `constants_cache`;
@@ -539,15 +515,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    */
 
   /** Reconstructs Band class instances from serialized IndexedDB data. */
-  const reconstructBandObjects = useCallback((birdEventsMap: BirdEventsMap): BirdEventsMap => {
-    return Object.fromEntries(
-      Object.entries(birdEventsMap).map(([id, event]) => [
-        id,
-        { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null) },
-      ])
-    );
-  }, []);
-
   // Update pending count on mount
   useEffect(() => {
     getQueueCount().then(setPendingCount).catch(console.error);
@@ -688,27 +655,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const pendingEvents = await getQueuedEvents();
       logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
+      const now = Date.now();
 
-      // 1. Write each queued bird event to RTDB
+      // Write each queued event to RTDB with syncedAt
       let successCount = 0;
       for (const pending of pendingEvents) {
         try {
           if (pending.type === "bird-event") {
             const birdEvent = pending.pendingEvent as BirdEvent;
-            await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.id}`), birdEvent);
+            await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.id}`), { ...birdEvent, syncedAt: now });
 
-            // If this modifies a previous event, update it too
             if (birdEvent.previousEventId) {
-              const prevSnap = await get(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}`));
-              if (prevSnap.exists()) {
-                await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`), birdEvent.id);
-              }
+              await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`), birdEvent.id);
             }
-
-            logger.sync("SyncQueue", `Synced bird event ${successCount + 1}/${pendingEvents.length}`, { eventId: birdEvent.id });
           } else if (pending.type === "det") {
             await set(ref(db, `${pending.environment}/DETsMap/${pending.det.date}`), pending.det);
-            logger.sync("SyncQueue", `Synced DET ${successCount + 1}/${pendingEvents.length}`, { date: pending.det.date });
           }
           await removeFromQueue(pending.id);
           successCount++;
@@ -717,81 +678,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 2. Read the full birdEventsMap from RTDB and rebuild all derived maps
-      logger.sync("SyncQueue", "Rebuilding derived maps from RTDB birdEventsMap...");
-      const eventsSnap = await get(ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap`));
-
-      if (eventsSnap.exists()) {
-        const allEvents = eventsSnap.val() as BirdEventsMap;
-
-        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, volunteersFullNameMap);
-
-        // 3. Write rebuilt maps to RTDB
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap`), bandGroups);
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`), programs);
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap`), years);
-        // bandIdToBirdEventIdsMap is too large for single set — write in batches
-        const bandIdEntries = Object.entries(bandIdMap);
-        for (let i = 0; i < bandIdEntries.length; i += 1000) {
-          const batch: Record<string, string[]> = {};
-          for (const [k, v] of bandIdEntries.slice(i, i + 1000)) batch[k] = v;
-          await update(ref(db, `${CURRENT_ENVIRONMENT}/bandIdToBirdEventIdsMap`), batch);
-        }
-
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap`), volCounts);
-
-        // 4. Update timestamps
-        await updateLastModifiedTimestamp();
-
-        // 5. Save rebuilt data to IndexedDB and update React state
-        const rebuiltBirdEventsMap = reconstructBandObjects(allEvents);
-        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, {
-          birdEventsMap: allEvents,
-          bandIdToBirdEventIdsMap: bandIdMap,
-          bandGroupsMap: bandGroups,
-          programsMap: programs,
-          yearsToProgramMap: years,
-          bandSizeToBandIdMap: {} as Record<BandSize, string>,
-          dismissedConflictsMap,
-          DETsMap,
-          volunteersMap: volCounts,
-        });
-        await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
-
-        setBirdEventsMap(rebuiltBirdEventsMap);
-        setBandIdToBirdEventIdsMap(bandIdMap);
-        setBandGroupsMap(bandGroups);
-        setProgramsMap(programs);
-        setYearsToProgramMap(years);
-        setVolunteersMap(volCounts);
-        setSelectedProgram((current) => {
-          if (!current) return null;
-          return programs[current.id] || current;
-        });
-
-        logger.sync("SyncQueue", "Rebuild complete", {
-          bands: Object.keys(bandIdMap).length,
-          groups: Object.keys(bandGroups).length,
-          programs: Object.keys(programs).length,
-        });
-      }
+      // Update local cache timestamp for incremental loading
+      await saveLastUpdated(CURRENT_ENVIRONMENT, now);
+      setLastSyncedAt(now);
 
       const remainingCount = await getQueueCount();
       setPendingCount(remainingCount);
-
-      logger.sync("SyncQueue", `Queue sync completed`, { succeeded: successCount, total: pendingEvents.length, remaining: remainingCount });
+      logger.sync("SyncQueue", `Sync completed`, { succeeded: successCount, total: pendingEvents.length, remaining: remainingCount });
     } catch (err) {
       logger.error("SyncQueue", "Error syncing queue", err);
     }
-  }, [
-    isOnline,
-    reconstructBandObjects,
-    rebuildMapsFromEvents,
-    volunteersFullNameMap,
-    updateLastModifiedTimestamp,
-    dismissedConflictsMap,
-    DETsMap,
-  ]);
+  }, [isOnline]);
 
 
 
