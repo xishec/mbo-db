@@ -141,27 +141,15 @@ export default function AddBirdEventModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap]);
 
-  // Focus order: expand date/time into sub-fields
+  // Focus order matches visual layout: row 1 then row 2
+  const ROW1_KEYS = ["net", "bandGroup", "bandLastTwoDigits", "species", "wing", "age", "howAged", "sex", "howSexed", "fat", "weight"];
+  const ROW2_KEYS_DATE_TIME = ["date", "date-month", "date-day", "time", "time-minute"];
+  const ROW2_KEYS_OTHER = ["bander", "scribe", "notes"];
+
   const focusOrder = useMemo(() => {
-    const skip = new Set(["actions", "programId", "birdEventType", "birdStatus", "updatedAt"]);
-    if (useCurrentTime) {
-      skip.add("date");
-      skip.add("date-month");
-      skip.add("date-day");
-      skip.add("time");
-      skip.add("time-minute");
-    }
-    const order: string[] = [];
-    for (const col of TABLE_COLUMNS) {
-      if (skip.has(col.key)) continue;
-      if (col.key === "date") {
-        order.push("date", "date-month", "date-day");
-      } else if (col.key === "time") {
-        order.push("time", "time-minute");
-      } else {
-        order.push(col.key);
-      }
-    }
+    const order = [...ROW1_KEYS];
+    if (!useCurrentTime) order.push(...ROW2_KEYS_DATE_TIME);
+    order.push(...ROW2_KEYS_OTHER);
     return order;
   }, [useCurrentTime]);
 
