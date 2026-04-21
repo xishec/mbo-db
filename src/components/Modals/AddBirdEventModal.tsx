@@ -48,7 +48,6 @@ export default function AddBirdEventModal({
     bandIdToBirdEventIdsMap,
     birdEventsMap,
     addBirdEvent,
-    incrementBandSize,
     bandSizeToBandIdMap,
     volunteersMap,
     speciesInfoMap,
@@ -127,7 +126,7 @@ export default function AddBirdEventModal({
       }) ?? firstEditableField;
       focusTo(firstEmpty);
     } else if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
-      // Modal already open — update band fields after incrementBandSize
+      // Modal already open — update band fields after bandSizeToBandIdMap recomputed
       const bandId = bandSizeToBandIdMap[bandSize];
       if (bandId.length === 9) {
         setFormData((prev) => ({
@@ -424,10 +423,6 @@ export default function AddBirdEventModal({
             : BandSize.Other;
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
-        if (bandSizeToSend !== BandSize.Other && formData.bandGroup && formData.bandLastTwoDigits) {
-          await incrementBandSize(bandSizeToSend, formData.bandGroup, formData.bandLastTwoDigits);
-        }
-
         if (shouldContinue) {
           setFormData((prev) => ({
             ...prev,
@@ -454,7 +449,7 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, bandSize, addBirdEvent, incrementBandSize, birdEventToModify?.id, isSaving, focusTo, onOpenChange]
+    [formData, bandSize, addBirdEvent, birdEventToModify?.id, isSaving, focusTo, onOpenChange]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);

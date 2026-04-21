@@ -36,14 +36,16 @@ export class Band {
   last2digits: string;
   bandPrefix: string;
   bandSuffix: string;
+  bandSize: BandSize | null;
 
-  constructor(bandPrefix: string, bandSuffix: string) {
+  constructor(bandPrefix: string, bandSuffix: string, bandSize: BandSize | null = null) {
     this.bandPrefix = bandPrefix;
     this.bandSuffix = bandSuffix;
     this.last2digits = bandSuffix.slice(-2);
     // Band group is always the first 7 digits (no adjustment)
     this.bandGroupId = bandPrefix + bandSuffix.slice(0, 3);
     this.id = this.bandGroupId + this.last2digits;
+    this.bandSize = bandSize;
   }
 }
 
@@ -235,8 +237,6 @@ export interface DataContextType {
   isSyncing: boolean;
   syncResult: "success" | "error" | null;
   clearSyncResult: () => void;
-  updateBandSizeMap: (bandSizeMap: BandSizeToBandIdMap) => Promise<void>;
-  incrementBandSize: (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string) => Promise<Record<BandSize, string>>;
   dismissConflict: (conflictId: string) => Promise<void>;
   resetDismissedConflicts: () => Promise<void>;
   saveDET: (det: DET) => Promise<void>;

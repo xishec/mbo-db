@@ -1,9 +1,7 @@
 import { Button, Spinner, Tab, Tabs, useDisclosure, ButtonGroup, Tooltip } from "@heroui/react";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useData } from "../../../../services/useData";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
-import BandSizeSettingModal from "../../../Modals/BandSizeSettingModal";
 import { BandSize } from "../../../../types";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
@@ -16,7 +14,6 @@ enum BirdEventTabType {
 export default function BirdEvents() {
   const [birdEventTabType, setBirdEventTabType] = useState<BirdEventTabType>(BirdEventTabType.NEW_CAPTURES);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onOpenChange: onSettingsOpenChange } = useDisclosure();
   const { selectedProgram, isLoading, bandSizeToBandIdMap, isLoggedIn } = useData();
   const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(BandSize.Other);
 
@@ -35,39 +32,32 @@ export default function BirdEvents() {
   const addBirdEvent = () => (
     <>
       {birdEventTabType === BirdEventTabType.NEW_CAPTURES ? (
-        <div className="flex items-center gap-2">
-          <div>
-            <ButtonGroup color="secondary" variant="flat" fullWidth>
-              {Object.values(BandSize).map((bandSize) => (
-                <Tooltip
-                  key={bandSize}
-                  closeDelay={50}
-                  color={"default"}
-                  placement="bottom"
-                  content={
-                    bandSizeToBandIdMap?.[bandSize]
-                      ? `${bandSizeToBandIdMap[bandSize].slice(0, 7)}-${bandSizeToBandIdMap[bandSize].slice(-2)}`
-                      : "Not set"
-                  }
-                  isDisabled={bandSize === BandSize.Other}
-                >
-                  <Button
-                    onPress={() => {
-                      setSelectedBandSize(bandSize);
-                      onOpen();
-                    }}
-                    className="text-gray-700"
-                  >
-                    {bandSize}
-                  </Button>
-                </Tooltip>
-              ))}
-            </ButtonGroup>
-          </div>
-          <Button isIconOnly size="md" variant="light" onPress={onSettingsOpen} aria-label="Band size settings">
-            <Cog6ToothIcon className="w-5 h-5" />
-          </Button>
-        </div>
+        <ButtonGroup color="secondary" variant="flat" fullWidth>
+          {Object.values(BandSize).map((bandSize) => (
+            <Tooltip
+              key={bandSize}
+              closeDelay={50}
+              color={"default"}
+              placement="bottom"
+              content={
+                bandSizeToBandIdMap?.[bandSize]
+                  ? `${bandSizeToBandIdMap[bandSize].slice(0, 7)}-${bandSizeToBandIdMap[bandSize].slice(-2)}`
+                  : "Not set"
+              }
+              isDisabled={bandSize === BandSize.Other}
+            >
+              <Button
+                onPress={() => {
+                  setSelectedBandSize(bandSize);
+                  onOpen();
+                }}
+                className="text-gray-700"
+              >
+                {bandSize}
+              </Button>
+            </Tooltip>
+          ))}
+        </ButtonGroup>
       ) : (
         <Button
           color="secondary"
@@ -90,7 +80,6 @@ export default function BirdEvents() {
         bandSize={selectedBandSize}
         isNewCapture={birdEventTabType === BirdEventTabType.NEW_CAPTURES}
       />
-      <BandSizeSettingModal isOpen={isSettingsOpen} onOpenChange={onSettingsOpenChange} />
 
       <div className="w-full flex items-end justify-between gap-4">
         <Tabs

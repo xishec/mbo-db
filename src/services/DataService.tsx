@@ -129,9 +129,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [birdEventsMap, setBirdEventsMap] = useState<BirdEventsMap>({});
   const [bandGroupsMap, setBandGroupsMap] = useState<BandGroupsMap>({});
   const [magicTable, setMagicTable] = useState<MagicTable>({ pyle: {} });
-  const [bandSizeToBandIdMap, setBandSizeToBandIdMap] = useState<Record<BandSize, string>>(
-    {} as Record<BandSize, string>
-  );
   const [dismissedConflictsMap, setDismissedConflictsMap] = useState<DismissedConflictsMap>({});
   const [DETsMap, setDETsMap] = useState<DETsMap>({});
   const [volunteersMap, setVolunteersMap] = useState<VolunteersMap>({});
@@ -265,6 +262,28 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return infoMap;
   }, [birdEventsMap]);
 
+  // Compute bandSizeToBandIdMap: for each band size, find the most recent event (by date+time), take its band ID, increment by 1
+  const bandSizeToBandIdMap = useMemo(() => {
+    const latestPerSize = new Map<string, { bandId: string; timestamp: number }>();
+
+    for (const ev of Object.values(birdEventsMap)) {
+      if (!ev || ev.modifiedEventId || !ev.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
+      const size = ev.band.bandSize;
+      const timestamp = Date.parse(`${ev.date}T${ev.time || "00:00"}`);
+      const existing = latestPerSize.get(size);
+      if (!existing || timestamp > existing.timestamp) {
+        latestPerSize.set(size, { bandId: ev.band.id, timestamp });
+      }
+    }
+
+    const map = {} as Record<BandSize, string>;
+    for (const [size, { bandId }] of latestPerSize) {
+      const nextBandId = (parseInt(bandId, 10) + 1).toString().padStart(9, "0");
+      map[size as BandSize] = nextBandId;
+    }
+    return map;
+  }, [birdEventsMap]);
+
   // Load entire alpha/ on mount
   useEffect(() => {
     if (!modeChosen) return;
@@ -331,7 +350,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Fetch all keys in parallel, tracking progress per completion
         let completed = 0;
-        const totalFetches = 9;
+        const totalFetches = 8;
         const trackFetch = <T,>(promise: Promise<T>, label: string): Promise<T> =>
           promise.then((result) => {
             completed++;
@@ -345,7 +364,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupsSnap,
           bandIdMapSnap,
           yearsToProgramSnap,
-          bandSizeSnap,
           dismissedSnap,
           DETsSnap,
           volunteersSnap,
@@ -355,7 +373,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           trackFetch(get(ref(db, `${env}/bandGroupsMap`)), "band groups"),
           trackFetch(get(ref(db, `${env}/bandIdToBirdEventIdsMap`)), "band index"),
           trackFetch(get(ref(db, `${env}/yearsToProgramMap`)), "years"),
-          trackFetch(get(ref(db, `${env}/bandSizeToBandIdMap`)), "band sizes"),
           trackFetch(get(ref(db, `${env}/dismissedConflictsMap`)), "conflicts"),
           trackFetch(get(ref(db, `${env}/DETsMap`)), "DETs"),
           trackFetch(get(ref(db, `${env}/volunteersMap`)), "volunteers"),
@@ -374,7 +391,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupsMap: bandGroupsSnap.exists() ? bandGroupsSnap.val() : {},
           bandIdToBirdEventIdsMap: bandIdMapSnap.exists() ? bandIdMapSnap.val() : {},
           yearsToProgramMap: yearsToProgramSnap.exists() ? yearsToProgramSnap.val() : {},
-          bandSizeToBandIdMap: bandSizeSnap.exists() ? bandSizeSnap.val() : ({} as Record<BandSize, string>),
+          bandSizeToBandIdMap: {} as Record<BandSize, string>,
           dismissedConflictsMap: dismissedSnap.exists() ? dismissedSnap.val() : {},
           DETsMap: DETsSnap.exists() ? DETsSnap.val() : {},
           volunteersMap: volunteersSnap.exists() ? volunteersSnap.val() : {},
@@ -426,13 +443,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         Object.fromEntries(
           Object.entries(data.birdEventsMap ?? {}).map(([id, event]) => [
             id,
-            { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix) },
+            { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null) },
           ])
         )
       );
       setBandGroupsMap(data.bandGroupsMap ?? {});
       setDETsMap(data.DETsMap ?? {});
-      setBandSizeToBandIdMap(data.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>));
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
       setVolunteersMap(data.volunteersMap ?? {});
     };
@@ -527,7 +543,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return Object.fromEntries(
       Object.entries(birdEventsMap).map(([id, event]) => [
         id,
-        { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix) },
+        { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null) },
       ])
     );
   }, []);
@@ -573,7 +589,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandIdToBirdEventIdsMap: current?.bandIdToBirdEventIdsMap ?? {},
         birdEventsMap: current?.birdEventsMap ?? {},
         bandGroupsMap: current?.bandGroupsMap ?? {},
-        bandSizeToBandIdMap: current?.bandSizeToBandIdMap ?? ({} as Record<BandSize, string>),
+        bandSizeToBandIdMap: {} as Record<BandSize, string>,
         dismissedConflictsMap: current?.dismissedConflictsMap ?? {},
         DETsMap: current?.DETsMap ?? {},
         ...overrides,
@@ -732,9 +748,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           await update(ref(db, `${CURRENT_ENVIRONMENT}/bandIdToBirdEventIdsMap`), batch);
         }
 
-        // Write volunteersMap and bandSizeToBandIdMap to RTDB
         await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap`), volCounts);
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), bandSizeToBandIdMap);
 
         // 4. Update timestamps
         await updateLastModifiedTimestamp();
@@ -747,7 +761,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupsMap: bandGroups,
           programsMap: programs,
           yearsToProgramMap: years,
-          bandSizeToBandIdMap,
+          bandSizeToBandIdMap: {} as Record<BandSize, string>,
           dismissedConflictsMap,
           DETsMap,
           volunteersMap: volCounts,
@@ -785,32 +799,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     rebuildMapsFromEvents,
     volunteersFullNameMap,
     updateLastModifiedTimestamp,
-    bandSizeToBandIdMap,
     dismissedConflictsMap,
     DETsMap,
   ]);
 
-  const incrementBandSize = useCallback(
-    async (bandSize: BandSize, bandGroup: string, bandLastTwoDigits: string): Promise<Record<BandSize, string>> => {
-      const currentBandId = `${bandGroup}${bandLastTwoDigits}`;
-      const nextBandId = (parseInt(currentBandId, 10) + 1).toString().padStart(9, "0");
-
-      const updatedMap = {
-        ...bandSizeToBandIdMap,
-        [bandSize]: nextBandId,
-      };
-
-      setBandSizeToBandIdMap(updatedMap);
-      await saveCompleteStateToIndexedDB({ bandSizeToBandIdMap: updatedMap });
-
-      if (isOnline) {
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap/${bandSize}`), nextBandId);
-      }
-
-      return updatedMap;
-    },
-    [bandSizeToBandIdMap, isOnline, saveCompleteStateToIndexedDB]
-  );
 
 
 
@@ -830,7 +822,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const bandLastTwoDigits = captureData.bandLastTwoDigits.padStart(2, "0");
         const bandPrefix = bandGroup.substring(0, 4);
         const bandSuffix = bandGroup.substring(4) + bandLastTwoDigits;
-        const band = new Band(bandPrefix, bandSuffix);
+        const band = new Band(bandPrefix, bandSuffix, _bandSize !== BandSize.Other ? _bandSize : null);
         const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
 
         const newBirdEvent: BirdEvent = {
@@ -1103,35 +1095,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
   );
 
-  const updateBandSizeMap = useCallback(
-    async (newBandSizeMap: Record<BandSize, string>) => {
-
-      try {
-        // Update React state immediately (works both online and offline)
-        setBandSizeToBandIdMap(newBandSizeMap);
-
-        // Save to IndexedDB (works both online and offline)
-        await saveCompleteStateToIndexedDB({ bandSizeToBandIdMap: newBandSizeMap });
-
-        // Handle online vs offline sync
-        if (isOnline) {
-          // Online: sync to RTDB immediately
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/bandSizeToBandIdMap`), newBandSizeMap);
-          await updateLastModifiedTimestamp();
-          logger.info("UpdateBandSizeMap", "Band size map synced to RTDB");
-        } else {
-          // Offline: will be synced via syncQueue when back online
-          logger.info("UpdateBandSizeMap", "Band size map saved offline - will sync when online");
-        }
-
-        logger.info("UpdateBandSizeMap", "Band size map updated");
-      } catch (err) {
-        logger.error("UpdateBandSizeMap", "Error updating band size map", err);
-        throw err;
-      }
-    },
-    [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
-  );
 
   const dismissConflict = useCallback(
     async (conflictId: string) => {
@@ -1357,8 +1320,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         isSyncing,
         syncResult,
         clearSyncResult: () => setSyncResult(null),
-        updateBandSizeMap,
-        incrementBandSize,
         dismissConflict,
         resetDismissedConflicts,
         saveDET,
