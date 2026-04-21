@@ -121,9 +121,10 @@ export default function AddBirdEventModal({
       setFormData(defaultData);
       setLastBandId("");
       setWasOpen(true);
-      const firstEmpty =
-        TABLE_COLUMNS.find((col) => !skipFocusFields.has(col.key) && !defaultData[col.key as keyof CaptureFormData])
-          ?.key ?? firstEditableField;
+      const firstEmpty = focusOrder.find((key) => {
+        const colKey = key.includes("-") ? key.split("-")[0] : key;
+        return !defaultData[colKey as keyof CaptureFormData];
+      }) ?? firstEditableField;
       focusTo(firstEmpty);
     } else if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
       // Modal already open — update band fields after incrementBandSize
@@ -140,18 +141,33 @@ export default function AddBirdEventModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap]);
 
-  const skipFocusFields = useMemo(() => {
+  // Focus order: expand date/time into sub-fields
+  const focusOrder = useMemo(() => {
     const skip = new Set(["actions", "programId", "birdEventType", "birdStatus", "updatedAt"]);
     if (useCurrentTime) {
       skip.add("date");
+      skip.add("date-month");
+      skip.add("date-day");
       skip.add("time");
+      skip.add("time-minute");
     }
-    return skip;
+    const order: string[] = [];
+    for (const col of TABLE_COLUMNS) {
+      if (skip.has(col.key)) continue;
+      if (col.key === "date") {
+        order.push("date", "date-month", "date-day");
+      } else if (col.key === "time") {
+        order.push("time", "time-minute");
+      } else {
+        order.push(col.key);
+      }
+    }
+    return order;
   }, [useCurrentTime]);
 
   const firstEditableField = useMemo(() => {
-    return TABLE_COLUMNS.find((col) => !skipFocusFields.has(col.key))?.key ?? "bandGroup";
-  }, [TABLE_COLUMNS, skipFocusFields]);
+    return focusOrder[0] ?? "bandGroup";
+  }, [focusOrder]);
 
   const focusTo = useCallback((fieldKey: string) => {
     setTimeout(() => {
@@ -354,30 +370,18 @@ export default function AddBirdEventModal({
     };
   }, [formData, pastBirdEvents, magicTable, TABLE_COLUMNS, sexCode, pyleSpeciesRange, volunteersMap]);
 
-  const focusNextInput = useCallback(
-    (currentField: keyof CaptureFormData) => {
-      const currentIndex = TABLE_COLUMNS.findIndex((col) => col.key === currentField);
-      if (currentIndex < TABLE_COLUMNS.length - 1) {
-        const nextKey = TABLE_COLUMNS.slice(currentIndex + 1).find((col) => !skipFocusFields.has(col.key))?.key;
-        if (nextKey) inputRefs.current.get(nextKey)?.focus();
+  const focusNext = useCallback(
+    (currentKey: string) => {
+      const idx = focusOrder.indexOf(currentKey);
+      if (idx >= 0 && idx < focusOrder.length - 1) {
+        inputRefs.current.get(focusOrder[idx + 1])?.focus();
       }
     },
-    [TABLE_COLUMNS, skipFocusFields]
+    [focusOrder]
   );
 
-  const focusPrevInput = useCallback(
-    (currentField: keyof CaptureFormData) => {
-      const currentIndex = TABLE_COLUMNS.findIndex((col) => col.key === currentField);
-      if (currentIndex > 0) {
-        const prevKey = TABLE_COLUMNS
-          .slice(0, currentIndex)
-          .reverse()
-          .find((col) => !skipFocusFields.has(col.key))?.key;
-        if (prevKey) inputRefs.current.get(prevKey)?.focus();
-      }
-    },
-    [TABLE_COLUMNS, skipFocusFields]
-  );
+
+
 
   const handleInputChange = useCallback(
     (field: keyof CaptureFormData, value: string, maxLength?: number) => {
@@ -390,29 +394,23 @@ export default function AddBirdEventModal({
 
       // Auto-focus next input when maxLength is reached
       if (maxLength && formattedValue.length >= maxLength) {
-        focusNextInput(field);
+        focusNext(field);
       }
 
       // Auto-focus next input for weight after decimal digit is entered
       if (field === "weight" && formattedValue.includes(".") && formattedValue.split(".")[1]?.length === 1) {
-        focusNextInput(field);
+        focusNext(field);
       }
     },
-    [focusNextInput]
+    [focusNext]
   );
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent, field: keyof CaptureFormData) => {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        if (e.shiftKey) {
-          focusPrevInput(field);
-        } else {
-          focusNextInput(field);
-        }
-      }
+  const getTabIndex = useCallback(
+    (key: string) => {
+      const idx = focusOrder.indexOf(key);
+      return idx >= 0 ? idx + 1 : -1;
     },
-    [focusNextInput, focusPrevInput]
+    [focusOrder]
   );
 
   const handleClose = useCallback(() => {
@@ -611,8 +609,8 @@ export default function AddBirdEventModal({
           maxLength={column.maxLength}
           validationBehavior="aria"
           value={formData[columnKey]}
+          tabIndex={getTabIndex(columnKey)}
           onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
-          onKeyDown={(e) => handleKeyDown(e, columnKey)}
           isDisabled={isSaving}
           classNames={{
             input:
@@ -631,7 +629,7 @@ export default function AddBirdEventModal({
       getInputColor,
       getBorderClass,
       handleInputChange,
-      handleKeyDown,
+      getTabIndex,
     ]
   );
 
@@ -722,17 +720,17 @@ export default function AddBirdEventModal({
                         const timeParts = formData.time.split(":");
                         const disabled = isSaving || useCurrentTime;
                         const cls = "text-sm text-start [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
-                        const subs: { key: string; label: string; w: string; value: string; onUpdate: (v: string) => void; next?: string; prev?: string; maxLen: number; fieldKey: keyof CaptureFormData }[] = [
-                          { key: "date", label: "YYYY", w: "w-[75px]", value: dateParts[0] ?? "", maxLen: 4, next: "date-month", fieldKey: "date",
-                            onUpdate: (v) => setFormData((p) => ({ ...p, date: `${v}-${dateParts[1] ?? ""}-${dateParts[2] ?? ""}`.replace(/-+$/, "") })) },
-                          { key: "date-month", label: "MM", w: "w-[50px]", value: dateParts[1] ?? "", maxLen: 2, next: "date-day", prev: "date", fieldKey: "date",
-                            onUpdate: (v) => setFormData((p) => ({ ...p, date: `${dateParts[0] ?? ""}-${v}-${dateParts[2] ?? ""}`.replace(/-+$/, "") })) },
-                          { key: "date-day", label: "DD", w: "w-[50px]", value: dateParts[2] ?? "", maxLen: 2, next: "time", prev: "date-month", fieldKey: "date",
-                            onUpdate: (v) => setFormData((p) => ({ ...p, date: `${dateParts[0] ?? ""}-${dateParts[1] ?? ""}-${v}` })) },
-                          { key: "time", label: "HH", w: "w-[50px]", value: timeParts[0] ?? "", maxLen: 2, next: "time-minute", prev: "date-day", fieldKey: "time",
-                            onUpdate: (v) => setFormData((p) => ({ ...p, time: `${v}:${timeParts[1] ?? ""}` })) },
-                          { key: "time-minute", label: "MM", w: "w-[50px]", value: timeParts[1] ?? "", maxLen: 2, prev: "time", fieldKey: "time",
-                            onUpdate: (v) => setFormData((p) => ({ ...p, time: `${timeParts[0] ?? ""}:${v}` })) },
+                        const subs = [
+                          { key: "date", label: "YYYY", w: "w-[75px]", value: dateParts[0] ?? "", maxLen: 4,
+                            onUpdate: (v: string) => setFormData((p) => ({ ...p, date: `${v}-${dateParts[1] ?? ""}-${dateParts[2] ?? ""}`.replace(/-+$/, "") })) },
+                          { key: "date-month", label: "MM", w: "w-[50px]", value: dateParts[1] ?? "", maxLen: 2,
+                            onUpdate: (v: string) => setFormData((p) => ({ ...p, date: `${dateParts[0] ?? ""}-${v}-${dateParts[2] ?? ""}`.replace(/-+$/, "") })) },
+                          { key: "date-day", label: "DD", w: "w-[50px]", value: dateParts[2] ?? "", maxLen: 2,
+                            onUpdate: (v: string) => setFormData((p) => ({ ...p, date: `${dateParts[0] ?? ""}-${dateParts[1] ?? ""}-${v}` })) },
+                          { key: "time", label: "HH", w: "w-[50px]", value: timeParts[0] ?? "", maxLen: 2,
+                            onUpdate: (v: string) => setFormData((p) => ({ ...p, time: `${v}:${timeParts[1] ?? ""}` })) },
+                          { key: "time-minute", label: "MM", w: "w-[50px]", value: timeParts[1] ?? "", maxLen: 2,
+                            onUpdate: (v: string) => setFormData((p) => ({ ...p, time: `${timeParts[0] ?? ""}:${v}` })) },
                         ];
                         return subs.map((s) => (
                           <div key={s.key} className={`flex flex-col gap-1 shrink-0 ${s.w}`}>
@@ -740,8 +738,8 @@ export default function AddBirdEventModal({
                             <Input ref={(el: HTMLInputElement | null) => { if (el) inputRefs.current.set(s.key, el); }}
                               {...modalInputProps} maxLength={s.maxLen} value={s.value} isDisabled={disabled}
                               classNames={{ input: cls }}
-                              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, s.maxLen); s.onUpdate(v); if (v.length === s.maxLen && s.next) inputRefs.current.get(s.next)?.focus(); }}
-                              onKeyDown={(e) => { if (e.key === "Tab") { e.preventDefault(); if (e.shiftKey) { if (s.prev) inputRefs.current.get(s.prev)?.focus(); else focusPrevInput(s.fieldKey); } else { if (s.next) inputRefs.current.get(s.next)?.focus(); else focusNextInput(s.fieldKey); } } }}
+                              tabIndex={getTabIndex(s.key)}
+                              onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, s.maxLen); s.onUpdate(v); if (v.length === s.maxLen) focusNext(s.key); }}
                             />
                           </div>
                         ));
