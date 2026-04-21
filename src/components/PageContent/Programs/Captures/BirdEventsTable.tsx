@@ -199,7 +199,7 @@ export default function BirdEventsTable({
       }
 
       if (columnKey === "programId") {
-        return programsMap[item.programId]?.displayName;
+        return programsMap[item.programId]?.id;
       }
 
       if (columnKey === "updatedAt") {

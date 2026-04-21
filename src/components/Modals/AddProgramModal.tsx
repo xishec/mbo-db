@@ -2,11 +2,7 @@ import { Button, Input } from "@heroui/react";
 import { useState } from "react";
 import { useData } from "../../services/useData";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
-import {
-        modalInputProps,
-  modalCancelButtonProps,
-  modalPrimaryButtonProps,
-} from "./modalDefaults";
+import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "./modalDefaults";
 
 interface AddProgramModalProps {
   isOpen: boolean;
@@ -15,35 +11,26 @@ interface AddProgramModalProps {
 
 export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModalProps) {
   const { addProgram, isOnline } = useData();
-  const [displayName, setDisplayName] = useState("");
+  const [programId, setProgramId] = useState("");
   const [year, setYear] = useState(() => new Date().getFullYear().toString());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async () => {
-    if (displayName.trim() && year.trim()) {
+    if (programId.trim() && year.trim()) {
       setIsLoading(true);
       setError("");
       try {
-        // Auto-generate programId from timestamp
-        const programId = `${displayName.trim()}-${Date.now().toString()}`;
-        await addProgram(programId, displayName.trim(), year.trim());
-        setDisplayName("");
+        await addProgram(programId.trim(), year.trim());
+        setProgramId("");
         setYear(new Date().getFullYear().toString());
         onOpenChange(false);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to add program";
-        setError(errorMessage);
-        console.error("Failed to add program:", err);
+        setError(err instanceof Error ? err.message : "Failed to add program");
       } finally {
         setIsLoading(false);
       }
     }
-  };
-
-  const handleClose = () => {
-    setError("");
-    onOpenChange(false);
   };
 
   return (
@@ -52,72 +39,50 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
         isDismissable: false,
         isOpen,
         placement: "top-center",
-        onOpenChange: handleClose,
+        onOpenChange: () => { setError(""); onOpenChange(false); },
       }}
     >
       <ModalHeaderShell>
         <h2 className="text-2xl font-bold">Add New Program</h2>
-        <p className="text-sm font-normal">Enter a display name and year for the new program</p>
       </ModalHeaderShell>
-        <ModalBodyShell>
-          {!isOnline && (
-            <div className="bg-warning-50 border border-warning-200 rounded-medium p-3 text-sm text-warning-800">
-              You are currently offline. This program will be saved locally and synced when back online. Please make sure no one else adds the same program before you sync.
-            </div>
-          )}
-          <Input
-            label="Year"
-            placeholder="Enter year"
-            value={year}
-            {...modalInputProps}
-            onChange={(e) => setYear(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && displayName.trim() && year.trim()) {
-                handleSubmit();
-              }
-            }}
-            isRequired
-            type="number"
-          />
-          <Input
-            label="Display Name"
-            placeholder="Enter display name (e.g., MBO Fall Migration)"
-            value={displayName}
-            {...modalInputProps}
-            onChange={(e) => {
-              setDisplayName(e.target.value);
-              setError("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && displayName.trim() && year.trim()) {
-                handleSubmit();
-              }
-            }}
-            isRequired
-            autoFocus
-            isInvalid={!!error}
-            errorMessage={error}
-          />
-        </ModalBodyShell>
-        <ModalFooterShell>
-          <Button
-            {...modalCancelButtonProps}
-            onPress={() => onOpenChange(false)}
-            className="flex-1"
-            isDisabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            {...modalPrimaryButtonProps}
-            onPress={handleSubmit}
-            isDisabled={!displayName.trim() || !year.trim()}
-            isLoading={isLoading}
-            className="flex-1"
-          >
-            Add Program
-          </Button>
-        </ModalFooterShell>
+      <ModalBodyShell>
+        {!isOnline && (
+          <div className="bg-warning-50 border border-warning-200 rounded-medium p-3 text-sm text-warning-800">
+            You are currently offline. This action requires internet.
+          </div>
+        )}
+        <Input
+          label="Year"
+          placeholder="Enter year"
+          value={year}
+          {...modalInputProps}
+          onChange={(e) => setYear(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+          isRequired
+          type="number"
+        />
+        <Input
+          label="Program Name"
+          placeholder="e.g., SMMP2026"
+          value={programId}
+          {...modalInputProps}
+          onChange={(e) => { setProgramId(e.target.value); setError(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+          isRequired
+          autoFocus
+          isInvalid={!!error}
+          errorMessage={error}
+          description="This name is permanent and cannot be changed."
+        />
+      </ModalBodyShell>
+      <ModalFooterShell>
+        <Button {...modalCancelButtonProps} onPress={() => onOpenChange(false)} isDisabled={isLoading}>
+          Cancel
+        </Button>
+        <Button {...modalPrimaryButtonProps} onPress={handleSubmit} isDisabled={!programId.trim() || !year.trim() || !isOnline} isLoading={isLoading}>
+          Add Program
+        </Button>
+      </ModalFooterShell>
     </ModalShell>
   );
 }

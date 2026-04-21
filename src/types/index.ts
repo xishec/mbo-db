@@ -231,8 +231,7 @@ export interface DataContextType {
     bandSize: BandSize,
     previousEventId: string | undefined
   ) => Promise<void>;
-  addProgram: (programId: string, displayName: string, year: string) => Promise<void>;
-  updateProgram: (programId: string, newDisplayName: string) => Promise<void>;
+  addProgram: (programId: string, year: string) => void;
   syncQueue: () => Promise<void>;
   isSyncing: boolean;
   syncResult: "success" | "error" | null;

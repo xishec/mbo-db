@@ -9,22 +9,17 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
-  Tooltip,
 } from "@heroui/react";
-import { PencilIcon } from "@heroicons/react/24/outline";
 import BirdEvents from "./Captures/BirdEvents";
 import { useMemo, useState } from "react";
 import { useData } from "../../../services/useData";
 import AddProgramModal from "../../Modals/AddProgramModal";
-import EditProgramModal from "../../Modals/EditProgramModal";
 import type { Program } from "../../../types";
 import PageHeader from "../PageHeader";
 
 export default function Programs() {
-  const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading, isOnline, isLoggedIn } = useData();
+  const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading, isLoggedIn } = useData();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
-  const [isEditProgramModalOpen, setIsEditProgramModalOpen] = useState(false);
-  const [programToEdit, setProgramToEdit] = useState<Program | null>(null);
 
   // Year rows for the table (sorted descending)
   const yearRows = useMemo(() => {
@@ -100,24 +95,9 @@ export default function Programs() {
             </BreadcrumbItem>
             {effectiveYear && <BreadcrumbItem onPress={() => selectProgram(null)}>{effectiveYear}</BreadcrumbItem>}
             {selectedProgram && (
-              <BreadcrumbItem isCurrent>{programsMap[selectedProgram.id]?.displayName}</BreadcrumbItem>
+              <BreadcrumbItem isCurrent>{selectedProgram.id}</BreadcrumbItem>
             )}
           </Breadcrumbs>
-          {selectedProgram && isOnline && isLoggedIn && (
-            <Tooltip content="Edit Program" placement="bottom" closeDelay={50}>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                onPress={() => {
-                  setProgramToEdit(selectedProgram);
-                  setIsEditProgramModalOpen(true);
-                }}
-              >
-                <PencilIcon className="h-3 w-3" />
-              </Button>
-            </Tooltip>
-          )}
         </div>
       </div>
 
@@ -170,7 +150,7 @@ export default function Programs() {
                   const program = programsMap[programId];
                   return (
                     <TableRow key={programId}>
-                      <TableCell>{program?.displayName}</TableCell>
+                      <TableCell>{program?.id}</TableCell>
                       <TableCell>{program?.firstCaptureDate ?? ""}</TableCell>
                       <TableCell>{program?.lastCaptureDate ?? ""}</TableCell>
                     </TableRow>
@@ -184,11 +164,6 @@ export default function Programs() {
       {selectedProgram && <BirdEvents />}
 
       <AddProgramModal isOpen={isAddProgramModalOpen} onOpenChange={setIsAddProgramModalOpen} />
-      <EditProgramModal
-        isOpen={isEditProgramModalOpen}
-        onOpenChange={setIsEditProgramModalOpen}
-        program={programToEdit}
-      />
     </div>
   );
 }

@@ -617,7 +617,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * This is the single source of truth — all index maps are computed from events.
    */
   const rebuildMapsFromEvents = useCallback(
-    (allEvents: BirdEventsMap, existingPrograms: ProgramsMap, fullNameMap: Record<string, string>) => {
+    (allEvents: BirdEventsMap, fullNameMap: Record<string, string>) => {
       const bandIdMap: BandIdToBirdEventIdsMap = {};
       const bandGroups: BandGroupsMap = {};
       const programs: ProgramsMap = {};
@@ -655,8 +655,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // programsMap
         if (!programs[pid]) {
-          const existing = existingPrograms[pid];
-          programs[pid] = { id: pid, displayName: existing?.displayName ?? pid, bandGroupIds: [], recaptureIds: [] };
+          programs[pid] = { id: pid, displayName: pid, bandGroupIds: [], recaptureIds: [] };
         }
         if (isNewCapture && bgKey && !programs[pid].bandGroupIds.includes(bgKey)) programs[pid].bandGroupIds.push(bgKey);
         if (!isNewCapture && !programs[pid].recaptureIds.includes(id)) programs[pid].recaptureIds.push(id);
@@ -676,11 +675,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           if (!volCounts[ev.scribe]) volCounts[ev.scribe] = { code: ev.scribe, fullName: fullNameMap[ev.scribe] ?? "", totalBanded: 0, totalScribed: 0 };
           volCounts[ev.scribe].totalScribed++;
         }
-      }
-
-      // Preserve programs that exist but have no events
-      for (const [pid, prog] of Object.entries(existingPrograms)) {
-        if (!programs[pid]) programs[pid] = { ...prog };
       }
 
       return { bandIdMap, bandGroups, programs, years, volCounts };
@@ -725,16 +719,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       // 2. Read the full birdEventsMap from RTDB and rebuild all derived maps
       logger.sync("SyncQueue", "Rebuilding derived maps from RTDB birdEventsMap...");
-      const [eventsSnap, existingProgramsSnap] = await Promise.all([
-        get(ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap`)),
-        get(ref(db, `${CURRENT_ENVIRONMENT}/programsMap`)),
-      ]);
+      const eventsSnap = await get(ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap`));
 
       if (eventsSnap.exists()) {
         const allEvents = eventsSnap.val() as BirdEventsMap;
-        const existingPrograms = existingProgramsSnap.exists() ? existingProgramsSnap.val() as ProgramsMap : {};
 
-        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, existingPrograms, volunteersFullNameMap);
+        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, volunteersFullNameMap);
 
         // 3. Write rebuilt maps to RTDB
         await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupsMap`), bandGroups);
@@ -973,127 +963,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addProgram = useCallback(
-    async (programId: string, displayName: string, year: string) => {
-      if (!user) throw new Error("Must be logged in to add programs");
-      if (!isOnline) throw new Error("Cannot add programs while offline");
-      try {
-        // Trim whitespace from displayName
-        const trimmedDisplayName = displayName.trim();
-        if (!trimmedDisplayName) {
-          throw new Error("Display name cannot be empty");
-        }
+    (programId: string, year: string) => {
+      const trimmedId = programId.trim();
+      if (!trimmedId) throw new Error("Program ID cannot be empty");
+      if (programsMap[trimmedId]) throw new Error(`Program "${trimmedId}" already exists`);
 
-        // Validate unique displayName (case-insensitive)
-        const existingProgram = Object.values(programsMap).find(
-          (p) => p.displayName.toLowerCase() === trimmedDisplayName.toLowerCase()
-        );
-        if (existingProgram) {
-          throw new Error(`A program with the display name "${trimmedDisplayName}" already exists`);
-        }
-
-        // Calculate new state
-        const newProgramsMap = {
-          ...programsMap,
-          [programId]: {
-            id: programId,
-            displayName: trimmedDisplayName,
-            bandGroupIds: [],
-            recaptureIds: [],
-          },
-        };
-
-        const existingProgramsInYear = yearsToProgramMap[year] || [];
-        const newYearsToProgramMap = {
-          ...yearsToProgramMap,
-          [year]: existingProgramsInYear.includes(programId)
-            ? existingProgramsInYear
-            : [...existingProgramsInYear, programId],
-        };
-
-        // Update React state
-        setProgramsMap(newProgramsMap);
-        setYearsToProgramMap(newYearsToProgramMap);
-
-        // Write to RTDB
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}`), newProgramsMap[programId]);
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/yearsToProgramMap/${year}`), newYearsToProgramMap[year]);
-        await updateLastModifiedTimestamp();
-
-        // Save to IndexedDB
-        await saveCompleteStateToIndexedDB({ yearsToProgramMap: newYearsToProgramMap, programsMap: newProgramsMap });
-
-        logger.info("AddProgram", "Program added", { programId, displayName: trimmedDisplayName, year });
-      } catch (err) {
-        logger.error("AddProgram", "Error adding program", err);
-        throw err;
-      }
+      const newProgram = { id: trimmedId, displayName: trimmedId, bandGroupIds: [] as string[], recaptureIds: [] as string[] };
+      setProgramsMap((prev) => ({ ...prev, [trimmedId]: newProgram }));
+      setYearsToProgramMap((prev) => ({
+        ...prev,
+        [year]: prev[year]?.includes(trimmedId) ? prev[year] : [...(prev[year] || []), trimmedId],
+      }));
+      logger.info("AddProgram", "Program added (local)", { programId: trimmedId, year });
     },
-    [user, isOnline, yearsToProgramMap, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+    [programsMap]
   );
 
-  const updateProgram = useCallback(
-    async (programId: string, newDisplayName: string) => {
-      if (!user) throw new Error("Must be logged in to update programs");
-      if (!isOnline) throw new Error("Cannot update programs while offline");
-      try {
-        // Get the current program
-        const currentProgram = programsMap[programId];
-        if (!currentProgram) {
-          throw new Error(`Program with ID "${programId}" not found`);
-        }
-
-        // Trim whitespace from displayName
-        const trimmedDisplayName = newDisplayName.trim();
-        if (!trimmedDisplayName) {
-          throw new Error("Display name cannot be empty");
-        }
-
-        // Check if displayName actually changed
-        if (currentProgram.displayName === trimmedDisplayName) {
-          return;
-        }
-
-        // Validate unique displayName (case-insensitive, excluding current program)
-        const existingProgram = Object.values(programsMap).find(
-          (p) => p.id !== programId && p.displayName.toLowerCase() === trimmedDisplayName.toLowerCase()
-        );
-        if (existingProgram) {
-          throw new Error(`A program with the display name "${trimmedDisplayName}" already exists`);
-        }
-
-        // Calculate new state
-        const newProgramsMap = {
-          ...programsMap,
-          [programId]: {
-            ...currentProgram,
-            displayName: trimmedDisplayName,
-          },
-        };
-
-        // Update React state
-        setProgramsMap(newProgramsMap);
-
-        // Update selectedProgram if it's the one we just modified
-        setSelectedProgram((current) => {
-          if (!current || current.id !== programId) return current;
-          return newProgramsMap[programId];
-        });
-
-        // Write to RTDB
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${programId}/displayName`), trimmedDisplayName);
-        await updateLastModifiedTimestamp();
-
-        // Save to IndexedDB
-        await saveCompleteStateToIndexedDB({ programsMap: newProgramsMap });
-
-        logger.info("UpdateProgram", "Program updated", { programId, newDisplayName: trimmedDisplayName });
-      } catch (err) {
-        logger.error("UpdateProgram", "Error updating program", err);
-        throw err;
-      }
-    },
-    [user, isOnline, programsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
-  );
 
 
   const dismissConflict = useCallback(
@@ -1315,7 +1200,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         chooseOffline,
         addBirdEvent,
         addProgram,
-        updateProgram,
         syncQueue: triggerSync,
         isSyncing,
         syncResult,
