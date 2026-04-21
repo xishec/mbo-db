@@ -11,7 +11,7 @@ console.log(`🔧 Using environment: ${envFile}`);
 
 // Load service account key
 const serviceAccount = JSON.parse(
-  readFileSync("./mbo-db-firebase-adminsdk-fbsvc-5fcd6de6b9.json", "utf-8")
+  readFileSync("./mbodatabase-firebase-adminsdk-fbsvc-7647ed8475.json", "utf-8")
 ) as ServiceAccount;
 
 export const app = initializeApp({
