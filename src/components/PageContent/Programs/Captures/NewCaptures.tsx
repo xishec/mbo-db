@@ -4,7 +4,7 @@ import { useData } from "../../../../services/useData";
 import { BandSize } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
 
-export default function NewCaptures() {
+export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?: string | null }) {
   const { selectedProgram, bandGroupsMap, birdEventsMap, bandSizeToBandIdMap, isLoading } = useData();
 
   // Get band group IDs for the selected program
@@ -52,6 +52,11 @@ export default function NewCaptures() {
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const [showOtherPrograms, setShowOtherPrograms] = useState(false);
   const prevBandGroupIdsRef = useRef<string[]>([]);
+
+  // Switch band group when parent requests (band size button click)
+  useEffect(() => {
+    if (activeBandGroupId) setSelectedBandGroupId(activeBandGroupId);
+  }, [activeBandGroupId]);
 
   // Auto-select newly added band group
   useEffect(() => {

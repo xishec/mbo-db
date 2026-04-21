@@ -16,6 +16,7 @@ export default function BirdEvents() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { selectedProgram, isLoading, bandSizeToBandIdMap, isLoggedIn } = useData();
   const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(BandSize.Other);
+  const [activeBandGroupId, setActiveBandGroupId] = useState<string | null>(null);
 
   if (!selectedProgram) {
     return null;
@@ -32,7 +33,7 @@ export default function BirdEvents() {
   const addBirdEvent = () => (
     <>
       {birdEventTabType === BirdEventTabType.NEW_CAPTURES ? (
-        <ButtonGroup color="secondary" variant="flat" fullWidth>
+        <ButtonGroup color="secondary" variant="flat">
           {Object.values(BandSize).map((bandSize) => (
             <Tooltip
               key={bandSize}
@@ -47,6 +48,10 @@ export default function BirdEvents() {
               isDisabled={bandSize === BandSize.Other}
             >
               <Button
+                onMouseEnter={() => {
+                  const nextBandId = bandSizeToBandIdMap?.[bandSize];
+                  if (nextBandId?.length >= 7) setActiveBandGroupId(nextBandId.slice(0, 7));
+                }}
                 onPress={() => {
                   setSelectedBandSize(bandSize);
                   onOpen();
@@ -99,7 +104,7 @@ export default function BirdEvents() {
         {isLoggedIn && addBirdEvent()}
       </div>
 
-      {birdEventTabType === BirdEventTabType.NEW_CAPTURES ? <NewCaptures /> : <ReCaptures />}
+      {birdEventTabType === BirdEventTabType.NEW_CAPTURES ? <NewCaptures activeBandGroupId={activeBandGroupId} /> : <ReCaptures />}
     </div>
   );
 }
