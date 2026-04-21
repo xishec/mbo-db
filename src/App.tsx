@@ -172,6 +172,22 @@ function ConnectionGuard() {
   return null;
 }
 
+function BeforeUnloadGuard() {
+  const { isSyncing, pendingCount } = useData();
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isSyncing || pendingCount > 0) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isSyncing, pendingCount]);
+
+  return null;
+}
+
 function AppContent() {
   const [activePage, setActivePage] = useState("home");
   const { isLoading, modeChosen } = useData();
@@ -191,6 +207,7 @@ function AppContent() {
       <PageContent activePage={isLoading ? "home" : activePage} />
       <MilestoneCelebration />
       <ConnectionGuard />
+      <BeforeUnloadGuard />
     </>
   );
 }
