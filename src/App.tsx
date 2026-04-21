@@ -173,17 +173,17 @@ function ConnectionGuard() {
 }
 
 function BeforeUnloadGuard() {
-  const { isSyncing, pendingCount } = useData();
+  const { isSyncing } = useData();
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isSyncing || pendingCount > 0) {
+      if (isSyncing) {
         e.preventDefault();
       }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [isSyncing, pendingCount]);
+  }, [isSyncing]);
 
   return null;
 }

@@ -773,7 +773,7 @@ export default function AddBirdEventModal({
               <Button {...modalCancelButtonProps} onPress={handleClose}>
                 Cancel
               </Button>
-              {!birdEventToModify && (
+              {!birdEventToModify && isNewCapture && (
                 <Button
                   {...modalPrimaryButtonProps}
                   variant="bordered"
