@@ -62,7 +62,7 @@ export default function AddBirdEventModal({
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
 
   // Sum of all input column widths (excl. actions/updatedAt/notes) + gaps
-  const inputRowWidth = 1120;
+  const inputRowWidth = 1145;
 
   // Reset form data when modal opens
   useEffect(() => {
@@ -697,7 +697,6 @@ export default function AddBirdEventModal({
                               "time",
                               "bander",
                               "scribe",
-                              "net",
                               "birdStatus",
                             ].includes(column.key)
                         )
@@ -745,7 +744,7 @@ export default function AddBirdEventModal({
                         ));
                       })()}
                       {TABLE_COLUMNS
-                        .filter((column) => ["bander", "scribe", "net", "birdStatus"].includes(column.key))
+                        .filter((column) => ["bander", "scribe", "birdStatus"].includes(column.key))
                         .map((column) => (
                           <div
                             key={column.key}

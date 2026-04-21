@@ -11,6 +11,15 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
   { key: "actions", type: "", label: "Actions", tableClassName: "w-[75px]", inputClassName: "w-[75px]" },
   { key: "programId", type: "text", label: "Program", tableClassName: "w-[150px]", inputClassName: "w-[150px]" },
   {
+    key: "net",
+    type: "text",
+    label: "Net",
+    maxLength: 2,
+    minLength: 2,
+    tableClassName: "w-[50px]",
+    inputClassName: "w-[75px]",
+  },
+  {
     key: "bandGroup",
     type: "number",
     label: "Band Group",
@@ -47,7 +56,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     maxLength: 4,
     minLength: 2,
     tableClassName: "w-[75px]",
-    inputClassName: "w-[100px]",
+    inputClassName: "w-[75px]",
   },
   {
     key: "age",
@@ -101,7 +110,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     maxLength: 5,
     minLength: 2,
     tableClassName: "w-[75px]",
-    inputClassName: "w-[100px]",
+    inputClassName: "w-[75px]",
   },
   {
     key: "bander",
@@ -119,15 +128,6 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     maxLength: 3,
     minLength: 2,
     tableClassName: "w-[75px]",
-    inputClassName: "w-[75px]",
-  },
-  {
-    key: "net",
-    type: "text",
-    label: "Net",
-    maxLength: 2,
-    minLength: 2,
-    tableClassName: "w-[50px]",
     inputClassName: "w-[75px]",
   },
   {
