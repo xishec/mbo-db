@@ -691,6 +691,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
             if (birdEvent.previousEventId) {
               await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`), birdEvent.id);
+              await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/syncedAt`), now);
             }
           }
           await removeFromQueue(pending.id);
