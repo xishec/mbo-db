@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { get, ref, set } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
@@ -98,25 +98,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
-  const [forceOffline, setForceOffline] = useState(!navigator.onLine);
-  const [modeChosen, setModeChosen] = useState(false);
   const [milestone, setMilestone] = useState<{ banderCode: string; count: number } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<"success" | "error" | null>(null);
-  const actualIsOnline = useOnlineStatus();
-  const isOnline = forceOffline ? false : actualIsOnline;
-  const forceOfflineRef = useRef(forceOffline);
-  forceOfflineRef.current = forceOffline;
-
-  const chooseOnline = useCallback(() => {
-    setForceOffline(false);
-    setModeChosen(true);
-  }, []);
-
-  const chooseOffline = useCallback(() => {
-    setForceOffline(true);
-    setModeChosen(true);
-  }, []);
+  const isOnline = useOnlineStatus();
 
   // User authentication
   const [user, setUser] = useState<User | null>(null);
@@ -271,7 +256,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const size = ev.band.bandSize;
       const timestamp = Date.parse(`${ev.date}T${ev.time || "00:00"}`);
       const existing = latestPerSize.get(size);
-      if (!existing || timestamp > existing.timestamp) {
+      if (!existing || timestamp > existing.timestamp || (timestamp === existing.timestamp && ev.band.id > existing.bandId)) {
         latestPerSize.set(size, { bandId: ev.band.id, timestamp });
       }
     }
@@ -284,9 +269,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return map;
   }, [birdEventsMap]);
 
-  // Load entire alpha/ on mount
+  // Load data when logged in (online) or immediately (offline)
+  const isLoggedIn = !!user || !isOnline;
   useEffect(() => {
-    if (!modeChosen) return;
+    if (!isLoggedIn) return;
     let cancelled = false;
 
     const loadData = async () => {
@@ -296,7 +282,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const cachedSyncedAt = await getLastUpdated(CURRENT_ENVIRONMENT);
 
         // Offline: use cache
-        if (forceOffline) {
+        if (!isOnline) {
           if (cachedData) {
             setLoadingStatus("Loading cached data...");
             populateStateFromData(cachedData);
@@ -309,18 +295,47 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Online: incremental or full load
         const env = CURRENT_ENVIRONMENT;
+        setLoadingStatus("Checking for updates...");
+
+        // Check lastModified for independent maps (dismissedConflictsMap, DETsMap, constants)
+        let rtdbLastModified: number | null = null;
+        try {
+          const snap = await get(ref(db, `${env}/metadata/lastModified`));
+          rtdbLastModified = snap.exists() ? snap.val() as number : null;
+        } catch {
+          if (cachedData) {
+            setLoadingStatus("Using cached data (Firebase unreachable)");
+            populateStateFromData(cachedData);
+            setLastSyncedAt(cachedSyncedAt ?? Date.now());
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        const mapsChanged = !cachedSyncedAt || !rtdbLastModified || rtdbLastModified > cachedSyncedAt;
+
+        // Bird events: always incremental (uses syncedAt, independent of lastModified)
         let allEvents: BirdEventsMap;
 
         if (cachedData?.birdEventsMap && cachedSyncedAt) {
-          // Incremental: fetch only new events since last sync
           setLoadingStatus("Checking for new events...");
           try {
             const { query: fbQuery, orderByChild, startAt } = await import("firebase/database");
             const deltaSnap = await get(fbQuery(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(cachedSyncedAt)));
             const deltaEvents = deltaSnap.exists() ? deltaSnap.val() as BirdEventsMap : {};
             const deltaCount = Object.keys(deltaEvents).length;
+
+            if (deltaCount === 0 && !mapsChanged) {
+              // Nothing changed at all — use full cache
+              setLoadingStatus("Cache is up to date");
+              logger.info("DataLoad", "No new events, maps unchanged — using cache");
+              populateStateFromData(cachedData);
+              setLastSyncedAt(cachedSyncedAt);
+              setIsLoading(false);
+              return;
+            }
+
             logger.info("DataLoad", `Incremental: ${deltaCount} new events`);
             setLoadingStatus(`Merging ${deltaCount} new events...`);
             allEvents = { ...cachedData.birdEventsMap, ...deltaEvents };
@@ -331,7 +346,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             allEvents = fullSnap.exists() ? fullSnap.val() : {};
           }
         } else {
-          // Full load: first time
           setLoadingStatus("Downloading all events...");
           const fullSnap = await get(ref(db, `${env}/birdEventsMap`));
           if (!fullSnap.exists()) {
@@ -343,18 +357,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         if (cancelled) return;
 
-        // Fetch independent maps (small, always fetch)
-        setLoadingStatus("Downloading independent data...");
-        const [dismissedSnap, DETsSnap] = await Promise.all([
-          get(ref(db, `${env}/dismissedConflictsMap`)),
-          get(ref(db, `${env}/DETsMap`)),
-        ]);
+        // Independent maps + constants: only fetch if lastModified changed
+        let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
+        let detsMap = cachedData?.DETsMap ?? {};
+        let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {} };
+        let fullNameMap: Record<string, string> = cachedData?.volunteersFullNameMap ?? {};
+        if (mapsChanged) {
+          setLoadingStatus("Downloading independent data...");
+          const [dismissedSnap, DETsSnap, magicSnap, namesSnap] = await Promise.all([
+            get(ref(db, `${env}/dismissedConflictsMap`)),
+            get(ref(db, `${env}/DETsMap`)),
+            get(ref(db, `${env}/magicTable`)),
+            get(ref(db, `${env}/volunteersFullNameMap`)),
+          ]);
+          dismissedMap = dismissedSnap.exists() ? dismissedSnap.val() : {};
+          detsMap = DETsSnap.exists() ? DETsSnap.val() : {};
+          magicTableData = magicSnap.exists() ? magicSnap.val() : { pyle: {} };
+          fullNameMap = namesSnap.exists() ? namesSnap.val() : {};
+        }
 
         if (cancelled) return;
 
+        // Set constants state
+        setMagicTable(magicTableData);
+        setVolunteersFullNameMap(fullNameMap);
+
         // Rebuild all derived maps locally
         setLoadingStatus("Rebuilding maps...");
-        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, volunteersFullNameMap);
+        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, fullNameMap);
 
         const reconstructed = Object.fromEntries(
           Object.entries(allEvents).map(([id, event]) => [
@@ -370,15 +400,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandIdToBirdEventIdsMap: bandIdMap,
           yearsToProgramMap: years,
           bandSizeToBandIdMap: {} as Record<BandSize, string>,
-          dismissedConflictsMap: dismissedSnap.exists() ? dismissedSnap.val() : {},
-          DETsMap: DETsSnap.exists() ? DETsSnap.val() : {},
+          dismissedConflictsMap: dismissedMap,
+          DETsMap: detsMap,
           volunteersMap: volCounts,
+          magicTable: magicTableData,
+          volunteersFullNameMap: fullNameMap,
         };
 
         setLoadingStatus("Saving to cache...");
-        const now = Date.now();
+        const cacheTimestamp = rtdbLastModified ?? Date.now();
         await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
-        await saveLastUpdated(CURRENT_ENVIRONMENT, now);
+        await saveLastUpdated(CURRENT_ENVIRONMENT, cacheTimestamp);
 
         setBirdEventsMap(reconstructed);
         setBandIdToBirdEventIdsMap(bandIdMap);
@@ -388,7 +420,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setVolunteersMap(volCounts);
         setDismissedConflictsMap(data.dismissedConflictsMap);
         setDETsMap(data.DETsMap ?? {});
-        setLastSyncedAt(now);
+        setLastSyncedAt(cacheTimestamp);
         setLoadingStatus("Ready");
 
         logger.info("DataLoad", `Load complete`, { events: Object.keys(allEvents).length });
@@ -411,7 +443,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
 
     const populateStateFromData = (data: DatabaseData) => {
-      const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(data.birdEventsMap ?? {}, volunteersFullNameMap);
+      const fnMap = data.volunteersFullNameMap ?? {};
+      setMagicTable(data.magicTable ?? { pyle: {} });
+      setVolunteersFullNameMap(fnMap);
+      const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(data.birdEventsMap ?? {}, fnMap);
       setBirdEventsMap(
         Object.fromEntries(
           Object.entries(data.birdEventsMap ?? {}).map(([id, event]) => [
@@ -429,59 +464,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
     };
 
-    const CONSTANTS_CACHE_KEY = `constants_cache`;
-
-    const loadConstants = async () => {
-      if (forceOffline) {
-        try {
-          const cached = await getDataFromIndexedDB(CONSTANTS_CACHE_KEY);
-          if (cached) {
-            const constants = cached as unknown as { magicTable?: MagicTable; volunteersFullNameMap?: Record<string, string> };
-            setMagicTable(constants.magicTable ?? { pyle: {} });
-            setVolunteersFullNameMap(constants.volunteersFullNameMap ?? {});
-            logger.info("DataLoad", "No network — loaded constants from cache");
-          }
-        } catch {
-          logger.error("DataLoad", "Failed to load constants from cache");
-        }
-        return;
-      }
-
-      try {
-        const constantsSnapshot = await get(ref(db, `constants`));
-        if (constantsSnapshot.exists()) {
-          const rtdbConstants = constantsSnapshot.val();
-          setMagicTable(rtdbConstants.magicTable ?? { pyle: {} });
-          setVolunteersFullNameMap(rtdbConstants.volunteersFullNameMap ?? {});
-          await saveDataToIndexedDB(CONSTANTS_CACHE_KEY, rtdbConstants);
-          logger.info("DataLoad", "Loaded constants", {
-            hasMagicTable: !!rtdbConstants.magicTable,
-            namesCount: Object.keys(rtdbConstants.volunteersFullNameMap ?? {}).length,
-          });
-        }
-      } catch (err) {
-        logger.warn("DataLoad", "Cannot reach Firebase for constants — trying cache", err);
-        try {
-          const cached = await getDataFromIndexedDB(CONSTANTS_CACHE_KEY);
-          if (cached) {
-            const constants = cached as unknown as { magicTable?: MagicTable; volunteersFullNameMap?: Record<string, string> };
-            setMagicTable(constants.magicTable ?? { pyle: {} });
-            setVolunteersFullNameMap(constants.volunteersFullNameMap ?? {});
-            logger.info("DataLoad", "Loaded constants from cache");
-          }
-        } catch {
-          logger.error("DataLoad", "Failed to load constants from cache");
-        }
-      }
-    };
-
     loadData();
-    loadConstants();
 
     return () => {
       cancelled = true;
     };
-  }, [modeChosen, forceOffline]);
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Monitor auth state and check if user is admin
   useEffect(() => {
@@ -489,7 +477,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
 
       if (currentUser) {
-        if (!forceOfflineRef.current) {
+        if (navigator.onLine) {
           try {
             const roleRef = ref(db, `users/${currentUser.uid}/role`);
             const snapshot = await get(roleRef);
@@ -520,11 +508,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     getQueueCount().then(setPendingCount).catch(console.error);
   }, []);
 
-  /**
-   * Updates lastModified timestamp in both RTDB and IndexedDB.
-   * Called after any data mutation to track when data was last changed.
-   */
-  const updateLastModifiedTimestamp = useCallback(async (): Promise<void> => {
+  const updateLastModified = useCallback(async () => {
     const now = Date.now();
     await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`), now);
     await saveLastUpdated(CURRENT_ENVIRONMENT, now);
@@ -678,7 +662,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Update local cache timestamp for incremental loading
+      // Update local cache timestamp
       await saveLastUpdated(CURRENT_ENVIRONMENT, now);
       setLastSyncedAt(now);
 
@@ -695,7 +679,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addBirdEvent = useCallback(
     async (captureData: CaptureFormData, _bandSize: BandSize, previousEventId: string | undefined) => {
-      if (!user && !forceOfflineRef.current) {
+      if (!user && isOnline) {
         throw new Error("Must be logged in to add bird events");
       }
 
@@ -895,7 +879,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (isOnline) {
           // Online: sync to RTDB immediately
           await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap/${conflictId}`), true);
-          await updateLastModifiedTimestamp();
+          await updateLastModified();
           logger.info("DismissConflict", `Conflict ${conflictId} dismissed and synced to RTDB`);
         } else {
           // Offline: will be synced when back online
@@ -906,7 +890,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [user, isOnline, dismissedConflictsMap, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]
+    [user, isOnline, dismissedConflictsMap, saveCompleteStateToIndexedDB, updateLastModified]
   );
 
   /**
@@ -933,7 +917,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (isOnline) {
           // Online: sync to RTDB immediately
           await set(ref(db, `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`), det);
-          await updateLastModifiedTimestamp();
+          await updateLastModified();
           logger.info("SaveDET", `DET for ${det.date} synced to RTDB`);
         } else {
           // Offline: add to queue for later sync
@@ -954,7 +938,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [user, isOnline, updateLastModifiedTimestamp]
+    [user, isOnline, updateLastModified]
   );
 
   const resetDismissedConflicts = useCallback(async () => {
@@ -973,7 +957,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (isOnline) {
         // Online: clear RTDB immediately
         await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), null);
-        await updateLastModifiedTimestamp();
+        await updateLastModified();
         logger.info("ResetDismissedConflicts", "All dismissed conflicts reset and synced to RTDB");
       } else {
         // Offline: will be synced when back online
@@ -983,7 +967,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       logger.error("ResetDismissedConflicts", "Error resetting dismissed conflicts", err);
       throw err;
     }
-  }, [user, isOnline, saveCompleteStateToIndexedDB, updateLastModifiedTimestamp]);
+  }, [user, isOnline, saveCompleteStateToIndexedDB, updateLastModified]);
 
   const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
@@ -1003,7 +987,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Update both env volunteersMap and constants fullNameMap
         await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${code}/fullName`), trimmed);
-        await set(ref(db, `constants/volunteersFullNameMap/${code}`), trimmed);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${code}`), trimmed);
         setVolunteersFullNameMap((prev) => ({ ...prev, [code]: trimmed }));
         await saveCompleteStateToIndexedDB({ volunteersMap: newMap });
       } catch (err) {
@@ -1031,7 +1015,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Write to env path and update constants fullNameMap
       await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${trimmedCode}`), newVolunteer);
       if (trimmedName) {
-        await set(ref(db, `constants/volunteersFullNameMap/${trimmedCode}`), trimmedName);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${trimmedCode}`), trimmedName);
         setVolunteersFullNameMap((prev) => ({ ...prev, [trimmedCode]: trimmedName }));
       }
       await saveCompleteStateToIndexedDB({ volunteersMap: newMap });
@@ -1060,7 +1044,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!isLoading && isOnline && isAdmin && pendingCount > 0) {
       triggerSync();
     }
-  }, [isLoading, isOnline, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoading, isOnline, isAdmin, pendingCount, triggerSync]);
 
   return (
     <DataContext.Provider
@@ -1068,7 +1052,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         loadingStatus,
         error,
-        isLoggedIn: !!user || forceOfflineRef.current,
+        isLoggedIn,
         isAdmin,
         userEmail: user?.email ?? null,
         signOut: async () => {
@@ -1090,11 +1074,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         isOnline,
         pendingCount,
         lastSyncedAt,
-        forceOffline,
-
-        modeChosen,
-        chooseOnline,
-        chooseOffline,
         addBirdEvent,
         addProgram,
         syncQueue: triggerSync,

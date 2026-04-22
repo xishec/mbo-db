@@ -6,18 +6,18 @@ const OUTPUT = "/Users/xicshen/Downloads/mbo/mbodatabase-clean-import.json";
 console.log("Reading export...");
 const data = JSON.parse(readFileSync(INPUT, "utf-8"));
 
+const constants = data.constants ?? {};
 const clean: Record<string, unknown> = {};
 
-// Keep constants and users as-is
-clean.constants = data.constants;
+// Users
 clean.users = data.users;
 
-// For each environment, keep only birdEventsMap, dismissedConflictsMap, DETsMap
+// For each environment: birdEventsMap + independent maps + constants (moved into env)
 for (const env of ["alpha", "prod"]) {
   if (!data[env]) continue;
   const envData: Record<string, unknown> = {};
 
-  // birdEventsMap — keep, backfill syncedAt from date+time
+  // birdEventsMap — backfill syncedAt from date+time
   if (data[env].birdEventsMap) {
     const events = data[env].birdEventsMap as Record<string, Record<string, unknown>>;
     let backfilled = 0;
@@ -28,28 +28,41 @@ for (const env of ["alpha", "prod"]) {
         backfilled++;
       }
     }
+
+    // Fix program name
+    for (const ev of Object.values(events)) {
+      if (ev.programId === "SMMP2026-1776513653365") ev.programId = "SMMP2026";
+    }
+
     envData.birdEventsMap = events;
     console.log(`  ${env}/birdEventsMap: ${Object.keys(events).length} events (${backfilled} syncedAt backfilled)`);
   }
 
-  // dismissedConflictsMap — keep
+  // dismissedConflictsMap
   if (data[env].dismissedConflictsMap) {
     envData.dismissedConflictsMap = data[env].dismissedConflictsMap;
     console.log(`  ${env}/dismissedConflictsMap: ${Object.keys(data[env].dismissedConflictsMap).length} entries`);
   }
 
-  // DETsMap — keep
+  // DETsMap
   if (data[env].DETsMap) {
     envData.DETsMap = data[env].DETsMap;
     console.log(`  ${env}/DETsMap: ${Object.keys(data[env].DETsMap).length} entries`);
   }
 
-  // Remove: bandGroupsMap, bandIdToBirdEventIdsMap, bandSizeToBandIdMap,
-  //         metadata, programsMap, volunteersMap, yearsToProgramMap, settings
+  // Constants moved into env
+  envData.magicTable = constants.magicTable ?? {};
+  envData.volunteersFullNameMap = constants.volunteersFullNameMap ?? {};
+  console.log(`  ${env}/magicTable: ${Object.keys(envData.magicTable as Record<string, unknown>).length} entries`);
+  console.log(`  ${env}/volunteersFullNameMap: ${Object.keys(envData.volunteersFullNameMap as Record<string, unknown>).length} entries`);
+
+  // metadata — initialize lastModified
+  envData.metadata = { lastModified: Date.now() };
+
   const removed = Object.keys(data[env]).filter(
     (k) => !["birdEventsMap", "dismissedConflictsMap", "DETsMap"].includes(k)
   );
-  console.log(`  ${env} removed: ${removed.join(", ")}`);
+  console.log(`  ${env} removed from original: ${removed.join(", ")}`);
 
   clean[env] = envData;
 }
@@ -57,11 +70,9 @@ for (const env of ["alpha", "prod"]) {
 console.log("\nWriting clean export...");
 writeFileSync(OUTPUT, JSON.stringify(clean));
 
-// Report sizes
 const originalSize = readFileSync(INPUT).length;
 const cleanSize = readFileSync(OUTPUT).length;
 console.log(`Original: ${(originalSize / 1024 / 1024).toFixed(1)}MB`);
 console.log(`Clean: ${(cleanSize / 1024 / 1024).toFixed(1)}MB`);
-console.log(`Removed: ${((originalSize - cleanSize) / 1024 / 1024).toFixed(1)}MB (${((1 - cleanSize / originalSize) * 100).toFixed(0)}%)`);
 console.log(`\nOutput: ${OUTPUT}`);
 console.log("Import this into the new project via Firebase Console > RTDB > Import JSON");

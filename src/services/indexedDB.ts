@@ -47,6 +47,16 @@ async function openDB(): Promise<IDBDatabase> {
 /**
  * Clear all data from IndexedDB (useful for debugging)
  */
+export async function clearQueue(): Promise<void> {
+  const db = await openDB();
+  const transaction = db.transaction([QUEUE_STORE], "readwrite");
+  transaction.objectStore(QUEUE_STORE).clear();
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => { db.close(); resolve(); };
+    transaction.onerror = () => { db.close(); reject(transaction.error); };
+  });
+}
+
 export async function clearAllIndexedDB(): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction([METADATA_STORE, DATA_STORE, QUEUE_STORE], "readwrite");

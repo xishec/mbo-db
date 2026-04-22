@@ -1,175 +1,53 @@
 import { useState, useEffect } from "react";
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Spinner } from "@heroui/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/react";
 import Navigation from "./components/Navigation";
+import LoginModal from "./components/Modals/LoginModal";
 import PageContent from "./components/PageContent/PageContent";
 import LoadingProgressBar from "./components/Helper/LoadingProgressBar";
 import MilestoneCelebration from "./components/Helper/MilestoneCelebration";
 import { DataProvider } from "./services/DataService";
 import { useData } from "./services/useData";
-import { useOnlineStatus } from "./hooks/useOnlineStatus";
-import { CURRENT_ENVIRONMENT } from "./firebase";
 import mboLogo from "./assets/mbo-logo.svg";
 
-function formatCacheAge(ms: number): string {
-  const hours = Math.floor(ms / (1000 * 60 * 60));
-  if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""}`;
-  const days = Math.floor(hours / 24);
-  return `${days} day${days !== 1 ? "s" : ""}`;
-}
+function PendingEventsGuard() {
+  const { pendingCount, isAdmin, isLoggedIn, isOnline } = useData();
+  const [clearing, setClearing] = useState(false);
 
-function ModeSelector() {
-  const { modeChosen, chooseOnline, chooseOffline, forceOffline } = useData();
-  const [hasCache, setHasCache] = useState<boolean | null>(null);
-  const [cacheAge, setCacheAge] = useState<number | null>(null);
-  const [showStaleWarning, setShowStaleWarning] = useState(false);
+  const canSync = isOnline && isLoggedIn && isAdmin;
+  const showWarning = isOnline && pendingCount > 0 && !canSync;
 
-  useEffect(() => {
-    const timeout = setTimeout(() => setHasCache(false), 3000);
-    import("./services/indexedDB").then(({ getDataFromIndexedDB, getLastUpdated }) =>
-      Promise.all([
-        getDataFromIndexedDB(CURRENT_ENVIRONMENT),
-        getLastUpdated(CURRENT_ENVIRONMENT),
-      ]).then(([data, ts]) => {
-        clearTimeout(timeout);
-        setHasCache(data !== null);
-        if (ts) setCacheAge(Date.now() - ts);
-      })
-    ).catch(() => { clearTimeout(timeout); setHasCache(false); });
-  }, []);
+  if (!showWarning) return null;
 
-  useEffect(() => {
-    if (modeChosen || hasCache === null) return;
+  const handleClear = async () => {
+    setClearing(true);
+    const { clearQueue } = await import("./services/indexedDB");
+    await clearQueue();
+    window.location.reload();
+  };
 
-    if (!forceOffline) {
-      // Online — go straight in
-      chooseOnline();
-    } else if (hasCache) {
-      // Offline with cache — check staleness
-      const ONE_DAY = 24 * 60 * 60 * 1000;
-      if (cacheAge && cacheAge > ONE_DAY) {
-        setShowStaleWarning(true);
-      } else {
-        chooseOffline();
-      }
-    }
-    // Offline without cache — show waiting screen
-  }, [hasCache, forceOffline, modeChosen, chooseOnline, chooseOffline, cacheAge]);
-
-  if (modeChosen) return null;
-
-  // Offline with no cache — can't proceed
-  if (forceOffline && hasCache === false) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background">
-        <div className="text-center max-w-sm mx-4">
-          <img src={mboLogo} alt="MBO Logo" className="h-16 w-16 mx-auto mb-6" />
-          <h1 className="text-2xl font-bold mb-2">MBO Database</h1>
-          <p className="text-default-700 mt-4">No cached data available. Connect to WiFi and reload.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Stale cache warning
-  if (showStaleWarning) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background">
-        <div className="text-center max-w-sm mx-4">
-          <img src={mboLogo} alt="MBO Logo" className="h-16 w-16 mx-auto mb-6" />
-          <h1 className="text-2xl font-bold mb-2">MBO Database</h1>
-        </div>
-        <Modal isOpen isDismissable={false} hideCloseButton size="sm">
-          <ModalContent>
-            <ModalHeader>Stale Cache</ModalHeader>
-            <ModalBody>
-              <p className="text-default-700">
-                Your cached data is <strong>{cacheAge ? formatCacheAge(cacheAge) : ""}</strong> old.
-                Connect to WiFi to get the latest data, or continue with cached data.
-              </p>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                color="warning"
-                variant="flat"
-                onPress={() => { setShowStaleWarning(false); chooseOffline(); }}
-              >
-                Continue Offline
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-      </div>
-    );
-  }
-
-  // Loading state while checking cache
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background">
-      <div className="text-center max-w-sm mx-4">
-        <img src={mboLogo} alt="MBO Logo" className="h-16 w-16 mx-auto mb-6" />
-        <h1 className="text-2xl font-bold mb-2">MBO Database</h1>
-        <Spinner size="lg" className="mt-4" />
-      </div>
-    </div>
+    <Modal isOpen isDismissable={false} hideCloseButton size="sm">
+      <ModalContent>
+        <ModalHeader>Pending Events</ModalHeader>
+        <ModalBody>
+          <p className="text-default-700">
+            You have <strong>{pendingCount}</strong> pending event{pendingCount !== 1 ? "s" : ""} that
+            {!isLoggedIn
+              ? " cannot be synced because you are not signed in."
+              : " cannot be synced because your account does not have admin access."}
+          </p>
+          <p className="text-default-700 text-sm">
+            Sign in as an admin to sync, or clear the pending events to continue.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button color="danger" variant="flat" onPress={handleClear} isLoading={clearing}>
+            Clear {pendingCount} Pending Event{pendingCount !== 1 ? "s" : ""}
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
-}
-
-function ConnectionGuard() {
-  const { forceOffline, modeChosen } = useData();
-  const actualIsOnline = useOnlineStatus();
-
-  if (!modeChosen) return null;
-
-  // Online mode but lost connection
-  if (!forceOffline && !actualIsOnline) {
-    return (
-      <Modal isOpen isDismissable={false} hideCloseButton size="sm">
-        <ModalContent>
-          <ModalHeader>Connection Lost</ModalHeader>
-          <ModalBody>
-            <p className="text-default-700">
-              The app requires WiFi to work in online mode. Please reconnect to continue.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="warning"
-              variant="flat"
-              onPress={() => window.location.reload()}
-            >
-              Switch to Offline Mode
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    );
-  }
-
-  // Offline mode but connection available
-  if (forceOffline && actualIsOnline) {
-    return (
-      <Modal isOpen isDismissable={false} hideCloseButton size="sm">
-        <ModalContent>
-          <ModalHeader>Connection Available</ModalHeader>
-          <ModalBody>
-            <p className="text-default-700">
-              WiFi is available. Switch to online mode to get the latest data and sync pending changes.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="primary"
-              onPress={() => window.location.reload()}
-            >
-              Switch to Online Mode
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    );
-  }
-
-  return null;
 }
 
 function BeforeUnloadGuard() {
@@ -177,9 +55,7 @@ function BeforeUnloadGuard() {
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isSyncing) {
-        e.preventDefault();
-      }
+      if (isSyncing) e.preventDefault();
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
@@ -190,15 +66,30 @@ function BeforeUnloadGuard() {
 
 function AppContent() {
   const [activePage, setActivePage] = useState("home");
-  const { isLoading, modeChosen } = useData();
+  const { isLoading, isLoggedIn, isOnline } = useData();
 
   const handlePageChange = (page: string) => {
-    if (!isLoading) {
-      setActivePage(page);
-    }
+    if (!isLoading) setActivePage(page);
   };
 
-  if (!modeChosen) return <ModeSelector />;
+  const { isOpen: isLoginOpen, onOpen: onLoginOpen, onOpenChange: onLoginOpenChange } = useDisclosure();
+
+  // Online but not logged in — show sign-in prompt
+  if (isOnline && !isLoggedIn) {
+    return (
+      <>
+        <div className="flex items-center justify-center min-h-screen bg-background">
+          <div className="text-center max-w-sm mx-4">
+            <img src={mboLogo} alt="MBO Logo" className="h-16 w-16 mx-auto mb-6" />
+            <h1 className="text-2xl font-bold mb-2">MBO Database</h1>
+            <p className="text-default-700 mb-6">Please sign in to continue.</p>
+            <Button color="primary" onPress={onLoginOpen}>Login</Button>
+          </div>
+        </div>
+        <LoginModal isOpen={isLoginOpen} onOpenChange={onLoginOpenChange} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -206,7 +97,7 @@ function AppContent() {
       <Navigation activePage={isLoading ? "home" : activePage} onPageChange={handlePageChange} isLoading={isLoading} />
       <PageContent activePage={isLoading ? "home" : activePage} />
       <MilestoneCelebration />
-      <ConnectionGuard />
+      <PendingEventsGuard />
       <BeforeUnloadGuard />
     </>
   );

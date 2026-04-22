@@ -57,7 +57,6 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     clearSyncResult,
     selectProgram,
     dismissedConflictsMap,
-    forceOffline,
     signOut: handleSignOut,
   } = useData();
 
@@ -215,7 +214,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             </NavbarItem>
           )}
           <NavbarItem className="flex items-center">
-            {forceOffline ? null : isLoggedIn ? (
+            {!isOnline ? null : isLoggedIn ? (
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
                   <div className="flex items-center gap-4 cursor-pointer">

@@ -184,6 +184,8 @@ export interface DatabaseData {
   dismissedConflictsMap: DismissedConflictsMap;
   DETsMap?: DETsMap;
   volunteersMap?: VolunteersMap;
+  magicTable?: MagicTable;
+  volunteersFullNameMap?: Record<string, string>;
 }
 
 // Service types
@@ -220,10 +222,6 @@ export interface DataContextType {
   isOnline: boolean;
   pendingCount: number;
   lastSyncedAt: number | null;
-  forceOffline: boolean;
-  modeChosen: boolean;
-  chooseOnline: () => void;
-  chooseOffline: () => void;
 
   // Actions
   addBirdEvent: (
