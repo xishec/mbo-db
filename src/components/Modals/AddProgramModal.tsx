@@ -13,7 +13,6 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
   const { addProgram } = useData();
   const [programId, setProgramId] = useState("");
   const [year, setYear] = useState(() => new Date().getFullYear().toString());
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = () => {
@@ -67,10 +66,10 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
         />
       </ModalBodyShell>
       <ModalFooterShell>
-        <Button {...modalCancelButtonProps} onPress={() => onOpenChange(false)} isDisabled={isLoading}>
+        <Button {...modalCancelButtonProps} onPress={() => onOpenChange(false)}>
           Cancel
         </Button>
-        <Button {...modalPrimaryButtonProps} onPress={handleSubmit} isDisabled={!programId.trim() || !year.trim()} isLoading={isLoading}>
+        <Button {...modalPrimaryButtonProps} onPress={handleSubmit} isDisabled={!programId.trim() || !year.trim()}>
           Add Program
         </Button>
       </ModalFooterShell>
