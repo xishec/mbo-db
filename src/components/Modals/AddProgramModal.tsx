@@ -16,19 +16,15 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (programId.trim() && year.trim()) {
-      setIsLoading(true);
-      setError("");
       try {
-        await addProgram(programId.trim(), year.trim());
+        addProgram(programId.trim(), year.trim());
         setProgramId("");
         setYear(new Date().getFullYear().toString());
         onOpenChange(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to add program");
-      } finally {
-        setIsLoading(false);
       }
     }
   };
