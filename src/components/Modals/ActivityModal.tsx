@@ -10,50 +10,6 @@ import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
-const ACTION_CATEGORIES = new Set([
-  "AddBirdEvent",
-  "AddProgram",
-  "UpdateProgram",
-  "SaveDET",
-  "DismissConflict",
-  "ResetDismissedConflicts",
-  "UpdateBandSizeMap",
-  "AddVolunteer",
-  "UpdateVolunteerName",
-  "SyncQueue",
-]);
-
-function getCategoryColor(category: string): "success" | "primary" | "secondary" | "warning" | "danger" | "default" {
-  switch (category) {
-    case "AddBirdEvent": return "success";
-    case "AddProgram": return "primary";
-    case "UpdateProgram": return "warning";
-    case "SaveDET": return "secondary";
-    case "DismissConflict":
-    case "ResetDismissedConflicts": return "danger";
-    case "AddVolunteer":
-    case "UpdateVolunteerName": return "primary";
-    case "SyncQueue": return "default";
-    default: return "default";
-  }
-}
-
-function getCategoryLabel(category: string): string {
-  switch (category) {
-    case "AddBirdEvent": return "Capture";
-    case "AddProgram": return "New Program";
-    case "UpdateProgram": return "Edit Program";
-    case "SaveDET": return "DET";
-    case "DismissConflict": return "Dismiss Error";
-    case "ResetDismissedConflicts": return "Reset Errors";
-    case "UpdateBandSizeMap": return "Band Size";
-    case "AddVolunteer": return "New Volunteer";
-    case "UpdateVolunteerName": return "Edit Volunteer";
-    case "SyncQueue": return "Sync";
-    default: return category;
-  }
-}
-
 function formatTime(timestamp: number): string {
   const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
@@ -94,7 +50,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
 
   const recentActions = useMemo(() => {
     return logs
-      .filter((log) => ACTION_CATEGORIES.has(log.category) && log.level === LogLevel.INFO)
+      .filter((log) => log.category === "AddBirdEvent" && log.level === LogLevel.INFO)
       .slice(-50)
       .reverse();
   }, [logs]);
@@ -203,28 +159,22 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
             </div>
           )}
 
-          {/* Recent actions */}
+          {/* Recent bird events */}
           <div>
-            {queuedEvents.length > 0 && <p className="text-sm font-semibold mb-2">Recent Actions</p>}
+            {queuedEvents.length > 0 && <p className="text-sm font-semibold mb-2">Recent Captures</p>}
             <div className="flex flex-col gap-1">
               {recentActions.map((log) => {
                 const data = log.data as Record<string, string> | undefined;
-                const isBirdEvent = log.category === "AddBirdEvent" && data?.eventId;
-                const event = isBirdEvent ? birdEventsMap[data.eventId] : null;
+                const eventId = data?.eventId;
+                const event = eventId ? birdEventsMap[eventId] : null;
 
                 return (
                   <div
                     key={log.id}
-                    className={`h-10 px-3 border border-default-200 rounded-medium flex items-center gap-3 text-sm transition-colors ${
-                      isBirdEvent ? "hover:bg-default-100 cursor-pointer" : ""
-                    }`}
-                    onClick={isBirdEvent ? () => handleBirdEventClick(log) : undefined}
+                    className="h-10 px-3 border border-default-200 rounded-medium flex items-center gap-3 text-sm transition-colors hover:bg-default-100 cursor-pointer"
+                    onClick={eventId ? () => handleBirdEventClick(log) : undefined}
                   >
-                    {isBirdEvent && <MagnifyingGlassIcon className="w-4 h-4 text-default-400 flex-shrink-0" />}
-                    <Chip size="sm" variant="flat" color={getCategoryColor(log.category)}>
-                      {getCategoryLabel(log.category)}
-                    </Chip>
-
+                    <MagnifyingGlassIcon className="w-4 h-4 text-default-400 flex-shrink-0" />
                     {event ? (
                       <>
                         <span className="font-bold">
@@ -238,7 +188,6 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
                     ) : (
                       <span className="text-default-700 truncate">{log.message}</span>
                     )}
-
                     <span className="ml-auto text-default-400 text-xs whitespace-nowrap">
                       {formatTime(log.timestamp)}
                     </span>
@@ -247,7 +196,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
               })}
 
               {recentActions.length === 0 && (
-                <div className="text-center text-default-700 py-8">No recent activity</div>
+                <div className="text-center text-default-700 py-8">No recent captures</div>
               )}
             </div>
           </div>

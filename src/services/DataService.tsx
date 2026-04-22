@@ -32,6 +32,8 @@ import {
   getDataFromIndexedDB,
   saveLastUpdated,
   getLastUpdated,
+  saveMetadata,
+  getMetadata,
   addToQueue,
   getQueuedEvents,
   removeFromQueue,
@@ -296,11 +298,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const env = CURRENT_ENVIRONMENT;
         setLoadingStatus("Checking for updates...");
 
-        // Check lastOnlineModified for independent maps (dismissedConflictsMap, DETsMap, magicTable, volunteersFullNameMap)
-        let rtdbLastOnlineModified: number | null = null;
+        // Fetch all metadata timestamps in one read
+        type RtdbMetadata = Record<string, number> | null;
+        let rtdbMetadata: RtdbMetadata = null;
         try {
-          const snap = await get(ref(db, `${env}/metadata/lastOnlineModified`));
-          rtdbLastOnlineModified = snap.exists() ? snap.val() as number : null;
+          const snap = await get(ref(db, `${env}/metadata`));
+          rtdbMetadata = snap.exists() ? snap.val() : null;
         } catch {
           if (cachedData) {
             setLoadingStatus("Using cached data (Firebase unreachable)");
@@ -311,10 +314,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        const mapsChanged = !lastEventSync || !rtdbLastOnlineModified || rtdbLastOnlineModified > lastEventSync;
+        // Compare RTDB timestamps against cached timestamps to determine which maps need fetching
+        const mapsToFetch = new Set<MapName>();
+        if (cachedData) {
+          const cachedTimestamps = await Promise.all(
+            MAP_NAMES.map((m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>)
+          );
+          MAP_NAMES.forEach((m, i) => {
+            const rtdbTs = rtdbMetadata?.[`lastModified_${m}`] as number | undefined;
+            const cachedTs = cachedTimestamps[i];
+            if (!cachedTs || (rtdbTs != null && rtdbTs > cachedTs)) {
+              mapsToFetch.add(m);
+            }
+          });
+        } else {
+          MAP_NAMES.forEach((m) => mapsToFetch.add(m));
+        }
 
-        // Bird events: always incremental (uses syncedAt, independent of lastOnlineModified)
+        // Bird events: always incremental (uses syncedAt, independent of map timestamps)
         let allEvents: BirdEventsMap;
+        logger.info("DataLoad", `Cache: ${cachedData ? "yes" : "no"}, lastEventSync: ${lastEventSync}, mapsToFetch: ${mapsToFetch.size}`);
 
         if (cachedData?.birdEventsMap && lastEventSync) {
           setLoadingStatus("Checking for new events...");
@@ -324,8 +343,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             const deltaEvents = deltaSnap.exists() ? deltaSnap.val() as BirdEventsMap : {};
             const deltaCount = Object.keys(deltaEvents).length;
 
-            if (deltaCount === 0 && !mapsChanged) {
-              // Nothing changed at all — use full cache
+            if (deltaCount === 0 && mapsToFetch.size === 0) {
               setLoadingStatus("Cache is up to date");
               logger.info("DataLoad", "No new events, maps unchanged — using cache");
               populateStateFromData(cachedData);
@@ -337,8 +355,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             logger.info("DataLoad", `Incremental: ${deltaCount} new events`);
             setLoadingStatus(`Merging ${deltaCount} new events...`);
             allEvents = { ...cachedData.birdEventsMap, ...deltaEvents };
-          } catch {
-            logger.warn("DataLoad", "Incremental load failed, falling back to full load");
+          } catch (err) {
+            logger.warn("DataLoad", "Incremental load failed, falling back to full load", err);
             setLoadingStatus("Downloading all events...");
             const fullSnap = await get(ref(db, `${env}/birdEventsMap`));
             allEvents = fullSnap.exists() ? fullSnap.val() : {};
@@ -355,23 +373,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         if (cancelled) return;
 
-        // Independent maps + constants: only fetch if lastOnlineModified changed
+        // Independent maps: only fetch the ones that changed
         let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
         let detsMap = cachedData?.DETsMap ?? {};
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {} };
         let fullNameMap: Record<string, string> = cachedData?.volunteersFullNameMap ?? {};
-        if (mapsChanged) {
-          setLoadingStatus("Downloading independent data...");
-          const [dismissedSnap, DETsSnap, magicSnap, namesSnap] = await Promise.all([
-            get(ref(db, `${env}/dismissedConflictsMap`)),
-            get(ref(db, `${env}/DETsMap`)),
-            get(ref(db, `${env}/magicTable`)),
-            get(ref(db, `${env}/volunteersFullNameMap`)),
-          ]);
-          dismissedMap = dismissedSnap.exists() ? dismissedSnap.val() : {};
-          detsMap = DETsSnap.exists() ? DETsSnap.val() : {};
-          magicTableData = magicSnap.exists() ? magicSnap.val() : { pyle: {} };
-          fullNameMap = namesSnap.exists() ? namesSnap.val() : {};
+        if (mapsToFetch.size > 0) {
+          const fetching = [...mapsToFetch];
+          logger.info("DataLoad", `Fetching changed maps: ${fetching.join(", ")}`);
+          setLoadingStatus(`Downloading ${fetching.length} updated map${fetching.length > 1 ? "s" : ""}...`);
+          const snapshots = await Promise.all(fetching.map((m) => get(ref(db, `${env}/${m}`))));
+          for (let i = 0; i < fetching.length; i++) {
+            const snap = snapshots[i];
+            const val = snap.exists() ? snap.val() : null;
+            switch (fetching[i]) {
+              case "dismissedConflictsMap": dismissedMap = val ?? {}; break;
+              case "DETsMap": detsMap = val ?? {}; break;
+              case "magicTable": magicTableData = val ?? { pyle: {} }; break;
+              case "volunteersFullNameMap": fullNameMap = val ?? {}; break;
+            }
+          }
         }
 
         if (cancelled) return;
@@ -409,6 +430,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const cacheTimestamp = Date.now();
         await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
         await saveLastUpdated(CURRENT_ENVIRONMENT, cacheTimestamp);
+        // Save RTDB timestamps for fetched maps
+        if (rtdbMetadata) {
+          await Promise.all(
+            [...mapsToFetch]
+              .filter((m) => rtdbMetadata![`lastModified_${m}`] != null)
+              .map((m) => saveMetadata(`lastModified_${m}_${env}`, rtdbMetadata![`lastModified_${m}`]))
+          );
+        }
 
         setBirdEventsMap(reconstructed);
         setBandIdToBirdEventIdsMap(bandIdMap);
@@ -506,8 +535,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     getQueueCount().then(setPendingCount).catch(console.error);
   }, []);
 
-  const updateLastModified = useCallback(async () => {
-    await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastOnlineModified`), Date.now());
+  const MAP_NAMES = ["dismissedConflictsMap", "DETsMap", "magicTable", "volunteersFullNameMap"] as const;
+  type MapName = typeof MAP_NAMES[number];
+
+  const updateMapTimestamp = useCallback(async (mapName: MapName) => {
+    const now = Date.now();
+    await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified_${mapName}`), now);
   }, []);
 
   /**
@@ -869,14 +902,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await saveCompleteStateToIndexedDB({ dismissedConflictsMap: newDismissedConflictsMap });
 
         await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap/${conflictId}`), true);
-        await updateLastModified();
+        await updateMapTimestamp("dismissedConflictsMap");
         logger.info("DismissConflict", `Conflict ${conflictId} dismissed`);
       } catch (err) {
         logger.error("DismissConflict", `Error dismissing conflict ${conflictId}`, err);
         throw err;
       }
     },
-    [user, isOnline, dismissedConflictsMap, saveCompleteStateToIndexedDB, updateLastModified]
+    [user, isOnline, dismissedConflictsMap, saveCompleteStateToIndexedDB, updateMapTimestamp]
   );
 
   /**
@@ -900,14 +933,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         logger.info("SaveDET", `DET for ${det.date} saved to IndexedDB`);
 
         await set(ref(db, `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`), det);
-        await updateLastModified();
+        await updateMapTimestamp("DETsMap");
         logger.info("SaveDET", `DET for ${det.date} synced to RTDB`);
       } catch (err) {
         logger.error("SaveDET", `Error saving DET for ${det.date}`, err);
         throw err;
       }
     },
-    [user, isOnline, updateLastModified]
+    [user, isOnline, updateMapTimestamp]
   );
 
   const resetDismissedConflicts = useCallback(async () => {
@@ -923,13 +956,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await saveCompleteStateToIndexedDB({ dismissedConflictsMap: emptyMap });
 
       await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), null);
-      await updateLastModified();
+      await updateMapTimestamp("dismissedConflictsMap");
       logger.info("ResetDismissedConflicts", "All dismissed conflicts reset");
     } catch (err) {
       logger.error("ResetDismissedConflicts", "Error resetting dismissed conflicts", err);
       throw err;
     }
-  }, [user, isOnline, saveCompleteStateToIndexedDB, updateLastModified]);
+  }, [user, isOnline, saveCompleteStateToIndexedDB, updateMapTimestamp]);
 
   const updateVolunteerName = useCallback(
     async (code: string, fullName: string) => {
@@ -948,7 +981,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setVolunteersMap(newMap);
 
         await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${code}`), trimmed);
-        await updateLastModified();
+        await updateMapTimestamp("volunteersFullNameMap");
         const newFullNameMap = { ...volunteersFullNameMap, [code]: trimmed };
         setVolunteersFullNameMap(newFullNameMap);
         await saveCompleteStateToIndexedDB({ volunteersMap: newMap, volunteersFullNameMap: newFullNameMap });
@@ -957,7 +990,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [user, isOnline, volunteersMap, volunteersFullNameMap, saveCompleteStateToIndexedDB, updateLastModified]
+    [user, isOnline, volunteersMap, volunteersFullNameMap, saveCompleteStateToIndexedDB, updateMapTimestamp]
   );
 
 

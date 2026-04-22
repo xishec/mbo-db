@@ -60,8 +60,11 @@ export async function clearQueue(): Promise<void> {
 export async function clearEnvironmentCache(environment: string): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction([DATA_STORE, METADATA_STORE], "readwrite");
+  const metaStore = transaction.objectStore(METADATA_STORE);
   transaction.objectStore(DATA_STORE).delete(environment);
-  transaction.objectStore(METADATA_STORE).delete(`lastUpdated_${environment}`);
+  metaStore.delete(`lastUpdated_${environment}`);
+  const mapNames = ["dismissedConflictsMap", "DETsMap", "magicTable", "volunteersFullNameMap"];
+  for (const m of mapNames) metaStore.delete(`lastModified_${m}_${environment}`);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => { db.close(); resolve(); };
     transaction.onerror = () => { db.close(); reject(transaction.error); };
@@ -131,49 +134,36 @@ export async function getDataFromIndexedDB(environment: string): Promise<Databas
   });
 }
 
-/**
- * Save environment-specific lastUpdated timestamp to IndexedDB
- */
-export async function saveLastUpdated(environment: string, timestamp: number): Promise<void> {
+export async function saveMetadata(key: string, value: number | string): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction([METADATA_STORE], "readwrite");
-  const store = transaction.objectStore(METADATA_STORE);
-
-  const entry: MetadataEntry = { key: `lastUpdated_${environment}`, value: timestamp };
-  store.put(entry);
-
+  transaction.objectStore(METADATA_STORE).put({ key, value } satisfies MetadataEntry);
   return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => {
-      db.close();
-      resolve();
-    };
-    transaction.onerror = () => {
-      db.close();
-      reject(transaction.error);
-    };
+    transaction.oncomplete = () => { db.close(); resolve(); };
+    transaction.onerror = () => { db.close(); reject(transaction.error); };
   });
 }
 
-/**
- * Get environment-specific lastUpdated timestamp from IndexedDB
- */
-export async function getLastUpdated(environment: string): Promise<number | null> {
+export async function getMetadata(key: string): Promise<number | string | null> {
   const db = await openDB();
   const transaction = db.transaction([METADATA_STORE], "readonly");
-  const store = transaction.objectStore(METADATA_STORE);
-
   return new Promise((resolve, reject) => {
-    const request = store.get(`lastUpdated_${environment}`);
+    const request = transaction.objectStore(METADATA_STORE).get(key);
     request.onsuccess = () => {
       db.close();
       const result = request.result as MetadataEntry | undefined;
-      resolve(result ? (result.value as number) : null);
+      resolve(result?.value ?? null);
     };
-    request.onerror = () => {
-      db.close();
-      reject(request.error);
-    };
+    request.onerror = () => { db.close(); reject(request.error); };
   });
+}
+
+export async function saveLastUpdated(environment: string, timestamp: number): Promise<void> {
+  return saveMetadata(`lastUpdated_${environment}`, timestamp);
+}
+
+export async function getLastUpdated(environment: string): Promise<number | null> {
+  return getMetadata(`lastUpdated_${environment}`) as Promise<number | null>;
 }
 
 /**
