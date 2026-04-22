@@ -23,13 +23,29 @@ function BeforeUnloadGuard() {
   return null;
 }
 
+const VALID_PAGES = new Set(["home", "programs", "search", "DETs", "species", "volunteers", "bands", "funstats", "reports"]);
+
+function getPageFromHash(): string {
+  const hash = window.location.hash.slice(1);
+  return VALID_PAGES.has(hash) ? hash : "home";
+}
+
 function AppContent() {
-  const [activePage, setActivePage] = useState("home");
+  const [activePage, setActivePage] = useState(getPageFromHash);
   const { isLoading, isLoggedIn, isOnline } = useData();
 
   const handlePageChange = (page: string) => {
-    if (!isLoading) setActivePage(page);
+    if (!isLoading) {
+      setActivePage(page);
+      window.location.hash = page === "home" ? "" : page;
+    }
   };
+
+  useEffect(() => {
+    const onHashChange = () => setActivePage(getPageFromHash());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const { isOpen: isLoginOpen, onOpen: onLoginOpen, onOpenChange: onLoginOpenChange } = useDisclosure();
 

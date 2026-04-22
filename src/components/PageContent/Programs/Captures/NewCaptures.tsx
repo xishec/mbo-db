@@ -3,9 +3,12 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
 import { BandSize } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
+import { useRemainingHeight } from "../../../../hooks/useRemainingHeight";
 
 export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?: string | null }) {
   const { selectedProgram, bandGroupsMap, birdEventsMap, bandSizeToBandIdMap, isLoading } = useData();
+  const tableRef = useRef<HTMLDivElement>(null);
+  const tableHeight = useRemainingHeight(tableRef);
 
   // Get band group IDs for the selected program
   const bandGroupIds = useMemo(() => {
@@ -153,11 +156,12 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
         </Switch>
       </div>
 
+      <div ref={tableRef}>
       {effectiveBandGroupId ? (
         <BirdEventsTable
           programId={selectedProgram?.id}
           birdEvents={captures}
-          maxTableHeight={800}
+          maxTableHeight={tableHeight}
           sortDescriptors={[{ column: "bandLastTwoDigits", direction: "ascending" }]}
           showOtherPrograms={showOtherPrograms}
           allowInspectBandId
@@ -165,6 +169,7 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
       ) : (
         <div className="p-4">Select a band group to view captures</div>
       )}
+      </div>
     </div>
   );
 }

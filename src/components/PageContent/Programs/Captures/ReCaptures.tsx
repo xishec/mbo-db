@@ -1,10 +1,13 @@
 import { Spinner } from "@heroui/react";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useData } from "../../../../services/useData";
 import BirdEventsTable from "./BirdEventsTable";
+import { useRemainingHeight } from "../../../../hooks/useRemainingHeight";
 
 export default function ReCaptures() {
   const { selectedProgram, birdEventsMap, isLoading } = useData();
+  const tableRef = useRef<HTMLDivElement>(null);
+  const tableHeight = useRemainingHeight(tableRef);
 
   // Get recaptures for the selected program
   const reCaptures = useMemo(() => {
@@ -21,10 +24,12 @@ export default function ReCaptures() {
   }
 
   return (
-    <BirdEventsTable
-      birdEvents={reCaptures}
-      maxTableHeight={800}
-      allowInspectBandId
-    />
+    <div ref={tableRef}>
+      <BirdEventsTable
+        birdEvents={reCaptures}
+        maxTableHeight={tableHeight}
+        allowInspectBandId
+      />
+    </div>
   );
 }

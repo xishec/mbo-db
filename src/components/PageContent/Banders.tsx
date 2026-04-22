@@ -1,7 +1,8 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Input, Button } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { useCascadingSort, cascadingSort } from "../../hooks/useCascadingSort";
+import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../Modals/ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
 import PageHeader from "./PageHeader";
@@ -31,6 +32,8 @@ export default function Volunteers() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const tableHeight = useRemainingHeight(tableRef);
 
   const rows = useMemo<Row[]>(() => {
     const allRows = Object.values(volunteersMap).map((b) => ({
@@ -51,7 +54,7 @@ export default function Volunteers() {
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
 
   return (
-    <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4">
+    <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4 overflow-hidden">
       <div className="w-full">
         <PageHeader
           title="Volunteers"
@@ -81,12 +84,12 @@ export default function Volunteers() {
         />
       </div>
 
-      <div className="w-full pb-[200px]">
+      <div ref={tableRef} className="w-full min-h-0">
         <div className="overflow-hidden rounded-medium border border-default-200">
           <Table
             aria-label="Volunteers table"
             isVirtualized
-            maxTableHeight={800}
+            maxTableHeight={tableHeight}
             sortDescriptor={sortDescriptors[0]}
             onSortChange={handleSortChange}
             classNames={{

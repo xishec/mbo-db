@@ -1,6 +1,7 @@
 import { Input, Progress, Select, SelectItem, Chip, Button } from "@heroui/react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useData } from "../../services/useData";
+import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import type { BirdEvent } from "../../types";
 import { TABLE_COLUMNS } from "./Programs/Captures/helpers";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
@@ -47,6 +48,8 @@ const SEARCH_COLUMNS = [
 
 export default function Search() {
   const { birdEventsMap, isLoading } = useData();
+  const tableRef = useRef<HTMLDivElement>(null);
+  const tableHeight = useRemainingHeight(tableRef);
 
   // Convert birdEventsMap to array
   const allBirdEvents = useMemo(
@@ -343,12 +346,14 @@ export default function Search() {
                 </p>
               </div>
             )}
+            <div ref={tableRef}>
             <BirdEventsTable
               birdEvents={filteredBirdEvents}
-              maxTableHeight={600}
+              maxTableHeight={tableHeight}
               maxRows={999}
               allowInspectBandId
             />
+            </div>
           </div>
         )}
 

@@ -1,5 +1,6 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import { SPECIES_GROUPS } from "../../types/DET";
 import { SPECIES_MAP } from "../../types/species";
 import { useData } from "../../services/useData";
@@ -45,6 +46,8 @@ export default function SpeciesGroups() {
   const [selectedSpeciesCode, setSelectedSpeciesCode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort();
+  const tableRef = useRef<HTMLDivElement>(null);
+  const tableHeight = useRemainingHeight(tableRef);
 
   const groupedSpecies = useMemo<SpeciesGroup[]>(() => {
     const groups: SpeciesGroup[] = [];
@@ -124,10 +127,12 @@ export default function SpeciesGroups() {
         />
       </div>
 
-      <div className="pb-[200px]">
+      <div ref={tableRef} className="min-h-0">
         <div className="overflow-hidden rounded-medium border border-default-200">
           <Table
             aria-label="species catalog table"
+            isVirtualized
+            maxTableHeight={tableHeight}
             sortDescriptor={sortDescriptors[0]}
             onSortChange={handleSortChange}
             selectionMode="single"
