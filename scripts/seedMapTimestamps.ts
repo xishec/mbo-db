@@ -1,6 +1,6 @@
 import { db } from "./firebase-node";
 
-const MAP_NAMES = ["dismissedConflictsMap", "DETsMap", "magicTable", "volunteersFullNameMap"];
+const MAP_NAMES = ["dismissedConflictsMap", "DETsMap", "magicTable", "volunteersFullNameMap", "bandGroupNotesMap"];
 const ENVIRONMENTS = ["alpha", "prod"];
 
 async function main() {

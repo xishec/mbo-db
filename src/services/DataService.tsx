@@ -118,6 +118,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [DETsMap, setDETsMap] = useState<DETsMap>({});
   const [volunteersMap, setVolunteersMap] = useState<VolunteersMap>({});
   const [volunteersFullNameMap, setVolunteersFullNameMap] = useState<Record<string, string>>({});
+  const [bandGroupNotesMap, setBandGroupNotesMap] = useState<Record<string, string>>({});
 
   /**
    * Compute SpeciesInfoMap from birdEventsMap
@@ -378,6 +379,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         let detsMap = cachedData?.DETsMap ?? {};
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {} };
         let fullNameMap: Record<string, string> = cachedData?.volunteersFullNameMap ?? {};
+        let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
         if (mapsToFetch.size > 0) {
           const fetching = [...mapsToFetch];
           logger.info("DataLoad", `Fetching changed maps: ${fetching.join(", ")}`);
@@ -391,6 +393,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               case "DETsMap": detsMap = val ?? {}; break;
               case "magicTable": magicTableData = val ?? { pyle: {} }; break;
               case "volunteersFullNameMap": fullNameMap = val ?? {}; break;
+              case "bandGroupNotesMap": notesMap = val ?? {}; break;
             }
           }
         }
@@ -400,6 +403,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // Set constants state
         setMagicTable(magicTableData);
         setVolunteersFullNameMap(fullNameMap);
+        setBandGroupNotesMap(notesMap);
 
         // Rebuild all derived maps locally
         setLoadingStatus("Rebuilding maps...");
@@ -424,6 +428,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           volunteersMap: volCounts,
           magicTable: magicTableData,
           volunteersFullNameMap: fullNameMap,
+          bandGroupNotesMap: notesMap,
         };
 
         setLoadingStatus("Saving to cache...");
@@ -489,6 +494,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setVolunteersMap(volCounts);
       setDETsMap(data.DETsMap ?? {});
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
+      setBandGroupNotesMap(data.bandGroupNotesMap ?? {});
     };
 
     loadData();
@@ -535,7 +541,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     getQueueCount().then(setPendingCount).catch(console.error);
   }, []);
 
-  const MAP_NAMES = ["dismissedConflictsMap", "DETsMap", "magicTable", "volunteersFullNameMap"] as const;
+  const MAP_NAMES = ["dismissedConflictsMap", "DETsMap", "magicTable", "volunteersFullNameMap", "bandGroupNotesMap"] as const;
   type MapName = typeof MAP_NAMES[number];
 
   const updateMapTimestamp = useCallback(async (mapName: MapName) => {
@@ -574,6 +580,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         volunteersMap: current?.volunteersMap ?? {},
         magicTable: current?.magicTable ?? { pyle: {} },
         volunteersFullNameMap: current?.volunteersFullNameMap ?? {},
+        bandGroupNotesMap: current?.bandGroupNotesMap ?? {},
         ...overrides,
       });
       // Don't bump timestamp here — only loadData and syncQueue should advance it
@@ -993,7 +1000,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, volunteersMap, volunteersFullNameMap, saveCompleteStateToIndexedDB, updateMapTimestamp]
   );
 
+  const updateBandGroupNote = useCallback(
+    async (bandGroupId: string, note: string) => {
+      if (!user) throw new Error("Must be logged in to update band group notes");
+      if (!isOnline) throw new Error("Cannot update band group notes while offline");
 
+      try {
+        const trimmed = note.trim();
+        const newNotesMap = { ...bandGroupNotesMap, [bandGroupId]: trimmed };
+        if (!trimmed) delete newNotesMap[bandGroupId];
+
+        setBandGroupNotesMap(newNotesMap);
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/bandGroupNotesMap/${bandGroupId}`), trimmed || null);
+        await updateMapTimestamp("bandGroupNotesMap");
+        await saveCompleteStateToIndexedDB({ bandGroupNotesMap: newNotesMap });
+      } catch (err) {
+        logger.error("UpdateBandGroupNote", `Error updating note for ${bandGroupId}`, err);
+        throw err;
+      }
+    },
+    [user, isOnline, bandGroupNotesMap, saveCompleteStateToIndexedDB, updateMapTimestamp]
+  );
 
   const triggerSync = useCallback(async () => {
     if (!isAdmin) return;
@@ -1054,6 +1081,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         resetDismissedConflicts,
         saveDET,
         updateVolunteerName,
+        bandGroupNotesMap,
+        updateBandGroupNote,
         milestone,
         clearMilestone: () => setMilestone(null),
         triggerTestMilestone: () => setMilestone({ banderCode: "TST", count: 3000 }),

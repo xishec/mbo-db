@@ -186,6 +186,7 @@ export interface DatabaseData {
   volunteersMap?: VolunteersMap;
   magicTable?: MagicTable;
   volunteersFullNameMap?: Record<string, string>;
+  bandGroupNotesMap?: Record<string, string>;
 }
 
 // Service types
@@ -238,6 +239,8 @@ export interface DataContextType {
   resetDismissedConflicts: () => Promise<void>;
   saveDET: (det: DET) => Promise<void>;
   updateVolunteerName: (code: string, fullName: string) => Promise<void>;
+  bandGroupNotesMap: Record<string, string>;
+  updateBandGroupNote: (bandGroupId: string, note: string) => Promise<void>;
   milestone: { banderCode: string; count: number } | null;
   clearMilestone: () => void;
   triggerTestMilestone: () => void;
