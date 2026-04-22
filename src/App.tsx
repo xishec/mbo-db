@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/react";
+import { Button, useDisclosure } from "@heroui/react";
 import Navigation from "./components/Navigation";
 import LoginModal from "./components/Modals/LoginModal";
 import PageContent from "./components/PageContent/PageContent";
@@ -8,47 +8,6 @@ import MilestoneCelebration from "./components/Helper/MilestoneCelebration";
 import { DataProvider } from "./services/DataService";
 import { useData } from "./services/useData";
 import mboLogo from "./assets/mbo-logo.svg";
-
-function PendingEventsGuard() {
-  const { pendingCount, isAdmin, isLoggedIn, isOnline, isLoading } = useData();
-  const [clearing, setClearing] = useState(false);
-
-  const canSync = isOnline && isLoggedIn && isAdmin;
-  const showWarning = !isLoading && isOnline && pendingCount > 0 && !canSync;
-
-  if (!showWarning) return null;
-
-  const handleClear = async () => {
-    setClearing(true);
-    const { clearQueue } = await import("./services/indexedDB");
-    await clearQueue();
-    window.location.reload();
-  };
-
-  return (
-    <Modal isOpen isDismissable={false} hideCloseButton size="sm">
-      <ModalContent>
-        <ModalHeader>Pending Events</ModalHeader>
-        <ModalBody>
-          <p className="text-default-700">
-            You have <strong>{pendingCount}</strong> pending event{pendingCount !== 1 ? "s" : ""} that
-            {!isLoggedIn
-              ? " cannot be synced because you are not signed in."
-              : " cannot be synced because your account does not have admin access."}
-          </p>
-          <p className="text-default-700 text-sm">
-            Sign in as an admin to sync, or clear the pending events to continue.
-          </p>
-        </ModalBody>
-        <ModalFooter>
-          <Button color="danger" variant="flat" onPress={handleClear} isLoading={clearing}>
-            Clear {pendingCount} Pending Event{pendingCount !== 1 ? "s" : ""}
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
-}
 
 function BeforeUnloadGuard() {
   const { isSyncing } = useData();
@@ -97,7 +56,6 @@ function AppContent() {
       <Navigation activePage={isLoading ? "home" : activePage} onPageChange={handlePageChange} isLoading={isLoading} />
       <PageContent activePage={isLoading ? "home" : activePage} />
       <MilestoneCelebration />
-      <PendingEventsGuard />
       <BeforeUnloadGuard />
     </>
   );

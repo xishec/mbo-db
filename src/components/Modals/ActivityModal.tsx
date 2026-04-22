@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Button, Chip } from "@heroui/react";
 import { useData } from "../../services/useData";
-import { getQueuedEvents } from "../../services/indexedDB";
+import { getQueuedEvents, clearQueue } from "../../services/indexedDB";
 import { logger, type LogEntry, LogLevel } from "../../services/logger";
 import type { PendingEvent } from "../../types";
 import CaptureHistoryModal from "./CaptureHistoryModal";
@@ -79,6 +79,8 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [selectedBirdEventId, setSelectedBirdEventId] = useState<string | null>(null);
   const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = logger.subscribe(setLogs);
@@ -170,6 +172,33 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
                     <span className="ml-auto text-xs text-warning-600">pending</span>
                   </div>
                 ))}
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                {confirmingClear ? (
+                  <>
+                    <span className="text-sm text-danger">Discard {queuedEvents.length} pending event{queuedEvents.length !== 1 ? "s" : ""}? This cannot be undone.</span>
+                    <Button
+                      size="sm"
+                      color="danger"
+                      variant="flat"
+                      isLoading={clearing}
+                      onPress={async () => {
+                        setClearing(true);
+                        await clearQueue();
+                        window.location.reload();
+                      }}
+                    >
+                      Confirm
+                    </Button>
+                    <Button size="sm" variant="light" onPress={() => setConfirmingClear(false)}>
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" color="danger" variant="light" onPress={() => setConfirmingClear(true)}>
+                    Clear Queue
+                  </Button>
+                )}
               </div>
             </div>
           )}
