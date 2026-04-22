@@ -10,11 +10,11 @@ import { useData } from "./services/useData";
 import mboLogo from "./assets/mbo-logo.svg";
 
 function PendingEventsGuard() {
-  const { pendingCount, isAdmin, isLoggedIn, isOnline } = useData();
+  const { pendingCount, isAdmin, isLoggedIn, isOnline, isLoading } = useData();
   const [clearing, setClearing] = useState(false);
 
   const canSync = isOnline && isLoggedIn && isAdmin;
-  const showWarning = isOnline && pendingCount > 0 && !canSync;
+  const showWarning = !isLoading && isOnline && pendingCount > 0 && !canSync;
 
   if (!showWarning) return null;
 
