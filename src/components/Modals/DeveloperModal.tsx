@@ -47,6 +47,9 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
           <Button size="sm" variant="flat" color="warning" onPress={triggerTestMilestone}>
             Test Milestone
           </Button>
+          <Button size="sm" variant="flat" color="danger" onPress={() => clearAllIndexedDB().then(() => window.location.reload())}>
+            Clear IndexedDB
+          </Button>
         </div>
       </ModalBodyShell>
 
