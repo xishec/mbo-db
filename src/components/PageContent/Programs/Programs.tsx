@@ -11,9 +11,8 @@ import {
   TableRow,
 } from "@heroui/react";
 import BirdEvents from "./Captures/BirdEvents";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useData } from "../../../services/useData";
-import { useRemainingHeight } from "../../../hooks/useRemainingHeight";
 import AddProgramModal from "../../Modals/AddProgramModal";
 import type { Program } from "../../../types";
 import PageHeader from "../PageHeader";
@@ -21,8 +20,6 @@ import PageHeader from "../PageHeader";
 export default function Programs() {
   const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading, isLoggedIn } = useData();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const gridHeight = useRemainingHeight(gridRef);
 
   // Year rows for the table (sorted descending)
   const yearRows = useMemo(() => {
@@ -105,7 +102,7 @@ export default function Programs() {
       </div>
 
       {!selectedProgram && (
-        <div ref={gridRef} className="w-full grid grid-cols-[1fr_2fr] gap-4">
+        <div className="w-full grid grid-cols-[1fr_2fr] gap-4">
           <Table
             isHeaderSticky
             aria-label="Years table"
@@ -113,7 +110,7 @@ export default function Programs() {
             selectedKeys={effectiveYear ? new Set([effectiveYear]) : new Set()}
             onSelectionChange={handleYearChange}
             isVirtualized
-            maxTableHeight={gridHeight}
+            maxTableHeight={600}
             color="secondary"
             classNames={{
               td: "data-[selected=true]:text-secondary-900 data-[selected=true]:font-bold",
@@ -138,7 +135,7 @@ export default function Programs() {
             selectedKeys={selectedProgram ? new Set([(selectedProgram as Program).id]) : new Set()}
             onSelectionChange={handleProgramChange}
             isVirtualized
-            maxTableHeight={gridHeight}
+            maxTableHeight={600}
             color="secondary"
           >
             <TableHeader>
