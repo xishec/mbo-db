@@ -424,8 +424,8 @@ export default function AddBirdEventModal({
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
         if (shouldContinue) {
-          const nextFormData = {
-            ...formData,
+          setFormData((prev) => ({
+            ...prev,
             net: "",
             species: "",
             wing: "",
@@ -437,8 +437,7 @@ export default function AddBirdEventModal({
             weight: "",
             birdStatus: DEFAULT_BIRD_STATUS,
             notes: "",
-          };
-          setFormData(nextFormData);
+          }));
           setLastBandId("");
           setIsSaving(false);
           focusTo("net");

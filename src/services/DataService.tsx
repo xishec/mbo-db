@@ -976,12 +976,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [syncQueue, isAdmin]);
 
-  // Auto-sync when online, admin, and pending items exist
+  // Auto-sync on load completion (for events queued from previous offline session)
   useEffect(() => {
     if (!isLoading && isOnline && isAdmin && pendingCount > 0) {
       triggerSync();
     }
-  }, [isLoading, isOnline, isAdmin, pendingCount, triggerSync]);
+  }, [isLoading, isOnline, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <DataContext.Provider
