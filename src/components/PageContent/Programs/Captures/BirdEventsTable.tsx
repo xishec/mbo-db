@@ -77,8 +77,8 @@ export default function BirdEventsTable({
   const { programsMap, isLoggedIn } = useData();
   const { sortDescriptors, handleSortChange } = useCascadingSort(
     initialSortDescriptors ?? [
-      { column: "date", direction: "descending" },
-      { column: "time", direction: "descending" },
+      { column: "date", direction: "ascending" },
+      { column: "time", direction: "ascending" },
     ]
   );
   const [selectedBirdEvent, setSelectedBirdEvent] = useState<BirdEvent | null>(null);

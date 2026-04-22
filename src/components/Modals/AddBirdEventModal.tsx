@@ -424,8 +424,9 @@ export default function AddBirdEventModal({
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
         if (shouldContinue) {
-          setFormData((prev) => ({
-            ...prev,
+          const nextFormData = {
+            ...formData,
+            net: "",
             species: "",
             wing: "",
             age: "",
@@ -436,10 +437,11 @@ export default function AddBirdEventModal({
             weight: "",
             birdStatus: DEFAULT_BIRD_STATUS,
             notes: "",
-          }));
+          };
+          setFormData(nextFormData);
           setLastBandId("");
           setIsSaving(false);
-          focusTo("species");
+          focusTo("net");
         } else {
           onOpenChange(false);
         }
@@ -594,6 +596,7 @@ export default function AddBirdEventModal({
           value={formData[columnKey]}
           tabIndex={getTabIndex(columnKey)}
           onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
+          onFocus={(e) => (e.target as HTMLInputElement).select()}
           isDisabled={isSaving}
           classNames={{
             input:
@@ -721,6 +724,7 @@ export default function AddBirdEventModal({
                               {...modalInputProps} maxLength={s.maxLen} value={s.value} isDisabled={disabled}
                               classNames={{ input: cls }}
                               tabIndex={getTabIndex(s.key)}
+                              onFocus={(e) => (e.target as HTMLInputElement).select()}
                               onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, s.maxLen); s.onUpdate(v); if (v.length === s.maxLen) focusNext(s.key); }}
                             />
                           </div>
