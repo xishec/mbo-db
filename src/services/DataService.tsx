@@ -106,6 +106,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // User authentication
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   // All data from alpha/
   const [yearsToProgramMap, setYearsToProgramMap] = useState<YearToProgramMap>({});
@@ -508,6 +509,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      setAuthReady(true);
 
       if (currentUser) {
         if (navigator.onLine) {
@@ -1049,6 +1051,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         loadingStatus,
         error,
+        authReady,
         isLoggedIn,
         isAdmin,
         userEmail: user?.email ?? null,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, useDisclosure } from "@heroui/react";
+import { Button, Spinner, useDisclosure } from "@heroui/react";
 import Navigation from "./components/Navigation";
 import LoginModal from "./components/Modals/LoginModal";
 import PageContent from "./components/PageContent/PageContent";
@@ -32,7 +32,7 @@ function getPageFromHash(): string {
 
 function AppContent() {
   const [activePage, setActivePage] = useState(getPageFromHash);
-  const { isLoading, isLoggedIn, isOnline } = useData();
+  const { isLoading, isLoggedIn, isOnline, authReady } = useData();
 
   const handlePageChange = (page: string) => {
     if (!isLoading) {
@@ -48,6 +48,15 @@ function AppContent() {
   }, []);
 
   const { isOpen: isLoginOpen, onOpen: onLoginOpen, onOpenChange: onLoginOpenChange } = useDisclosure();
+
+  // Wait for Firebase auth to resolve before showing login
+  if (isOnline && !authReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   // Online but not logged in — show sign-in prompt
   if (isOnline && !isLoggedIn) {

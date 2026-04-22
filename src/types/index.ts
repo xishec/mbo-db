@@ -197,6 +197,7 @@ export interface DataContextType {
   error: string | null;
 
   // User authentication
+  authReady: boolean;
   isLoggedIn: boolean;
   isAdmin: boolean;
   userEmail: string | null;
