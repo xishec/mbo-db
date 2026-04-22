@@ -37,7 +37,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
             onSelectionChange={(keys) => {
               const selected = Array.from(keys)[0] as Environment;
               if (selected && selected !== CURRENT_ENVIRONMENT) {
-                clearAllIndexedDB().then(() => setEnvironment(selected));
+                setEnvironment(selected);
               }
             }}
           >
