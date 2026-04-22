@@ -80,7 +80,7 @@ export default function Home() {
       className="flex items-center justify-start min-h-[calc(100vh-64px)] p-12 bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: "url(https://oommbo.org/wp-content/uploads/2024/04/hp-hero.svg)" }}
     >
-      <div className="space-y-20 max-w-2xl ml-24 font-medium text-5xl">
+      <div className="space-y-20 max-w-2xl ml-24 font-medium text-4xl">
         <p className="leading-relaxed text-foreground">
           Latest banding was{" "}
           {daysAgo <= 0

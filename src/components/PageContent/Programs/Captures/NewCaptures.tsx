@@ -157,7 +157,7 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
         <BirdEventsTable
           programId={selectedProgram?.id}
           birdEvents={captures}
-          maxTableHeight={800}
+          maxTableHeight={600}
           sortDescriptors={[{ column: "bandLastTwoDigits", direction: "ascending" }]}
           showOtherPrograms={showOtherPrograms}
           allowInspectBandId

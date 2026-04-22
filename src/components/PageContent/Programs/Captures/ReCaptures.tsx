@@ -23,7 +23,7 @@ export default function ReCaptures() {
   return (
     <BirdEventsTable
       birdEvents={reCaptures}
-      maxTableHeight={800}
+      maxTableHeight={600}
       allowInspectBandId
     />
   );
