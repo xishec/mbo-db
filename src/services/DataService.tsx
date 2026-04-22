@@ -16,7 +16,6 @@ import {
   type VolunteersMap,
   BandSize,
   type PendingBirdEvent,
-  type PendingDETEvent,
   type SpeciesInfoMap,
 } from "../types";
 import {
@@ -24,7 +23,6 @@ import {
   BirdEventType,
   generateBirdEventId,
   type Program,
-  type Volunteer,
   getBandGroupMapKey,
   type DET,
 } from "../types";
@@ -279,14 +277,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       try {
         logger.info("DataLoad", `Loading ${CURRENT_ENVIRONMENT}/ data...`);
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-        const cachedSyncedAt = await getLastUpdated(CURRENT_ENVIRONMENT);
+        const lastEventSync = await getLastUpdated(CURRENT_ENVIRONMENT);
 
         // Offline: use cache
         if (!isOnline) {
           if (cachedData) {
             setLoadingStatus("Loading cached data...");
             populateStateFromData(cachedData);
-            setLastSyncedAt(cachedSyncedAt ?? Date.now());
+            setLastSyncedAt(lastEventSync ?? Date.now());
             setIsLoading(false);
             return;
           }
@@ -298,31 +296,31 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const env = CURRENT_ENVIRONMENT;
         setLoadingStatus("Checking for updates...");
 
-        // Check lastModified for independent maps (dismissedConflictsMap, DETsMap, constants)
-        let rtdbLastModified: number | null = null;
+        // Check lastOnlineModified for independent maps (dismissedConflictsMap, DETsMap, magicTable, volunteersFullNameMap)
+        let rtdbLastOnlineModified: number | null = null;
         try {
-          const snap = await get(ref(db, `${env}/metadata/lastModified`));
-          rtdbLastModified = snap.exists() ? snap.val() as number : null;
+          const snap = await get(ref(db, `${env}/metadata/lastOnlineModified`));
+          rtdbLastOnlineModified = snap.exists() ? snap.val() as number : null;
         } catch {
           if (cachedData) {
             setLoadingStatus("Using cached data (Firebase unreachable)");
             populateStateFromData(cachedData);
-            setLastSyncedAt(cachedSyncedAt ?? Date.now());
+            setLastSyncedAt(lastEventSync ?? Date.now());
             setIsLoading(false);
             return;
           }
         }
 
-        const mapsChanged = !cachedSyncedAt || !rtdbLastModified || rtdbLastModified > cachedSyncedAt;
+        const mapsChanged = !lastEventSync || !rtdbLastOnlineModified || rtdbLastOnlineModified > lastEventSync;
 
-        // Bird events: always incremental (uses syncedAt, independent of lastModified)
+        // Bird events: always incremental (uses syncedAt, independent of lastOnlineModified)
         let allEvents: BirdEventsMap;
 
-        if (cachedData?.birdEventsMap && cachedSyncedAt) {
+        if (cachedData?.birdEventsMap && lastEventSync) {
           setLoadingStatus("Checking for new events...");
           try {
             const { query: fbQuery, orderByChild, startAt } = await import("firebase/database");
-            const deltaSnap = await get(fbQuery(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(cachedSyncedAt)));
+            const deltaSnap = await get(fbQuery(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(lastEventSync + 1)));
             const deltaEvents = deltaSnap.exists() ? deltaSnap.val() as BirdEventsMap : {};
             const deltaCount = Object.keys(deltaEvents).length;
 
@@ -331,7 +329,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               setLoadingStatus("Cache is up to date");
               logger.info("DataLoad", "No new events, maps unchanged — using cache");
               populateStateFromData(cachedData);
-              setLastSyncedAt(cachedSyncedAt);
+              setLastSyncedAt(lastEventSync);
               setIsLoading(false);
               return;
             }
@@ -357,7 +355,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         if (cancelled) return;
 
-        // Independent maps + constants: only fetch if lastModified changed
+        // Independent maps + constants: only fetch if lastOnlineModified changed
         let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
         let detsMap = cachedData?.DETsMap ?? {};
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {} };
@@ -408,7 +406,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         };
 
         setLoadingStatus("Saving to cache...");
-        const cacheTimestamp = rtdbLastModified ?? Date.now();
+        const cacheTimestamp = Date.now();
         await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
         await saveLastUpdated(CURRENT_ENVIRONMENT, cacheTimestamp);
 
@@ -509,10 +507,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateLastModified = useCallback(async () => {
-    const now = Date.now();
-    await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified`), now);
-    await saveLastUpdated(CURRENT_ENVIRONMENT, now);
-    setLastSyncedAt(now);
+    await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastOnlineModified`), Date.now());
   }, []);
 
   /**
@@ -543,9 +538,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         bandSizeToBandIdMap: {} as Record<BandSize, string>,
         dismissedConflictsMap: current?.dismissedConflictsMap ?? {},
         DETsMap: current?.DETsMap ?? {},
+        volunteersMap: current?.volunteersMap ?? {},
+        magicTable: current?.magicTable ?? { pyle: {} },
+        volunteersFullNameMap: current?.volunteersFullNameMap ?? {},
         ...overrides,
       });
-      await saveLastUpdated(CURRENT_ENVIRONMENT, Date.now());
+      // Don't bump timestamp here — only loadData and syncQueue should advance it
     });
   }, [idbMutex]);
 
@@ -652,8 +650,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (birdEvent.previousEventId) {
               await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`), birdEvent.id);
             }
-          } else if (pending.type === "det") {
-            await set(ref(db, `${pending.environment}/DETsMap/${pending.det.date}`), pending.det);
           }
           await removeFromQueue(pending.id);
           successCount++;
@@ -662,9 +658,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Update local cache timestamp
-      await saveLastUpdated(CURRENT_ENVIRONMENT, now);
-      setLastSyncedAt(now);
 
       const remainingCount = await getQueueCount();
       setPendingCount(remainingCount);
@@ -875,16 +868,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // Save to IndexedDB
         await saveCompleteStateToIndexedDB({ dismissedConflictsMap: newDismissedConflictsMap });
 
-        // Handle online vs offline sync
-        if (isOnline) {
-          // Online: sync to RTDB immediately
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap/${conflictId}`), true);
-          await updateLastModified();
-          logger.info("DismissConflict", `Conflict ${conflictId} dismissed and synced to RTDB`);
-        } else {
-          // Offline: will be synced when back online
-          logger.info("DismissConflict", `Conflict ${conflictId} dismissed offline - will sync when online`);
-        }
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap/${conflictId}`), true);
+        await updateLastModified();
+        logger.info("DismissConflict", `Conflict ${conflictId} dismissed`);
       } catch (err) {
         logger.error("DismissConflict", `Error dismissing conflict ${conflictId}`, err);
         throw err;
@@ -913,26 +899,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         await updateDETInCache(CURRENT_ENVIRONMENT, det);
         logger.info("SaveDET", `DET for ${det.date} saved to IndexedDB`);
 
-        // Handle online vs offline sync
-        if (isOnline) {
-          // Online: sync to RTDB immediately
-          await set(ref(db, `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`), det);
-          await updateLastModified();
-          logger.info("SaveDET", `DET for ${det.date} synced to RTDB`);
-        } else {
-          // Offline: add to queue for later sync
-          const pendingDET: PendingDETEvent = {
-            id: `det-${det.date}-${Date.now()}`,
-            type: "det",
-            det,
-            timestamp: Date.now(),
-            environment: CURRENT_ENVIRONMENT,
-          };
-          await addToQueue(pendingDET);
-          const newCount = await getQueueCount();
-          setPendingCount(newCount);
-          logger.info("SaveDET", `DET for ${det.date} queued for sync (offline)`);
-        }
+        await set(ref(db, `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`), det);
+        await updateLastModified();
+        logger.info("SaveDET", `DET for ${det.date} synced to RTDB`);
       } catch (err) {
         logger.error("SaveDET", `Error saving DET for ${det.date}`, err);
         throw err;
@@ -953,16 +922,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       // Save to IndexedDB
       await saveCompleteStateToIndexedDB({ dismissedConflictsMap: emptyMap });
 
-      // Handle online vs offline sync
-      if (isOnline) {
-        // Online: clear RTDB immediately
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), null);
-        await updateLastModified();
-        logger.info("ResetDismissedConflicts", "All dismissed conflicts reset and synced to RTDB");
-      } else {
-        // Offline: will be synced when back online
-        logger.info("ResetDismissedConflicts", "All dismissed conflicts reset offline - will sync when online");
-      }
+      await set(ref(db, `${CURRENT_ENVIRONMENT}/dismissedConflictsMap`), null);
+      await updateLastModified();
+      logger.info("ResetDismissedConflicts", "All dismissed conflicts reset");
     } catch (err) {
       logger.error("ResetDismissedConflicts", "Error resetting dismissed conflicts", err);
       throw err;
@@ -985,44 +947,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const newMap = { ...volunteersMap, [code]: updated };
         setVolunteersMap(newMap);
 
-        // Update both env volunteersMap and constants fullNameMap
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${code}/fullName`), trimmed);
         await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${code}`), trimmed);
-        setVolunteersFullNameMap((prev) => ({ ...prev, [code]: trimmed }));
-        await saveCompleteStateToIndexedDB({ volunteersMap: newMap });
+        await updateLastModified();
+        const newFullNameMap = { ...volunteersFullNameMap, [code]: trimmed };
+        setVolunteersFullNameMap(newFullNameMap);
+        await saveCompleteStateToIndexedDB({ volunteersMap: newMap, volunteersFullNameMap: newFullNameMap });
       } catch (err) {
         logger.error("UpdateVolunteerName", `Error updating volunteer ${code}`, err);
         throw err;
       }
     },
-    [user, isOnline, volunteersMap, saveCompleteStateToIndexedDB]
+    [user, isOnline, volunteersMap, volunteersFullNameMap, saveCompleteStateToIndexedDB, updateLastModified]
   );
 
-  const addVolunteer = useCallback(
-    async (code: string, fullName: string) => {
-      if (!user) throw new Error("Must be logged in to add volunteer");
-      if (!isOnline) throw new Error("Cannot add volunteers while offline");
-
-      const trimmedCode = code.trim().toUpperCase();
-      const trimmedName = fullName.trim();
-      if (!trimmedCode) throw new Error("Code is required");
-      if (volunteersMap[trimmedCode]) throw new Error(`Volunteer "${trimmedCode}" already exists`);
-
-      const newVolunteer: Volunteer = { code: trimmedCode, fullName: trimmedName, totalBanded: 0, totalScribed: 0 };
-      const newMap = { ...volunteersMap, [trimmedCode]: newVolunteer };
-      setVolunteersMap(newMap);
-
-      // Write to env path and update constants fullNameMap
-      await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${trimmedCode}`), newVolunteer);
-      if (trimmedName) {
-        await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${trimmedCode}`), trimmedName);
-        setVolunteersFullNameMap((prev) => ({ ...prev, [trimmedCode]: trimmedName }));
-      }
-      await saveCompleteStateToIndexedDB({ volunteersMap: newMap });
-      logger.info("AddVolunteer", `Added volunteer ${trimmedCode}`);
-    },
-    [user, isOnline, volunteersMap, saveCompleteStateToIndexedDB]
-  );
 
 
   const triggerSync = useCallback(async () => {
@@ -1084,7 +1021,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         resetDismissedConflicts,
         saveDET,
         updateVolunteerName,
-        addVolunteer,
         milestone,
         clearMilestone: () => setMilestone(null),
         triggerTestMilestone: () => setMilestone({ banderCode: "TST", count: 3000 }),

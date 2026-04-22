@@ -56,8 +56,7 @@ for (const env of ["alpha", "prod"]) {
   console.log(`  ${env}/magicTable: ${Object.keys(envData.magicTable as Record<string, unknown>).length} entries`);
   console.log(`  ${env}/volunteersFullNameMap: ${Object.keys(envData.volunteersFullNameMap as Record<string, unknown>).length} entries`);
 
-  // metadata — initialize lastModified
-  envData.metadata = { lastModified: Date.now() };
+  envData.metadata = { lastOnlineModified: Date.now() };
 
   const removed = Object.keys(data[env]).filter(
     (k) => !["birdEventsMap", "dismissedConflictsMap", "DETsMap"].includes(k)

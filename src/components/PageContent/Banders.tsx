@@ -23,7 +23,7 @@ const COLUMNS = [
 const numericColumns = new Set<string>(COLUMNS.filter((c) => c.type === "number").map((c) => c.key));
 
 export default function Volunteers() {
-  const { volunteersMap, isLoggedIn, isOnline, updateVolunteerName, addVolunteer } = useData();
+  const { volunteersMap, isLoggedIn, isOnline, updateVolunteerName } = useData();
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
     { column: "totalBanded", direction: "descending" },
   ]);
@@ -31,10 +31,6 @@ export default function Volunteers() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newCode, setNewCode] = useState("");
-  const [newFullName, setNewFullName] = useState("");
-  const [addError, setAddError] = useState("");
 
   const rows = useMemo<Row[]>(() => {
     const allRows = Object.values(volunteersMap).map((b) => ({
@@ -61,31 +57,15 @@ export default function Volunteers() {
           title="Volunteers"
           subtitle={`${Object.keys(volunteersMap).length} volunteers`}
           actions={
-            <div className="flex items-center gap-2">
-              {sortDescriptors.length > 0 && (
-                <button
-                  type="button"
-                  onClick={resetSort}
-                  className="text-sm font-medium text-primary hover:text-primary-600"
-                >
-                  Reset sort
-                </button>
-              )}
-              {isLoggedIn && (
-                <Button
-                  color="secondary"
-                  isDisabled={!isOnline}
-                  onPress={() => {
-                    setNewCode("");
-                    setNewFullName("");
-                    setAddError("");
-                    setIsAddModalOpen(true);
-                  }}
-                >
-                  Add Volunteer
-                </Button>
-              )}
-            </div>
+            sortDescriptors.length > 0 ? (
+              <button
+                type="button"
+                onClick={resetSort}
+                className="text-sm font-medium text-primary hover:text-primary-600"
+              >
+                Reset sort
+              </button>
+            ) : null
           }
         />
       </div>
@@ -207,61 +187,6 @@ export default function Volunteers() {
         </ModalFooterShell>
       </ModalShell>
 
-      <ModalShell
-        modalProps={{
-          isDismissable: false,
-          isOpen: isAddModalOpen,
-          onOpenChange: setIsAddModalOpen,
-          placement: "top-center",
-        }}
-      >
-        <ModalHeaderShell>Add Volunteer</ModalHeaderShell>
-        <ModalBodyShell>
-          {addError && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{addError}</div>}
-          <Input
-            label="Code"
-            placeholder="2-3 letter code (e.g. SNL)"
-            {...modalInputProps}
-            value={newCode}
-            onValueChange={(v) => {
-              setNewCode(v.toUpperCase());
-              setAddError("");
-            }}
-            maxLength={3}
-            autoFocus
-          />
-          <Input
-            label="Full Name"
-            placeholder="Enter full name"
-            {...modalInputProps}
-            value={newFullName}
-            onValueChange={setNewFullName}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newCode.length >= 2) {
-                addVolunteer(newCode, newFullName)
-                  .then(() => setIsAddModalOpen(false))
-                  .catch((err) => setAddError(err instanceof Error ? err.message : "Failed"));
-              }
-            }}
-          />
-        </ModalBodyShell>
-        <ModalFooterShell>
-          <Button {...modalCancelButtonProps} onPress={() => setIsAddModalOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            {...modalPrimaryButtonProps}
-            isDisabled={newCode.length < 2}
-            onPress={() => {
-              addVolunteer(newCode, newFullName)
-                .then(() => setIsAddModalOpen(false))
-                .catch((err) => setAddError(err instanceof Error ? err.message : "Failed"));
-            }}
-          >
-            Add
-          </Button>
-        </ModalFooterShell>
-      </ModalShell>
     </div>
   );
 }

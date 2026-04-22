@@ -238,7 +238,6 @@ export interface DataContextType {
   resetDismissedConflicts: () => Promise<void>;
   saveDET: (det: DET) => Promise<void>;
   updateVolunteerName: (code: string, fullName: string) => Promise<void>;
-  addVolunteer: (code: string, fullName: string) => Promise<void>;
   milestone: { banderCode: string; count: number } | null;
   clearMilestone: () => void;
   triggerTestMilestone: () => void;

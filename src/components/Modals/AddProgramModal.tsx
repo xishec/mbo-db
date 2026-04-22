@@ -10,7 +10,7 @@ interface AddProgramModalProps {
 }
 
 export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModalProps) {
-  const { addProgram, isOnline } = useData();
+  const { addProgram } = useData();
   const [programId, setProgramId] = useState("");
   const [year, setYear] = useState(() => new Date().getFullYear().toString());
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +79,7 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
         <Button {...modalCancelButtonProps} onPress={() => onOpenChange(false)} isDisabled={isLoading}>
           Cancel
         </Button>
-        <Button {...modalPrimaryButtonProps} onPress={handleSubmit} isDisabled={!programId.trim() || !year.trim() || !isOnline} isLoading={isLoading}>
+        <Button {...modalPrimaryButtonProps} onPress={handleSubmit} isDisabled={!programId.trim() || !year.trim()} isLoading={isLoading}>
           Add Program
         </Button>
       </ModalFooterShell>
