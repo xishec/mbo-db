@@ -12,41 +12,47 @@ import type { BirdEvent } from "../../types";
 type Row = {
   bandGroupId: string;
   bandsUsed: number;
+  used: string;
   lastUsedDate: string;
   available: string;
   note: string;
 };
 
-function formatAvailableRanges(usedDigits: Set<string>): string {
-  // Band order: 01-99, then 00
-  const all = [...Array.from({ length: 99 }, (_, i) => i + 1), 100];
-  const available = all.filter((n) => !usedDigits.has((n % 100).toString().padStart(2, "0")));
-  if (available.length === 0) return "";
+function pad(n: number): string {
+  return (n % 100).toString().padStart(2, "0");
+}
 
+// Band order: 01-99, then 00 (represented as 100 internally)
+const ALL_DIGITS = [...Array.from({ length: 99 }, (_, i) => i + 1), 100];
+
+function formatRanges(digits: number[]): string {
+  if (digits.length === 0) return "";
   const ranges: string[] = [];
-  let start = available[0];
-  let end = available[0];
-  for (let i = 1; i < available.length; i++) {
-    if (available[i] === end + 1) {
-      end = available[i];
+  let start = digits[0];
+  let end = digits[0];
+  for (let i = 1; i < digits.length; i++) {
+    if (digits[i] === end + 1) {
+      end = digits[i];
     } else {
       ranges.push(start === end ? pad(start) : `${pad(start)}-${pad(end)}`);
-      start = available[i];
-      end = available[i];
+      start = digits[i];
+      end = digits[i];
     }
   }
   ranges.push(start === end ? pad(start) : `${pad(start)}-${pad(end)}`);
   return ranges.join(", ");
 }
 
-function pad(n: number): string {
-  return (n % 100).toString().padStart(2, "0");
+function formatUsedAndAvailable(usedDigits: Set<string>) {
+  const usedNums = ALL_DIGITS.filter((n) => usedDigits.has(pad(n)));
+  const availNums = ALL_DIGITS.filter((n) => !usedDigits.has(pad(n)));
+  return { used: formatRanges(usedNums), available: formatRanges(availNums) };
 }
 
 const COLUMNS = [
   { key: "bandGroupId" as const, label: "Band Group", type: "string" as const, width: 200 },
   { key: "lastUsedDate" as const, label: "Last Used", type: "string" as const, width: 200 },
-  { key: "bandsUsed" as const, label: "Used / 100", type: "string" as const, width: 200 },
+  { key: "used" as const, label: "Used", type: "string" as const, width: 200 },
   { key: "available" as const, label: "Available", type: "string" as const, width: 200 },
   { key: "note" as const, label: "Note", type: "string" as const },
 ];
@@ -90,12 +96,14 @@ export default function Bands() {
       }
 
       const bandsUsed = usedDigits.size;
+      const { used, available } = formatUsedAndAvailable(usedDigits);
 
       result.push({
         bandGroupId: bgKey,
         bandsUsed,
+        used,
         lastUsedDate: lastDate,
-        available: formatAvailableRanges(usedDigits),
+        available,
         note: bandGroupNotesMap[bgKey] ?? "",
       });
     }
@@ -178,10 +186,10 @@ export default function Bands() {
                         </TableCell>
                       );
                     }
-                    if (columnKey === "bandsUsed") {
+                    if (columnKey === "used") {
                       return (
-                        <TableCell className="tabular-nums text-right pr-[120px]">
-                          {item.bandsUsed}
+                        <TableCell className="font-mono">
+                          {item.bandsUsed === 100 ? "All" : item.used}
                         </TableCell>
                       );
                     }
