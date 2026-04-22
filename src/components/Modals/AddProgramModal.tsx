@@ -46,11 +46,6 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
         <h2 className="text-2xl font-bold">Add New Program</h2>
       </ModalHeaderShell>
       <ModalBodyShell>
-        {!isOnline && (
-          <div className="bg-warning-50 border border-warning-200 rounded-medium p-3 text-sm text-warning-800">
-            You are currently offline. This action requires internet.
-          </div>
-        )}
         <Input
           label="Year"
           placeholder="Enter year"
