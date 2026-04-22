@@ -1,7 +1,7 @@
 import { Button, Select, SelectItem } from "@heroui/react";
 import { CURRENT_ENVIRONMENT, setEnvironment, type Environment } from "../../firebase";
 import { useData } from "../../services/useData";
-import { clearAllIndexedDB } from "../../services/indexedDB";
+import { clearAllIndexedDB, clearEnvironmentCache } from "../../services/indexedDB";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 
@@ -47,8 +47,11 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
           <Button size="sm" variant="flat" color="warning" onPress={triggerTestMilestone}>
             Test Milestone
           </Button>
+          <Button size="sm" variant="flat" color="warning" onPress={() => clearEnvironmentCache(CURRENT_ENVIRONMENT).then(() => window.location.reload())}>
+            Clear Cache ({CURRENT_ENVIRONMENT})
+          </Button>
           <Button size="sm" variant="flat" color="danger" onPress={() => clearAllIndexedDB().then(() => window.location.reload())}>
-            Clear IndexedDB
+            Clear All IndexedDB
           </Button>
         </div>
       </ModalBodyShell>

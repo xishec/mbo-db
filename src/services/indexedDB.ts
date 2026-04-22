@@ -57,6 +57,17 @@ export async function clearQueue(): Promise<void> {
   });
 }
 
+export async function clearEnvironmentCache(environment: string): Promise<void> {
+  const db = await openDB();
+  const transaction = db.transaction([DATA_STORE, METADATA_STORE], "readwrite");
+  transaction.objectStore(DATA_STORE).delete(environment);
+  transaction.objectStore(METADATA_STORE).delete(`lastUpdated_${environment}`);
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => { db.close(); resolve(); };
+    transaction.onerror = () => { db.close(); reject(transaction.error); };
+  });
+}
+
 export async function clearAllIndexedDB(): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction([METADATA_STORE, DATA_STORE, QUEUE_STORE], "readwrite");
