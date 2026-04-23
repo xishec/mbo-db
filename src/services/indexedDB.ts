@@ -1,4 +1,5 @@
 import type { DatabaseData, PendingEvent, DET } from "../types";
+import { INDEPENDENT_MAP_NAMES } from "../types/mapNames";
 
 const DB_NAME = "mbo-db-20260420";
 const DB_VERSION = 1;
@@ -63,8 +64,7 @@ export async function clearEnvironmentCache(environment: string): Promise<void> 
   const metaStore = transaction.objectStore(METADATA_STORE);
   transaction.objectStore(DATA_STORE).delete(environment);
   metaStore.delete(`lastUpdated_${environment}`);
-  const mapNames = ["dismissedConflictsMap", "DETsMap", "magicTable", "volunteersFullNameMap", "bandGroupNotesMap"];
-  for (const m of mapNames) metaStore.delete(`lastModified_${m}_${environment}`);
+  for (const m of INDEPENDENT_MAP_NAMES) metaStore.delete(`lastModified_${m}_${environment}`);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => { db.close(); resolve(); };
     transaction.onerror = () => { db.close(); reject(transaction.error); };

@@ -26,6 +26,7 @@ import {
   getBandGroupMapKey,
   type DET,
 } from "../types";
+import { INDEPENDENT_MAP_NAMES, type IndependentMapName } from "../types/mapNames";
 import { DataContext } from "./DataContext";
 import {
   saveDataToIndexedDB,
@@ -300,12 +301,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const env = CURRENT_ENVIRONMENT;
         setLoadingStatus("Checking for updates...");
 
-        // Fetch all metadata timestamps in one read
         type RtdbMetadata = Record<string, number> | null;
         let rtdbMetadata: RtdbMetadata = null;
+        let cachedTimestamps: (number | null)[] = [];
         try {
-          const snap = await get(ref(db, `${env}/metadata`));
+          const [snap, ...cached] = await Promise.all([
+            get(ref(db, `${env}/metadata`)),
+            ...INDEPENDENT_MAP_NAMES.map((m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>),
+          ]);
           rtdbMetadata = snap.exists() ? snap.val() : null;
+          cachedTimestamps = cached;
         } catch {
           if (cachedData) {
             setLoadingStatus("Using cached data (Firebase unreachable)");
@@ -316,13 +321,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Compare RTDB timestamps against cached timestamps to determine which maps need fetching
-        const mapsToFetch = new Set<MapName>();
+        const mapsToFetch = new Set<IndependentMapName>();
         if (cachedData) {
-          const cachedTimestamps = await Promise.all(
-            MAP_NAMES.map((m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>)
-          );
-          MAP_NAMES.forEach((m, i) => {
+          INDEPENDENT_MAP_NAMES.forEach((m, i) => {
             const rtdbTs = rtdbMetadata?.[`lastModified_${m}`] as number | undefined;
             const cachedTs = cachedTimestamps[i];
             if (!cachedTs || (rtdbTs != null && rtdbTs > cachedTs)) {
@@ -330,7 +331,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }
           });
         } else {
-          MAP_NAMES.forEach((m) => mapsToFetch.add(m));
+          INDEPENDENT_MAP_NAMES.forEach((m) => mapsToFetch.add(m));
         }
 
         // Bird events: always incremental (uses syncedAt, independent of map timestamps)
@@ -543,10 +544,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     getQueueCount().then(setPendingCount).catch(console.error);
   }, []);
 
-  const MAP_NAMES = ["dismissedConflictsMap", "DETsMap", "magicTable", "volunteersFullNameMap", "bandGroupNotesMap"] as const;
-  type MapName = typeof MAP_NAMES[number];
-
-  const updateMapTimestamp = useCallback(async (mapName: MapName) => {
+  const updateMapTimestamp = useCallback(async (mapName: IndependentMapName) => {
     const now = Date.now();
     await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified_${mapName}`), now);
   }, []);

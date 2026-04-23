@@ -55,36 +55,32 @@ export default function Volunteers() {
 
   return (
     <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4 overflow-hidden">
-      <div className="w-full">
-        <PageHeader
-          title="Volunteers"
-          subtitle={`${Object.keys(volunteersMap).length} volunteers`}
-          actions={
-            sortDescriptors.length > 0 ? (
-              <button
-                type="button"
-                onClick={resetSort}
-                className="text-sm font-medium text-primary hover:text-primary-600"
-              >
-                Reset sort
-              </button>
-            ) : null
-          }
-        />
-      </div>
+      <PageHeader
+        title="Volunteers"
+        subtitle={`${Object.keys(volunteersMap).length} volunteers`}
+        actions={
+          sortDescriptors.length > 0 ? (
+            <button
+              type="button"
+              onClick={resetSort}
+              className="text-sm font-medium text-primary hover:text-primary-600"
+            >
+              Reset sort
+            </button>
+          ) : null
+        }
+      />
 
-      <div className="w-full">
-        <Input
-          placeholder="Search by code or name..."
-          variant="bordered"
-          size="md"
-          value={search}
-          onValueChange={setSearch}
-          className="max-w-xs"
-        />
-      </div>
+      <Input
+        placeholder="Search by code or name..."
+        variant="bordered"
+        size="md"
+        value={search}
+        onValueChange={setSearch}
+        className="max-w-xs"
+      />
 
-      <div ref={tableRef} className="w-full min-h-0">
+      <div ref={tableRef} className="min-h-0">
         <div className="overflow-hidden rounded-medium border border-default-200">
           <Table
             aria-label="Volunteers table"
