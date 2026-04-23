@@ -4,6 +4,7 @@ import { useData } from "../../services/useData";
 import { BirdEventType, type BirdEvent } from "../../types";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import CaptureHistoryModal from "../Modals/CaptureHistoryModal";
+import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import PageHeader from "./PageHeader";
 
 function daysBetween(a: string, b: string): number {
@@ -246,6 +247,7 @@ export default function FunStats() {
       }));
 
     return {
+      events,
       totalEvents: events.length,
       speciesCount: species.size,
       banded,
@@ -308,7 +310,7 @@ export default function FunStats() {
         </div>
 
         {/* Stats — right */}
-        <div className="flex-1 flex flex-col gap-4">
+        <div className="flex-1 min-w-0 flex flex-col gap-4">
           {stats.totalEvents === 0 ? (
             <p className="text-default-600 py-12">No events found in this date range.</p>
           ) : (
@@ -410,7 +412,16 @@ export default function FunStats() {
                   <RankedList items={stats.dummest} unit="recaptures" isSpecies onDetailClick={setSelectedBandId} />
                 </StatCard>
               </div>
+
             </>
+          )}
+          {stats.totalEvents > 0 && (
+            <BirdEventsTable
+              birdEvents={stats.events}
+              maxTableHeight={600}
+              allowInspectBandId
+              allowInspectHistory
+            />
           )}
         </div>
       </div>
