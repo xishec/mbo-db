@@ -416,12 +416,15 @@ export default function FunStats() {
             </>
           )}
           {stats.totalEvents > 0 && (
+            <>
+            <p className="text-md mt-8 font-bold">All Captures from {startDate} to {endDate}</p>
             <BirdEventsTable
               birdEvents={stats.events}
               maxTableHeight={600}
               allowInspectBandId
               allowInspectHistory
             />
+            </>
           )}
         </div>
       </div>
