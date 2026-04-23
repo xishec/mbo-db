@@ -289,7 +289,6 @@ export default function Bands() {
             birdEvents={selectedBandGroupEvents}
             maxTableHeight={500}
             allowInspectBandId
-            allowInspectHistory
           />
         </ModalBodyShell>
         <ModalFooterShell>

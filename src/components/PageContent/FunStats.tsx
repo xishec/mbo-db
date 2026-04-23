@@ -422,7 +422,6 @@ export default function FunStats() {
               birdEvents={stats.events}
               maxTableHeight={600}
               allowInspectBandId
-              allowInspectHistory
             />
             </>
           )}
