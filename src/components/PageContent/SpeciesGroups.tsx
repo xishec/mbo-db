@@ -29,16 +29,17 @@ type ColumnType = {
   label: string;
   type: "string" | "number";
   align?: "end";
+  width?: number;
 };
 
 const SPECIES_COLUMNS: ColumnType[] = [
-  { key: "groupName", label: "Group", type: "string" },
-  { key: "code", label: "Code", type: "string" },
-  { key: "englishName", label: "English", type: "string" },
-  { key: "frenchName", label: "French", type: "string" },
-  { key: "totalCaptures", label: "Total Captures", type: "number", align: "end" },
-  { key: "dummiestCount", label: "Dummiest Count", type: "number", align: "end" },
-  { key: "oldestSpanDays", label: "Oldest Span", type: "number", align: "end" },
+  { key: "groupName", label: "Group", type: "string", width: 200 },
+  { key: "code", label: "Code", type: "string", width: 100 },
+  { key: "englishName", label: "English", type: "string", width: 150 },
+  { key: "frenchName", label: "French", type: "string", width: 150 },
+  { key: "totalCaptures", label: "Total Captures", type: "number", align: "end", width: 100 },
+  { key: "dummiestCount", label: "Dummiest Count", type: "number", align: "end", width: 100 },
+  { key: "oldestSpanDays", label: "Oldest Span", type: "number", align: "end", width: 150 },
 ];
 
 export default function SpeciesGroups() {
@@ -138,6 +139,8 @@ export default function SpeciesGroups() {
             selectionMode="single"
             classNames={{
               wrapper: "shadow-none",
+              base: "table-fixed",
+              table: "table-fixed",
               th: "bg-default-100 text-xs font-semibold uppercase tracking-wide text-default-600",
               td: "text-sm select-text",
             }}
@@ -147,9 +150,8 @@ export default function SpeciesGroups() {
                 <TableColumn
                   key={column.key}
                   allowsSorting
-                  className={`${column.align === "end" ? "text-right" : ""} ${
-                    column.key === "groupName" ? "whitespace-nowrap" : ""
-                  }`}
+                  width={column.width}
+                  className={`${column.align === "end" ? "text-right" : ""}`}
                 >
                   {column.label}
                 </TableColumn>
@@ -168,7 +170,7 @@ export default function SpeciesGroups() {
                       );
                     }
                     if (columnKey === "groupName") {
-                      return <TableCell className="text-default-900 whitespace-nowrap">{value}</TableCell>;
+                      return <TableCell className="text-default-900 whitespace-normal break-words">{value}</TableCell>;
                     }
                     if (columnKey === "oldestSpanDays") {
                       const numValue = typeof value === "number" ? value : Number(value) || -1;
@@ -181,7 +183,7 @@ export default function SpeciesGroups() {
                     if (typeof value === "number") {
                       return <TableCell className="text-right tabular-nums text-default-900">{value}</TableCell>;
                     }
-                    return <TableCell className="text-default-900">{value}</TableCell>;
+                    return <TableCell className="text-default-900 whitespace-normal break-words">{value}</TableCell>;
                   }}
                 </TableRow>
               )}
