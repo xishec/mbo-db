@@ -98,6 +98,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [queuedEventIds, setQueuedEventIds] = useState<Set<string>>(new Set());
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [milestone, setMilestone] = useState<{ banderCode: string; count: number } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -556,10 +557,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    */
 
   /** Reconstructs Band class instances from serialized IndexedDB data. */
-  // Update pending count on mount
-  useEffect(() => {
-    getQueueCount().then(setPendingCount).catch(console.error);
+  const refreshQueueState = useCallback(async () => {
+    const queued = await getQueuedEvents();
+    setPendingCount(queued.length);
+    setQueuedEventIds(new Set(queued.filter((p) => p.type === "bird-event").map((p) => (p as PendingBirdEvent).pendingEvent.id)));
   }, []);
+
+  // Update pending count and queued ids on mount
+  useEffect(() => {
+    refreshQueueState().catch(console.error);
+  }, [refreshQueueState]);
 
   const updateMapTimestamp = useCallback(async (mapName: IndependentMapName) => {
     const now = Date.now();
@@ -717,13 +724,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
 
+      await refreshQueueState();
       const remainingCount = await getQueueCount();
-      setPendingCount(remainingCount);
       logger.sync("SyncQueue", `Sync completed`, { succeeded: successCount, total: pendingEvents.length, remaining: remainingCount });
     } catch (err) {
       logger.error("SyncQueue", "Error syncing queue", err);
     }
-  }, [isOnline]);
+  }, [isOnline, refreshQueueState]);
 
 
 
@@ -747,8 +754,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const band = new Band(bandPrefix, bandSuffix, _bandSize !== BandSize.Other ? _bandSize : null);
         const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
 
+        // Replace-in-queue: modifying a still-queued event → swap the pending
+        // entry instead of creating a modification chain. The target never
+        // reached RTDB, so chain semantics are unnecessary and would leave a
+        // client-only ghost. Gracefully falls back to modification-chain if
+        // the target synced between modal open and save.
+        let replacingPendingId: string | undefined;
+        if (previousEventId) {
+          const queuedEntries = await getQueuedEvents();
+          const match = queuedEntries.find(
+            (p) => p.type === "bird-event" && (p as PendingBirdEvent).pendingEvent.id === previousEventId
+          );
+          if (match) replacingPendingId = match.id;
+        }
+
         const newBirdEvent: BirdEvent = {
-          id: generateBirdEventId(band.id, captureData.date, captureData.net, captureData.wing, captureData.weight, previousEventId !== undefined),
+          id: generateBirdEventId(band.id, captureData.date, captureData.net, captureData.wing, captureData.weight, previousEventId !== undefined && !replacingPendingId),
           programId: captureData.programId,
           band,
           species: captureData.species,
@@ -766,40 +787,66 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           net: captureData.net,
           birdStatus: captureData.birdStatus,
           notes: captureData.notes,
-          previousEventId: previousEventId || null,
+          previousEventId: replacingPendingId ? null : (previousEventId || null),
           modifiedEventId: null,
           birdEventType,
-          updatedAt: previousEventId ? String(Date.now()) : String(Date.parse(`${captureData.date} ${captureData.time}`)),
+          updatedAt: previousEventId && !replacingPendingId ? String(Date.now()) : String(Date.parse(`${captureData.date} ${captureData.time}`)),
         };
 
-        // 2. Queue the bird event for sync (non-blocking)
-        const queuePromise = addToQueue({
-          id: crypto.randomUUID(),
-          type: "bird-event",
-          pendingEvent: newBirdEvent,
-          timestamp: Date.now(),
-          environment: CURRENT_ENVIRONMENT,
-          action: previousEventId ? "modified" : "added",
-        } as PendingBirdEvent);
+        // 2. Queue the bird event for sync (non-blocking).
+        // When replacing a queued event, remove the old pending entry first.
+        const queuePromise = (async () => {
+          if (replacingPendingId) {
+            await removeFromQueue(replacingPendingId);
+          }
+          await addToQueue({
+            id: crypto.randomUUID(),
+            type: "bird-event",
+            pendingEvent: newBirdEvent,
+            timestamp: Date.now(),
+            environment: CURRENT_ENVIRONMENT,
+            action: replacingPendingId ? "added" : previousEventId ? "modified" : "added",
+          } as PendingBirdEvent);
+        })();
 
         // 3. Update React state for immediate UI feedback
         const newBirdEventsMap = { ...birdEventsMap, [newBirdEvent.id]: newBirdEvent };
-        if (previousEventId && birdEventsMap[previousEventId]) {
+        if (replacingPendingId && previousEventId) {
+          // Fully replace: the old queued event never synced, just drop it.
+          delete newBirdEventsMap[previousEventId];
+        } else if (previousEventId && birdEventsMap[previousEventId]) {
           newBirdEventsMap[previousEventId] = { ...birdEventsMap[previousEventId], modifiedEventId: newBirdEvent.id };
         }
 
+        // When replacing a queued event, strip the old event id from all
+        // derived maps before appending the new one, so aggregates stay
+        // correct (band list, band groups, program capture/recapture lists,
+        // volunteer counts).
+        const oldEvent = replacingPendingId && previousEventId ? birdEventsMap[previousEventId] : null;
+        const strippedBandIds = oldEvent
+          ? (bandIdToBirdEventIdsMap[band.id] || []).filter((id) => id !== previousEventId)
+          : bandIdToBirdEventIdsMap[band.id] || [];
         const newBandIdToBirdEventIdsMap = {
           ...bandIdToBirdEventIdsMap,
-          [band.id]: [...(bandIdToBirdEventIdsMap[band.id] || []), newBirdEvent.id],
+          [band.id]: [...strippedBandIds, newBirdEvent.id],
         };
 
         const newBandGroupsMap = { ...bandGroupsMap };
-        if (isNewCapture) {
-          const bgKey = getBandGroupMapKey(band);
+        const bgKey = getBandGroupMapKey(band);
+        const oldWasNewCapture = oldEvent
+          ? oldEvent.birdEventType === BirdEventType.Banded || oldEvent.birdEventType === BirdEventType.None
+          : false;
+        const existingNewCaptureIds = bandGroupsMap[bgKey]?.newCaptureIds || [];
+        const strippedNewCaptureIds = oldEvent && oldWasNewCapture
+          ? existingNewCaptureIds.filter((id) => id !== previousEventId)
+          : existingNewCaptureIds;
+        if (isNewCapture || strippedNewCaptureIds.length > 0) {
           newBandGroupsMap[bgKey] = {
             id: bgKey,
-            newCaptureIds: [...(bandGroupsMap[bgKey]?.newCaptureIds || []), newBirdEvent.id],
+            newCaptureIds: isNewCapture ? [...strippedNewCaptureIds, newBirdEvent.id] : strippedNewCaptureIds,
           };
+        } else if (oldWasNewCapture && strippedNewCaptureIds.length === 0) {
+          delete newBandGroupsMap[bgKey];
         }
 
         const existingProgram = programsMap[captureData.programId];
@@ -808,13 +855,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const year = captureData.date.substring(0, 4);
         const eventDate = captureData.date;
 
+        const strippedRecaptureIds = oldEvent && !oldWasNewCapture
+          ? existingProgram.recaptureIds.filter((id) => id !== previousEventId)
+          : existingProgram.recaptureIds;
         const newProgramsMap = {
           ...programsMap,
           [captureData.programId]: {
             ...existingProgram,
             bandGroupIds: isNewCapture && !existingProgram.bandGroupIds.includes(bandGroupMapKey)
               ? [...existingProgram.bandGroupIds, bandGroupMapKey] : existingProgram.bandGroupIds,
-            recaptureIds: !isNewCapture ? [...existingProgram.recaptureIds, newBirdEvent.id] : existingProgram.recaptureIds,
+            recaptureIds: !isNewCapture ? [...strippedRecaptureIds, newBirdEvent.id] : strippedRecaptureIds,
             firstCaptureDate: !existingProgram.firstCaptureDate || eventDate < existingProgram.firstCaptureDate ? eventDate : existingProgram.firstCaptureDate,
             lastCaptureDate: !existingProgram.lastCaptureDate || eventDate > existingProgram.lastCaptureDate ? eventDate : existingProgram.lastCaptureDate,
           },
@@ -826,8 +876,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           [year]: existingProgramsInYear.includes(captureData.programId) ? existingProgramsInYear : [...existingProgramsInYear, captureData.programId],
         };
 
-        // Volunteer counts (React state only — rebuilt on sync)
+        // Volunteer counts (React state only — rebuilt on sync).
+        // Replace path: first decrement contributions from the old event.
         const newVolunteersMap = { ...volunteersMap };
+        if (oldEvent) {
+          if (oldEvent.bander && oldWasNewCapture) {
+            const existing = newVolunteersMap[oldEvent.bander];
+            if (existing) {
+              newVolunteersMap[oldEvent.bander] = { ...existing, totalBanded: Math.max(0, existing.totalBanded - 1) };
+            }
+          }
+          if (oldEvent.scribe) {
+            const existing = newVolunteersMap[oldEvent.scribe];
+            if (existing) {
+              newVolunteersMap[oldEvent.scribe] = { ...existing, totalScribed: Math.max(0, existing.totalScribed - 1) };
+            }
+          }
+        }
         if (captureData.bander && isNewCapture) {
           const existing = newVolunteersMap[captureData.bander] ?? { code: captureData.bander, fullName: volunteersFullNameMap[captureData.bander] ?? "", totalBanded: 0, totalScribed: 0 };
           const oldCount = existing.totalBanded;
@@ -863,7 +928,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               yearsToProgramMap: newYearsToProgramMap,
               volunteersMap: newVolunteersMap,
             }),
-            getQueueCount().then(setPendingCount),
+            refreshQueueState(),
           ])
         ).catch((err) => logger.error("AddBirdEvent", "IndexedDB save failed", err));
 
@@ -891,6 +956,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       syncQueue,
       yearsToProgramMap,
       saveCompleteStateToIndexedDB,
+      refreshQueueState,
     ]
   );
 
@@ -1089,6 +1155,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         speciesInfoMap,
         isOnline,
         pendingCount,
+        queuedEventIds,
         lastSyncedAt,
         addBirdEvent,
         addProgram,

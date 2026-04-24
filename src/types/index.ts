@@ -223,6 +223,7 @@ export interface DataContextType {
   // Offline support
   isOnline: boolean;
   pendingCount: number;
+  queuedEventIds: Set<string>;
   lastSyncedAt: number | null;
 
   // Actions

@@ -74,7 +74,7 @@ export default function BirdEventsTable({
   birdEventIdToHighlight,
   maxRows,
 }: BirdEventsTableProps) {
-  const { programsMap, isLoggedIn } = useData();
+  const { programsMap, isLoggedIn, isOnline, queuedEventIds } = useData();
   const { sortDescriptors, handleSortChange } = useCascadingSort(
     initialSortDescriptors ?? [
       { column: "date", direction: "ascending" },
@@ -163,13 +163,14 @@ export default function BirdEventsTable({
 
   const handleEdit = useCallback(
     (eventId: string) => {
+      if (!isOnline && !queuedEventIds.has(eventId)) return;
       const event = birdEventsMap.get(eventId);
       if (event) {
         setSelectedBirdEvent(event);
         setIsEditModalOpen(true);
       }
     },
-    [birdEventsMap]
+    [birdEventsMap, isOnline, queuedEventIds]
   );
 
   const renderCell = useCallback(
@@ -188,7 +189,7 @@ export default function BirdEventsTable({
                   <ClockIcon className="w-4 h-4" />
                 </span>
               )}
-              {allowInspectHistory && isLoggedIn && (
+              {allowInspectHistory && isLoggedIn && (isOnline || queuedEventIds.has(item.id)) && (
                 <span className="cursor-pointer" onClick={() => handleEdit(item.id)}>
                   <PencilSquareIcon className="w-4 h-4" />
                 </span>
@@ -225,6 +226,8 @@ export default function BirdEventsTable({
       allowInspectHistory,
       programsMap,
       isLoggedIn,
+      isOnline,
+      queuedEventIds,
     ]
   );
 
