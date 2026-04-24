@@ -279,6 +279,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     const loadData = async () => {
+      const downloads: { path: string; bytes: number }[] = [];
+      const recordDownload = (path: string, val: unknown) => {
+        const bytes = val == null ? 0 : new Blob([JSON.stringify(val)]).size;
+        downloads.push({ path, bytes });
+      };
+      const logDownloadSummary = () => {
+        const total = downloads.reduce((sum, d) => sum + d.bytes, 0);
+        const formatSize = (b: number) => b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1024 / 1024).toFixed(2)} MB`;
+        const breakdown = downloads.map((d) => `${d.path}: ${formatSize(d.bytes)}`).join(" · ");
+        logger.info("DataLoad", `Downloaded ${formatSize(total)} — ${breakdown || "nothing"}`);
+      };
       try {
         logger.info("DataLoad", `Loading ${CURRENT_ENVIRONMENT}/ data...`);
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
@@ -310,6 +321,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             ...INDEPENDENT_MAP_NAMES.map((m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>),
           ]);
           rtdbMetadata = snap.exists() ? snap.val() : null;
+          recordDownload(`${env}/metadata`, rtdbMetadata);
           cachedTimestamps = cached;
         } catch {
           if (cachedData) {
@@ -344,6 +356,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             const { query: fbQuery, orderByChild, startAt } = await import("firebase/database");
             const deltaSnap = await get(fbQuery(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(lastEventSync + 1)));
             const deltaEvents = deltaSnap.exists() ? deltaSnap.val() as BirdEventsMap : {};
+            recordDownload(`${env}/birdEventsMap (delta)`, deltaEvents);
             const deltaCount = Object.keys(deltaEvents).length;
 
             if (deltaCount === 0 && mapsToFetch.size === 0) {
@@ -363,6 +376,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setLoadingStatus("Downloading all events...");
             const fullSnap = await get(ref(db, `${env}/birdEventsMap`));
             allEvents = fullSnap.exists() ? fullSnap.val() : {};
+            recordDownload(`${env}/birdEventsMap (fallback full)`, allEvents);
           }
         } else {
           setLoadingStatus("Downloading all events...");
@@ -372,6 +386,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           allEvents = fullSnap.val();
+          recordDownload(`${env}/birdEventsMap (full)`, allEvents);
         }
 
         if (cancelled) return;
@@ -390,6 +405,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           for (let i = 0; i < fetching.length; i++) {
             const snap = snapshots[i];
             const val = snap.exists() ? snap.val() : null;
+            recordDownload(`${env}/${fetching[i]}`, val);
             switch (fetching[i]) {
               case "dismissedConflictsMap": dismissedMap = val ?? {}; break;
               case "DETsMap": detsMap = val ?? {}; break;
@@ -472,6 +488,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setError(err instanceof Error ? err.message : "Failed to load data");
         }
       } finally {
+        if (downloads.length > 0) logDownloadSummary();
         if (!cancelled) setIsLoading(false);
       }
     };
