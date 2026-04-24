@@ -233,7 +233,7 @@ function getAgeConsistencyConflict(
       const yearDelta = currentYear - otherYear;
       return {
         otherEvent: event,
-        reason: `Age can't be ${otherAge} (${formatAgeCode(otherAge)}) ${formatYearSpan(yearDelta)} after ${currentAge} (${formatAgeCode(currentAge)}).`,
+        reason: `Age can't be ${currentAge} (${formatAgeCode(currentAge)}) ${formatYearSpan(yearDelta)} after ${otherAge} (${formatAgeCode(otherAge)}).`,
       };
     }
   }
