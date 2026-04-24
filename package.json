@@ -21,7 +21,7 @@
     "generate:DETs:prod": "cross-env NODE_ENV=production npx tsx scripts/generateDETsMap.ts",
     "build": "tsc -b && vite build",
     "copy:prod-to-alpha": "npx tsx scripts/copyProdToAlpha.ts",
-    "deploy": "npm run build && firebase deploy --only hosting",
+    "deploy": "npm run build && firebase deploy --only hosting,database",
     "generate:icons": "npx tsx scripts/generate-icons.ts",
     "generate:icns": "bash scripts/generate-icns.sh",
     "generate:ico": "npx tsx scripts/generate-ico.ts"
