@@ -517,11 +517,12 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     const timeDiffHours = (currentDateTime - previousDateTime) / (1000 * 60 * 60);
 
     if (timeDiffHours < 12 && timeDiffHours >= 0) {
+      const gap = timeDiffHours < 1 ? `${Math.round(timeDiffHours * 60)} min` : `${timeDiffHours.toFixed(1)} h`;
       errors.push({
         id: `${currentEvent.id}-same-day-recapture`,
         errorType: "recapture",
         birdEvent: currentEvent,
-        reason: "Bird was recaptured within 12 hours - should be released without logging",
+        reason: `Recaptured ${gap} after previous event (< 12 h) — should have been released`,
         severity: "danger",
       });
     }
@@ -659,14 +660,20 @@ export function validateBirdEventForm(
   // Check if bird is being recaptured within 12 hours
   if (pastBirdEvents.length > 0 && formData.date && formData.time) {
     const currentDateTime = new Date(`${formData.date}T${formData.time}`).getTime();
-    const captureWithin12Hours = pastBirdEvents.some((capture) => {
+    let minHoursSince: number | null = null;
+    for (const capture of pastBirdEvents) {
       const captureDateTime = new Date(`${capture.date}T${capture.time}`).getTime();
       const timeDiffHours = (currentDateTime - captureDateTime) / (1000 * 60 * 60);
-      return timeDiffHours >= 0 && timeDiffHours < 12;
-    });
-    if (captureWithin12Hours) {
+      if (timeDiffHours >= 0 && timeDiffHours < 12) {
+        if (minHoursSince === null || timeDiffHours < minHoursSince) {
+          minHoursSince = timeDiffHours;
+        }
+      }
+    }
+    if (minHoursSince !== null) {
+      const gap = minHoursSince < 1 ? `${Math.round(minHoursSince * 60)} min` : `${minHoursSince.toFixed(1)} h`;
       messages.push({
-        text: "Bird was recaptured within 12 hours - should be released without logging",
+        text: `Bird was recaptured ${gap} ago (< 12 h) — should be released without logging`,
         severity: "danger",
       });
     }
