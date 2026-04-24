@@ -1,4 +1,5 @@
 import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap, MagicTable, SpeciesRange } from ".";
+import { BirdEventType } from ".";
 import { SPECIES_MAP } from "./species";
 
 export type ErrorSeverity = "danger" | "warning";
@@ -7,6 +8,7 @@ export const BIRD_EVENT_ERROR_TYPE_CONFIG = {
   "sex-change": { label: "Sex Changes" },
   "species-change": { label: "Species Changes" },
   recapture: { label: "Quick Recaptures" },
+  "duplicate-banding": { label: "Duplicate Banding" },
   fat: { label: "Fat Range" },
   weight: { label: "Weight Range" },
   wing: { label: "Wing Range" },
@@ -548,7 +550,37 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     }
   }
 
+  errors.push(...checkDuplicateBanding(events));
+
   return errors;
+}
+
+/**
+ * A physical band is applied exactly once. If more than one event for the same
+ * band is flagged Banded/None, all but the first are duplicates — the later
+ * ones should have been Return/Repeat. Common offline scenario: bander forgets
+ * to sync day 1, second bander re-bands the same id on day 2 without seeing
+ * the first event in their cache.
+ */
+function checkDuplicateBanding(events: BirdEvent[]): BirdEventError[] {
+  const newCaptures = events
+    .filter((e) => e.birdEventType === BirdEventType.Banded || e.birdEventType === BirdEventType.None)
+    .sort((a, b) => {
+      const aTs = getEventTimestamp(a.date, a.time) ?? Number.POSITIVE_INFINITY;
+      const bTs = getEventTimestamp(b.date, b.time) ?? Number.POSITIVE_INFINITY;
+      return aTs - bTs;
+    });
+
+  if (newCaptures.length <= 1) return [];
+
+  const first = newCaptures[0];
+  return newCaptures.slice(1).map((dup) => ({
+    id: `${dup.id}-duplicate-banding`,
+    errorType: "duplicate-banding" as const,
+    birdEvent: dup,
+    reason: `Band already banded on ${first.date} by ${first.bander || "unknown"} — this event should be Return or Repeat, not ${dup.birdEventType}`,
+    severity: "danger" as const,
+  }));
 }
 
 /**
@@ -590,12 +622,30 @@ export function validateBirdEventForm(
     date: string;
     time: string;
     fat: string;
+    birdEventType: string;
   },
   pastBirdEvents: BirdEvent[],
   magicTable?: MagicTable
 ): { text: string; severity: ErrorSeverity }[] {
   const messages: { text: string; severity: ErrorSeverity }[] = [];
   const sexLabel = getSexLabel(formData.sex);
+
+  // Pre-save duplicate-banding check: if saving a new Banded/None for a band
+  // that already has one, warn. Note: only catches collisions visible in the
+  // local cache — doesn't help when day-1 data isn't synced to day-2's device.
+  const isBandingThisEvent =
+    formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None;
+  if (isBandingThisEvent) {
+    const priorBanding = pastBirdEvents.find(
+      (e) => e.birdEventType === BirdEventType.Banded || e.birdEventType === BirdEventType.None
+    );
+    if (priorBanding) {
+      messages.push({
+        text: `Band already banded on ${priorBanding.date} by ${priorBanding.bander || "unknown"} — this event should be Return or Repeat, not ${formData.birdEventType}`,
+        severity: "danger",
+      });
+    }
+  }
 
   const wingValue = formData.wing ? parseFloat(formData.wing) : 0;
   const weightValue = formData.weight ? parseFloat(formData.weight) : 0;

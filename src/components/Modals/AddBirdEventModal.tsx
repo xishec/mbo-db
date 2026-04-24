@@ -324,6 +324,7 @@ export default function AddBirdEventModal({
         date: formData.date,
         time: formData.time,
         fat: formData.fat,
+        birdEventType: formData.birdEventType,
       },
       pastBirdEvents,
       magicTable
