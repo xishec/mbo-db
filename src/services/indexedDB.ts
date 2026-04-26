@@ -233,6 +233,31 @@ export async function removeFromQueue(eventId: string): Promise<void> {
 }
 
 /**
+ * Atomically swap a queued entry: delete `oldId` and add `newEntry` in the
+ * same transaction. If the tx aborts, neither change is applied, so we never
+ * end up with both gone or both present after a crash.
+ */
+export async function replaceInQueue(oldId: string, newEntry: PendingEvent): Promise<void> {
+  const db = await openDB();
+  const transaction = db.transaction([QUEUE_STORE], "readwrite");
+  const store = transaction.objectStore(QUEUE_STORE);
+
+  store.delete(oldId);
+  store.put(newEntry);
+
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
+}
+
+/**
  * Get count of pending events in queue
  */
 export async function getQueueCount(): Promise<number> {

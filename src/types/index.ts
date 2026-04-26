@@ -97,6 +97,9 @@ export interface BirdEvent {
   previousEventId: string | null;
   modifiedEventId: string | null;
   birdEventType: BirdEventType;
+  // Populated by syncQueue when the event reaches RTDB. Present on
+  // synced-from-RTDB reads, absent on locally-queued events until sync.
+  syncedAt?: number;
 }
 
 export function generateBirdEventId(

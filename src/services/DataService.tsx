@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { get, ref, set } from "firebase/database";
+import { get, ref, set, update } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
   type DatabaseData,
@@ -16,6 +16,7 @@ import {
   type VolunteersMap,
   BandSize,
   type PendingBirdEvent,
+  type PendingEvent,
   type SpeciesInfoMap,
 } from "../types";
 import {
@@ -33,6 +34,7 @@ import {
   getDataFromIndexedDB,
   saveLastUpdated,
   getLastUpdated,
+  replaceInQueue,
   saveMetadata,
   getMetadata,
   addToQueue,
@@ -339,7 +341,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!isOnline) {
           if (cachedData) {
             setLoadingStatus("Loading cached data...");
-            populateStateFromData(cachedData);
+            const queued = await getQueuedEvents();
+            populateStateFromData(cachedData, queued);
             setLastSyncedAt(lastEventSync ?? Date.now());
             setIsLoading(false);
             return;
@@ -366,7 +369,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         } catch {
           if (cachedData) {
             setLoadingStatus("Using cached data (Firebase unreachable)");
-            populateStateFromData(cachedData);
+            const queued = await getQueuedEvents();
+            populateStateFromData(cachedData, queued);
             setLastSyncedAt(lastEventSync ?? Date.now());
             setIsLoading(false);
             return;
@@ -402,7 +406,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (deltaCount === 0 && mapsToFetch.size === 0) {
               setLoadingStatus("Cache is up to date");
               logger.info("DataLoad", "No new events, maps unchanged — using cache");
-              populateStateFromData(cachedData);
+              const queuedForCache = await getQueuedEvents();
+              populateStateFromData(cachedData, queuedForCache);
               setLastSyncedAt(lastEventSync);
               setIsLoading(false);
               return;
@@ -463,19 +468,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setVolunteersFullNameMap(fullNameMap);
         setBandGroupNotesMap(notesMap);
 
+        // Overlay pending (not-yet-synced) events so derived maps, prefill
+        // suggestions, and capture lists include offline work.
+        const queued = await getQueuedEvents();
+        const mergedEvents = overlayQueuedEvents(allEvents, queued);
+
         // Rebuild all derived maps locally
         setLoadingStatus("Rebuilding maps...");
-        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(allEvents, fullNameMap);
+        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(mergedEvents, fullNameMap);
 
         const reconstructed = Object.fromEntries(
-          Object.entries(allEvents).map(([id, event]) => [
+          Object.entries(mergedEvents).map(([id, event]) => [
             id,
             { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null) },
           ])
         );
 
         const data: DatabaseData = {
-          birdEventsMap: allEvents,
+          birdEventsMap: mergedEvents,
           programsMap: programs,
           bandGroupsMap: bandGroups,
           bandIdToBirdEventIdsMap: bandIdMap,
@@ -520,7 +530,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           try {
             const fallbackData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
             if (fallbackData) {
-              populateStateFromData(fallbackData);
+              const queued = await getQueuedEvents().catch(() => [] as PendingEvent[]);
+              populateStateFromData(fallbackData, queued);
               setLastSyncedAt(Date.now());
               return;
             }
@@ -533,14 +544,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    const populateStateFromData = (data: DatabaseData) => {
+    const populateStateFromData = (data: DatabaseData, queued: PendingEvent[]) => {
       const fnMap = data.volunteersFullNameMap ?? {};
       setMagicTable(data.magicTable ?? { pyle: {} });
       setVolunteersFullNameMap(fnMap);
-      const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(data.birdEventsMap ?? {}, fnMap);
+      const mergedEvents = overlayQueuedEvents(data.birdEventsMap ?? {}, queued);
+      const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(mergedEvents, fnMap);
       setBirdEventsMap(
         Object.fromEntries(
-          Object.entries(data.birdEventsMap ?? {}).map(([id, event]) => [
+          Object.entries(mergedEvents).map(([id, event]) => [
             id,
             { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null) },
           ])
@@ -665,6 +677,39 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * - Partial success is okay - we continue with remaining events
    */
   /**
+   * Overlay queued (not-yet-synced) bird events into the RTDB/cached snapshot
+   * so derived maps, prefill suggestions, and capture lists see pending work.
+   *
+   * Mirrors what syncQueue would do when these events reach RTDB:
+   *  - inserts each queued event into the map (overwriting any stale RTDB
+   *    copy of the same id, which can occur in the rare race where RTDB
+   *    acknowledged a write we still hold in the queue)
+   *  - stamps modifiedEventId on the predecessor when the queued event is a
+   *    modification (previousEventId set)
+   *
+   * Pure; safe to call on any events map (including an empty one).
+   */
+  const overlayQueuedEvents = useCallback(
+    (events: BirdEventsMap, queued: PendingEvent[]): BirdEventsMap => {
+      if (queued.length === 0) return events;
+      const next: BirdEventsMap = { ...events };
+      for (const pending of queued) {
+        if (pending.type !== "bird-event") continue;
+        const ev = (pending as PendingBirdEvent).pendingEvent;
+        next[ev.id] = ev;
+        if (ev.previousEventId && next[ev.previousEventId]) {
+          next[ev.previousEventId] = {
+            ...next[ev.previousEventId],
+            modifiedEventId: ev.id,
+          } as BirdEvent;
+        }
+      }
+      return next;
+    },
+    []
+  );
+
+  /**
    * Rebuilds all derived maps from birdEventsMap.
    * This is the single source of truth — all index maps are computed from events.
    */
@@ -742,18 +787,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
       const now = Date.now();
 
-      // Write each queued event to RTDB with syncedAt
+      // Write each queued event to RTDB with syncedAt.
+      // We use a multi-path update so the new event and its back-pointer to
+      // the previous event land atomically — a partial failure can't leave
+      // RTDB with a new event whose predecessor is missing modifiedEventId.
       let successCount = 0;
+      const syncedBirdEvents: BirdEvent[] = [];
       for (const pending of pendingEvents) {
         try {
           if (pending.type === "bird-event") {
             const birdEvent = pending.pendingEvent as BirdEvent;
-            await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.id}`), { ...birdEvent, syncedAt: now });
-
+            const updates: Record<string, unknown> = {
+              [`${pending.environment}/birdEventsMap/${birdEvent.id}`]: { ...birdEvent, syncedAt: now },
+            };
             if (birdEvent.previousEventId) {
-              await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`), birdEvent.id);
-              await set(ref(db, `${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/syncedAt`), now);
+              updates[`${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`] = birdEvent.id;
+              updates[`${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/syncedAt`] = now;
             }
+            await update(ref(db), updates);
+            syncedBirdEvents.push(birdEvent);
           }
           await removeFromQueue(pending.id);
           successCount++;
@@ -762,6 +814,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Mirror RTDB state back into React + IndexedDB so the UI reflects the
+      // synced events (and their syncedAt stamps) without waiting for the
+      // next full reload. Derived maps don't need rebuilding — only
+      // syncedAt / modifiedEventId changed, neither of which affects the
+      // output of rebuildMapsFromEvents.
+      if (syncedBirdEvents.length > 0) {
+        let latestMap: BirdEventsMap | null = null;
+        setBirdEventsMap((prev) => {
+          const next = { ...prev };
+          for (const ev of syncedBirdEvents) {
+            const existing = next[ev.id] ?? ev;
+            next[ev.id] = { ...existing, syncedAt: now } as BirdEvent;
+            if (ev.previousEventId && next[ev.previousEventId]) {
+              next[ev.previousEventId] = {
+                ...next[ev.previousEventId],
+                modifiedEventId: ev.id,
+                syncedAt: now,
+              } as BirdEvent;
+            }
+          }
+          latestMap = next;
+          return next;
+        });
+        if (latestMap) {
+          saveCompleteStateToIndexedDB({ birdEventsMap: latestMap }).catch((err) =>
+            logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err)
+          );
+        }
+      }
 
       await refreshQueueState();
       const remainingCount = await getQueueCount();
@@ -769,7 +850,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       logger.error("SyncQueue", "Error syncing queue", err);
     }
-  }, [isOnline, refreshQueueState]);
+  }, [isOnline, refreshQueueState, saveCompleteStateToIndexedDB]);
 
 
 
@@ -784,6 +865,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!captureData.bandGroup) throw new Error("Band group is required");
         if (!captureData.bandLastTwoDigits) throw new Error("Band digit is required");
         if (!captureData.species) throw new Error("Species is required");
+        // Validate the target program exists BEFORE we touch the queue so a
+        // misrouted event can't land in IndexedDB and sync later.
+        if (!programsMap[captureData.programId]) {
+          throw new Error(`Program "${captureData.programId}" not found`);
+        }
 
         const birdEventType = captureData.birdEventType as BirdEventType;
         const bandGroup = captureData.bandGroup.padStart(7, "0");
@@ -833,20 +919,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         };
 
         // 2. Queue the bird event for sync (non-blocking).
-        // When replacing a queued event, remove the old pending entry first.
-        const queuePromise = (async () => {
-          if (replacingPendingId) {
-            await removeFromQueue(replacingPendingId);
-          }
-          await addToQueue({
-            id: crypto.randomUUID(),
-            type: "bird-event",
-            pendingEvent: newBirdEvent,
-            timestamp: Date.now(),
-            environment: CURRENT_ENVIRONMENT,
-            action: replacingPendingId ? "added" : previousEventId ? "modified" : "added",
-          } as PendingBirdEvent);
-        })();
+        // When replacing a queued event, swap the pending entry atomically so
+        // a crash mid-swap can't leave the queue missing both entries.
+        const newQueueEntry: PendingBirdEvent = {
+          id: crypto.randomUUID(),
+          type: "bird-event",
+          pendingEvent: newBirdEvent,
+          timestamp: Date.now(),
+          environment: CURRENT_ENVIRONMENT,
+          action: replacingPendingId ? "added" : previousEventId ? "modified" : "added",
+        };
+        const queuePromise = replacingPendingId
+          ? replaceInQueue(replacingPendingId, newQueueEntry)
+          : addToQueue(newQueueEntry);
 
         // 3. Update React state for immediate UI feedback
         const newBirdEventsMap = { ...birdEventsMap, [newBirdEvent.id]: newBirdEvent };
@@ -890,8 +975,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           delete newBandGroupsMap[bgKey];
         }
 
-        const existingProgram = programsMap[captureData.programId];
-        if (!existingProgram) throw new Error(`Program "${captureData.programId}" not found`);
+        // Already validated at the top of this function, safe to assert.
+        const existingProgram = programsMap[captureData.programId]!;
         const bandGroupMapKey = getBandGroupMapKey(band);
         const year = captureData.date.substring(0, 4);
         const eventDate = captureData.date;
@@ -957,6 +1042,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           if (!current || current.id !== captureData.programId) return current;
           return newProgramsMap[captureData.programId];
         });
+        // Keep queuedEventIds in sync with the queue mutation we just issued,
+        // so downstream gates (Edit button visibility, etc.) don't see a
+        // stale set while refreshQueueState() races the next render.
+        setQueuedEventIds((prev) => {
+          const next = new Set(prev);
+          if (previousEventId) next.delete(previousEventId);
+          next.add(newBirdEvent.id);
+          return next;
+        });
+        setPendingCount((prev) => (replacingPendingId ? prev : prev + 1));
 
         // 4. Persist to IndexedDB and update pending count (non-blocking)
         queuePromise.then(() =>
