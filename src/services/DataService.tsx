@@ -1254,33 +1254,42 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const syncInFlightRef = useRef(false);
-  const triggerSync = useCallback(async () => {
-    if (!user) return;
-    // Re-entrancy guard: a new auto-sync tick (e.g. addBirdEvent bumping
-    // pendingCount) shouldn't start a second RTDB write while one is running.
-    if (syncInFlightRef.current) return;
-    syncInFlightRef.current = true;
-    setIsSyncing(true);
-    setSyncResult(null);
-    try {
-      await syncQueue();
-      setSyncResult("success");
-    } catch {
-      setSyncResult("error");
-    } finally {
-      setIsSyncing(false);
-      syncInFlightRef.current = false;
-    }
-  }, [syncQueue, user]);
+  // `showUi=false` runs the sync silently (no Syncing…/Complete modal) —
+  // used by the auto-effect below so routine online adds don't flash UI.
+  // `showUi=true` is the explicit form exposed on the context for a future
+  // manual-sync button.
+  const runSync = useCallback(
+    async (showUi: boolean) => {
+      if (!user) return;
+      if (syncInFlightRef.current) return;
+      syncInFlightRef.current = true;
+      if (showUi) {
+        setIsSyncing(true);
+        setSyncResult(null);
+      }
+      try {
+        await syncQueue();
+        if (showUi) setSyncResult("success");
+      } catch {
+        if (showUi) setSyncResult("error");
+      } finally {
+        if (showUi) setIsSyncing(false);
+        syncInFlightRef.current = false;
+      }
+    },
+    [syncQueue, user]
+  );
+  const triggerSync = useCallback(() => runSync(true), [runSync]);
 
   // Auto-sync when we have pending events AND we're online AND authenticated.
   // Fires on: app load with leftover queue, returning online after offline work,
-  // or queueing while already online. RTDB rules require auth only — not admin.
+  // or queueing while already online. Runs silently — RTDB rules require
+  // auth only, not admin.
   useEffect(() => {
     if (!isLoading && isOnline && user && pendingCount > 0) {
-      triggerSync();
+      runSync(false);
     }
-  }, [isLoading, isOnline, user, pendingCount, triggerSync]);
+  }, [isLoading, isOnline, user, pendingCount, runSync]);
 
   return (
     <DataContext.Provider
