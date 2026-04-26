@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { get, ref, set, update } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
@@ -575,29 +575,36 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Monitor auth state and check if user is admin
+  // Monitor auth state
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthReady(true);
-
-      if (currentUser) {
-        if (navigator.onLine) {
-          try {
-            const roleRef = ref(db, `users/${currentUser.uid}/role`);
-            const snapshot = await get(roleRef);
-            setIsAdmin(snapshot.val() === "admin");
-          } catch {
-            setIsAdmin(false);
-          }
-        }
-      } else {
-        setIsAdmin(false);
-      }
+      if (!currentUser) setIsAdmin(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  // Re-check admin role whenever we have a user AND are online. Firebase
+  // does NOT re-fire onAuthStateChanged when connectivity changes, so an
+  // offline-then-online transition would otherwise leave isAdmin=false
+  // forever (and hide admin-only UI).
+  useEffect(() => {
+    if (!user || !isOnline) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snapshot = await get(ref(db, `users/${user.uid}/role`));
+        if (!cancelled) setIsAdmin(snapshot.val() === "admin");
+      } catch {
+        if (!cancelled) setIsAdmin(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isOnline]);
 
   /**
    * SYNC ARCHITECTURE
@@ -1242,8 +1249,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [user, isOnline, bandGroupNotesMap, saveCompleteStateToIndexedDB, updateMapTimestamp]
   );
 
+  const syncInFlightRef = useRef(false);
   const triggerSync = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!user) return;
+    // Re-entrancy guard: a new auto-sync tick (e.g. addBirdEvent bumping
+    // pendingCount) shouldn't start a second RTDB write while one is running.
+    if (syncInFlightRef.current) return;
+    syncInFlightRef.current = true;
     setIsSyncing(true);
     setSyncResult(null);
     try {
@@ -1253,15 +1265,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setSyncResult("error");
     } finally {
       setIsSyncing(false);
+      syncInFlightRef.current = false;
     }
-  }, [syncQueue, isAdmin]);
+  }, [syncQueue, user]);
 
-  // Auto-sync on load completion (for events queued from previous offline session)
+  // Auto-sync when we have pending events AND we're online AND authenticated.
+  // Fires on: app load with leftover queue, returning online after offline work,
+  // or queueing while already online. RTDB rules require auth only — not admin.
   useEffect(() => {
-    if (!isLoading && isOnline && isAdmin && pendingCount > 0) {
+    if (!isLoading && isOnline && user && pendingCount > 0) {
       triggerSync();
     }
-  }, [isLoading, isOnline, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoading, isOnline, user, pendingCount, triggerSync]);
 
   return (
     <DataContext.Provider
