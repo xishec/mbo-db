@@ -5,6 +5,8 @@ import { useCascadingSort, cascadingSort } from "../../hooks/useCascadingSort";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../Modals/ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
+import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
+import { BirdEventType } from "../../types";
 import PageHeader from "./PageHeader";
 
 type Row = {
@@ -23,8 +25,10 @@ const COLUMNS = [
 
 const numericColumns = new Set<string>(COLUMNS.filter((c) => c.type === "number").map((c) => c.key));
 
+type BreakdownRole = "banded" | "scribed";
+
 export default function Volunteers() {
-  const { volunteersMap, isLoggedIn, isOnline, updateVolunteerName } = useData();
+  const { volunteersMap, birdEventsMap, isLoggedIn, isOnline, updateVolunteerName } = useData();
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
     { column: "totalBanded", direction: "descending" },
   ]);
@@ -32,8 +36,30 @@ export default function Volunteers() {
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [breakdown, setBreakdown] = useState<{ code: string; role: BreakdownRole } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
+
+  // Compute species breakdown for the selected volunteer + role. Mirrors the
+  // filter used by rebuildMapsFromEvents for totalBanded/totalScribed so the
+  // rows sum to the number displayed in the volunteers table.
+  const breakdownRows = useMemo(() => {
+    if (!breakdown) return [] as Array<{ species: string; count: number }>;
+    const counts = new Map<string, number>();
+    for (const ev of Object.values(birdEventsMap)) {
+      if (!ev || ev.modifiedEventId || !ev.species) continue;
+      if (breakdown.role === "banded") {
+        const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
+        if (!isNewCapture || ev.bander !== breakdown.code) continue;
+      } else {
+        if (ev.scribe !== breakdown.code) continue;
+      }
+      counts.set(ev.species, (counts.get(ev.species) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([species, count]) => ({ species, count }))
+      .sort((a, b) => b.count - a.count || a.species.localeCompare(b.species));
+  }, [breakdown, birdEventsMap]);
 
   const rows = useMemo<Row[]>(() => {
     const allRows = Object.values(volunteersMap).map((b) => ({
@@ -131,6 +157,26 @@ export default function Volunteers() {
                         </TableCell>
                       );
                     }
+                    if (columnKey === "totalBanded" || columnKey === "totalScribed") {
+                      const count = value as number;
+                      const role: BreakdownRole = columnKey === "totalBanded" ? "banded" : "scribed";
+                      const clickable = count > 0;
+                      return (
+                        <TableCell
+                          className={`text-right tabular-nums text-default-900 ${
+                            clickable ? "cursor-pointer hover:text-primary" : ""
+                          }`}
+                          onClick={clickable
+                            ? (e) => {
+                                e.stopPropagation();
+                                setBreakdown({ code: item.code, role });
+                              }
+                            : undefined}
+                        >
+                          {count}
+                        </TableCell>
+                      );
+                    }
                     if (typeof value === "number") {
                       return <TableCell className="text-right tabular-nums text-default-900">{value}</TableCell>;
                     }
@@ -182,6 +228,68 @@ export default function Volunteers() {
             }}
           >
             Save
+          </Button>
+        </ModalFooterShell>
+      </ModalShell>
+
+      <ModalShell
+        modalProps={{
+          isDismissable: true,
+          isOpen: breakdown !== null,
+          onClose: () => setBreakdown(null),
+          scrollBehavior: "inside",
+          size: "lg",
+        }}
+      >
+        <ModalHeaderShell>
+          Species {breakdown?.role === "banded" ? "banded" : "scribed"} by{" "}
+          <span className="font-mono">{breakdown?.code}</span>
+          {breakdownRows.length > 0 && (
+            <span className="text-sm font-normal text-default-500 ml-2">
+              {breakdownRows.length} species, {breakdownRows.reduce((s, r) => s + r.count, 0)} total
+            </span>
+          )}
+        </ModalHeaderShell>
+        <ModalBodyShell>
+          <Table
+            aria-label={`Species breakdown for ${breakdown?.code ?? ""}`}
+            removeWrapper
+            classNames={{
+              th: "bg-default-100 text-xs font-semibold uppercase tracking-wide text-default-600",
+              td: "text-sm select-text",
+            }}
+          >
+            <TableHeader>
+              <TableColumn key="species">Species</TableColumn>
+              <TableColumn key="count" className="text-right">
+                Count
+              </TableColumn>
+            </TableHeader>
+            <TableBody items={breakdownRows} emptyContent="No captures found">
+              {(item) => (
+                <TableRow key={item.species}>
+                  {(columnKey) => {
+                    if (columnKey === "species") {
+                      return (
+                        <TableCell className="font-mono text-default-900">
+                          <SpeciesTooltip speciesCode={item.species} />
+                        </TableCell>
+                      );
+                    }
+                    return (
+                      <TableCell className="text-right tabular-nums text-default-900">
+                        {item.count}
+                      </TableCell>
+                    );
+                  }}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </ModalBodyShell>
+        <ModalFooterShell>
+          <Button {...modalPrimaryButtonProps} onPress={() => setBreakdown(null)}>
+            Close
           </Button>
         </ModalFooterShell>
       </ModalShell>
