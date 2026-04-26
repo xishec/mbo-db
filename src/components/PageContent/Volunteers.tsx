@@ -6,7 +6,8 @@ import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../Modals/ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
-import { BirdEventType } from "../../types";
+import ExportButton from "../Helper/ExportButton";
+import { BirdEventType, type BirdEvent } from "../../types";
 import PageHeader from "./PageHeader";
 
 type Row = {
@@ -40,12 +41,14 @@ export default function Volunteers() {
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
 
-  // Compute species breakdown for the selected volunteer + role. Mirrors the
-  // filter used by rebuildMapsFromEvents for totalBanded/totalScribed so the
-  // rows sum to the number displayed in the volunteers table.
-  const breakdownRows = useMemo(() => {
-    if (!breakdown) return [] as Array<{ species: string; count: number }>;
-    const counts = new Map<string, number>();
+  // Events attributed to the selected volunteer + role. Mirrors the filter
+  // used by rebuildMapsFromEvents for totalBanded/totalScribed (skip
+  // modifiedEventId so we only keep the current version of each record) so
+  // the per-species counts and the exported CSV agree with the total shown
+  // in the volunteers table.
+  const breakdownEvents = useMemo<BirdEvent[]>(() => {
+    if (!breakdown) return [];
+    const events: BirdEvent[] = [];
     for (const ev of Object.values(birdEventsMap)) {
       if (!ev || ev.modifiedEventId || !ev.species) continue;
       if (breakdown.role === "banded") {
@@ -54,12 +57,20 @@ export default function Volunteers() {
       } else {
         if (ev.scribe !== breakdown.code) continue;
       }
+      events.push(ev);
+    }
+    return events;
+  }, [breakdown, birdEventsMap]);
+
+  const breakdownRows = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const ev of breakdownEvents) {
       counts.set(ev.species, (counts.get(ev.species) ?? 0) + 1);
     }
     return [...counts.entries()]
       .map(([species, count]) => ({ species, count }))
       .sort((a, b) => b.count - a.count || a.species.localeCompare(b.species));
-  }, [breakdown, birdEventsMap]);
+  }, [breakdownEvents]);
 
   const rows = useMemo<Row[]>(() => {
     const allRows = Object.values(volunteersMap).map((b) => ({
@@ -167,12 +178,14 @@ export default function Volunteers() {
                           className={`text-right tabular-nums text-default-900 ${
                             clickable ? "cursor-pointer hover:text-primary" : ""
                           }`}
-                          onClick={clickable
-                            ? (e) => {
-                                e.stopPropagation();
-                                setBreakdown({ code: item.code, role });
-                              }
-                            : undefined}
+                          onClick={
+                            clickable
+                              ? (e) => {
+                                  e.stopPropagation();
+                                  setBreakdown({ code: item.code, role });
+                                }
+                              : undefined
+                          }
                         >
                           {count}
                         </TableCell>
@@ -252,49 +265,57 @@ export default function Volunteers() {
           )}
         </ModalHeaderShell>
         <ModalBodyShell>
-          <Table
-            aria-label={`Species breakdown for ${breakdown?.code ?? ""}`}
-            removeWrapper
-            classNames={{
-              th: "bg-default-100 text-xs font-semibold uppercase tracking-wide text-default-600",
-              td: "text-sm select-text",
-            }}
-          >
-            <TableHeader>
-              <TableColumn key="species">Species</TableColumn>
-              <TableColumn key="count" className="text-right">
-                Count
-              </TableColumn>
-            </TableHeader>
-            <TableBody items={breakdownRows} emptyContent="No captures found">
-              {(item) => (
-                <TableRow key={item.species}>
-                  {(columnKey) => {
-                    if (columnKey === "species") {
-                      return (
-                        <TableCell className="font-mono text-default-900">
-                          <SpeciesTooltip speciesCode={item.species} />
-                        </TableCell>
-                      );
-                    }
-                    return (
-                      <TableCell className="text-right tabular-nums text-default-900">
-                        {item.count}
-                      </TableCell>
-                    );
-                  }}
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          <div className="overflow-hidden rounded-medium border border-default-200">
+            <Table
+              aria-label={`Species breakdown for ${breakdown?.code ?? ""}`}
+              isHeaderSticky
+              isVirtualized
+              maxTableHeight={500}
+              classNames={{
+                wrapper: "shadow-none rounded-none",
+                th: "bg-default-100 text-xs font-semibold uppercase tracking-wide text-default-600",
+                td: "text-sm select-text",
+              }}
+            >
+              <TableHeader>
+                <TableColumn key="species">Species</TableColumn>
+                <TableColumn key="count" className="text-right">
+                  Count
+                </TableColumn>
+              </TableHeader>
+              <TableBody items={breakdownRows} emptyContent="No captures found">
+                {(item) => (
+                  <TableRow key={item.species}>
+                    {(columnKey) => {
+                      if (columnKey === "species") {
+                        return (
+                          <TableCell className="font-mono text-default-900">
+                            <SpeciesTooltip speciesCode={item.species} />
+                          </TableCell>
+                        );
+                      }
+                      return <TableCell className="text-right tabular-nums text-default-900">{item.count}</TableCell>;
+                    }}
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </ModalBodyShell>
         <ModalFooterShell>
+          <ExportButton
+            birdEvents={breakdownEvents}
+            filename={
+              breakdown
+                ? `volunteer-${breakdown.role}-${breakdown.code}-${new Date().toISOString().slice(0, 10)}.csv`
+                : "volunteer.csv"
+            }
+          />
           <Button {...modalPrimaryButtonProps} onPress={() => setBreakdown(null)}>
             Close
           </Button>
         </ModalFooterShell>
       </ModalShell>
-
     </div>
   );
 }
