@@ -885,6 +885,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const bandSuffix = bandGroup.substring(4) + bandLastTwoDigits;
         const band = new Band(bandPrefix, bandSuffix, _bandSize !== BandSize.Other ? _bandSize : null);
         const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
+        // Normalize bander/scribe codes to uppercase so new events don't create
+        // case-variant duplicates (historical data was migrated via script).
+        const normalizedBander = (captureData.bander ?? "").toUpperCase();
+        const normalizedScribe = (captureData.scribe ?? "").toUpperCase();
 
         // Replace-in-queue: modifying a still-queued event → swap the pending
         // entry instead of creating a modification chain. The target never
@@ -914,8 +918,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           weight: captureData.weight ? Number(captureData.weight) : 0,
           date: captureData.date,
           time: captureData.time,
-          bander: captureData.bander,
-          scribe: captureData.scribe,
+          bander: normalizedBander,
+          scribe: normalizedScribe,
           net: captureData.net,
           birdStatus: captureData.birdStatus,
           notes: captureData.notes,
@@ -1026,17 +1030,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             }
           }
         }
-        if (captureData.bander && isNewCapture) {
-          const existing = newVolunteersMap[captureData.bander] ?? { code: captureData.bander, fullName: volunteersFullNameMap[captureData.bander] ?? "", totalBanded: 0, totalScribed: 0 };
+        if (normalizedBander && isNewCapture) {
+          const existing = newVolunteersMap[normalizedBander] ?? { code: normalizedBander, fullName: volunteersFullNameMap[normalizedBander] ?? "", totalBanded: 0, totalScribed: 0 };
           const oldCount = existing.totalBanded;
-          newVolunteersMap[captureData.bander] = { ...existing, totalBanded: oldCount + 1 };
+          newVolunteersMap[normalizedBander] = { ...existing, totalBanded: oldCount + 1 };
           if (Math.floor((oldCount + 1) / 1000) > Math.floor(oldCount / 1000)) {
-            setMilestone({ banderCode: captureData.bander, count: oldCount + 1 });
+            setMilestone({ banderCode: normalizedBander, count: oldCount + 1 });
           }
         }
-        if (captureData.scribe) {
-          const existing = newVolunteersMap[captureData.scribe] ?? { code: captureData.scribe, fullName: volunteersFullNameMap[captureData.scribe] ?? "", totalBanded: 0, totalScribed: 0 };
-          newVolunteersMap[captureData.scribe] = { ...existing, totalScribed: existing.totalScribed + 1 };
+        if (normalizedScribe) {
+          const existing = newVolunteersMap[normalizedScribe] ?? { code: normalizedScribe, fullName: volunteersFullNameMap[normalizedScribe] ?? "", totalBanded: 0, totalScribed: 0 };
+          newVolunteersMap[normalizedScribe] = { ...existing, totalScribed: existing.totalScribed + 1 };
         }
 
         setBirdEventsMap(newBirdEventsMap);
