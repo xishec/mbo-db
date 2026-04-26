@@ -12,10 +12,6 @@ type Row = {
   fullName: string;
   totalBanded: number;
   totalScribed: number;
-  // All original (case-preserving) codes folded into this row. Usually one;
-  // multiple when a volunteer was entered with mixed casing (e.g. "VIP" vs
-  // "vip") — we merge those into a single display row.
-  codes: string[];
 };
 
 const COLUMNS = [
@@ -34,60 +30,26 @@ export default function Volunteers() {
   ]);
   const [search, setSearch] = useState("");
   const [editingCode, setEditingCode] = useState<string | null>(null);
-  const [editingCodes, setEditingCodes] = useState<string[]>([]);
   const [editingName, setEditingName] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
 
-  const saveEditedName = async () => {
-    const trimmed = editingName.trim();
-    for (const code of editingCodes) {
-      try {
-        await updateVolunteerName(code, trimmed);
-      } catch {
-        // updateVolunteerName already logs; keep going so other variants update.
-      }
-    }
-    setIsEditModalOpen(false);
-  };
-
-  // Merge volunteers that differ only in case (e.g. "VIP" vs "vip") into a
-  // single row keyed by the uppercase code. Historical data has these
-  // inconsistencies because bander/scribe entry wasn't normalized.
-  const mergedRows = useMemo<Row[]>(() => {
-    const merged = new Map<string, Row>();
-    for (const b of Object.values(volunteersMap)) {
-      const key = b.code.toUpperCase();
-      const existing = merged.get(key);
-      if (existing) {
-        existing.totalBanded += b.totalBanded;
-        existing.totalScribed += b.totalScribed;
-        if (!existing.fullName && b.fullName) existing.fullName = b.fullName;
-        if (!existing.codes.includes(b.code)) existing.codes.push(b.code);
-      } else {
-        merged.set(key, {
-          code: key,
-          fullName: b.fullName || "",
-          totalBanded: b.totalBanded,
-          totalScribed: b.totalScribed,
-          codes: [b.code],
-        });
-      }
-    }
-    return [...merged.values()];
-  }, [volunteersMap]);
-
   const rows = useMemo<Row[]>(() => {
-    if (!search) return mergedRows;
-    const q = search.toLowerCase();
-    return mergedRows.filter(
-      (r) =>
-        r.code.toLowerCase().includes(q) ||
-        r.fullName.toLowerCase().includes(q) ||
-        r.codes.some((c) => c.toLowerCase().includes(q))
-    );
-  }, [mergedRows, search]);
+    const allRows = Object.values(volunteersMap).map((b) => ({
+      code: b.code,
+      fullName: b.fullName || "",
+      totalBanded: b.totalBanded,
+      totalScribed: b.totalScribed,
+    }));
+
+    if (search) {
+      const q = search.toLowerCase();
+      return allRows.filter((r) => r.code.toLowerCase().includes(q) || r.fullName.toLowerCase().includes(q));
+    }
+
+    return allRows;
+  }, [volunteersMap, search]);
 
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
 
@@ -95,7 +57,7 @@ export default function Volunteers() {
     <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4 overflow-hidden">
       <PageHeader
         title="Volunteers"
-        subtitle={`${mergedRows.length} volunteers`}
+        subtitle={`${Object.keys(volunteersMap).length} volunteers`}
         actions={
           sortDescriptors.length > 0 ? (
             <button
@@ -160,7 +122,6 @@ export default function Volunteers() {
                             if (isLoggedIn && isOnline) {
                               e.stopPropagation();
                               setEditingCode(item.code);
-                              setEditingCodes(item.codes);
                               setEditingName(item.fullName);
                               setIsEditModalOpen(true);
                             }
@@ -202,21 +163,24 @@ export default function Volunteers() {
             onValueChange={setEditingName}
             autoFocus
             onKeyDown={(e) => {
-              if (e.key === "Enter") saveEditedName();
+              if (e.key === "Enter") {
+                if (editingCode) updateVolunteerName(editingCode, editingName);
+                setIsEditModalOpen(false);
+              }
             }}
           />
-          {editingCodes.length > 1 && (
-            <p className="text-xs text-default-500">
-              Applies to {editingCodes.length} variants:{" "}
-              <span className="font-mono">{editingCodes.join(", ")}</span>
-            </p>
-          )}
         </ModalBodyShell>
         <ModalFooterShell>
           <Button {...modalCancelButtonProps} onPress={() => setIsEditModalOpen(false)}>
             Cancel
           </Button>
-          <Button {...modalPrimaryButtonProps} onPress={saveEditedName}>
+          <Button
+            {...modalPrimaryButtonProps}
+            onPress={() => {
+              if (editingCode) updateVolunteerName(editingCode, editingName);
+              setIsEditModalOpen(false);
+            }}
+          >
             Save
           </Button>
         </ModalFooterShell>
