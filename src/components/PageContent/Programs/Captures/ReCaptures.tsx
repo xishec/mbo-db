@@ -25,6 +25,7 @@ export default function ReCaptures() {
       birdEvents={reCaptures}
       maxTableHeight={600}
       allowInspectBandId
+      scrollToEnd
     />
   );
 }

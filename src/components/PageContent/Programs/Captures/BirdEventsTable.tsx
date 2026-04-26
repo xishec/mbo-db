@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { TABLE_COLUMNS, formatUpdatedAt } from "./helpers";
 import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
@@ -59,6 +59,7 @@ interface BirdEventsTableProps {
   hiddenColumns?: string[];
   birdEventIdToHighlight?: string;
   maxRows?: number;
+  scrollToEnd?: boolean;
 }
 
 export default function BirdEventsTable({
@@ -73,6 +74,7 @@ export default function BirdEventsTable({
   hiddenColumns = [],
   birdEventIdToHighlight,
   maxRows,
+  scrollToEnd = false,
 }: BirdEventsTableProps) {
   const { programsMap, isLoggedIn, isOnline, queuedEventIds } = useData();
   const { sortDescriptors, handleSortChange } = useCascadingSort(
@@ -81,6 +83,7 @@ export default function BirdEventsTable({
       { column: "time", direction: "ascending" },
     ]
   );
+  const baseRef = useRef<HTMLElement | null>(null);
   const [selectedBirdEvent, setSelectedBirdEvent] = useState<BirdEvent | null>(null);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -137,6 +140,19 @@ export default function BirdEventsTable({
       })(),
     [rows, sortDescriptors, numericColumns, maxRows]
   );
+
+  // Scroll to the end of the table whenever the row set changes so the newest
+  // capture (sorted ascending) is visible. Only active in non-virtualized
+  // tables — baseRef lands on the scrollable wrapper directly.
+  useEffect(() => {
+    if (!scrollToEnd) return;
+    const el = baseRef.current;
+    if (!el) return;
+    const raf = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [sortedRows, scrollToEnd]);
 
   const handleInspectBandId = useCallback(
     (eventId: string) => {
@@ -246,21 +262,23 @@ export default function BirdEventsTable({
           showing {rows.length} of {birdEvents.length} {rows.length === 1 ? "entry" : "entries"}
         </div>
         <Table
+          baseRef={baseRef}
           isHeaderSticky
           aria-label="birdEvents table"
           sortDescriptor={primarySortDescriptor}
           onSortChange={handleSortChange}
-          isVirtualized
+          isVirtualized={!scrollToEnd}
           maxTableHeight={maxTableHeight}
-          selectionMode="single"
-          selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
-          disallowEmptySelection
-          color="primary"
           classNames={{
             base: "table-fixed",
             table: "table-fixed",
             td: "data-[selected=true]:!text-black",
+            wrapper: scrollToEnd ? "h-[600px] overflow-auto" : undefined,
           }}
+          selectionMode="single"
+          selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
+          disallowEmptySelection
+          color="primary"
         >
           <TableHeader columns={displayColumns}>
             {(column) => (
@@ -273,7 +291,7 @@ export default function BirdEventsTable({
               </TableColumn>
             )}
           </TableHeader>
-          <TableBody items={sortedRows} emptyContent="No birdEvents found">
+          <TableBody items={sortedRows}>
             {(item) => {
               const isLowOpacity = (programId && item.programId !== programId) || !!item.modifiedEventId;
               const rowKey = item.id;

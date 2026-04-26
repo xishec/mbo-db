@@ -34,34 +34,34 @@ export default function BirdEvents() {
     <>
       {birdEventTabType === BirdEventTabType.NEW_CAPTURES ? (
         <ButtonGroup color="secondary" variant="flat">
-          {Object.values(BandSize).map((bandSize) => (
-            <Tooltip
-              key={bandSize}
-              closeDelay={50}
-              color={"default"}
-              placement="bottom"
-              content={
-                bandSizeToBandIdMap?.[bandSize]
-                  ? `${bandSizeToBandIdMap[bandSize].slice(0, 7)}-${bandSizeToBandIdMap[bandSize].slice(-2)}`
-                  : "Not set"
-              }
-              isDisabled={bandSize === BandSize.Other}
-            >
-              <Button
-                onMouseEnter={() => {
-                  const nextBandId = bandSizeToBandIdMap?.[bandSize];
-                  if (nextBandId?.length >= 7) setActiveBandGroupId(nextBandId.slice(0, 7));
-                }}
-                onPress={() => {
-                  setSelectedBandSize(bandSize);
-                  onOpen();
-                }}
-                className="text-gray-700"
+          {Object.values(BandSize).map((bandSize) => {
+            const nextBandId = bandSizeToBandIdMap?.[bandSize];
+            const isActive =
+              !!activeBandGroupId && nextBandId?.slice(0, 7) === activeBandGroupId;
+            return (
+              <Tooltip
+                key={bandSize}
+                closeDelay={50}
+                color={"default"}
+                placement="bottom"
+                content={nextBandId ? `${nextBandId.slice(0, 7)}-${nextBandId.slice(-2)}` : "Not set"}
+                isDisabled={bandSize === BandSize.Other}
               >
-                {bandSize}
-              </Button>
-            </Tooltip>
-          ))}
+                <Button
+                  onMouseEnter={() => {
+                    if (nextBandId && nextBandId.length >= 7) setActiveBandGroupId(nextBandId.slice(0, 7));
+                  }}
+                  onPress={() => {
+                    setSelectedBandSize(bandSize);
+                    onOpen();
+                  }}
+                  className={`text-gray-700 ${isActive ? "!bg-secondary-400" : ""}`}
+                >
+                  {bandSize}
+                </Button>
+              </Tooltip>
+            );
+          })}
         </ButtonGroup>
       ) : (
         <Button

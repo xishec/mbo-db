@@ -171,6 +171,7 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
           sortDescriptors={[{ column: "bandLastTwoDigits", direction: "ascending" }]}
           showOtherPrograms={showOtherPrograms}
           allowInspectBandId
+          scrollToEnd
         />
       ) : (
         <div className="p-4">Select a band group to view captures</div>
