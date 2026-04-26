@@ -16,23 +16,26 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
   const { birdEventsMap } = useData();
 
   const birdEvents = useMemo(() => {
-    const event = birdEventsMap[birdEvent.id];
-    const events: BirdEvent[] = [event];
-    let currentEvent = event;
+    // The referenced event may be missing from the live map (e.g. just
+    // replaced by an offline modify) — bail out rather than crash.
+    const event = birdEventsMap[birdEvent.id] ?? birdEvent;
+    if (!event) return [] as BirdEvent[];
 
-    // Recursively follow the previousEventId chain
-    while (currentEvent.previousEventId) {
-      const previousEvent = birdEventsMap[currentEvent.previousEventId];
-      if (previousEvent) {
-        events.push(previousEvent);
-        currentEvent = previousEvent;
-      } else {
-        break;
-      }
+    const events: BirdEvent[] = [event];
+    const seen = new Set<string>([event.id]);
+    let currentEvent: BirdEvent | undefined = event;
+
+    // Recursively follow the previousEventId chain (cycle-safe).
+    while (currentEvent?.previousEventId && !seen.has(currentEvent.previousEventId)) {
+      const previousEvent: BirdEvent | undefined = birdEventsMap[currentEvent.previousEventId];
+      if (!previousEvent) break;
+      seen.add(previousEvent.id);
+      events.push(previousEvent);
+      currentEvent = previousEvent;
     }
 
-    return events.sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
-  }, [birdEvent.id, birdEventsMap]);
+    return events.sort((a, b) => (a.updatedAt ?? "").localeCompare(b.updatedAt ?? ""));
+  }, [birdEvent, birdEventsMap]);
 
   return (
     <ModalShell
