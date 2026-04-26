@@ -35,11 +35,14 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
     return map;
   }, [bandSizeToBandIdMap]);
 
-  // Convert bandGroupToNewCaptures keys to sorted array, ordered by band size then band group ID
+  // Convert bandGroupToNewCaptures keys to sorted array, ordered by band size then band group ID.
+  // Include the hovered group even when it isn't assigned to the current program so the Select
+  // can render a matching entry for an out-of-program band size suggestion.
   const bandGroupOptions = useMemo(() => {
     const sizeOrder = Object.values(BandSize);
-    const groups = Object.keys(bandGroupToNewCaptures);
-    return groups.sort((a, b) => {
+    const groups = new Set(Object.keys(bandGroupToNewCaptures));
+    if (activeBandGroupId) groups.add(activeBandGroupId);
+    return [...groups].sort((a, b) => {
       const sizeA = bandGroupToBandSize[a];
       const sizeB = bandGroupToBandSize[b];
       const orderA = sizeA ? sizeOrder.indexOf(sizeA as BandSize) : sizeOrder.length;
@@ -47,10 +50,10 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
       if (orderA !== orderB) return orderA - orderB;
       return a.localeCompare(b);
     });
-  }, [bandGroupToNewCaptures, bandGroupToBandSize]);
+  }, [bandGroupToNewCaptures, bandGroupToBandSize, activeBandGroupId]);
 
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
-  const [showOtherPrograms, setShowOtherPrograms] = useState(false);
+  const [showOtherPrograms, setShowOtherPrograms] = useState(true);
   const prevBandGroupIdsRef = useRef<string[]>([]);
 
   // Switch band group when parent requests (band size button click)
@@ -83,11 +86,17 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
     return bandGroupOptions[0] ?? null;
   }, [selectedBandGroupId, bandGroupOptions]);
 
-  // Get captures for the selected bandGroup from the cache
+  // Get captures for the selected bandGroup. Fall back to the global bandGroupsMap
+  // so an out-of-program group (e.g. a hovered band-size suggestion whose next band
+  // belongs to a group that was banded under a different program) still shows its
+  // captures when "Show all captures" is enabled.
   const captures = useMemo(() => {
     if (!effectiveBandGroupId) return [];
-    return bandGroupToNewCaptures[effectiveBandGroupId] ?? [];
-  }, [effectiveBandGroupId, bandGroupToNewCaptures]);
+    const inProgram = bandGroupToNewCaptures[effectiveBandGroupId];
+    if (inProgram) return inProgram;
+    const bg = bandGroupsMap[effectiveBandGroupId];
+    return bg ? bg.newCaptureIds.map((id) => birdEventsMap[id]).filter(Boolean) : [];
+  }, [effectiveBandGroupId, bandGroupToNewCaptures, bandGroupsMap, birdEventsMap]);
 
   if (isLoading && Object.keys(bandGroupToNewCaptures).length === 0) {
     return (
@@ -129,8 +138,8 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
         >
           {bandGroupOptions.map((bandGroupId) => {
             const count =
-              bandGroupToNewCaptures[bandGroupId].filter((birdEvent) => birdEvent.modifiedEventId == null).length ?? 0;
-            if (count === 0) return null;
+              bandGroupToNewCaptures[bandGroupId]?.filter((birdEvent) => birdEvent.modifiedEventId == null).length ?? 0;
+            if (count === 0 && bandGroupId !== activeBandGroupId) return null;
             const size = bandGroupToBandSize[bandGroupId];
             return (
               <SelectItem
@@ -147,6 +156,7 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
           isSelected={showOtherPrograms}
           onValueChange={setShowOtherPrograms}
           size="md"
+          color="secondary"
           className="self-end mb-1.5"
         >
           Show all captures

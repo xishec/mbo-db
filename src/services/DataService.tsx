@@ -251,24 +251,63 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return infoMap;
   }, [birdEventsMap]);
 
-  // Compute bandSizeToBandIdMap: for each band size, find the most recent event (by date+time), take its band ID, increment by 1
+  // For each band size, suggest the next available band id:
+  //   1. Pick the latest banding (by date+time) for that size → its logical
+  //      band group is the strip the bander is currently working.
+  //   2. Within that group, find the highest last2digits used in 01→99→00
+  //      order (-00 is the last band of a strip, not the first) and take
+  //      the next position in that order.
   const bandSizeToBandIdMap = useMemo(() => {
-    const latestPerSize = new Map<string, { bandId: string; timestamp: number }>();
-
+    // Latest banding (by date+time) per size.
+    const latestGroupPerSize = new Map<BandSize, { group: string; timestamp: number }>();
     for (const ev of Object.values(birdEventsMap)) {
-      if (!ev || ev.modifiedEventId || !ev.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
-      const size = ev.band.bandSize;
-      const timestamp = Date.parse(`${ev.date}T${ev.time || "00:00"}`);
-      const existing = latestPerSize.get(size);
-      if (!existing || timestamp > existing.timestamp || (timestamp === existing.timestamp && ev.band.id > existing.bandId)) {
-        latestPerSize.set(size, { bandId: ev.band.id, timestamp });
+      if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
+      const ts = Date.parse(`${ev.date}T${ev.time || "00:00"}`);
+      if (Number.isNaN(ts)) continue;
+      const group = getBandGroupMapKey(new Band(ev.band.bandPrefix, ev.band.bandSuffix));
+      const existing = latestGroupPerSize.get(ev.band.bandSize);
+      if (!existing || ts > existing.timestamp) {
+        latestGroupPerSize.set(ev.band.bandSize, { group, timestamp: ts });
       }
     }
 
+    // All last2digits already used per logical group (any event counts —
+    // a band is a band regardless of event type). Encode -00 as 100 so
+    // comparisons reflect the physical 01→99→00 order.
+    const usedByGroup = new Map<string, Set<number>>();
+    for (const ev of Object.values(birdEventsMap)) {
+      if (!ev?.band) continue;
+      const band = new Band(ev.band.bandPrefix, ev.band.bandSuffix);
+      const last2 = parseInt(band.last2digits, 10);
+      if (Number.isNaN(last2)) continue;
+      const group = getBandGroupMapKey(band);
+      if (!usedByGroup.has(group)) usedByGroup.set(group, new Set());
+      usedByGroup.get(group)!.add(last2 === 0 ? 100 : last2);
+    }
+
     const map = {} as Record<BandSize, string>;
-    for (const [size, { bandId }] of latestPerSize) {
-      const nextBandId = (parseInt(bandId, 10) + 1).toString().padStart(9, "0");
-      map[size as BandSize] = nextBandId;
+    for (const [size, { group }] of latestGroupPerSize) {
+      const used = usedByGroup.get(group);
+      if (!used || used.size === 0) continue;
+      let max = 0;
+      for (const n of used) if (n > max) max = n;
+
+      const groupPrefix = parseInt(group, 10);
+      if (Number.isNaN(groupPrefix)) continue;
+      // 01..98 -> +1 (same prefix); 99 -> -00 of next prefix; 00 -> -01 of next group.
+      let nextPrefix: number;
+      let nextLast2: number;
+      if (max < 99) {
+        nextPrefix = groupPrefix;
+        nextLast2 = max + 1;
+      } else if (max === 99) {
+        nextPrefix = groupPrefix + 1;
+        nextLast2 = 0;
+      } else {
+        nextPrefix = groupPrefix + 1;
+        nextLast2 = 1;
+      }
+      map[size] = nextPrefix.toString().padStart(7, "0") + nextLast2.toString().padStart(2, "0");
     }
     return map;
   }, [birdEventsMap]);
@@ -811,10 +850,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // 3. Update React state for immediate UI feedback
         const newBirdEventsMap = { ...birdEventsMap, [newBirdEvent.id]: newBirdEvent };
-        if (replacingPendingId && previousEventId) {
+        if (replacingPendingId && previousEventId && previousEventId !== newBirdEvent.id) {
           // Fully replace: the old queued event never synced, just drop it.
+          // Skip when ids collide (same band/date/net/wing/weight) — the
+          // spread above already overwrote in place; deleting would wipe it.
           delete newBirdEventsMap[previousEventId];
-        } else if (previousEventId && birdEventsMap[previousEventId]) {
+        } else if (!replacingPendingId && previousEventId && birdEventsMap[previousEventId]) {
           newBirdEventsMap[previousEventId] = { ...birdEventsMap[previousEventId], modifiedEventId: newBirdEvent.id };
         }
 
