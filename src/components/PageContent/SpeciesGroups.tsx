@@ -132,6 +132,7 @@ export default function SpeciesGroups() {
         <div className="overflow-hidden rounded-medium border border-default-200">
           <Table
             aria-label="species catalog table"
+            isHeaderSticky
             isVirtualized
             maxTableHeight={tableHeight}
             sortDescriptor={sortDescriptors[0]}

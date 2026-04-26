@@ -110,6 +110,7 @@ export default function Volunteers() {
         <div className="overflow-hidden rounded-medium border border-default-200">
           <Table
             aria-label="Volunteers table"
+            isHeaderSticky
             isVirtualized
             maxTableHeight={tableHeight}
             sortDescriptor={sortDescriptors[0]}

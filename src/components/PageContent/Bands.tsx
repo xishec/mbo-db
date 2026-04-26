@@ -151,6 +151,7 @@ export default function Bands() {
         <div className="overflow-hidden rounded-medium border border-default-200">
           <Table
             aria-label="Band groups table"
+            isHeaderSticky
             isVirtualized
             maxTableHeight={tableHeight}
             sortDescriptor={sortDescriptors[0]}
