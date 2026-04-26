@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { TABLE_COLUMNS, formatUpdatedAt } from "./helpers";
 import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
@@ -83,7 +83,7 @@ export default function BirdEventsTable({
       { column: "time", direction: "ascending" },
     ]
   );
-  const baseRef = useRef<HTMLElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [selectedBirdEvent, setSelectedBirdEvent] = useState<BirdEvent | null>(null);
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -141,17 +141,49 @@ export default function BirdEventsTable({
     [rows, sortDescriptors, numericColumns, maxRows]
   );
 
-  // Scroll to the end of the table whenever the row set changes so the newest
-  // capture (sorted ascending) is visible. Only active in non-virtualized
-  // tables — baseRef lands on the scrollable wrapper directly.
-  useEffect(() => {
+  // Scroll the last <tr> into view whenever the row set changes, so the
+  // newest capture (ascending sort) is visible. scrollIntoView walks up the
+  // tree and handles the scroll container for us — no assumptions about
+  // HeroUI's nested wrappers or refs. Works in tabs and PWA alike.
+  // React-Aria commits table rows across a few paints; rescroll whenever the
+  // tbody's children change for a short window so the last-row target stays
+  // accurate even if it arrives late.
+  useLayoutEffect(() => {
     if (!scrollToEnd) return;
-    const el = baseRef.current;
-    if (!el) return;
-    const raf = requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const scrollLast = () => {
+      const rows = container.querySelectorAll<HTMLTableRowElement>("tbody tr");
+      const lastRow = rows[rows.length - 1];
+      if (!lastRow) return;
+      lastRow.scrollIntoView({ block: "end", inline: "nearest" });
+      // scrollIntoView aligns the row's bottom with the container's content
+      // edge, which leaves HeroUI's wrapper padding (p-4) visually clipping
+      // the last row. Pin the scroll container to its max so the padding
+      // becomes trailing space instead of a clipped row.
+      let scrollEl: HTMLElement | null = lastRow.parentElement;
+      while (scrollEl && scrollEl.scrollHeight <= scrollEl.clientHeight) {
+        scrollEl = scrollEl.parentElement;
+      }
+      if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+    };
+
+    scrollLast();
+
+    const tbody = container.querySelector("tbody");
+    if (!tbody) return;
+    let settled = false;
+    const timeout = window.setTimeout(() => { settled = true; }, 400);
+    const observer = new MutationObserver(() => {
+      if (!settled) scrollLast();
     });
-    return () => cancelAnimationFrame(raf);
+    observer.observe(tbody, { childList: true });
+
+    return () => {
+      window.clearTimeout(timeout);
+      observer.disconnect();
+    };
   }, [sortedRows, scrollToEnd]);
 
   const handleInspectBandId = useCallback(
@@ -257,12 +289,11 @@ export default function BirdEventsTable({
 
   return (
     <>
-      <div className="w-full flex flex-col gap-4">
+      <div className="w-full flex flex-col gap-4" ref={containerRef}>
         <div className="text-sm">
           showing {rows.length} of {birdEvents.length} {rows.length === 1 ? "entry" : "entries"}
         </div>
         <Table
-          baseRef={baseRef}
           isHeaderSticky
           aria-label="birdEvents table"
           sortDescriptor={primarySortDescriptor}
