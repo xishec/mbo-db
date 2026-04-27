@@ -9,6 +9,7 @@ import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 import { useData } from "../../../../services/useData";
 import SpeciesTooltip from "../../../Helper/Info/SpeciesTooltip";
 import AgeTooltip from "../../../Helper/Info/AgeTooltip";
+import VolunteerTooltip from "../../../Helper/Info/VolunteerTooltip";
 import { useCascadingSort, cascadingSort } from "../../../../hooks/useCascadingSort";
 
 // Helper to convert BirdEvent to table row format
@@ -76,7 +77,7 @@ export default function BirdEventsTable({
   maxRows,
   scrollToEnd = false,
 }: BirdEventsTableProps) {
-  const { programsMap, isLoggedIn, isOnline, queuedEventIds } = useData();
+  const { programsMap, isLoggedIn, isOnline, queuedEventIds, bandIdToBirdEventIdsMap } = useData();
   const { sortDescriptors, handleSortChange } = useCascadingSort(
     initialSortDescriptors ?? [
       { column: "date", direction: "ascending" },
@@ -224,12 +225,17 @@ export default function BirdEventsTable({
   const renderCell = useCallback(
     (item: TableRow, columnKey: React.Key) => {
       if (columnKey === "actions") {
+        // Calculate band ID and count of events for this band
+        const bandId = item.bandGroup + item.bandLastTwoDigits;
+        const eventCount = bandIdToBirdEventIdsMap[bandId]?.length ?? 0;
+
         return (
           <div className="relative flex items-center justify-center gap-2">
             <>
               {allowInspectBandId && (
-                <span className="cursor-pointer" onClick={() => handleInspectBandId(item.id)}>
+                <span className="cursor-pointer flex items-center gap-1" onClick={() => handleInspectBandId(item.id)}>
                   <MagnifyingGlassIcon className="w-4 h-4" />
+                  <span className="text-xs">({eventCount})</span>
                 </span>
               )}
               {allowInspectHistory && item.previousEventId && (
@@ -263,6 +269,14 @@ export default function BirdEventsTable({
         return <AgeTooltip ageCode={item.age} />;
       }
 
+      if (columnKey === "bander") {
+        return <VolunteerTooltip volunteerCode={item.bander} />;
+      }
+
+      if (columnKey === "scribe") {
+        return <VolunteerTooltip volunteerCode={item.scribe} />;
+      }
+
       const cellValue = item[columnKey as keyof TableRow];
       return cellValue;
     },
@@ -276,6 +290,7 @@ export default function BirdEventsTable({
       isLoggedIn,
       isOnline,
       queuedEventIds,
+      bandIdToBirdEventIdsMap,
     ]
   );
 
