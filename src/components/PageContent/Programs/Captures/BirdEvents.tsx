@@ -37,8 +37,9 @@ export default function BirdEvents() {
           {Object.values(BandSize).map((bandSize) => {
             const nextBandId = bandSizeToBandIdMap?.[bandSize];
             // Use Band class to correctly handle -00 bands
+            // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
             const nextBand = nextBandId && nextBandId.length === 9
-              ? new Band(nextBandId.slice(0, 7), nextBandId.slice(7, 9))
+              ? new Band(nextBandId.slice(0, 4), nextBandId.slice(4, 9))
               : null;
             const nextBandGroupMapKey = nextBand ? getBandGroupMapKey(nextBand) : null;
             const isActive =

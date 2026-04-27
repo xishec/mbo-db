@@ -29,8 +29,9 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
     const map: Record<string, string> = {};
     for (const [size, bandId] of Object.entries(bandSizeToBandIdMap)) {
       if (size === BandSize.Other || !bandId || bandId.length < 7) continue;
-      const bandPrefix = bandId.slice(0, 7);
-      const bandSuffix = bandId.slice(7, 9);
+      // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
+      const bandPrefix = bandId.slice(0, 4);
+      const bandSuffix = bandId.slice(4, 9);
       // Use getBandGroupMapKey to get the correct map key: 2991562-00 → "2991561"
       const band = new Band(bandPrefix, bandSuffix);
       map[getBandGroupMapKey(band)] = size;

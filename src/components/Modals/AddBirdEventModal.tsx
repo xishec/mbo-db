@@ -121,9 +121,9 @@ export default function AddBirdEventModal({
       if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
         const bandId = bandSizeToBandIdMap[bandSize];
         if (bandId.length === 9) {
-          const bandPrefix = bandId.slice(0, 7);
-          const bandSuffix = bandId.slice(7, 9);
-          // Use Band class to handle -00 special case: 2991562-00 belongs to group 2991561
+          // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
+          const bandPrefix = bandId.slice(0, 4);
+          const bandSuffix = bandId.slice(4, 9);
           const band = new Band(bandPrefix, bandSuffix);
           defaultData.bandGroup = band.bandGroupId;
           defaultData.bandLastTwoDigits = band.last2digits;
@@ -141,9 +141,9 @@ export default function AddBirdEventModal({
       // Modal already open — update band fields after bandSizeToBandIdMap recomputed
       const bandId = bandSizeToBandIdMap[bandSize];
       if (bandId.length === 9) {
-        const bandPrefix = bandId.slice(0, 7);
-        const bandSuffix = bandId.slice(7, 9);
-        // Use Band class to handle -00 special case: 2991562-00 belongs to group 2991561
+        // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
+        const bandPrefix = bandId.slice(0, 4);
+        const bandSuffix = bandId.slice(4, 9);
         const band = new Band(bandPrefix, bandSuffix);
         setFormData((prev) => ({
           ...prev,
@@ -235,7 +235,8 @@ export default function AddBirdEventModal({
     if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
     if (pastBirdEvents.length === 0) {
       // For -00 bands, check the previous band group (business rule)
-      const band = new Band(bandId.slice(0, 7), bandId.slice(7, 9));
+      // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
+      const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
       const bandGroupMapKey = getBandGroupMapKey(band);
       if (bandGroupsMap[bandGroupMapKey] || isNewCapture) return BirdEventType.Banded;
       else return BirdEventType.Alien;
