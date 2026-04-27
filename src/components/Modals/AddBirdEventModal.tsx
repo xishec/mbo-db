@@ -25,8 +25,6 @@ import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "./modalDefaults";
 import SpeciesInfoPanel from "./AddBirdEventParts/SpeciesInfoPanel";
-import MeasurementRow from "./AddBirdEventParts/MeasurementRow";
-import SessionRow from "./AddBirdEventParts/SessionRow";
 
 interface AddBirdEventModalProps {
   isOpen: boolean;
@@ -34,6 +32,7 @@ interface AddBirdEventModalProps {
   bandSize?: BandSize;
   birdEventToModify?: BirdEvent;
   isNewCapture: boolean;
+  defaultNet?: string;
 }
 
 export default function AddBirdEventModal({
@@ -42,6 +41,7 @@ export default function AddBirdEventModal({
   bandSize = BandSize.Other,
   birdEventToModify,
   isNewCapture,
+  defaultNet,
 }: AddBirdEventModalProps) {
   const {
     selectedProgram,
@@ -61,9 +61,32 @@ export default function AddBirdEventModal({
   const [isSaving, setIsSaving] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(bandSize);
 
-  // Sum of all input column widths (excl. actions/updatedAt/notes) + gaps
-  const inputRowWidth = 1145;
+  // Auto-update band size when band group changes (for new captures)
+  useEffect(() => {
+    if (birdEventToModify || !formData.bandGroup) return;
+
+    // If it's a recapture, set band size to "Other"
+    if (formData.birdEventType !== BirdEventType.Banded && formData.birdEventType !== BirdEventType.None) {
+      setSelectedBandSize(BandSize.Other);
+      return;
+    }
+
+    // Otherwise, derive band size from current band group
+    for (const [size, bandId] of Object.entries(bandSizeToBandIdMap)) {
+      if (bandId && bandId.length === 9) {
+        const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
+        if (getBandGroupMapKey(band) === formData.bandGroup) {
+          setSelectedBandSize(size as BandSize);
+          return;
+        }
+      }
+    }
+    setSelectedBandSize(BandSize.Other);
+  }, [formData.bandGroup, formData.birdEventType, bandSizeToBandIdMap, birdEventToModify]);
+
 
   // Reset form data when modal opens
   useEffect(() => {
@@ -108,6 +131,19 @@ export default function AddBirdEventModal({
       setUseCurrentTime(false); // Disable auto-update when modifying
       setFormData(defaultData);
       setLastBandId("");
+
+      // Derive band size from band group
+      let derivedBandSize: BandSize = BandSize.Other;
+      for (const [size, bandId] of Object.entries(bandSizeToBandIdMap)) {
+        if (bandId && bandId.length === 9) {
+          const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
+          if (getBandGroupMapKey(band) === bandGroup) {
+            derivedBandSize = size as BandSize;
+            break;
+          }
+        }
+      }
+      setSelectedBandSize(derivedBandSize);
       setWasOpen(true);
     } else if (!wasOpen) {
       // First time opening modal - reset to defaults
@@ -129,8 +165,15 @@ export default function AddBirdEventModal({
           defaultData.bandLastTwoDigits = band.last2digits;
         }
       }
+
+      // Pre-fill net if provided
+      if (defaultNet) {
+        defaultData.net = defaultNet;
+      }
+
       setFormData(defaultData);
       setLastBandId("");
+      setSelectedBandSize(bandSize);
       setWasOpen(true);
       const firstEmpty = focusOrder.find((key) => {
         const colKey = key.includes("-") ? key.split("-")[0] : key;
@@ -154,17 +197,34 @@ export default function AddBirdEventModal({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap]);
+  }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap, defaultNet]);
 
-  // Focus order matches visual layout: row 1 then row 2
-  const ROW1_KEYS = ["net", "bandGroup", "bandLastTwoDigits", "species", "wing", "age", "howAged", "sex", "howSexed", "fat", "weight"];
-  const ROW2_KEYS_DATE_TIME = ["date", "date-month", "date-day", "time", "time-minute"];
-  const ROW2_KEYS_OTHER = ["bander", "scribe", "notes"];
+  // Focus order matches visual layout
+  // Row 1: Most frequently edited fields
+  const ROW1_KEYS = [
+    "bandGroup",
+    "bandLastTwoDigits",
+    "species",
+    "wing",
+    "age",
+    "howAged",
+    "sex",
+    "howSexed",
+    "fat",
+    "weight",
+    "bander",
+    "scribe",
+    "birdStatus",
+    "notes",
+  ];
+
+  // Row 2: Less frequently edited fields
+  const ROW2_KEYS = ["net", "bandSize", "birdEventType"];
+  const DATE_TIME_KEYS = ["date", "date-month", "date-day", "time", "time-minute"];
 
   const focusOrder = useMemo(() => {
-    const order = [...ROW1_KEYS];
-    if (!useCurrentTime) order.push(...ROW2_KEYS_DATE_TIME);
-    order.push(...ROW2_KEYS_OTHER);
+    const order = [...ROW1_KEYS.filter((k) => k !== "notes" && k !== "birdStatus"), ...ROW2_KEYS];
+    if (!useCurrentTime) order.push(...DATE_TIME_KEYS);
     return order;
   }, [useCurrentTime]);
 
@@ -547,20 +607,146 @@ export default function AddBirdEventModal({
     return "";
   }, []);
 
-  const renderTableCell = useCallback(
-    (column: { key: string; label: string; type?: string; maxLength?: number }) => {
+  // Handle band size selection
+  const handleBandSizeChange = useCallback((size: BandSize) => {
+    setSelectedBandSize(size);
+
+    if (size === BandSize.Other) {
+      // Clear band fields for "other"
+      setFormData((prev) => ({
+        ...prev,
+        bandGroup: "",
+        bandLastTwoDigits: "",
+      }));
+      return;
+    }
+
+    const bandId = bandSizeToBandIdMap[size];
+    if (bandId && bandId.length === 9) {
+      const bandPrefix = bandId.slice(0, 4);
+      const bandSuffix = bandId.slice(4, 9);
+      const band = new Band(bandPrefix, bandSuffix);
+      setFormData((prev) => ({
+        ...prev,
+        bandGroup: band.bandGroupId,
+        bandLastTwoDigits: band.last2digits,
+      }));
+    } else {
+      // No next band available - clear fields for manual entry
+      setFormData((prev) => ({
+        ...prev,
+        bandGroup: "",
+        bandLastTwoDigits: "",
+      }));
+    }
+  }, [bandSizeToBandIdMap]);
+
+  // Render a single field (used for unified row rendering)
+  const renderField = useCallback(
+    (fieldKey: string) => {
+      // Show Band Size as readonly always
+      if (fieldKey === "bandSize") {
+        return (
+          <div className="px-3 py-2 text-sm text-default-900 bg-default-50 rounded-medium border-medium border-default-50 whitespace-nowrap">
+            {selectedBandSize}
+          </div>
+        );
+      }
+
+      // Date/time sub-fields
+      if (fieldKey.startsWith("date") || fieldKey.startsWith("time")) {
+        const dateParts = formData.date.split("-");
+        const timeParts = formData.time.split(":");
+        const subFields: Record<string, { value: string; maxLen: number; onUpdate: (v: string) => void }> = {
+          date: {
+            value: dateParts[0] ?? "",
+            maxLen: 4,
+            onUpdate: (v) =>
+              setFormData((p) => ({
+                ...p,
+                date: `${v}-${dateParts[1] ?? ""}-${dateParts[2] ?? ""}`.replace(/-+$/, ""),
+              })),
+          },
+          "date-month": {
+            value: dateParts[1] ?? "",
+            maxLen: 2,
+            onUpdate: (v) =>
+              setFormData((p) => ({
+                ...p,
+                date: `${dateParts[0] ?? ""}-${v}-${dateParts[2] ?? ""}`.replace(/-+$/, ""),
+              })),
+          },
+          "date-day": {
+            value: dateParts[2] ?? "",
+            maxLen: 2,
+            onUpdate: (v) =>
+              setFormData((p) => ({
+                ...p,
+                date: `${dateParts[0] ?? ""}-${dateParts[1] ?? ""}-${v}`,
+              })),
+          },
+          time: {
+            value: timeParts[0] ?? "",
+            maxLen: 2,
+            onUpdate: (v) => setFormData((p) => ({ ...p, time: `${v}:${timeParts[1] ?? ""}` })),
+          },
+          "time-minute": {
+            value: timeParts[1] ?? "",
+            maxLen: 2,
+            onUpdate: (v) => setFormData((p) => ({ ...p, time: `${timeParts[0] ?? ""}:${v}` })),
+          },
+        };
+
+        const sub = subFields[fieldKey];
+        if (!sub) return null;
+
+        // Show as readonly when using current time
+        if (useCurrentTime) {
+          return (
+            <div className="px-3 py-2 text-sm text-default-900 bg-default-50 rounded-medium border-medium border-default-50 whitespace-nowrap">
+              {sub.value}
+            </div>
+          );
+        }
+
+        return (
+          <Input
+            ref={(el: HTMLInputElement | null) => registerRef(fieldKey, el)}
+            {...modalInputProps}
+            maxLength={sub.maxLen}
+            value={sub.value}
+            isDisabled={isSaving}
+            classNames={{
+              input:
+                "text-sm text-start [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            }}
+            tabIndex={getTabIndex(fieldKey)}
+            onFocus={(e) => (e.target as HTMLInputElement).select()}
+            onChange={(e) => {
+              const v = e.target.value.replace(/\D/g, "").slice(0, sub.maxLen);
+              sub.onUpdate(v);
+              if (v.length === sub.maxLen) focusNext(fieldKey);
+            }}
+          />
+        );
+      }
+
+      // Find column definition
+      const column = TABLE_COLUMNS.find((c) => c.key === fieldKey);
+      if (!column) return null;
+
       const columnKey = column.key as keyof CaptureFormData;
       const inputColor = getInputColor(columnKey);
 
       // Determine readonly value
       const readonlyValue = (() => {
-        if (column.key === "programId") return selectedProgram?.id;
+        if (column.key === "net" || column.key === "birdEventType") return formData[columnKey];
         if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
           return formData[columnKey];
         return null;
       })();
 
-      // Readonly field with optional edit icon
+      // Readonly field
       if (readonlyValue) {
         return (
           <div className="px-3 py-2 text-sm text-default-900 bg-default-50 rounded-medium border-medium border-default-50 whitespace-nowrap">
@@ -579,6 +765,19 @@ export default function AddBirdEventModal({
             className="border-medium border-default-200 min-w-[0px]"
           >
             {formData[columnKey]}
+          </Button>
+        );
+      }
+
+      if (column.key === "notes") {
+        return (
+          <Button
+            variant="ghost"
+            onPress={() => setIsNotesModalOpen(true)}
+            isDisabled={isSaving}
+            className="border-medium border-default-200 w-[75px] min-w-[75px] justify-start overflow-hidden"
+          >
+            <span className="truncate">{formData.notes || ""}</span>
           </Button>
         );
       }
@@ -607,8 +806,6 @@ export default function AddBirdEventModal({
         );
       }
 
-      if (column.key === "date" || column.key === "time") return null;
-
       return (
         <Input
           ref={(el: HTMLInputElement | null) => {
@@ -635,7 +832,9 @@ export default function AddBirdEventModal({
     },
     [
       formData,
-      selectedProgram,
+      selectedBandSize,
+      bandSizeToBandIdMap,
+      handleBandSizeChange,
       useCurrentTime,
       birdEventToModify,
       isSaving,
@@ -643,8 +842,38 @@ export default function AddBirdEventModal({
       getBorderClass,
       handleInputChange,
       getTabIndex,
+      registerRef,
+      focusNext,
+      setFormData,
     ]
   );
+
+  // Get field metadata (label and width)
+  const getFieldMetadata = useCallback((fieldKey: string) => {
+    if (fieldKey === "bandSize") {
+      return { label: "Band Size", width: "75px" };
+    }
+
+    const dateTimeLabels: Record<string, { label: string; width: string }> = {
+      date: { label: "YYYY", width: "75px" },
+      "date-month": { label: "MM", width: "50px" },
+      "date-day": { label: "DD", width: "50px" },
+      time: { label: "HH", width: "50px" },
+      "time-minute": { label: "MM", width: "50px" },
+    };
+
+    if (dateTimeLabels[fieldKey]) {
+      return dateTimeLabels[fieldKey];
+    }
+
+    const column = TABLE_COLUMNS.find((c) => c.key === fieldKey);
+    if (!column) return null;
+
+    const width = column.inputClassName?.match(/w-\[(\d+px)\]/)?.[1] ?? "auto";
+    const label = column.key === "howAged" || column.key === "howSexed" ? "How" : column.label;
+
+    return { label, width };
+  }, []);
 
   const shouldShowPastBirdEvents = pastBirdEvents.length > 0 && !birdEventToModify;
 
@@ -664,8 +893,7 @@ export default function AddBirdEventModal({
           isDismissable: false,
           isOpen: isOpen && !isSaving,
           onOpenChange: handleModalOpenChange,
-          className: "!max-h-[calc(100%-4rem)]",
-          style: { maxWidth: inputRowWidth + 64 },
+          className: "!max-h-[calc(100%-4rem)] !max-w-fit",
           scrollBehavior: "inside",
         }}
       >
@@ -684,25 +912,72 @@ export default function AddBirdEventModal({
               </div>
             </ModalHeaderShell>
             <ModalBodyShell>
-              <div className="flex flex-col gap-4" style={{ width: inputRowWidth }}>
+              <div className="flex flex-col gap-4">
                 <SpeciesInfoPanel
                   speciesCode={formData.species}
                   pyleSpeciesRange={pyleSpeciesRange}
                   speciesInfo={speciesInfoMap[formData.species] || null}
                 />
-                <Card shadow="sm">
+                <Card shadow="sm" className="w-fit">
                   <CardBody className="flex flex-col gap-2 p-3">
-                    <MeasurementRow renderTableCell={renderTableCell} />
-                    <SessionRow
-                      formData={formData}
-                      setFormData={setFormData}
-                      isSaving={isSaving}
-                      useCurrentTime={useCurrentTime}
-                      registerRef={registerRef}
-                      getTabIndex={getTabIndex}
-                      focusNext={focusNext}
-                      renderTableCell={renderTableCell}
-                    />
+                    {/* Row 1: Most frequently edited - Band Group, Digit, Species, Wing, Age, How, Sex, How, Fat, Weight, Bander, Scribe */}
+                    <div className="flex gap-1">
+                      {ROW1_KEYS.map((fieldKey) => {
+                        const metadata = getFieldMetadata(fieldKey);
+                        if (!metadata) return null;
+
+                        return (
+                          <div
+                            key={fieldKey}
+                            className="flex flex-col gap-1 shrink-0"
+                            style={{ width: metadata.width }}
+                          >
+                            <span className="text-xs text-default-900 font-medium px-1 truncate">
+                              {metadata.label}
+                            </span>
+                            {renderField(fieldKey)}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Row 2: Less frequently edited - Net, Band Size, Event Type, Date, Time, Status, Notes */}
+                    <div className="flex gap-1">
+                      {ROW2_KEYS.map((fieldKey) => {
+                        const metadata = getFieldMetadata(fieldKey);
+                        if (!metadata) return null;
+
+                        return (
+                          <div
+                            key={fieldKey}
+                            className="flex flex-col gap-1 shrink-0"
+                            style={{ width: metadata.width }}
+                          >
+                            <span className="text-xs text-default-900 font-medium px-1 truncate">
+                              {metadata.label}
+                            </span>
+                            {renderField(fieldKey)}
+                          </div>
+                        );
+                      })}
+                      {DATE_TIME_KEYS.map((fieldKey) => {
+                        const metadata = getFieldMetadata(fieldKey);
+                        if (!metadata) return null;
+
+                        return (
+                          <div
+                            key={fieldKey}
+                            className="flex flex-col gap-1 shrink-0"
+                            style={{ width: metadata.width }}
+                          >
+                            <span className="text-xs text-default-900 font-medium px-1 text-start">
+                              {metadata.label}
+                            </span>
+                            {renderField(fieldKey)}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </CardBody>
                 </Card>
 
@@ -753,6 +1028,34 @@ export default function AddBirdEventModal({
         currentStatus={formData.birdStatus || DEFAULT_BIRD_STATUS}
         onStatusChange={(status) => setFormData((prev) => ({ ...prev, birdStatus: status }))}
       />
+      <Modal isOpen={isNotesModalOpen} onOpenChange={setIsNotesModalOpen} size="2xl">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeaderShell>
+                <h2 className="text-xl font-semibold">Notes</h2>
+              </ModalHeaderShell>
+              <ModalBodyShell>
+                <textarea
+                  className="w-full min-h-[200px] p-3 rounded-medium border-medium border-default-200 bg-default-50 text-sm resize-y"
+                  value={formData.notes}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Add notes..."
+                  autoFocus
+                />
+              </ModalBodyShell>
+              <ModalFooterShell>
+                <Button {...modalCancelButtonProps} onPress={onClose}>
+                  Cancel
+                </Button>
+                <Button {...modalPrimaryButtonProps} onPress={onClose}>
+                  Done
+                </Button>
+              </ModalFooterShell>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 }

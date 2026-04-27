@@ -140,7 +140,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     inputClassName: "w-[75px]",
   },
   { key: "updatedAt", type: "", label: "Updated", tableClassName: "w-[125px]" },
-  { key: "notes", type: "text", label: "Notes", tableClassName: "w-[1000px]", inputClassName: "w-[1000px]" },
+  { key: "notes", type: "text", label: "Notes", tableClassName: "w-[1000px]", inputClassName: "w-[75px]" },
 ];
 
 

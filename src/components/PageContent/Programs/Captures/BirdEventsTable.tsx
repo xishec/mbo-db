@@ -158,16 +158,18 @@ export default function BirdEventsTable({
       const rows = container.querySelectorAll<HTMLTableRowElement>("tbody tr");
       const lastRow = rows[rows.length - 1];
       if (!lastRow) return;
-      lastRow.scrollIntoView({ block: "end", inline: "nearest" });
-      // scrollIntoView aligns the row's bottom with the container's content
-      // edge, which leaves HeroUI's wrapper padding (p-4) visually clipping
-      // the last row. Pin the scroll container to its max so the padding
-      // becomes trailing space instead of a clipped row.
+
+      // Find scroll container
       let scrollEl: HTMLElement | null = lastRow.parentElement;
       while (scrollEl && scrollEl.scrollHeight <= scrollEl.clientHeight) {
         scrollEl = scrollEl.parentElement;
       }
-      if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+      if (!scrollEl) return;
+
+      // Preserve horizontal scroll position
+      const scrollLeft = scrollEl.scrollLeft;
+      scrollEl.scrollTop = scrollEl.scrollHeight;
+      scrollEl.scrollLeft = scrollLeft;
     };
 
     scrollLast();
@@ -319,7 +321,7 @@ export default function BirdEventsTable({
             base: "table-fixed",
             table: "table-fixed",
             td: "data-[selected=true]:!text-black",
-            wrapper: scrollToEnd ? "h-[600px] overflow-auto" : undefined,
+            wrapper: scrollToEnd ? "h-[500px] overflow-auto" : undefined,
           }}
           selectionMode="single"
           selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}
