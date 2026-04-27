@@ -343,22 +343,23 @@ function getAgeSeasonReason(age: string, month: number): string | null {
 }
 
 function checkAgeSeasonCompatibility(event: BirdEvent): BirdEventError | null {
-  if (isAgeValidationExcluded(event.species)) return null;
+  return null; // Disabled
+  // if (isAgeValidationExcluded(event.species)) return null;
 
-  const age = event.age;
-  if (!age || age === "0" || age === "3") return null;
+  // const age = event.age;
+  // if (!age || age === "0" || age === "3") return null;
 
-  const month = new Date(event.date).getMonth() + 1;
-  const reason = getAgeSeasonReason(age, month);
-  if (!reason) return null;
+  // const month = new Date(event.date).getMonth() + 1;
+  // const reason = getAgeSeasonReason(age, month);
+  // if (!reason) return null;
 
-  return {
-    id: `${event.id}-age-season-${sanitizeForFirebasePath(reason)}`,
-    errorType: "age-season",
-    birdEvent: event,
-    reason,
-    severity: "warning",
-  };
+  // return {
+  //   id: `${event.id}-age-season-${sanitizeForFirebasePath(reason)}`,
+  //   errorType: "age-season",
+  //   birdEvent: event,
+  //   reason,
+  //   severity: "warning",
+  // };
 }
 
 /**
