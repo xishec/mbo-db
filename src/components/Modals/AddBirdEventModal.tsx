@@ -75,6 +75,12 @@ export default function AddBirdEventModal({
 
     const defaultData = getDefaultFormData(selectedProgram?.id || "");
 
+    // Restore bander and scribe from localStorage
+    const savedBander = localStorage.getItem("lastBander");
+    const savedScribe = localStorage.getItem("lastScribe");
+    if (savedBander) defaultData.bander = savedBander;
+    if (savedScribe) defaultData.scribe = savedScribe;
+
     // If modifying an existing bird event, use its data
     if (birdEventToModify) {
       const bandGroup = birdEventToModify.band.bandGroupId;
@@ -429,6 +435,10 @@ export default function AddBirdEventModal({
             ? bandSize
             : BandSize.Other;
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
+
+        // Save bander and scribe to localStorage
+        if (formData.bander) localStorage.setItem("lastBander", formData.bander);
+        if (formData.scribe) localStorage.setItem("lastScribe", formData.scribe);
 
         if (shouldContinue) {
           setFormData((prev) => ({
