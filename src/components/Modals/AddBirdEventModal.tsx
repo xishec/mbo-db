@@ -14,7 +14,7 @@ import {
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
-import { BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
+import { Band, BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
 import BirdStatusModal from "./BirdStatusModal";
@@ -121,8 +121,12 @@ export default function AddBirdEventModal({
       if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
         const bandId = bandSizeToBandIdMap[bandSize];
         if (bandId.length === 9) {
-          defaultData.bandGroup = bandId.slice(0, 7);
-          defaultData.bandLastTwoDigits = bandId.slice(7, 9);
+          const bandPrefix = bandId.slice(0, 7);
+          const bandSuffix = bandId.slice(7, 9);
+          // Use Band class to handle -00 special case: 2991562-00 belongs to group 2991561
+          const band = new Band(bandPrefix, bandSuffix);
+          defaultData.bandGroup = band.bandGroupId;
+          defaultData.bandLastTwoDigits = band.last2digits;
         }
       }
       setFormData(defaultData);
@@ -137,10 +141,14 @@ export default function AddBirdEventModal({
       // Modal already open — update band fields after bandSizeToBandIdMap recomputed
       const bandId = bandSizeToBandIdMap[bandSize];
       if (bandId.length === 9) {
+        const bandPrefix = bandId.slice(0, 7);
+        const bandSuffix = bandId.slice(7, 9);
+        // Use Band class to handle -00 special case: 2991562-00 belongs to group 2991561
+        const band = new Band(bandPrefix, bandSuffix);
         setFormData((prev) => ({
           ...prev,
-          bandGroup: bandId.slice(0, 7),
-          bandLastTwoDigits: bandId.slice(7, 9),
+          bandGroup: band.bandGroupId,
+          bandLastTwoDigits: band.last2digits,
         }));
         setLastBandId("");
       }
@@ -227,10 +235,8 @@ export default function AddBirdEventModal({
     if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
     if (pastBirdEvents.length === 0) {
       // For -00 bands, check the previous band group (business rule)
-      const last2digits = bandId.slice(7, 9);
-      const bandGroupId = bandId.slice(0, 7);
-      const bandGroupMapKey =
-        last2digits === "00" ? (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0") : bandGroupId;
+      const band = new Band(bandId.slice(0, 7), bandId.slice(7, 9));
+      const bandGroupMapKey = band.bandGroupId;
       if (bandGroupsMap[bandGroupMapKey] || isNewCapture) return BirdEventType.Banded;
       else return BirdEventType.Alien;
     } else {

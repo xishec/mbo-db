@@ -2,7 +2,7 @@ import { Button, Spinner, Tab, Tabs, useDisclosure, ButtonGroup, Tooltip } from 
 import { useState } from "react";
 import { useData } from "../../../../services/useData";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
-import { BandSize } from "../../../../types";
+import { Band, BandSize } from "../../../../types";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
 
@@ -36,20 +36,24 @@ export default function BirdEvents() {
         <ButtonGroup color="secondary" variant="flat">
           {Object.values(BandSize).map((bandSize) => {
             const nextBandId = bandSizeToBandIdMap?.[bandSize];
+            // Use Band class to correctly handle -00 bands
+            const nextBand = nextBandId && nextBandId.length === 9
+              ? new Band(nextBandId.slice(0, 7), nextBandId.slice(7, 9))
+              : null;
             const isActive =
-              !!activeBandGroupId && nextBandId?.slice(0, 7) === activeBandGroupId;
+              !!activeBandGroupId && nextBand?.bandGroupId === activeBandGroupId;
             return (
               <Tooltip
                 key={bandSize}
                 closeDelay={50}
                 color={"default"}
                 placement="bottom"
-                content={nextBandId ? `${nextBandId.slice(0, 7)}-${nextBandId.slice(-2)}` : "Not set"}
+                content={nextBand ? `${nextBand.bandGroupId}-${nextBand.last2digits}` : "Not set"}
                 isDisabled={bandSize === BandSize.Other}
               >
                 <Button
                   onMouseEnter={() => {
-                    if (nextBandId && nextBandId.length >= 7) setActiveBandGroupId(nextBandId.slice(0, 7));
+                    if (nextBand) setActiveBandGroupId(nextBand.bandGroupId);
                   }}
                   onPress={() => {
                     setSelectedBandSize(bandSize);
