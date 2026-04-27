@@ -2,7 +2,7 @@ import { Button, Spinner, Tab, Tabs, useDisclosure, ButtonGroup, Tooltip } from 
 import { useState } from "react";
 import { useData } from "../../../../services/useData";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
-import { Band, BandSize } from "../../../../types";
+import { Band, BandSize, getBandGroupMapKey } from "../../../../types";
 import NewCaptures from "./NewCaptures";
 import ReCaptures from "./ReCaptures";
 
@@ -40,8 +40,9 @@ export default function BirdEvents() {
             const nextBand = nextBandId && nextBandId.length === 9
               ? new Band(nextBandId.slice(0, 7), nextBandId.slice(7, 9))
               : null;
+            const nextBandGroupMapKey = nextBand ? getBandGroupMapKey(nextBand) : null;
             const isActive =
-              !!activeBandGroupId && nextBand?.bandGroupId === activeBandGroupId;
+              !!activeBandGroupId && nextBandGroupMapKey === activeBandGroupId;
             return (
               <Tooltip
                 key={bandSize}
@@ -53,7 +54,7 @@ export default function BirdEvents() {
               >
                 <Button
                   onMouseEnter={() => {
-                    if (nextBand) setActiveBandGroupId(nextBand.bandGroupId);
+                    if (nextBandGroupMapKey) setActiveBandGroupId(nextBandGroupMapKey);
                   }}
                   onPress={() => {
                     setSelectedBandSize(bandSize);

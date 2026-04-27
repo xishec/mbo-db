@@ -14,7 +14,7 @@ import {
 } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
-import { Band, BandSize, BirdEventType, type BirdEvent, type CaptureFormData } from "../../types";
+import { Band, BandSize, BirdEventType, getBandGroupMapKey, type BirdEvent, type CaptureFormData } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
 import BirdStatusModal from "./BirdStatusModal";
@@ -236,7 +236,7 @@ export default function AddBirdEventModal({
     if (pastBirdEvents.length === 0) {
       // For -00 bands, check the previous band group (business rule)
       const band = new Band(bandId.slice(0, 7), bandId.slice(7, 9));
-      const bandGroupMapKey = band.bandGroupId;
+      const bandGroupMapKey = getBandGroupMapKey(band);
       if (bandGroupsMap[bandGroupMapKey] || isNewCapture) return BirdEventType.Banded;
       else return BirdEventType.Alien;
     } else {

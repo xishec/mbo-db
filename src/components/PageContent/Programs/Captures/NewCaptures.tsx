@@ -1,7 +1,7 @@
 import { Select, SelectItem, Chip, Spinner, Switch } from "@heroui/react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useData } from "../../../../services/useData";
-import { Band, BandSize } from "../../../../types";
+import { Band, BandSize, getBandGroupMapKey } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
 
 export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?: string | null }) {
@@ -31,9 +31,9 @@ export default function NewCaptures({ activeBandGroupId }: { activeBandGroupId?:
       if (size === BandSize.Other || !bandId || bandId.length < 7) continue;
       const bandPrefix = bandId.slice(0, 7);
       const bandSuffix = bandId.slice(7, 9);
-      // Use Band class to handle -00 special case: 2991562-00 belongs to group 2991561
+      // Use getBandGroupMapKey to get the correct map key: 2991562-00 → "2991561"
       const band = new Band(bandPrefix, bandSuffix);
-      map[band.bandGroupId] = size;
+      map[getBandGroupMapKey(band)] = size;
     }
     return map;
   }, [bandSizeToBandIdMap]);
