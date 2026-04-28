@@ -419,11 +419,18 @@ export default function YearlyHeatmap() {
         .style("font-weight", "600")
         .text(viewMode === "captured" ? "Net Hours" : "Obs Hours");
 
+      sizeLegend.append("text")
+        .attr("x", 0)
+        .attr("y", -5)
+        .style("font-size", "9px")
+        .style("fill", "#666")
+        .text("(square size)");
+
       // Draw size examples
       const sizeExamples = [
-        { label: "Low", size: minCellSize - cellGap },
-        { label: "Med", size: ((minCellSize + maxCellSize) / 2) - cellGap },
-        { label: "High", size: maxCellSize - cellGap }
+        { label: "Low (<50%)", size: minCellSize - cellGap },
+        { label: "Med (50%)", size: ((minCellSize + maxCellSize) / 2) - cellGap },
+        { label: "High (>50%)", size: maxCellSize - cellGap }
       ];
 
       sizeExamples.forEach((ex, i) => {
