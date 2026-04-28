@@ -101,6 +101,8 @@ export default function FunStats() {
 
     // Basic counts
     const species = new Set<string>();
+    const bandedSpecies = new Set<string>();
+    const recaptureSpecies = new Set<string>();
     let banded = 0;
     let repeat = 0;
     let returnCount = 0;
@@ -108,6 +110,8 @@ export default function FunStats() {
     const banderCounts = new Map<string, number>();
     const scribeCounts = new Map<string, number>();
     const speciesCounts = new Map<string, number>();
+    const bandedSpeciesCounts = new Map<string, number>();
+    const recaptureSpeciesCounts = new Map<string, number>();
     let heaviest: BirdEvent | null = null;
     let fattest: BirdEvent | null = null;
 
@@ -141,9 +145,25 @@ export default function FunStats() {
       if (ev.species) species.add(ev.species);
 
       const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
-      if (isNewCapture) banded++;
-      else if (ev.birdEventType === BirdEventType.Repeat) repeat++;
-      else if (ev.birdEventType === BirdEventType.Return) returnCount++;
+      if (isNewCapture) {
+        banded++;
+        if (ev.species) {
+          bandedSpecies.add(ev.species);
+          bandedSpeciesCounts.set(ev.species, (bandedSpeciesCounts.get(ev.species) ?? 0) + 1);
+        }
+      } else if (ev.birdEventType === BirdEventType.Repeat) {
+        repeat++;
+        if (ev.species) {
+          recaptureSpecies.add(ev.species);
+          recaptureSpeciesCounts.set(ev.species, (recaptureSpeciesCounts.get(ev.species) ?? 0) + 1);
+        }
+      } else if (ev.birdEventType === BirdEventType.Return) {
+        returnCount++;
+        if (ev.species) {
+          recaptureSpecies.add(ev.species);
+          recaptureSpeciesCounts.set(ev.species, (recaptureSpeciesCounts.get(ev.species) ?? 0) + 1);
+        }
+      }
 
       // Net productivity
       if (ev.net) netCounts.set(ev.net, (netCounts.get(ev.net) ?? 0) + 1);
@@ -189,8 +209,14 @@ export default function FunStats() {
       }
     }
 
-    // Top 3 most captured species
-    const topSpecies = [...speciesCounts.entries()]
+    // Top 3 banded species
+    const topBandedSpecies = [...bandedSpeciesCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([sp, count]) => ({ label: sp, value: count }));
+
+    // Top 3 recaptured species
+    const topRecaptureSpecies = [...recaptureSpeciesCounts.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([sp, count]) => ({ label: sp, value: count }));
@@ -250,10 +276,13 @@ export default function FunStats() {
       events,
       totalEvents: events.length,
       speciesCount: species.size,
+      bandedSpeciesCount: bandedSpecies.size,
+      recaptureSpeciesCount: recaptureSpecies.size,
       banded,
       repeat,
       returnCount,
-      topSpecies,
+      topBandedSpecies,
+      topRecaptureSpecies,
       topNets,
       topBanders,
       topScribes,
@@ -326,10 +355,19 @@ export default function FunStats() {
               </div>
 
               {/* Overview */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <StatCard title="Species">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <StatCard title="Species (Banded)">
+                  <p className="text-3xl font-bold">{stats.bandedSpeciesCount}</p>
+                </StatCard>
+                <StatCard title="Species (Recaptures)">
+                  <p className="text-3xl font-bold">{stats.recaptureSpeciesCount}</p>
+                </StatCard>
+                <StatCard title="Total Species">
                   <p className="text-3xl font-bold">{stats.speciesCount}</p>
                 </StatCard>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatCard title="Banded">
                   <p className="text-3xl font-bold">{stats.banded}</p>
                 </StatCard>
@@ -343,8 +381,11 @@ export default function FunStats() {
 
               {/* Rankings */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <StatCard title="Most Captured Species">
-                  <RankedList items={stats.topSpecies} unit="captures" isSpecies />
+                <StatCard title="Most Banded Species">
+                  <RankedList items={stats.topBandedSpecies} unit="banded" isSpecies />
+                </StatCard>
+                <StatCard title="Most Recaptured Species">
+                  <RankedList items={stats.topRecaptureSpecies} unit="recaptures" isSpecies />
                 </StatCard>
                 <StatCard title="Most Productive Nets">
                   <RankedList items={stats.topNets} unit="birds" />

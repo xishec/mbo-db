@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
-import { Chip, Select, SelectItem } from "@heroui/react";
+import { Tabs, Tab, Select, SelectItem } from "@heroui/react";
 import { useData } from "../../../services/useData";
 import { SPECIES_MAP } from "../../../types/species";
 
@@ -419,18 +419,11 @@ export default function YearlyHeatmap() {
         .style("font-weight", "600")
         .text(viewMode === "captured" ? "Net Hours" : "Obs Hours");
 
-      sizeLegend.append("text")
-        .attr("x", 0)
-        .attr("y", -5)
-        .style("font-size", "9px")
-        .style("fill", "#666")
-        .text("(square size)");
-
       // Draw size examples
       const sizeExamples = [
-        { label: "Low (<50%)", size: minCellSize - cellGap },
-        { label: "Med (50%)", size: ((minCellSize + maxCellSize) / 2) - cellGap },
-        { label: "High (>50%)", size: maxCellSize - cellGap }
+        { label: "~ P0", size: minCellSize - cellGap },
+        { label: "~ P25", size: ((minCellSize + maxCellSize) / 2) - cellGap },
+        { label: "≥ P50", size: maxCellSize - cellGap }
       ];
 
       sizeExamples.forEach((ex, i) => {
@@ -459,21 +452,17 @@ export default function YearlyHeatmap() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-3">
           <label className="text-sm font-semibold">View Mode (← → arrows)</label>
-          <div className="flex flex-wrap gap-2">
-            {(["det", "captured", "observed"] as ViewMode[]).map((mode) => (
-              <Chip
-                key={mode}
-                color={viewMode === mode ? "primary" : "default"}
-                variant={viewMode === mode ? "solid" : "flat"}
-                onClick={() => setViewMode(mode)}
-                className="cursor-pointer"
-              >
-                {mode === "det" ? "DET Count" :
-                 mode === "captured" ? "Captured (Rate/NH)" :
-                 "Observed (Rate/OH)"}
-              </Chip>
-            ))}
-          </div>
+          <Tabs
+            selectedKey={viewMode}
+            onSelectionChange={(key) => setViewMode(key as ViewMode)}
+            color="default"
+            variant="solid"
+            size="md"
+          >
+            <Tab key="det" title="DET Count" />
+            <Tab key="captured" title="Captured (Rate/NH)" />
+            <Tab key="observed" title="Observed (Rate/OH)" />
+          </Tabs>
         </div>
 
         <div className="space-y-3" ref={autocompleteRef}>
