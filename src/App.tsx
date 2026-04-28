@@ -23,7 +23,7 @@ function BeforeUnloadGuard() {
   return null;
 }
 
-const VALID_PAGES = new Set(["home", "programs", "search", "DETs", "species", "volunteers", "bands", "funstats", "reports"]);
+const VALID_PAGES = new Set(["home", "programs", "search", "DETs", "species", "volunteers", "bands", "funstats", "reports", "secret"]);
 
 function getPageFromHash(): string {
   const hash = window.location.hash.slice(1);

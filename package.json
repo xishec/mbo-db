@@ -30,6 +30,8 @@
     "@heroicons/react": "^2.2.0",
     "@heroui/react": "^2.8.5",
     "@react-stately/data": "^3.14.1",
+    "@types/d3": "^7.4.3",
+    "d3": "^7.9.0",
     "dotenv": "^17.2.3",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",

@@ -293,8 +293,8 @@ export default function BirdEvents() {
 
                   return <SelectItem key={bandGroupId}>{label}</SelectItem>;
                 })}
-              <SelectItem key="other">Other</SelectItem>
-              <SelectItem key="recaptures">recaptures</SelectItem>
+              <SelectItem key="other">Other Size</SelectItem>
+              <SelectItem key="recaptures">Recaptures</SelectItem>
             </>
           </Select>
           <Button

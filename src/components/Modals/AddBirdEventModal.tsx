@@ -740,7 +740,7 @@ export default function AddBirdEventModal({
 
       // Determine readonly value
       const readonlyValue = (() => {
-        if (column.key === "net" || column.key === "birdEventType") return formData[columnKey];
+        if (column.key === "birdEventType") return formData[columnKey];
         if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
           return formData[columnKey];
         return null;
@@ -988,7 +988,7 @@ export default function AddBirdEventModal({
                 <ValidationMessages messages={validationState.warningMessages} title="Warnings for Current Entry:" />
 
                 {shouldShowPastBirdEvents && (
-                  <div className="mt-2">
+                  <div className="mt-2 w-full">
                     <h3 className="text-lg font-normal mb-2">
                       Existing data for band <span className="font-bold">{bandId}</span> :
                     </h3>
