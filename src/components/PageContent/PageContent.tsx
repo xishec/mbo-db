@@ -8,6 +8,7 @@ import Bands from "./Bands";
 import FunStats from "./FunStats";
 import Reports from "./Reports/Reports";
 import Secret from "./Secret/Secret";
+import PDFReport from "./Secret/PDFReport";
 
 interface PageContentProps {
   activePage: string;
@@ -27,6 +28,7 @@ export default function PageContent({ activePage }: PageContentProps) {
         {activePage === "funstats" && <FunStats />}
         {activePage === "reports" && <Reports />}
         {activePage === "secret" && <Secret />}
+        {activePage === "pdf-report" && <PDFReport />}
       </div>
     </div>
   );

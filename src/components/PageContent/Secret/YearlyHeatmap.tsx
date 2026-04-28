@@ -449,6 +449,15 @@ export default function YearlyHeatmap() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => window.open('#pdf-report', '_blank')}
+          className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-warning-600 font-semibold"
+        >
+          Generate PDF Report (Top 50 Species)
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-3">
           <label className="text-sm font-semibold">View Mode (← → arrows)</label>
