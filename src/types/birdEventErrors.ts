@@ -342,7 +342,7 @@ function getAgeSeasonReason(age: string, month: number): string | null {
   return `Age ${age} is not expected for month ${month} (Jan-Aug: 5/6, Apr-Sep: 4, Jul-Dec: 2/1, 0 anytime)`;
 }
 
-function checkAgeSeasonCompatibility(event: BirdEvent): BirdEventError | null {
+function checkAgeSeasonCompatibility(_event: BirdEvent): BirdEventError | null {
   return null; // Disabled
   // if (isAgeValidationExcluded(event.species)) return null;
 

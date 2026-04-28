@@ -87,7 +87,7 @@ export default function TimeSeriesChart({ data }: TimeSeriesChartProps) {
         d3.select(this).attr("r", 6);
 
         // Show tooltip
-        const tooltip = d3.select("body").append("div")
+        d3.select("body").append("div")
           .attr("class", "tooltip")
           .style("position", "absolute")
           .style("background", "rgba(0, 0, 0, 0.8)")

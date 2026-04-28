@@ -1,23 +1,17 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { Chip, Select, SelectItem } from "@heroui/react";
-import type { BirdEvent } from "../../../types";
 import { useData } from "../../../services/useData";
 import { SPECIES_MAP } from "../../../types/species";
 
-interface YearlyHeatmapProps {
-  data: BirdEvent[];
-}
-
 type ViewMode = "det" | "captured" | "observed";
 
-export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
+export default function YearlyHeatmap() {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { DETsMap } = useData();
 
   const [viewMode, setViewMode] = useState<ViewMode>("det");
-  const [speciesSearch, setSpeciesSearch] = useState("");
   const autocompleteRef = useRef<HTMLDivElement>(null);
 
   // Get all species sorted by count
@@ -57,7 +51,6 @@ export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
 
           const newSpecies = allSpecies[newIndex].species;
           setSelectedSpecies(newSpecies);
-          setSpeciesSearch("");
         } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           e.preventDefault();
           const modes: ViewMode[] = ["det", "captured", "observed"];
@@ -79,27 +72,6 @@ export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedSpecies, allSpecies, viewMode]);
 
-  // Update input display when species changes
-  useEffect(() => {
-    if (selectedSpecies && !speciesSearch) {
-      const speciesInfo = SPECIES_MAP[selectedSpecies];
-      const displayValue = speciesInfo?.speciesDescriptionMBO
-        ? `${speciesInfo.speciesDescriptionMBO} (${selectedSpecies})`
-        : selectedSpecies;
-      setSpeciesSearch(displayValue);
-    }
-  }, [selectedSpecies]);
-
-  const filteredSpeciesList = useMemo(() => {
-    if (!speciesSearch) return allSpecies;
-    const searchLower = speciesSearch.toLowerCase();
-    return allSpecies.filter((s) => {
-      const speciesInfo = SPECIES_MAP[s.species];
-      const commonName = speciesInfo?.speciesDescriptionMBO?.toLowerCase() || "";
-      const code = s.species.toLowerCase();
-      return code.includes(searchLower) || commonName.includes(searchLower);
-    });
-  }, [allSpecies, speciesSearch]);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || !selectedSpecies) return;
@@ -185,7 +157,6 @@ export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
 
     // Create complete year range from 2002 to max year
     const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i);
-    const yearRange = `${minYear}-${maxYear}`;
     const maxCellSize = 20;
     const minCellSize = 10;
     const cellGap = 3;
@@ -314,26 +285,26 @@ export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
             .style("font-size", "13px")
             .style("pointer-events", "none")
             .style("z-index", "1000")
-            .style("opacity", 0);
+            .style("opacity", "0") as any;
         }
 
         const tooltipContent = viewMode === "det"
           ? `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
-             <div style="font-weight: 600; color: #e11d48; font-size: 16px;">DET Count: ${d.count}</div>`
+             <div style="font-weight: 600; color: #000000; font-size: 16px;">DET Count: ${d.count}</div>`
           : viewMode === "captured"
           ? `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
              <div style="color: #666; margin-bottom: 4px;">Captured: ${d.count}</div>
              <div style="color: #666; margin-bottom: 4px;">Net Hours: ${d.netHours?.toFixed(2)}</div>
-             <div style="font-weight: 600; color: #e11d48;">Rate: ${d.value.toFixed(3)} birds/nh</div>`
+             <div style="font-weight: 600; color: #000000;">Rate: ${d.value.toFixed(3)} birds/nh</div>`
           : `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
              <div style="color: #666; margin-bottom: 4px;">Observed: ${d.count}</div>
              <div style="color: #666; margin-bottom: 4px;">Observer Hours: ${d.observerHours?.toFixed(2)}</div>
-             <div style="font-weight: 600; color: #e11d48;">Rate: ${d.value.toFixed(3)} birds/oh</div>`;
+             <div style="font-weight: 600; color: #000000;">Rate: ${d.value.toFixed(3)} birds/oh</div>`;
 
         tooltip.html(tooltipContent)
           .style("left", `${event.pageX + 10}px`)
           .style("top", `${event.pageY - 30}px`)
-          .style("opacity", 1);
+          .style("opacity", "1");
       })
       .on("mouseout", () => {
         d3.select("#heatmap-tooltip").style("opacity", 0);
@@ -347,7 +318,7 @@ export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
       .attr("transform", `translate(0,${height})`)
       .call(d3.axisBottom(xScale)
         .tickValues(monthWeeks)
-        .tickFormat((d, i) => monthNames[i]))
+        .tickFormat((_d, i) => monthNames[i]))
       .selectAll("text")
       .style("font-size", "12px");
 
@@ -443,7 +414,7 @@ export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
 
       sizeLegend.append("text")
         .attr("x", 0)
-        .attr("y", -10)
+        .attr("y", -20)
         .style("font-size", "11px")
         .style("font-weight", "600")
         .text(viewMode === "captured" ? "Net Hours" : "Obs Hours");
@@ -475,8 +446,6 @@ export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
     }
 
   }, [selectedSpecies, viewMode, DETsMap]);
-
-  const speciesInfo = selectedSpecies ? SPECIES_MAP[selectedSpecies] : null;
 
   return (
     <div className="space-y-6">
@@ -516,7 +485,7 @@ export default function YearlyHeatmap({ data }: YearlyHeatmapProps) {
               const speciesInfo = SPECIES_MAP[species];
               const label = `${speciesInfo?.speciesDescriptionMBO || species} (${species}) - ${count} records`;
               return (
-                <SelectItem key={species} value={species}>
+                <SelectItem key={species}>
                   {label}
                 </SelectItem>
               );
