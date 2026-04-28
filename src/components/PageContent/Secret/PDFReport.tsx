@@ -9,9 +9,10 @@ interface HeatmapProps {
   speciesCode: string;
   viewMode: ViewMode;
   DETsMap: any;
+  globalScale?: { min: number; max: number };
 }
 
-function SingleHeatmap({ speciesCode, viewMode, DETsMap }: HeatmapProps) {
+function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -173,10 +174,9 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap }: HeatmapProps) {
       .range([0, height])
       .padding(0.1);
 
-    // Color scale
-    const values = weeklyData.map(d => d.value).filter(v => v > 0).sort((a, b) => a - b);
-    const minValue = d3.min(values) || 0;
-    const maxValue = d3.quantile(values, 0.95) || d3.max(values) || 1;
+    // Color scale - use global scale if provided for consistency across species
+    const minValue = globalScale?.min ?? (d3.min(weeklyData.map(d => d.value).filter(v => v > 0)) || 0);
+    const maxValue = globalScale?.max ?? (d3.quantile(weeklyData.map(d => d.value).filter(v => v > 0).sort((a, b) => a - b), 0.95) || d3.max(weeklyData.map(d => d.value).filter(v => v > 0)) || 1);
 
     const colorScale = d3.scaleSequential(d3.interpolateYlOrRd)
       .domain([Math.sqrt(minValue), Math.sqrt(maxValue)])
@@ -290,7 +290,7 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap }: HeatmapProps) {
       .selectAll("text")
       .style("font-size", "9px");
 
-  }, [speciesCode, viewMode, DETsMap]);
+  }, [speciesCode, viewMode, DETsMap, globalScale]);
 
   return (
     <div ref={containerRef} className="w-full">
@@ -315,6 +315,72 @@ export default function PDFReport() {
       .slice(0, 50)
       .map(s => s.species);
   }, [DETsMap]);
+
+  // Calculate global scales for consistent coloring across all species
+  const globalScales = useMemo(() => {
+    const capturedValues: number[] = [];
+    const observedValues: number[] = [];
+
+    const getWeekOfYear = (date: Date): number => {
+      const start = new Date(date.getFullYear(), 0, 1);
+      const diff = date.getTime() - start.getTime();
+      const oneWeek = 1000 * 60 * 60 * 24 * 7;
+      return Math.floor(diff / oneWeek) + 1;
+    };
+
+    topSpecies.forEach(species => {
+      const weeklyMap = new Map<string, { count: number; netHours: number; observerHours: number }>();
+
+      Object.entries(DETsMap).forEach(([dateStr, det]: [string, any]) => {
+        const netHours = parseFloat(det?.netHours?.total || "0");
+        const observerHours = det?.observerHours?.total || 0;
+        const date = new Date(dateStr);
+        const year = date.getFullYear();
+        const week = getWeekOfYear(date);
+        const key = `${year}-${week}`;
+
+        if (!weeklyMap.has(key)) {
+          weeklyMap.set(key, { count: 0, netHours: 0, observerHours: 0 });
+        }
+
+        const data = weeklyMap.get(key)!;
+
+        // Captured count
+        const capturedCount = (det.bandedSpeciesCount?.[species] || 0) +
+                              (det.repeatSpeciesCount?.[species] || 0) +
+                              (det.returnSpeciesCount?.[species] || 0);
+        // Observed count
+        const observedCount = det.observedSpeciesCount?.[species] || 0;
+
+        data.count += capturedCount;
+        data.netHours += netHours;
+        data.observerHours += observerHours;
+
+        // Calculate rates
+        if (netHours > 0 && capturedCount > 0) {
+          capturedValues.push(capturedCount / netHours);
+        }
+        if (observerHours > 0 && observedCount > 0) {
+          observedValues.push(observedCount / observerHours);
+        }
+      });
+    });
+
+    // Calculate 95th percentile for global scales
+    const capturedSorted = capturedValues.sort((a, b) => a - b);
+    const observedSorted = observedValues.sort((a, b) => a - b);
+
+    return {
+      captured: {
+        min: d3.min(capturedValues) || 0,
+        max: d3.quantile(capturedSorted, 0.95) || d3.max(capturedValues) || 1,
+      },
+      observed: {
+        min: d3.min(observedValues) || 0,
+        max: d3.quantile(observedSorted, 0.95) || d3.max(observedValues) || 1,
+      },
+    };
+  }, [DETsMap, topSpecies]);
 
   useEffect(() => {
     // Auto-print when page loads
@@ -373,10 +439,20 @@ export default function PDFReport() {
       {topSpecies.map((species, index) => (
         <div key={species} className={index < topSpecies.length - 1 ? "page-break" : ""}>
           <div className="heatmap-container">
-            <SingleHeatmap speciesCode={species} viewMode="captured" DETsMap={DETsMap} />
+            <SingleHeatmap
+              speciesCode={species}
+              viewMode="captured"
+              DETsMap={DETsMap}
+              globalScale={globalScales.captured}
+            />
           </div>
           <div className="heatmap-container">
-            <SingleHeatmap speciesCode={species} viewMode="observed" DETsMap={DETsMap} />
+            <SingleHeatmap
+              speciesCode={species}
+              viewMode="observed"
+              DETsMap={DETsMap}
+              globalScale={globalScales.observed}
+            />
           </div>
         </div>
       ))}
