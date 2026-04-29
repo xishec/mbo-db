@@ -1,5 +1,26 @@
 # MBO Species Yearly Trend Analysis
 
+## How to Read the Charts
+
+Each heatmap displays weekly data across multiple years (2002–present), with:
+
+- **X-axis**: Week of year (January through December)
+- **Y-axis**: Year
+- **Color intensity**: Count or rate value (yellow to red = low to high)
+- **Square size** (capture/observation charts only): Represents sampling effort
+  - Larger squares = more net-hours (captures) or observer-hours (observations)
+  - Smaller squares = less sampling effort
+
+### Chart Types
+
+- **DET Count**: Total number of birds detected (all capture types combined)
+- **Capture Rate**: Birds captured per net-hour (accounts for trapping effort)
+- **Observation Rate**: Birds observed per observer-hour (accounts for observation effort)
+
+Weekly aggregation smooths daily variation while preserving seasonal and long-term trends.
+
+---
+
 ## 1. Stable vs. Declining DET Trends
 
 ### Tree Swallow (TRES) - Stable DET Numbers
