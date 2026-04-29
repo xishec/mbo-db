@@ -26,10 +26,7 @@ American Robin demonstrates consistent DET numbers throughout the year with a no
 
 ### Anomalous September Capture Rate Decline
 
-Despite stable DET numbers, AMRO shows a peculiar yearly decrease in capture rates around September. This discrepancy between detection and capture may indicate:
-- Changes in trapping effort timing
-- Behavioral shifts making birds less susceptible to capture
-- Net placement or configuration changes during this period
+Despite stable DET numbers, AMRO shows a peculiar yearly decrease in capture rates around September. This discrepancy between detection and capture may indicate behavioral shifts making birds less susceptible to capture.
 
 ![AMRO Capture Rate](AMRO_captured.jpg)
 
