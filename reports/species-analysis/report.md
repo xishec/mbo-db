@@ -1,4 +1,4 @@
-# MBO Species Banding Analysis Report
+# MBO Species Yearly Trend Analysis
 
 ## 1. Stable vs. Declining DET Trends
 
