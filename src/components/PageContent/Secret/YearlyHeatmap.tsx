@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
-import { Tabs, Tab, Select, SelectItem } from "@heroui/react";
+import { Tabs, Tab, Select, SelectItem, Button } from "@heroui/react";
 import { useData } from "../../../services/useData";
 import { SPECIES_MAP } from "../../../types/species";
 
@@ -13,6 +13,7 @@ export default function YearlyHeatmap() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("det");
   const autocompleteRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Get all species sorted by count
   const allSpecies = useMemo(() => {
@@ -29,6 +30,53 @@ export default function YearlyHeatmap() {
   const [selectedSpecies, setSelectedSpecies] = useState<string>(() =>
     allSpecies.length > 0 ? allSpecies[0].species : ""
   );
+
+  const exportChart = async () => {
+    if (!svgRef.current) return;
+
+    setIsExporting(true);
+
+    try {
+      const svgData = new XMLSerializer().serializeToString(svgRef.current);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d")!;
+      const img = new Image();
+
+      const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          const scale = 4; // 4x resolution for high quality
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          ctx.scale(scale, scale);
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, img.width, img.height);
+          ctx.drawImage(img, 0, 0);
+
+          // Export as JPEG
+          canvas.toBlob((blob) => {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${selectedSpecies}_${viewMode}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            resolve();
+          }, "image/jpeg", 0.98);
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Handle keyboard navigation for quick species and view mode switching
   useEffect(() => {
@@ -491,9 +539,16 @@ export default function YearlyHeatmap() {
       </div>
 
       {selectedSpecies ? (
-        <div ref={containerRef} className="w-full bg-white border border-default-200 rounded-xl p-6 shadow-sm">
-          <svg ref={svgRef}></svg>
-        </div>
+        <>
+          <div ref={containerRef} className="w-full bg-white border border-default-200 rounded-xl p-6 shadow-sm">
+            <svg ref={svgRef}></svg>
+          </div>
+          <div className="flex justify-center mt-4">
+            <Button color="primary" onPress={exportChart} isLoading={isExporting}>
+              {isExporting ? "Exporting..." : "Export Chart as JPEG"}
+            </Button>
+          </div>
+        </>
       ) : (
         <div className="w-full h-64 bg-content1 border border-dashed border-default-300 rounded-xl flex items-center justify-center">
           <p className="text-default-400">Select a species to view the heatmap</p>
