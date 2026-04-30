@@ -9,10 +9,9 @@ export default function Trends() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/data/trends-data.json.gz")
+    fetch("/data/trends-data.json")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load data");
-        // Browser automatically decompresses .gz files served with Content-Encoding: gzip
         return res.json();
       })
       .then((data) => {

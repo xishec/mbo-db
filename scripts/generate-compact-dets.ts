@@ -1,6 +1,5 @@
 import { db, ENVIRONMENT } from "./firebase-node";
 import { writeFileSync } from "fs";
-import { gzipSync } from "zlib";
 
 async function generateCompactDETs() {
   console.log(`📊 Fetching DETs from ${ENVIRONMENT} environment...`);
@@ -56,21 +55,19 @@ async function generateCompactDETs() {
   });
 
   const json = JSON.stringify(compactDETsMap);
-  const compressed = gzipSync(json, { level: 9 });
-  const outputPath = "public/data/trends-data.json.gz";
+  const outputPath = "public/data/trends-data.json";
 
-  writeFileSync(outputPath, compressed);
+  writeFileSync(outputPath, json);
 
   const originalSize = JSON.stringify(fullDETsMap).length / 1024 / 1024;
   const compactSize = json.length / 1024 / 1024;
-  const compressedSize = compressed.length / 1024;
-  const totalReduction = ((1 - compressed.length / JSON.stringify(fullDETsMap).length) * 100);
+  const reduction = ((1 - json.length / JSON.stringify(fullDETsMap).length) * 100);
 
-  console.log(`\n📦 Compressed trends data generated at ${outputPath}`);
+  console.log(`\n📦 Compact trends data generated at ${outputPath}`);
   console.log(`📏 Original size: ${originalSize.toFixed(2)} MB`);
   console.log(`📏 Compact JSON: ${compactSize.toFixed(2)} MB`);
-  console.log(`📏 Gzipped: ${compressedSize.toFixed(0)} KB`);
-  console.log(`🗜️  Total reduction: ${totalReduction.toFixed(1)}%`);
+  console.log(`🗜️  Size reduction: ${reduction.toFixed(1)}%`);
+  console.log(`ℹ️  Firebase Hosting will automatically gzip this file when serving`);
 
   process.exit(0);
 }
