@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Spinner, Card, CardBody, Chip, Divider } from "@heroui/react";
+import { Spinner, Card, CardBody, Divider } from "@heroui/react";
 import YearlyHeatmap from "./Secret/YearlyHeatmap";
 import type { DETsMap } from "../../types";
 
