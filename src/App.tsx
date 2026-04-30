@@ -60,6 +60,7 @@ function AppContent() {
       <>
         <Navigation activePage={activePage} onPageChange={handlePageChange} isLoading={false} />
         <Trends />
+        <p className="fixed bottom-4 left-4 text-xs text-default-400 z-50">Build: {__BUILD_TIME__}</p>
       </>
     );
   }
@@ -97,6 +98,7 @@ function AppContent() {
       <PageContent activePage={isLoading ? "home" : activePage} />
       <MilestoneCelebration />
       <BeforeUnloadGuard />
+      <p className="fixed bottom-4 left-4 text-xs text-default-400 z-50">Build: {__BUILD_TIME__}</p>
     </>
   );
 }
