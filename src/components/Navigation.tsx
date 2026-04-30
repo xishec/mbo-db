@@ -92,93 +92,97 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               <span className="ml-2 text-xs font-normal text-warning-600">{CURRENT_ENVIRONMENT}</span>
             )}
           </p>
-          <div className="ml-4 flex items-center gap-2">
-            <Badge
-              content={pendingCount}
-              color={isOnline ? "primary" : "secondary"}
-              size="sm"
-              showOutline={false}
-              isInvisible={pendingCount === 0 && isOnline}
-            >
-              <Chip
-                size="md"
-                variant="flat"
+          {isLoggedIn && (
+            <div className="ml-4 flex items-center gap-2">
+              <Badge
+                content={pendingCount}
                 color={isOnline ? "primary" : "secondary"}
-                className="cursor-pointer"
-                onClick={handleActivityOpen}
+                size="sm"
+                showOutline={false}
+                isInvisible={pendingCount === 0 && isOnline}
               >
-                {isOnline ? "Online" : "Offline"}
-              </Chip>
-            </Badge>
-            {!isOnline && lastSyncedAt && (
-              <span className="text-xs text-default-700">
-                Data from {new Date(lastSyncedAt).toLocaleDateString()}{" "}
-                {new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-          </div>
+                <Chip
+                  size="md"
+                  variant="flat"
+                  color={isOnline ? "primary" : "secondary"}
+                  className="cursor-pointer"
+                  onClick={handleActivityOpen}
+                >
+                  {isOnline ? "Online" : "Offline"}
+                </Chip>
+              </Badge>
+              {!isOnline && lastSyncedAt && (
+                <span className="text-xs text-default-700">
+                  Data from {new Date(lastSyncedAt).toLocaleDateString()}{" "}
+                  {new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </div>
+          )}
         </NavbarBrand>
-        <NavbarContent className="hidden sm:flex gap-12" justify="center">
-          {(["home", "programs", "DETs"] as const).map((page) => {
-            const disabled = isLoading || (page === "DETs" && !isOnline);
-            const link = (
-              <Link
-                aria-current={activePage === page ? "page" : undefined}
-                color={activePage === page ? "primary" : "foreground"}
-                href="#"
-                className={`inline-block text-center ${disabled ? "pointer-events-none opacity-50" : ""}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (!disabled) {
+        {isLoggedIn && (
+          <NavbarContent className="hidden sm:flex gap-12" justify="center">
+            {(["home", "programs", "DETs"] as const).map((page) => {
+              const disabled = isLoading || (page === "DETs" && !isOnline);
+              const link = (
+                <Link
+                  aria-current={activePage === page ? "page" : undefined}
+                  color={activePage === page ? "primary" : "foreground"}
+                  href="#"
+                  className={`inline-block text-center ${disabled ? "pointer-events-none opacity-50" : ""}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!disabled) {
+                      selectProgram(null);
+                      onPageChange(page);
+                    }
+                  }}
+                >
+                  {page === "DETs" ? "DETs" : page.charAt(0).toUpperCase() + page.slice(1)}
+                </Link>
+              );
+              return (
+                <NavbarItem key={page} isActive={activePage === page}>
+                  {page === "DETs" && !isOnline ? <Tooltip content="Requires internet connection">{link}</Tooltip> : link}
+                </NavbarItem>
+              );
+            })}
+            <Dropdown>
+              <NavbarItem isActive={["search", "species", "volunteers", "bands", "reports", "funstats", "trends"].includes(activePage)}>
+                <DropdownTrigger>
+                  <Button
+                    variant="light"
+                    className={`text-md ${isLoading ? "pointer-events-none opacity-50" : ""} ${
+                      ["search", "species", "volunteers", "bands", "reports", "funstats", "trends"].includes(activePage)
+                        ? "text-primary"
+                        : "text-foreground"
+                    }`}
+                    endContent={<ChevronDownIcon className="w-4 h-4" />}
+                  >
+                    More
+                  </Button>
+                </DropdownTrigger>
+              </NavbarItem>
+              <DropdownMenu
+                aria-label="More pages"
+                onAction={(key) => {
+                  if (!isLoading) {
                     selectProgram(null);
-                    onPageChange(page);
+                    onPageChange(key as string);
                   }
                 }}
               >
-                {page === "DETs" ? "DETs" : page.charAt(0).toUpperCase() + page.slice(1)}
-              </Link>
-            );
-            return (
-              <NavbarItem key={page} isActive={activePage === page}>
-                {page === "DETs" && !isOnline ? <Tooltip content="Requires internet connection">{link}</Tooltip> : link}
-              </NavbarItem>
-            );
-          })}
-          <Dropdown>
-            <NavbarItem isActive={["search", "species", "volunteers", "bands", "reports", "funstats", "trends"].includes(activePage)}>
-              <DropdownTrigger>
-                <Button
-                  variant="light"
-                  className={`text-md ${isLoading ? "pointer-events-none opacity-50" : ""} ${
-                    ["search", "species", "volunteers", "bands", "reports", "funstats", "trends"].includes(activePage)
-                      ? "text-primary"
-                      : "text-foreground"
-                  }`}
-                  endContent={<ChevronDownIcon className="w-4 h-4" />}
-                >
-                  More
-                </Button>
-              </DropdownTrigger>
-            </NavbarItem>
-            <DropdownMenu
-              aria-label="More pages"
-              onAction={(key) => {
-                if (!isLoading) {
-                  selectProgram(null);
-                  onPageChange(key as string);
-                }
-              }}
-            >
-              <DropdownItem key="search">Search</DropdownItem>
-              <DropdownItem key="species">Species</DropdownItem>
-              <DropdownItem key="volunteers">Volunteers</DropdownItem>
-              <DropdownItem key="bands">Bands</DropdownItem>
-              <DropdownItem key="funstats">Fun Stats</DropdownItem>
-              <DropdownItem key="reports">Program Report</DropdownItem>
-              <DropdownItem key="trends">Trends</DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        </NavbarContent>
+                <DropdownItem key="search">Search</DropdownItem>
+                <DropdownItem key="species">Species</DropdownItem>
+                <DropdownItem key="volunteers">Volunteers</DropdownItem>
+                <DropdownItem key="bands">Bands</DropdownItem>
+                <DropdownItem key="funstats">Fun Stats</DropdownItem>
+                <DropdownItem key="reports">Program Report</DropdownItem>
+                <DropdownItem key="trends">Trends</DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </NavbarContent>
+        )}
         <NavbarContent justify="end">
           {isAdmin && (
           <NavbarItem className="mr-2">

@@ -5,14 +5,14 @@ import './index.css'
 import App from './App.tsx'
 import { registerSW } from 'virtual:pwa-register'
 
-// Prompt user before reloading on service worker update
+// Check for updates on page refresh
 const updateSW = registerSW({
   onNeedRefresh() {
-    // New version available - show confirmation
     if (confirm('New version available! Reload to update?')) {
-      updateSW(true); // Reload the page
+      updateSW(true).then(() => {
+        window.location.reload();
+      });
     }
-    // If user clicks "Cancel", do nothing - they can reload manually later
   },
   onOfflineReady() {
     console.log('App ready to work offline');

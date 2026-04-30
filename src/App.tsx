@@ -15,7 +15,10 @@ function BeforeUnloadGuard() {
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isSyncing) e.preventDefault();
+      if (isSyncing) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome/modern browsers
+      }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
