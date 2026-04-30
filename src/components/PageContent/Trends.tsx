@@ -53,21 +53,21 @@ export default function Trends() {
   }
 
   return (
-    <div className="h-full overflow-auto p-6 bg-default-50">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="h-full overflow-auto p-4 md:p-6 bg-default-50">
+      <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
         <div>
-          <h1 className="text-4xl font-bold mb-3">MBO Species Trends</h1>
-          <p className="text-lg text-default-600">
+          <h1 className="text-2xl md:text-4xl font-bold mb-2 md:mb-3">MBO Species Trends</h1>
+          <p className="text-base md:text-lg text-default-600">
             Explore temporal patterns in bird species observations from McGill Bird Observatory banding data
             (2002-present)
           </p>
         </div>
 
         <Card className="shadow-sm">
-          <CardBody className="p-6">
-            <h2 className="text-xl font-semibold mb-4">How to Read the Charts</h2>
+          <CardBody className="p-4 md:p-6">
+            <h2 className="text-lg md:text-xl font-semibold mb-3 md:mb-4">How to Read the Charts</h2>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div>
                 <h3 className="mb-2 flex items-center gap-2">Structure</h3>
                 <div className="space-y-2 text-sm text-default-600">

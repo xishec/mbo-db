@@ -136,9 +136,10 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
     d3.select(svgRef.current).selectAll("*").remove();
 
-    const containerWidth = containerRef.current.clientWidth;
+    // Fixed width for consistent chart size/ratio
+    const fixedWidth = 1200;
     const margin = { top: 80, right: 180, bottom: 70, left: 80 };
-    const width = containerWidth - margin.left - margin.right;
+    const width = fixedWidth - margin.left - margin.right;
 
     // Get week of year (1-53)
     const getWeekOfYear = (date: Date): number => {
@@ -255,8 +256,10 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
     const svg = d3
       .select(svgRef.current)
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom);
+      .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .style("width", "100%")
+      .style("height", "auto");
 
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top + 20})`);
 
@@ -532,18 +535,19 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
   }, [selectedSpecies, viewMode, DETsMap]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Card className="shadow-sm">
-        <CardBody className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-sm font-semibold">View Mode (← → arrows)</label>
+        <CardBody className="p-4 md:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            <div className="space-y-2 md:space-y-3">
+              <label className="text-sm font-semibold">View Mode <span className="hidden md:inline">(← → arrows)</span></label>
               <Tabs
                 selectedKey={viewMode}
                 onSelectionChange={(key) => setViewMode(key as ViewMode)}
                 color="default"
                 variant="solid"
-                size="md"
+                size="sm"
+                className="md:size-md"
               >
                 <Tab key="det" title="DET Count" />
                 <Tab key="captured" title="Captured (Rate/NH)" />
@@ -551,8 +555,8 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
               </Tabs>
             </div>
 
-            <div className="space-y-3" ref={autocompleteRef}>
-              <label className="text-sm font-semibold">Species (↑ ↓ arrows)</label>
+            <div className="space-y-2 md:space-y-3" ref={autocompleteRef}>
+              <label className="text-sm font-semibold">Species <span className="hidden md:inline">(↑ ↓ arrows)</span></label>
               <Select
                 placeholder="Select species..."
                 selectedKeys={selectedSpecies ? [selectedSpecies] : []}
@@ -576,12 +580,12 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
       {selectedSpecies ? (
         <Card className="shadow-sm">
-          <CardBody className="p-6">
+          <CardBody className="p-4 md:p-6">
             <div ref={containerRef} className="w-full">
               <svg ref={svgRef}></svg>
             </div>
-            <div className="flex justify-end mt-12">
-              <Button color="default" variant="light" onPress={exportChart} isLoading={isExporting}>
+            <div className="flex justify-center md:justify-end mt-6 md:mt-12">
+              <Button color="default" variant="light" onPress={exportChart} isLoading={isExporting} size="sm" className="md:size-md">
                 {isExporting ? "Exporting..." : "Export Chart as JPEG"}
               </Button>
             </div>
@@ -589,8 +593,8 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
         </Card>
       ) : (
         <Card className="shadow-sm">
-          <CardBody className="flex items-center justify-center h-64">
-            <p className="text-default-400">Select a species to view the heatmap</p>
+          <CardBody className="flex items-center justify-center h-48 md:h-64">
+            <p className="text-sm md:text-base text-default-400">Select a species to view the heatmap</p>
           </CardBody>
         </Card>
       )}

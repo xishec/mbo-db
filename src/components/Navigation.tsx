@@ -3,6 +3,9 @@ import {
   NavbarBrand,
   NavbarContent,
   NavbarItem,
+  NavbarMenu,
+  NavbarMenuItem,
+  NavbarMenuToggle,
   Link,
   Button,
   useDisclosure,
@@ -21,6 +24,7 @@ import {
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { useState } from "react";
 import { useMemo } from "react";
 import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
@@ -38,6 +42,7 @@ interface NavigationProps {
 }
 
 export default function Navigation({ activePage, onPageChange, isLoading }: NavigationProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
@@ -76,7 +81,9 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     <>
       <Navbar
         maxWidth="full"
-        classNames={{ wrapper: "px-8", base: CURRENT_ENVIRONMENT !== "prod" ? "bg-primary-400" : "" }}
+        isMenuOpen={isMenuOpen}
+        onMenuOpenChange={setIsMenuOpen}
+        classNames={{ wrapper: "px-4 md:px-8", base: CURRENT_ENVIRONMENT !== "prod" ? "bg-primary-400" : "" }}
       >
         <NavbarBrand
           className="cursor-pointer"
@@ -85,15 +92,15 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             onPageChange("home");
           }}
         >
-          <img src={mboLogo} alt="MBO Logo" className="h-8 w-8 mr-2" />
-          <p className="text-xl">
-            <span className="font-bold">MBO</span> Database
+          <img src={mboLogo} alt="MBO Logo" className="h-6 w-6 md:h-8 md:w-8 mr-2" />
+          <p className="text-lg md:text-xl">
+            <span className="font-bold">MBO</span> <span className="hidden sm:inline">Database</span>
             {CURRENT_ENVIRONMENT !== "prod" && (
               <span className="ml-2 text-xs font-normal text-warning-600">{CURRENT_ENVIRONMENT}</span>
             )}
           </p>
           {isLoggedIn && (
-            <div className="ml-4 flex items-center gap-2">
+            <div className="ml-2 md:ml-4 hidden sm:flex items-center gap-2">
               <Badge
                 content={pendingCount}
                 color={isOnline ? "primary" : "secondary"}
@@ -105,7 +112,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                   size="md"
                   variant="flat"
                   color={isOnline ? "primary" : "secondary"}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-sm"
                   onClick={handleActivityOpen}
                 >
                   {isOnline ? "Online" : "Offline"}
@@ -120,6 +127,8 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             </div>
           )}
         </NavbarBrand>
+        {isLoggedIn && <NavbarMenuToggle className="sm:hidden" />}
+        <NavbarContent className="hidden md:hidden" justify="center" />
         {isLoggedIn && (
           <NavbarContent className="hidden sm:flex gap-12" justify="center">
             {(["home", "programs", "DETs"] as const).map((page) => {
@@ -183,7 +192,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             </Dropdown>
           </NavbarContent>
         )}
-        <NavbarContent justify="end">
+        <NavbarContent className="hidden sm:flex" justify="end">
           {isAdmin && (
           <NavbarItem className="mr-2">
             <Badge
@@ -242,6 +251,245 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             )}
           </NavbarItem>
         </NavbarContent>
+        {isLoggedIn && (
+          <NavbarMenu>
+            <NavbarMenuItem>
+              <div className="flex items-center gap-2 py-2">
+                <Badge
+                  content={pendingCount}
+                  color={isOnline ? "primary" : "secondary"}
+                  size="sm"
+                  showOutline={false}
+                  isInvisible={pendingCount === 0 && isOnline}
+                >
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    color={isOnline ? "primary" : "secondary"}
+                    className="cursor-pointer text-xs"
+                    onClick={handleActivityOpen}
+                  >
+                    {isOnline ? "Online" : "Offline"}
+                  </Chip>
+                </Badge>
+                {!isOnline && lastSyncedAt && (
+                  <span className="text-xs text-default-700">
+                    {new Date(lastSyncedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            </NavbarMenuItem>
+            {isAdmin && (
+              <>
+                <NavbarMenuItem>
+                  <Link
+                    className="w-full"
+                    color="foreground"
+                    size="lg"
+                    onPress={() => {
+                      handleErrorsOpen();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ExclamationTriangleIcon className="w-5 h-5" />
+                      <span>Errors {errorCount > 0 && `(${errorCount})`}</span>
+                    </div>
+                  </Link>
+                </NavbarMenuItem>
+                <NavbarMenuItem>
+                  <Link
+                    className="w-full"
+                    color="foreground"
+                    size="lg"
+                    onPress={() => {
+                      handleLogsOpen();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <CodeBracketIcon className="w-5 h-5" />
+                      <span>Developer Tools</span>
+                    </div>
+                  </Link>
+                </NavbarMenuItem>
+              </>
+            )}
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "home" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("home");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Home
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "programs" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("programs");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Programs
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "DETs" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  if (isOnline) {
+                    selectProgram(null);
+                    onPageChange("DETs");
+                    setIsMenuOpen(false);
+                  }
+                }}
+              >
+                DETs {!isOnline && "(Offline)"}
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "search" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("search");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Search
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "species" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("species");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Species
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "volunteers" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("volunteers");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Volunteers
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "bands" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("bands");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Bands
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "funstats" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("funstats");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Fun Stats
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "reports" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("reports");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Program Report
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "trends" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("trends");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Trends
+              </Link>
+            </NavbarMenuItem>
+            {isOnline && (
+              <NavbarMenuItem>
+                <Link
+                  className="w-full"
+                  color="foreground"
+                  size="lg"
+                  onPress={() => {
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{userEmail}</span>
+                  </div>
+                </Link>
+              </NavbarMenuItem>
+            )}
+            {isOnline && isLoggedIn && (
+              <NavbarMenuItem>
+                <Link
+                  className="w-full"
+                  color="danger"
+                  size="lg"
+                  onPress={() => {
+                    handleSignOut();
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Log Out
+                </Link>
+              </NavbarMenuItem>
+            )}
+          </NavbarMenu>
+        )}
       </Navbar>
       <LoginModal isOpen={isOpen} onOpenChange={onOpenChange} />
       <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
