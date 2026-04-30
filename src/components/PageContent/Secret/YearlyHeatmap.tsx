@@ -3,13 +3,19 @@ import * as d3 from "d3";
 import { Tabs, Tab, Select, SelectItem, Button } from "@heroui/react";
 import { useData } from "../../../services/useData";
 import { SPECIES_MAP } from "../../../types/species";
+import type { DETsMap } from "../../../types";
 
 type ViewMode = "det" | "captured" | "observed";
 
-export default function YearlyHeatmap() {
+interface YearlyHeatmapProps {
+  DETsMap?: DETsMap;
+}
+
+export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapProps = {}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { DETsMap } = useData();
+  const dataContext = useData();
+  const DETsMap = DETsMapProp || dataContext.DETsMap;
 
   const [viewMode, setViewMode] = useState<ViewMode>("det");
   const autocompleteRef = useRef<HTMLDivElement>(null);
@@ -19,8 +25,10 @@ export default function YearlyHeatmap() {
   const allSpecies = useMemo(() => {
     const speciesCounts = new Map<string, number>();
     Object.values(DETsMap).forEach((det) => {
-      Object.entries(det.DETSpeciesCount || {}).forEach(([species, count]) => {
-        speciesCounts.set(species, (speciesCounts.get(species) || 0) + count);
+      // Handle both full key (DETSpeciesCount) and short key (d)
+      const detSpeciesCount = (det as any).d || det.DETSpeciesCount || {};
+      Object.entries(detSpeciesCount).forEach(([species, count]) => {
+        speciesCounts.set(species, (speciesCounts.get(species) || 0) + (count as number));
       });
     });
     return Array.from(speciesCounts, ([species, count]) => ({ species, count }))
@@ -148,8 +156,10 @@ export default function YearlyHeatmap() {
     }>();
 
     Object.entries(DETsMap).forEach(([dateStr, det]) => {
-      const netHours = parseFloat(det?.netHours?.total || "0");
-      const observerHours = det?.observerHours?.total || 0;
+      const detAny = det as any;
+      // Handle both full keys and short keys
+      const netHours = parseFloat(detAny.nh || det?.netHours?.total || "0");
+      const observerHours = detAny.oh || det?.observerHours?.total || 0;
 
       // Skip dates with no hours based on view mode
       if (viewMode === "captured" && netHours === 0) return;
@@ -166,16 +176,21 @@ export default function YearlyHeatmap() {
 
       const data = weeklyMap.get(key)!;
 
-      // Get count based on view mode
+      // Get count based on view mode (handle both full and short keys)
       let count = 0;
       if (viewMode === "det") {
-        count = det.DETSpeciesCount?.[selectedSpecies] || 0;
+        const detSpeciesCount = detAny.d || det.DETSpeciesCount || {};
+        count = detSpeciesCount[selectedSpecies] || 0;
       } else if (viewMode === "captured") {
-        count = (det.bandedSpeciesCount?.[selectedSpecies] || 0) +
-                (det.repeatSpeciesCount?.[selectedSpecies] || 0) +
-                (det.returnSpeciesCount?.[selectedSpecies] || 0);
+        const bandedCount = detAny.b || det.bandedSpeciesCount || {};
+        const repeatCount = detAny.rp || det.repeatSpeciesCount || {};
+        const returnCount = detAny.rt || det.returnSpeciesCount || {};
+        count = (bandedCount[selectedSpecies] || 0) +
+                (repeatCount[selectedSpecies] || 0) +
+                (returnCount[selectedSpecies] || 0);
       } else if (viewMode === "observed") {
-        count = det.observedSpeciesCount?.[selectedSpecies] || 0;
+        const observedCount = detAny.o || det.observedSpeciesCount || {};
+        count = observedCount[selectedSpecies] || 0;
       }
 
       data.count += count;

@@ -7,7 +7,7 @@ import Volunteers from "./Volunteers";
 import Bands from "./Bands";
 import FunStats from "./FunStats";
 import Reports from "./Reports/Reports";
-import Secret from "./Secret/Secret";
+import Trends from "./Trends";
 
 interface PageContentProps {
   activePage: string;
@@ -26,7 +26,7 @@ export default function PageContent({ activePage }: PageContentProps) {
         {activePage === "bands" && <Bands />}
         {activePage === "funstats" && <FunStats />}
         {activePage === "reports" && <Reports />}
-        {activePage === "secret" && <Secret />}
+        {activePage === "trends" && <Trends />}
       </div>
     </div>
   );

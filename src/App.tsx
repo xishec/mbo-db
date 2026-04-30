@@ -3,6 +3,7 @@ import { Button, Spinner, useDisclosure } from "@heroui/react";
 import Navigation from "./components/Navigation";
 import LoginModal from "./components/Modals/LoginModal";
 import PageContent from "./components/PageContent/PageContent";
+import Trends from "./components/PageContent/Trends";
 import LoadingProgressBar from "./components/Helper/LoadingProgressBar";
 import MilestoneCelebration from "./components/Helper/MilestoneCelebration";
 import { DataProvider } from "./services/DataService";
@@ -23,7 +24,8 @@ function BeforeUnloadGuard() {
   return null;
 }
 
-const VALID_PAGES = new Set(["home", "programs", "search", "DETs", "species", "volunteers", "bands", "funstats", "reports", "secret"]);
+const VALID_PAGES = new Set(["home", "programs", "search", "DETs", "species", "volunteers", "bands", "funstats", "reports", "trends"]);
+const PUBLIC_PAGES = new Set(["trends"]);
 
 function getPageFromHash(): string {
   const hash = window.location.hash.slice(1);
@@ -48,6 +50,11 @@ function AppContent() {
   }, []);
 
   const { isOpen: isLoginOpen, onOpen: onLoginOpen, onOpenChange: onLoginOpenChange } = useDisclosure();
+
+  // Public pages don't need auth
+  if (PUBLIC_PAGES.has(activePage)) {
+    return <Trends />;
+  }
 
   // Wait for Firebase auth to resolve before showing login
   if (isOnline && !authReady) {

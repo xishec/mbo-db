@@ -145,12 +145,12 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
             );
           })}
           <Dropdown>
-            <NavbarItem isActive={["search", "species", "volunteers", "bands", "reports", "funstats"].includes(activePage)}>
+            <NavbarItem isActive={["search", "species", "volunteers", "bands", "reports", "funstats", "trends"].includes(activePage)}>
               <DropdownTrigger>
                 <Button
                   variant="light"
                   className={`text-md ${isLoading ? "pointer-events-none opacity-50" : ""} ${
-                    ["search", "species", "volunteers", "bands", "reports", "funstats"].includes(activePage)
+                    ["search", "species", "volunteers", "bands", "reports", "funstats", "trends"].includes(activePage)
                       ? "text-primary"
                       : "text-foreground"
                   }`}
@@ -175,6 +175,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               <DropdownItem key="bands">Bands</DropdownItem>
               <DropdownItem key="funstats">Fun Stats</DropdownItem>
               <DropdownItem key="reports">Program Report</DropdownItem>
+              <DropdownItem key="trends">Trends</DropdownItem>
             </DropdownMenu>
           </Dropdown>
         </NavbarContent>
