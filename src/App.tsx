@@ -51,9 +51,14 @@ function AppContent() {
 
   const { isOpen: isLoginOpen, onOpen: onLoginOpen, onOpenChange: onLoginOpenChange } = useDisclosure();
 
-  // Public pages don't need auth
+  // Public pages don't need auth but still show navigation
   if (PUBLIC_PAGES.has(activePage)) {
-    return <Trends />;
+    return (
+      <>
+        <Navigation activePage={activePage} onPageChange={handlePageChange} isLoading={false} />
+        <Trends />
+      </>
+    );
   }
 
   // Wait for Firebase auth to resolve before showing login

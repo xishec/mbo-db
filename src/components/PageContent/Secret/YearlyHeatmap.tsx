@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
-import { Tabs, Tab, Select, SelectItem, Button } from "@heroui/react";
+import { Tabs, Tab, Select, SelectItem, Button, Card, CardBody } from "@heroui/react";
 import { useData } from "../../../services/useData";
 import { SPECIES_MAP } from "../../../types/species";
 import type { DETsMap } from "../../../types";
@@ -31,8 +31,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
         speciesCounts.set(species, (speciesCounts.get(species) || 0) + (count as number));
       });
     });
-    return Array.from(speciesCounts, ([species, count]) => ({ species, count }))
-      .sort((a, b) => b.count - a.count);
+    return Array.from(speciesCounts, ([species, count]) => ({ species, count })).sort((a, b) => b.count - a.count);
   }, [DETsMap]);
 
   const [selectedSpecies, setSelectedSpecies] = useState<string>(() =>
@@ -50,7 +49,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       const ctx = canvas.getContext("2d")!;
       const img = new Image();
 
-      const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+      const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
 
       await new Promise<void>((resolve, reject) => {
         img.onload = () => {
@@ -63,18 +62,22 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
           ctx.drawImage(img, 0, 0);
 
           // Export as JPEG
-          canvas.toBlob((blob) => {
-            if (!blob) return;
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `${selectedSpecies}_${viewMode}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            resolve();
-          }, "image/jpeg", 0.98);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) return;
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `${selectedSpecies}_${viewMode}.jpg`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+              resolve();
+            },
+            "image/jpeg",
+            0.98
+          );
         };
         img.onerror = reject;
         img.src = dataUrl;
@@ -95,7 +98,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       if (!isAutocompleteActive) {
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
           e.preventDefault();
-          const currentIndex = allSpecies.findIndex(s => s.species === selectedSpecies);
+          const currentIndex = allSpecies.findIndex((s) => s.species === selectedSpecies);
           if (currentIndex === -1) return;
 
           let newIndex;
@@ -128,7 +131,6 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedSpecies, allSpecies, viewMode]);
 
-
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || !selectedSpecies) return;
 
@@ -147,13 +149,16 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     };
 
     // Build weekly data based on view mode
-    const weeklyMap = new Map<string, {
-      year: number;
-      week: number;
-      count: number;
-      netHours?: number;
-      observerHours?: number;
-    }>();
+    const weeklyMap = new Map<
+      string,
+      {
+        year: number;
+        week: number;
+        count: number;
+        netHours?: number;
+        observerHours?: number;
+      }
+    >();
 
     Object.entries(DETsMap).forEach(([dateStr, det]) => {
       const detAny = det as any;
@@ -185,9 +190,10 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
         const bandedCount = detAny.b || det.bandedSpeciesCount || {};
         const repeatCount = detAny.rp || det.repeatSpeciesCount || {};
         const returnCount = detAny.rt || det.returnSpeciesCount || {};
-        count = (bandedCount[selectedSpecies] || 0) +
-                (repeatCount[selectedSpecies] || 0) +
-                (returnCount[selectedSpecies] || 0);
+        count =
+          (bandedCount[selectedSpecies] || 0) +
+          (repeatCount[selectedSpecies] || 0) +
+          (returnCount[selectedSpecies] || 0);
       } else if (viewMode === "observed") {
         const observedCount = detAny.o || det.observedSpeciesCount || {};
         count = observedCount[selectedSpecies] || 0;
@@ -199,7 +205,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     });
 
     // Calculate value based on view mode
-    const weeklyData = Array.from(weeklyMap.values()).map(d => {
+    const weeklyData = Array.from(weeklyMap.values()).map((d) => {
       let value = d.count;
       if (viewMode === "captured" && d.netHours! > 0) {
         value = d.count / d.netHours!;
@@ -211,7 +217,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
     // Get all years from DET data to ensure consistent axis across view modes
     const allDETYears = new Set<number>();
-    Object.keys(DETsMap).forEach(dateStr => {
+    Object.keys(DETsMap).forEach((dateStr) => {
       const year = new Date(dateStr).getFullYear();
       allDETYears.add(year);
     });
@@ -229,27 +235,26 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     if (weeklyData.length === 0) return;
 
     // Size scale based on hours - anything above median is full size
-    const hours = weeklyData.map(d =>
-      viewMode === "captured" ? (d.netHours || 0) :
-      viewMode === "observed" ? (d.observerHours || 0) :
-      1 // DET mode - constant size
-    ).filter(h => h > 0).sort((a, b) => a - b);
+    const hours = weeklyData
+      .map(
+        (d) => (viewMode === "captured" ? d.netHours || 0 : viewMode === "observed" ? d.observerHours || 0 : 1) // DET mode - constant size
+      )
+      .filter((h) => h > 0)
+      .sort((a, b) => a - b);
 
     const minHours = d3.min(hours) || 0;
-    const medianHours = d3.quantile(hours, 0.50) || d3.max(hours) || 1;
+    const medianHours = d3.quantile(hours, 0.5) || d3.max(hours) || 1;
 
-    const sizeScale = d3.scaleLinear()
-      .domain([minHours, medianHours])
-      .range([minCellSize, maxCellSize])
-      .clamp(true);
+    const sizeScale = d3.scaleLinear().domain([minHours, medianHours]).range([minCellSize, maxCellSize]).clamp(true);
 
     const getSize = (d: any) => {
       if (viewMode === "det") return maxCellSize;
-      const hours = viewMode === "captured" ? (d.netHours || 0) : (d.observerHours || 0);
+      const hours = viewMode === "captured" ? d.netHours || 0 : d.observerHours || 0;
       return hours > 0 ? sizeScale(hours) : minCellSize;
     };
 
-    const svg = d3.select(svgRef.current)
+    const svg = d3
+      .select(svgRef.current)
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom);
 
@@ -263,16 +268,23 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     const endYear = years[years.length - 1];
     const totalEvents = weeklyData.reduce((sum, d) => sum + d.count, 0);
 
-    const viewModeLabel = viewMode === "det" ? "DET count" :
-                         viewMode === "captured" ? "Capture rate (birds per net-hour)" :
-                         "Observation rate (birds per observer-hour)";
+    const viewModeLabel =
+      viewMode === "det"
+        ? "DET count"
+        : viewMode === "captured"
+          ? "Capture rate (birds per net-hour)"
+          : "Observation rate (birds per observer-hour)";
 
-    const sizeNote = viewMode === "det" ? "" :
-                     viewMode === "captured" ? "with square size representing net-hours" :
-                     "with square size representing observer-hours";
+    const sizeNote =
+      viewMode === "det"
+        ? ""
+        : viewMode === "captured"
+          ? "with square size representing net-hours"
+          : "with square size representing observer-hours";
 
     // First line - main title
-    svg.append("text")
+    svg
+      .append("text")
       .attr("x", (width + margin.left + margin.right) / 2)
       .attr("y", 25)
       .attr("text-anchor", "middle")
@@ -281,11 +293,13 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       .text(`${viewModeLabel} of ${commonName} (${frenchName}) from ${startYear} to ${endYear}`);
 
     // Second line - metadata
-    const secondLineText = viewMode === "det"
-      ? `(n=${totalEvents}, daily data grouped weekly)`
-      : `(n=${totalEvents}, daily data grouped weekly) ${sizeNote}`;
+    const secondLineText =
+      viewMode === "det"
+        ? `(n=${totalEvents}, daily data grouped weekly)`
+        : `(n=${totalEvents}, daily data grouped weekly) ${sizeNote}`;
 
-    svg.append("text")
+    svg
+      .append("text")
       .attr("x", (width + margin.left + margin.right) / 2)
       .attr("y", 43)
       .attr("text-anchor", "middle")
@@ -295,49 +309,53 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
     // Scales - add spacing between weeks
     const xPadding = maxCellSize;
-    const xScale = d3.scaleLinear()
+    const xScale = d3
+      .scaleLinear()
       .domain([0, 54])
       .range([xPadding, width - xPadding])
       .clamp(false);
 
-    const yScale = d3.scaleBand()
-      .domain(years.map(String))
-      .range([0, height])
-      .padding(0.1);
+    const yScale = d3.scaleBand().domain(years.map(String)).range([0, height]).padding(0.1);
 
     // Color scale - cap at 95th percentile to prevent outliers from washing out colors
-    const values = weeklyData.map(d => d.value).filter(v => v > 0).sort((a, b) => a - b);
+    const values = weeklyData
+      .map((d) => d.value)
+      .filter((v) => v > 0)
+      .sort((a, b) => a - b);
     const minValue = d3.min(values) || 0;
     const maxValue = d3.quantile(values, 0.95) || d3.max(values) || 1;
 
     // Use square root scale for better mid-range visibility
-    const colorScale = d3.scaleSequential(d3.interpolateYlOrRd)
+    const colorScale = d3
+      .scaleSequential(d3.interpolateYlOrRd)
       .domain([Math.sqrt(minValue), Math.sqrt(maxValue)])
       .clamp(true);
 
-    const getColor = (value: number) => value > 0 ? colorScale(Math.sqrt(value)) : "#f0f0f0";
+    const getColor = (value: number) => (value > 0 ? colorScale(Math.sqrt(value)) : "#f0f0f0");
 
     // Draw cells with variable size
     g.selectAll("rect")
       .data(weeklyData)
       .enter()
       .append("rect")
-      .attr("x", d => {
+      .attr("x", (d) => {
         const size = getSize(d);
         return xScale(d.week) - size / 2;
       })
-      .attr("y", d => {
+      .attr("y", (d) => {
         const size = getSize(d);
         return (yScale(String(d.year)) || 0) + (yScale.bandwidth() - size) / 2;
       })
-      .attr("width", d => getSize(d) - cellGap)
-      .attr("height", d => getSize(d) - cellGap)
-      .attr("fill", d => getColor(d.value))
+      .attr("width", (d) => getSize(d) - cellGap)
+      .attr("height", (d) => getSize(d) - cellGap)
+      .attr("fill", (d) => getColor(d.value))
       .style("cursor", "pointer")
-      .on("click", function(event, d) {
+      .on("click", function (event, d) {
         let tooltip = d3.select("#heatmap-tooltip");
         if (tooltip.empty()) {
-          tooltip = d3.select("body").append("div")
+          tooltip = d3
+            .select("body")
+            .append("div")
             .attr("id", "heatmap-tooltip")
             .style("position", "absolute")
             .style("background", "white")
@@ -351,20 +369,22 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
             .style("opacity", "0") as any;
         }
 
-        const tooltipContent = viewMode === "det"
-          ? `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
+        const tooltipContent =
+          viewMode === "det"
+            ? `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
              <div style="font-weight: 600; color: #000000; font-size: 16px;">DET Count: ${d.count}</div>`
-          : viewMode === "captured"
-          ? `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
+            : viewMode === "captured"
+              ? `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
              <div style="color: #666; margin-bottom: 4px;">Captured: ${d.count}</div>
              <div style="color: #666; margin-bottom: 4px;">Net Hours: ${d.netHours?.toFixed(2)}</div>
              <div style="font-weight: 600; color: #000000;">Rate: ${d.value.toFixed(3)} birds/nh</div>`
-          : `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
+              : `<div style="font-weight: 600; margin-bottom: 6px;">Week ${d.week}, ${d.year}</div>
              <div style="color: #666; margin-bottom: 4px;">Observed: ${d.count}</div>
              <div style="color: #666; margin-bottom: 4px;">Observer Hours: ${d.observerHours?.toFixed(2)}</div>
              <div style="font-weight: 600; color: #000000;">Rate: ${d.value.toFixed(3)} birds/oh</div>`;
 
-        tooltip.html(tooltipContent)
+        tooltip
+          .html(tooltipContent)
           .style("left", `${event.pageX + 10}px`)
           .style("top", `${event.pageY - 30}px`)
           .style("opacity", "1");
@@ -379,9 +399,12 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
     g.append("g")
       .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(xScale)
-        .tickValues(monthWeeks)
-        .tickFormat((_d, i) => monthNames[i]))
+      .call(
+        d3
+          .axisBottom(xScale)
+          .tickValues(monthWeeks)
+          .tickFormat((_d, i) => monthNames[i])
+      )
       .selectAll("text")
       .style("font-size", "12px");
 
@@ -394,10 +417,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       .text("Month of Year");
 
     // Y-axis
-    g.append("g")
-      .call(d3.axisLeft(yScale))
-      .selectAll("text")
-      .style("font-size", "12px");
+    g.append("g").call(d3.axisLeft(yScale)).selectAll("text").style("font-size", "12px");
 
     g.append("text")
       .attr("transform", "rotate(-90)")
@@ -411,12 +431,12 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     // Legend with smooth gradient
     const legendHeight = Math.min(height, 180);
     const legendWidth = 25;
-    const legend = g.append("g")
-      .attr("transform", `translate(${width + 35}, 20)`);
+    const legend = g.append("g").attr("transform", `translate(${width + 35}, 20)`);
 
     const legendLabel = viewMode === "det" ? "Count" : "Rate";
 
-    legend.append("text")
+    legend
+      .append("text")
       .attr("x", legendWidth / 2)
       .attr("y", -15)
       .attr("text-anchor", "middle")
@@ -425,7 +445,8 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       .text(legendLabel);
 
     // Create smooth gradient
-    const gradient = svg.append("defs")
+    const gradient = svg
+      .append("defs")
       .append("linearGradient")
       .attr("id", "legend-gradient")
       .attr("x1", "0%")
@@ -437,12 +458,14 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     for (let i = 0; i <= 20; i++) {
       const t = i / 20;
       const sqrtValue = Math.sqrt(minValue) + t * (Math.sqrt(maxValue) - Math.sqrt(minValue));
-      gradient.append("stop")
+      gradient
+        .append("stop")
         .attr("offset", `${i * 5}%`)
         .attr("stop-color", colorScale(sqrtValue));
     }
 
-    legend.append("rect")
+    legend
+      .append("rect")
       .attr("x", 0)
       .attr("y", 0)
       .attr("width", legendWidth)
@@ -453,18 +476,15 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       .style("stroke-width", 0.5);
 
     // Legend scale with actual values (not sqrt)
-    const legendScale = d3.scaleLinear()
-      .domain([minValue, maxValue])
-      .range([legendHeight, 0]);
+    const legendScale = d3.scaleLinear().domain([minValue, maxValue]).range([legendHeight, 0]);
 
     const tickFormat = viewMode === "det" ? d3.format(".0f") : d3.format(".2f");
 
-    legend.append("g")
+    legend
+      .append("g")
       .attr("transform", `translate(${legendWidth + 5}, 0)`)
-      .call(d3.axisRight(legendScale)
-        .ticks(5)
-        .tickFormat(tickFormat))
-      .call(g => g.select(".domain").remove())
+      .call(d3.axisRight(legendScale).ticks(5).tickFormat(tickFormat))
+      .call((g) => g.select(".domain").remove())
       .selectAll("text")
       .style("font-size", "11px")
       .style("font-weight", "500");
@@ -472,10 +492,10 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     // Size legend - only show for captured and observed modes
     if (viewMode !== "det") {
       const sizeLegendY = 20 + legendHeight + 60;
-      const sizeLegend = g.append("g")
-        .attr("transform", `translate(${width + 35}, ${sizeLegendY})`);
+      const sizeLegend = g.append("g").attr("transform", `translate(${width + 35}, ${sizeLegendY})`);
 
-      sizeLegend.append("text")
+      sizeLegend
+        .append("text")
         .attr("x", 0)
         .attr("y", -20)
         .style("font-size", "11px")
@@ -485,21 +505,23 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       // Draw size examples
       const sizeExamples = [
         { label: "~ P0", size: minCellSize - cellGap },
-        { label: "~ P25", size: ((minCellSize + maxCellSize) / 2) - cellGap },
-        { label: "≥ P50", size: maxCellSize - cellGap }
+        { label: "~ P25", size: (minCellSize + maxCellSize) / 2 - cellGap },
+        { label: "≥ P50", size: maxCellSize - cellGap },
       ];
 
       sizeExamples.forEach((ex, i) => {
         const yPos = i * 30;
 
-        sizeLegend.append("rect")
+        sizeLegend
+          .append("rect")
           .attr("x", 0)
           .attr("y", yPos)
           .attr("width", ex.size)
           .attr("height", ex.size)
           .attr("fill", "#666");
 
-        sizeLegend.append("text")
+        sizeLegend
+          .append("text")
           .attr("x", maxCellSize + 8)
           .attr("y", yPos + ex.size / 2 + 4)
           .style("font-size", "10px")
@@ -507,67 +529,70 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
           .text(ex.label);
       });
     }
-
   }, [selectedSpecies, viewMode, DETsMap]);
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-3">
-          <label className="text-sm font-semibold">View Mode (← → arrows)</label>
-          <Tabs
-            selectedKey={viewMode}
-            onSelectionChange={(key) => setViewMode(key as ViewMode)}
-            color="default"
-            variant="solid"
-            size="md"
-          >
-            <Tab key="det" title="DET Count" />
-            <Tab key="captured" title="Captured (Rate/NH)" />
-            <Tab key="observed" title="Observed (Rate/OH)" />
-          </Tabs>
-        </div>
+      <Card className="shadow-sm">
+        <CardBody className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-sm font-semibold">View Mode (← → arrows)</label>
+              <Tabs
+                selectedKey={viewMode}
+                onSelectionChange={(key) => setViewMode(key as ViewMode)}
+                color="default"
+                variant="solid"
+                size="md"
+              >
+                <Tab key="det" title="DET Count" />
+                <Tab key="captured" title="Captured (Rate/NH)" />
+                <Tab key="observed" title="Observed (Rate/OH)" />
+              </Tabs>
+            </div>
 
-        <div className="space-y-3" ref={autocompleteRef}>
-          <label className="text-sm font-semibold">Species (↑ ↓ arrows)</label>
-          <Select
-            placeholder="Select species..."
-            selectedKeys={selectedSpecies ? [selectedSpecies] : []}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as string;
-              if (selected) setSelectedSpecies(selected);
-            }}
-            size="md"
-            variant="bordered"
-          >
-            {allSpecies.map(({ species, count }) => {
-              const speciesInfo = SPECIES_MAP[species];
-              const label = `${speciesInfo?.speciesDescriptionMBO || species} (${species}) - ${count} records`;
-              return (
-                <SelectItem key={species}>
-                  {label}
-                </SelectItem>
-              );
-            })}
-          </Select>
-        </div>
-      </div>
+            <div className="space-y-3" ref={autocompleteRef}>
+              <label className="text-sm font-semibold">Species (↑ ↓ arrows)</label>
+              <Select
+                placeholder="Select species..."
+                selectedKeys={selectedSpecies ? [selectedSpecies] : []}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  if (selected) setSelectedSpecies(selected);
+                }}
+                size="md"
+                variant="bordered"
+              >
+                {allSpecies.map(({ species, count }) => {
+                  const speciesInfo = SPECIES_MAP[species];
+                  const label = `${speciesInfo?.speciesDescriptionMBO || species} (${species}) - ${count} records`;
+                  return <SelectItem key={species}>{label}</SelectItem>;
+                })}
+              </Select>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
       {selectedSpecies ? (
-        <>
-          <div ref={containerRef} className="w-full bg-white border border-default-200 rounded-xl p-6 shadow-sm">
-            <svg ref={svgRef}></svg>
-          </div>
-          <div className="flex justify-center mt-4">
-            <Button color="primary" onPress={exportChart} isLoading={isExporting}>
-              {isExporting ? "Exporting..." : "Export Chart as JPEG"}
-            </Button>
-          </div>
-        </>
+        <Card className="shadow-sm">
+          <CardBody className="p-6">
+            <div ref={containerRef} className="w-full">
+              <svg ref={svgRef}></svg>
+            </div>
+            <div className="flex justify-end mt-12">
+              <Button color="default" variant="light" onPress={exportChart} isLoading={isExporting}>
+                {isExporting ? "Exporting..." : "Export Chart as JPEG"}
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
       ) : (
-        <div className="w-full h-64 bg-content1 border border-dashed border-default-300 rounded-xl flex items-center justify-center">
-          <p className="text-default-400">Select a species to view the heatmap</p>
-        </div>
+        <Card className="shadow-sm">
+          <CardBody className="flex items-center justify-center h-64">
+            <p className="text-default-400">Select a species to view the heatmap</p>
+          </CardBody>
+        </Card>
       )}
     </div>
   );
