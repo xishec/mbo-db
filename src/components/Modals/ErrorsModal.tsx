@@ -59,6 +59,10 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   });
 
   useEffect(() => {
+    // Offline: skip the scan entirely. Conflicts can only be resolved once
+    // synced, so recomputing on every offline save just burns CPU.
+    if (!isOnline) return;
+
     let cancelled = false;
 
     const computeErrors = () => {
@@ -112,7 +116,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
       cancelled = true;
       cleanup();
     };
-  }, [isOpen, bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
+  }, [isOpen, isOnline, bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 
   const { errors, dismissedCount } = errorsState;
   const sortedErrors = useMemo(() => {

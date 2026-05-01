@@ -25,7 +25,7 @@ import {
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { useMemo } from "react";
+import { useDeferredValue, useMemo } from "react";
 import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
@@ -70,12 +70,19 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
   const handleActivityOpen = () => !isLoading && onActivityOpen();
   const handleLoginOpen = () => !isLoading && onOpen();
 
+  // Defer expensive error scan so the save click stays responsive.
+  // Error count is an admin-only badge — it can lag a beat behind the save
+  // without any user-visible consequence. Skip entirely when offline since
+  // conflicts can only be meaningfully resolved once synced.
+  const deferredBirdEventsMap = useDeferredValue(birdEventsMap);
+  const deferredBandIdToBirdEventIdsMap = useDeferredValue(bandIdToBirdEventIdsMap);
   const errorCount = useMemo(() => {
-    const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
+    if (!isAdmin || !isOnline) return 0;
+    const allErrors = findBirdEventErrors(deferredBandIdToBirdEventIdsMap, deferredBirdEventsMap, magicTable);
     const severeErrors = allErrors.filter((error) => error.severity === "danger");
     const activeErrors = severeErrors.filter((error) => !dismissedConflictsMap[error.id]);
     return activeErrors.length;
-  }, [bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
+  }, [isAdmin, isOnline, deferredBandIdToBirdEventIdsMap, deferredBirdEventsMap, magicTable, dismissedConflictsMap]);
 
   return (
     <>
