@@ -35,18 +35,6 @@ export default function BirdEvents() {
   const [modalBandSize, setModalBandSize] = useState<BandSize>(BandSize.Size0a);
   const [showRecaptures, setShowRecaptures] = useState(false);
 
-  if (!selectedProgram) {
-    return null;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="p-4 flex items-center gap-4">
-        <Spinner size="sm" /> Loading program...
-      </div>
-    );
-  }
-
   // Map band group ID to its band size label
   const bandGroupToBandSize = useMemo(() => {
     const map: Record<string, BandSize> = {};
@@ -146,6 +134,22 @@ export default function BirdEvents() {
     return other;
   }, [bandGroupIds, bandGroupToBandSize, bandGroupInfo]);
 
+  // Build page select items as a unified array to avoid React Aria collection issues
+  const pageSelectItems = useMemo(() => {
+    const items: { key: string; label: string }[] = [];
+    Object.values(BandSize)
+      .filter((size) => size !== BandSize.Other)
+      .filter((size) => bandSizeToBandGroup[size])
+      .forEach((size) => {
+        const bandGroupId = bandSizeToBandGroup[size]!;
+        const { nextDigits } = bandGroupInfo[bandGroupId] ?? { count: 0, nextDigits: "01" };
+        items.push({ key: bandGroupId, label: `${size} - ${bandGroupId}-${nextDigits}` });
+      });
+    items.push({ key: "other", label: "Other Size" });
+    items.push({ key: "recaptures", label: "Recaptures" });
+    return items;
+  }, [bandSizeToBandGroup, bandGroupInfo]);
+
   // Determine which band group to display
   const displayBandGroupId = useMemo(() => {
     // User explicitly selected something (including null for empty band group)
@@ -161,6 +165,14 @@ export default function BirdEvents() {
     }
     return bandGroupIds[0] ?? null;
   }, [selectedBandGroupId, bandGroupIds, bandSizeToBandGroup]);
+
+  // Stable selectedKeys reference to prevent unnecessary React Aria re-computation
+  const pageSelectedKeys = useMemo(() => {
+    if (showRecaptures) return ["recaptures"];
+    if (displayBandGroupId) return [displayBandGroupId];
+    if (displayBandGroupId === null) return ["other"];
+    return [];
+  }, [showRecaptures, displayBandGroupId]);
 
   // Get captures for the displayed band group
   const captures = useMemo(() => {
@@ -221,6 +233,18 @@ export default function BirdEvents() {
     [bandGroupToBandSize, onOpen]
   );
 
+  if (!selectedProgram) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4 flex items-center gap-4">
+        <Spinner size="sm" /> Loading program...
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex flex-col items-center gap-8">
       <AddBirdEventModal
@@ -256,15 +280,8 @@ export default function BirdEvents() {
           <Select
             placeholder="Select page"
             variant="bordered"
-            selectedKeys={
-              showRecaptures
-                ? ["recaptures"]
-                : displayBandGroupId
-                  ? [displayBandGroupId]
-                  : displayBandGroupId === null
-                    ? ["other"]
-                    : []
-            }
+            items={pageSelectItems}
+            selectedKeys={pageSelectedKeys}
             onSelectionChange={(keys) => {
               const selected = Array.from(keys)[0] as string | undefined;
               if (selected === "recaptures") {
@@ -282,20 +299,7 @@ export default function BirdEvents() {
               value: "text-sm",
             }}
           >
-            <>
-              {Object.values(BandSize)
-                .filter((size) => size !== BandSize.Other)
-                .filter((size) => bandSizeToBandGroup[size])
-                .map((size) => {
-                  const bandGroupId = bandSizeToBandGroup[size]!;
-                  const { nextDigits } = bandGroupInfo[bandGroupId] ?? { count: 0, nextDigits: "01" };
-                  const label = `${size} - ${bandGroupId}-${nextDigits}`;
-
-                  return <SelectItem key={bandGroupId}>{label}</SelectItem>;
-                })}
-              <SelectItem key="other">Other Size</SelectItem>
-              <SelectItem key="recaptures">Recaptures</SelectItem>
-            </>
+            {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
           </Select>
           <Button
             color="secondary"
