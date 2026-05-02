@@ -294,6 +294,7 @@ export default function BirdEvents() {
             }}
             size="md"
             className="max-w-[200px]"
+            maxListboxHeight={9999}
             classNames={{
               trigger: "min-h-unit-10 h-unit-10",
               value: "text-sm",
