@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue } from "react";
 import { get, ref, set, update } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
@@ -133,12 +133,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * - dummiest: band with most bird events (capture + recapture)
    * - oldest: individual with longest span between earliest and latest bird event
    * - favoriteBander: most repeated bander string
+   *
+   * Recomputing this on every save is expensive (~1.5s on slow CPUs with
+   * 700K+ events). We drive it off a deferred birdEventsMap so the expensive
+   * walk runs in a low-priority render AFTER the save paint — consumers
+   * (SpeciesGroups page, info modals) get the stale value for one frame.
    */
+  const deferredBirdEventsMapForSpecies = useDeferredValue(birdEventsMap);
   const speciesInfoMap = useMemo<SpeciesInfoMap>(() => {
     const infoMap: SpeciesInfoMap = {};
 
     // Filter out modified events
-    const validEvents = Object.values(birdEventsMap).filter((event) => event && !event.modifiedEventId);
+    const validEvents = Object.values(deferredBirdEventsMapForSpecies).filter((event) => event && !event.modifiedEventId);
 
     if (validEvents.length === 0) return infoMap;
 
@@ -251,7 +257,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
 
     return infoMap;
-  }, [birdEventsMap]);
+  }, [deferredBirdEventsMapForSpecies]);
 
   // For each band size, suggest the next available band id:
   //   1. Pick the latest banding (by date+time) for that size → its logical
@@ -259,10 +265,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   //   2. Within that group, find the highest last2digits used in 01→99→00
   //      order (-00 is the last band of a strip, not the first) and take
   //      the next position in that order.
+  //
+  // This iterates birdEventsMap twice (~1.4M ops for 700K events). On slow
+  // CPUs that's ~650ms — ran on every save. Drive it off a deferred map so
+  // it runs in a low-priority render after the save paints. The suggested
+  // next-band value will be one frame stale, which is fine — the Add modal
+  // reads it on open, not continuously.
+  const deferredBirdEventsMapForBands = useDeferredValue(birdEventsMap);
   const bandSizeToBandIdMap = useMemo(() => {
     // Latest banding (by date+time) per size.
     const latestGroupPerSize = new Map<BandSize, { group: string; timestamp: number }>();
-    for (const ev of Object.values(birdEventsMap)) {
+    for (const ev of Object.values(deferredBirdEventsMapForBands)) {
       if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
       const ts = Date.parse(`${ev.date}T${ev.time || "00:00"}`);
       if (Number.isNaN(ts)) continue;
@@ -277,7 +290,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // a band is a band regardless of event type). Encode -00 as 100 so
     // comparisons reflect the physical 01→99→00 order.
     const usedByGroup = new Map<string, Set<number>>();
-    for (const ev of Object.values(birdEventsMap)) {
+    for (const ev of Object.values(deferredBirdEventsMapForBands)) {
       if (!ev?.band) continue;
       const band = new Band(ev.band.bandPrefix, ev.band.bandSuffix);
       const last2 = parseInt(band.last2digits, 10);
@@ -312,7 +325,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       map[size] = nextPrefix.toString().padStart(7, "0") + nextLast2.toString().padStart(2, "0");
     }
     return map;
-  }, [birdEventsMap]);
+  }, [deferredBirdEventsMapForBands]);
 
   // Load data when logged in (online) or immediately (offline)
   const isLoggedIn = !!user || !isOnline;

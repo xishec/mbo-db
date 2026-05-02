@@ -315,13 +315,12 @@ export default function BirdEventsTable({
           aria-label="birdEvents table"
           sortDescriptor={primarySortDescriptor}
           onSortChange={handleSortChange}
-          isVirtualized={!scrollToEnd}
-          maxTableHeight={maxTableHeight}
+          isVirtualized
+          maxTableHeight={scrollToEnd ? 500 : maxTableHeight}
           classNames={{
             base: "table-fixed",
             table: "table-fixed",
             td: "data-[selected=true]:!text-black",
-            wrapper: scrollToEnd ? "h-[500px] overflow-auto" : undefined,
           }}
           selectionMode="single"
           selectedKeys={birdEventIdToHighlight ? new Set([birdEventIdToHighlight]) : new Set()}

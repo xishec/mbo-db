@@ -59,13 +59,17 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   });
 
   useEffect(() => {
-    // Offline: skip the scan entirely. Conflicts can only be resolved once
-    // synced, so recomputing on every offline save just burns CPU.
+    // Only scan when the modal is actually open. Running this on every
+    // birdEventsMap change (even via requestIdleCallback) burns CPU on slow
+    // laptops — the scan iterates thousands of bands. The badge count in
+    // Navigation is disabled, so the modal is the only consumer.
+    if (!isOpen) return;
     if (!isOnline) return;
 
     let cancelled = false;
+    setIsComputing(true);
 
-    const computeErrors = () => {
+    const timeoutId = setTimeout(() => {
       const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
       const activeErrors: BirdEventError[] = [];
       let dismissedCount = 0;
@@ -83,38 +87,11 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
         setErrorsState({ errors: activeErrors, dismissedCount });
         setIsComputing(false);
       }
-    };
+    }, 0);
 
-    const schedule = () => {
-      if (isOpen) {
-        const timeoutId = setTimeout(computeErrors, 0);
-        return () => clearTimeout(timeoutId);
-      }
-
-      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-        const idleId = (
-          window as typeof window & {
-            requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-          }
-        ).requestIdleCallback?.(computeErrors, { timeout: 1000 });
-        return () => {
-          if (idleId !== undefined) {
-            (window as typeof window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(idleId);
-          }
-        };
-      }
-
-      const timeoutId = setTimeout(computeErrors, 0);
-      return () => clearTimeout(timeoutId);
-    };
-
-    if (isOpen) {
-      setIsComputing(true);
-    }
-    const cleanup = schedule();
     return () => {
       cancelled = true;
-      cleanup();
+      clearTimeout(timeoutId);
     };
   }, [isOpen, isOnline, bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
 

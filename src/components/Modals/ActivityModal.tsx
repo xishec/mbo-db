@@ -24,12 +24,16 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
     getQueuedEvents().then(setQueuedEvents).catch(console.error);
   }, [isOpen, pendingCount]);
 
+  // Only walk the full birdEventsMap when the modal is open. Sorting 700K+
+  // events on every save burns ~1200ms on slow CPUs — and nobody sees the
+  // result unless the modal is actually showing.
   const recentBirdEvents = useMemo(() => {
+    if (!isOpen) return [];
     return Object.values(birdEventsMap)
       .filter((event): event is BirdEvent => event !== undefined && !event.modifiedEventId)
       .sort((a, b) => parseInt(b.updatedAt) - parseInt(a.updatedAt))
       .slice(0, 100);
-  }, [birdEventsMap]);
+  }, [isOpen, birdEventsMap]);
 
   return (
     <ModalShell
