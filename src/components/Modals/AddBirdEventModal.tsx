@@ -12,7 +12,7 @@ import {
   CardBody,
   addToast,
 } from "@heroui/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../../services/useData";
 import { Band, BandSize, BirdEventType, getBandGroupMapKey, type BirdEvent, type CaptureFormData } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
@@ -184,24 +184,30 @@ export default function AddBirdEventModal({
         return !defaultData[colKey as keyof CaptureFormData];
       }) ?? firstEditableField;
       focusTo(firstEmpty);
-    } else if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
-      // Modal already open — update band fields after bandSizeToBandIdMap recomputed
-      const bandId = bandSizeToBandIdMap[bandSize];
-      if (bandId.length === 9) {
-        // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
-        const bandPrefix = bandId.slice(0, 4);
-        const bandSuffix = bandId.slice(4, 9);
-        const band = new Band(bandPrefix, bandSuffix);
-        setFormData((prev) => ({
-          ...prev,
-          bandGroup: band.bandGroupId,
-          bandLastTwoDigits: band.last2digits,
-        }));
-        setLastBandId("");
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap, defaultNet]);
+  }, [isOpen, bandSize, birdEventToModify, defaultNet]);
+
+  // After save-and-next, advance the band to the next suggestion. Must run
+  // BEFORE paint (useLayoutEffect) — otherwise validation briefly sees the
+  // stale band + the newly-arrived past event and flashes "< 12h recapture".
+  useLayoutEffect(() => {
+    if (!isOpen || birdEventToModify || !wasOpen) return;
+    if (bandSize === BandSize.Other) return;
+    const bandId = bandSizeToBandIdMap[bandSize];
+    if (!bandId || bandId.length !== 9) return;
+
+    // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
+    const bandPrefix = bandId.slice(0, 4);
+    const bandSuffix = bandId.slice(4, 9);
+    const band = new Band(bandPrefix, bandSuffix);
+    setFormData((prev) =>
+      prev.bandGroup === band.bandGroupId && prev.bandLastTwoDigits === band.last2digits
+        ? prev
+        : { ...prev, bandGroup: band.bandGroupId, bandLastTwoDigits: band.last2digits }
+    );
+    setLastBandId("");
+  }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap, wasOpen]);
 
   // Focus order matches visual layout
   // Row 1: Most frequently edited fields
@@ -518,15 +524,15 @@ export default function AddBirdEventModal({
         if (formData.scribe) localStorage.setItem("lastScribe", formData.scribe);
 
         if (shouldContinue) {
-          // Clear band fields too: the reset useEffect will repopulate them
-          // from bandSizeToBandIdMap after this commit. Keeping the old band
-          // here causes validation to flash "recent capture" for one render
-          // against the just-saved event (now in pastBirdEvents).
-          // Net is kept — banders typically work one net for several captures.
+          // Band fields are advanced by the reset useEffect when the
+          // bandSizeToBandIdMap update reaches the modal — we don't clear
+          // them here because that clear would race after the effect and
+          // wipe the newly-suggested band. Validation no longer flashes a
+          // "recent capture" warning because the advanced band differs from
+          // the just-saved one. Net is kept intentionally — banders
+          // typically work one net for several captures.
           setFormData((prev) => ({
             ...prev,
-            bandGroup: "",
-            bandLastTwoDigits: "",
             species: "",
             wing: "",
             age: "",

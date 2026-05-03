@@ -126,19 +126,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [bandGroupNotesMap, setBandGroupNotesMap] = useState<Record<string, string>>({});
 
   /**
-   * Compute SpeciesInfoMap from birdEventsMap
-   * This computes statistics for each species:
-   * - biggest: bird event with largest wing
-   * - fattest: highest fat (if same fat, compare weight)
-   * - dummiest: band with most bird events (capture + recapture)
-   * - oldest: individual with longest span between earliest and latest bird event
-   * - favoriteBander: most repeated bander string
+   * Per-species stats (biggest / fattest / dummiest / oldest / favorite
+   * bander / favorite net). Too expensive to compute on every save
+   * (~1.5s on slow CPUs with 700K+ events) and rarely relevant per-save —
+   * stats are displayed in info modals and the Species page, where one
+   * additional capture doesn't meaningfully shift the numbers. So we
+   * compute it ONCE when data is loaded/rebuilt and keep it until the
+   * next load. See the effect below the bandSizeToBandIdMap section.
    */
-  const speciesInfoMap = useMemo<SpeciesInfoMap>(() => {
+  const [speciesInfoMap, setSpeciesInfoMap] = useState<SpeciesInfoMap>({});
+  const computeSpeciesInfoMap = useCallback((source: BirdEventsMap): SpeciesInfoMap => {
     const infoMap: SpeciesInfoMap = {};
 
     // Filter out modified events
-    const validEvents = Object.values(birdEventsMap).filter((event) => event && !event.modifiedEventId);
+    const validEvents = Object.values(source).filter((event) => event && !event.modifiedEventId);
 
     if (validEvents.length === 0) return infoMap;
 
@@ -251,7 +252,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
 
     return infoMap;
-  }, [birdEventsMap]);
+  }, []);
+
+  // Recompute speciesInfoMap only when birdEventsMap loads/rebuilds, not on
+  // every save. We detect "full reloads" vs "single-capture saves" by the
+  // size change: a save grows the map by 1, a load replaces it entirely.
+  const prevBirdEventsSizeRef = useRef(0);
+  useEffect(() => {
+    const size = Object.keys(birdEventsMap).length;
+    const prev = prevBirdEventsSizeRef.current;
+    prevBirdEventsSizeRef.current = size;
+
+    // Only recompute on initial load or when the map changes by more than
+    // a handful of events (load/rebuild). Single-capture saves skip it.
+    if (size === 0) return;
+    if (prev > 0 && Math.abs(size - prev) <= 5) return;
+
+    setSpeciesInfoMap(computeSpeciesInfoMap(birdEventsMap));
+  }, [birdEventsMap, computeSpeciesInfoMap]);
 
   // For each band size, suggest the next available band id:
   //   1. Pick the latest banding (by date+time) for that size → its logical
@@ -266,74 +284,108 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Pass 2 — per-size lookup in bandGroupsMap.newCaptureIds: that list only
   //   contains banded (new-capture) events, which is exactly what we need —
   //   a repeat of a previously-banded digit doesn't claim a new position.
-  const bandSizeToBandIdMap = useMemo(() => {
-    // For each band size, find the MOST RECENTLY SAVED new banding. Ordering
-    // is by updatedAt, which is Date.now() (ms precision) stamped at save
-    // time — so rapid sequential saves resolve in the actual save order.
-    //
-    // Skip modifications (previousEventId set) and superseded events
-    // (modifiedEventId set): we only want originally-banded events.
-    const latestGroupPerSize = new Map<BandSize, { group: string; savedAt: number }>();
-    for (const ev of Object.values(birdEventsMap)) {
-      if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
-      if (ev.previousEventId) continue;
-      if (ev.modifiedEventId) continue;
+  //
+  // This map is stored as state (not a useMemo) so we can update it
+  // incrementally in addBirdEvent instead of rescanning 700K events on
+  // every save. We rebuild it only on data load/refresh.
+  const [bandSizeToBandIdMap, setBandSizeToBandIdMap] = useState<Record<BandSize, string>>(
+    () => ({}) as Record<BandSize, string>
+  );
 
-      // Compute group key inline (mirrors getBandGroupMapKey) to skip Band()
-      // construction on 700K events.
-      const prefix = ev.band.bandPrefix;
-      const suffix = ev.band.bandSuffix;
-      const last2 = suffix.slice(-2);
-      const bandGroupId = prefix + suffix.slice(0, 3);
-      const group =
-        last2 !== "00"
-          ? bandGroupId
-          : (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0");
+  // Given the next banding's full bandId ("299156201"), derive the band id
+  // that comes AFTER it (e.g. "299156202"). This is the -th suggestion that
+  // gets stored in bandSizeToBandIdMap.
+  const advanceBandId = useCallback((bandId: string): string | null => {
+    if (bandId.length !== 9) return null;
+    const bandGroupId = bandId.slice(0, 7); // "3141453"
+    const last2 = bandId.slice(7, 9); // "01"
+    const last2Num = parseInt(last2, 10);
+    if (Number.isNaN(last2Num)) return null;
+    const encoded = last2Num === 0 ? 100 : last2Num;
 
-      const savedAt = parseInt(ev.updatedAt, 10) || 0;
-      const existing = latestGroupPerSize.get(ev.band.bandSize);
-      if (!existing || savedAt > existing.savedAt) {
-        latestGroupPerSize.set(ev.band.bandSize, { group, savedAt });
-      }
+    const groupPrefix = parseInt(bandGroupId, 10);
+    if (Number.isNaN(groupPrefix)) return null;
+
+    // Physical strip order 01..98 → 99 → 00 (of next group) → 01 (of next group).
+    let nextPrefix: number;
+    let nextLast2: number;
+    if (encoded < 99) {
+      nextPrefix = groupPrefix;
+      nextLast2 = encoded + 1;
+    } else if (encoded === 99) {
+      nextPrefix = groupPrefix + 1;
+      nextLast2 = 0;
+    } else {
+      nextPrefix = groupPrefix + 1;
+      nextLast2 = 1;
     }
+    return nextPrefix.toString().padStart(7, "0") + nextLast2.toString().padStart(2, "0");
+  }, []);
 
-    const map = {} as Record<BandSize, string>;
-    for (const [size, { group }] of latestGroupPerSize) {
-      const bandGroup = bandGroupsMap[group];
-      if (!bandGroup) continue;
+  // Full rebuild — used only on load/refresh, not per-save.
+  const computeBandSizeToBandIdMap = useCallback(
+    (events: BirdEventsMap, groups: BandGroupsMap): Record<BandSize, string> => {
+      // For each band size, find the MOST RECENTLY SAVED new banding.
+      // Ordering is by updatedAt (ms precision) so rapid sequential saves
+      // resolve in the actual save order. Skip modifications and superseded.
+      const latestGroupPerSize = new Map<BandSize, { group: string; savedAt: number }>();
+      for (const ev of Object.values(events)) {
+        if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
+        if (ev.previousEventId) continue;
+        if (ev.modifiedEventId) continue;
 
-      // Find highest last2 used in this group (encode -00 as 100 so the
-      // 01→99→00 physical order compares correctly).
-      let max = 0;
-      for (const eventId of bandGroup.newCaptureIds) {
-        const ev = birdEventsMap[eventId];
-        if (!ev?.band) continue;
-        const last2 = parseInt(ev.band.bandSuffix.slice(-2), 10);
-        if (Number.isNaN(last2)) continue;
-        const encoded = last2 === 0 ? 100 : last2;
-        if (encoded > max) max = encoded;
+        // Compute group key inline (mirrors getBandGroupMapKey) to skip Band()
+        // construction on 700K events.
+        const prefix = ev.band.bandPrefix;
+        const suffix = ev.band.bandSuffix;
+        const last2 = suffix.slice(-2);
+        const bandGroupId = prefix + suffix.slice(0, 3);
+        const group =
+          last2 !== "00"
+            ? bandGroupId
+            : (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0");
+
+        const savedAt = parseInt(ev.updatedAt, 10) || 0;
+        const existing = latestGroupPerSize.get(ev.band.bandSize);
+        if (!existing || savedAt > existing.savedAt) {
+          latestGroupPerSize.set(ev.band.bandSize, { group, savedAt });
+        }
       }
-      if (max === 0) continue;
 
-      const groupPrefix = parseInt(group, 10);
-      if (Number.isNaN(groupPrefix)) continue;
-      // 01..98 -> +1 (same prefix); 99 -> -00 of next prefix; 00 -> -01 of next group.
-      let nextPrefix: number;
-      let nextLast2: number;
-      if (max < 99) {
-        nextPrefix = groupPrefix;
-        nextLast2 = max + 1;
-      } else if (max === 99) {
-        nextPrefix = groupPrefix + 1;
-        nextLast2 = 0;
-      } else {
-        nextPrefix = groupPrefix + 1;
-        nextLast2 = 1;
+      const map = {} as Record<BandSize, string>;
+      for (const [size, { group }] of latestGroupPerSize) {
+        const bandGroup = groups[group];
+        if (!bandGroup) continue;
+
+        // Highest last2 used in this group. Encode -00 as 100 so the physical
+        // 01→99→00 order compares correctly.
+        let max = 0;
+        for (const eventId of bandGroup.newCaptureIds) {
+          const ev = events[eventId];
+          if (!ev?.band) continue;
+          const last2 = parseInt(ev.band.bandSuffix.slice(-2), 10);
+          if (Number.isNaN(last2)) continue;
+          const encoded = last2 === 0 ? 100 : last2;
+          if (encoded > max) max = encoded;
+        }
+        if (max === 0) continue;
+
+        // Reconstruct the highest-banded band id in this group, then delegate
+        // to advanceBandId for the next-suggestion math. max===100 represents
+        // the next strip's -00 (physically part of this logical group).
+        const groupPrefix = parseInt(group, 10);
+        if (Number.isNaN(groupPrefix)) continue;
+        const latestBandId =
+          max === 100
+            ? (groupPrefix + 1).toString().padStart(7, "0") + "00"
+            : group + max.toString().padStart(2, "0");
+        const nextId = advanceBandId(latestBandId);
+        if (nextId) map[size] = nextId;
       }
-      map[size] = nextPrefix.toString().padStart(7, "0") + nextLast2.toString().padStart(2, "0");
-    }
-    return map;
-  }, [birdEventsMap, bandGroupsMap]);
+      return map;
+    },
+    [advanceBandId]
+  );
 
   // Load data when logged in (online) or immediately (offline)
   const isLoggedIn = !!user || !isOnline;
@@ -539,6 +591,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setProgramsMap(programs);
         setYearsToProgramMap(years);
         setVolunteersMap(volCounts);
+        setBandSizeToBandIdMap(computeBandSizeToBandIdMap(reconstructed, bandGroups));
         setDismissedConflictsMap(data.dismissedConflictsMap);
         setDETsMap(data.DETsMap ?? {});
         setLastSyncedAt(cacheTimestamp);
@@ -571,19 +624,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setVolunteersFullNameMap(fnMap);
       const mergedEvents = overlayQueuedEvents(data.birdEventsMap ?? {}, queued);
       const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(mergedEvents, fnMap);
-      setBirdEventsMap(
-        Object.fromEntries(
-          Object.entries(mergedEvents).map(([id, event]) => [
-            id,
-            { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null) },
-          ])
-        )
+      const hydratedEvents = Object.fromEntries(
+        Object.entries(mergedEvents).map(([id, event]) => [
+          id,
+          { ...event, band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null) },
+        ])
       );
+      setBirdEventsMap(hydratedEvents);
       setBandIdToBirdEventIdsMap(bandIdMap);
       setBandGroupsMap(bandGroups);
       setProgramsMap(programs);
       setYearsToProgramMap(years);
       setVolunteersMap(volCounts);
+      setBandSizeToBandIdMap(computeBandSizeToBandIdMap(hydratedEvents, bandGroups));
       setDETsMap(data.DETsMap ?? {});
       setDismissedConflictsMap(data.dismissedConflictsMap ?? {});
       setBandGroupNotesMap(data.bandGroupNotesMap ?? {});
@@ -1074,6 +1127,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setProgramsMap(newProgramsMap);
         setYearsToProgramMap(newYearsToProgramMap);
         setVolunteersMap(newVolunteersMap);
+        // Incrementally update bandSizeToBandIdMap: if this save is a new
+        // banding (not a recapture / modification), the just-banded id is
+        // now the latest for its size, so the next suggestion = advance(id).
+        // Skip for Other / recaptures — they don't establish a new latest.
+        if (
+          isNewCapture &&
+          band.bandSize &&
+          band.bandSize !== BandSize.Other &&
+          !previousEventId
+        ) {
+          const nextId = advanceBandId(band.id);
+          if (nextId) {
+            setBandSizeToBandIdMap((prev) => ({ ...prev, [band.bandSize as BandSize]: nextId }));
+          }
+        }
         setSelectedProgram((current) => {
           if (!current || current.id !== captureData.programId) return current;
           return newProgramsMap[captureData.programId];
@@ -1129,6 +1197,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       yearsToProgramMap,
       saveCompleteStateToIndexedDB,
       refreshQueueState,
+      advanceBandId,
     ]
   );
 
