@@ -267,9 +267,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   //   contains banded (new-capture) events, which is exactly what we need —
   //   a repeat of a previously-banded digit doesn't claim a new position.
   const bandSizeToBandIdMap = useMemo(() => {
-    const latestGroupPerSize = new Map<BandSize, { group: string; key: string }>();
+    // For each band size, find the MOST RECENTLY SAVED new banding. Ordering
+    // is by updatedAt, which is Date.now() (ms precision) stamped at save
+    // time — so rapid sequential saves resolve in the actual save order.
+    //
+    // Skip modifications (previousEventId set) and superseded events
+    // (modifiedEventId set): we only want originally-banded events.
+    const latestGroupPerSize = new Map<BandSize, { group: string; savedAt: number }>();
     for (const ev of Object.values(birdEventsMap)) {
       if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
+      if (ev.previousEventId) continue;
+      if (ev.modifiedEventId) continue;
 
       // Compute group key inline (mirrors getBandGroupMapKey) to skip Band()
       // construction on 700K events.
@@ -282,16 +290,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ? bandGroupId
           : (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0");
 
-      // Compare by date+time, with band group as tiebreaker. Minute-precision
-      // timestamps tie when a bander saves multiple bands in the same minute
-      // (common when finishing -99 then -00 then -01 rapidly). Without the
-      // tiebreaker, the iteration order decides — and if the prior strip's
-      // closing band wins, Pass 2 treats the strip as finished and advances,
-      // losing track of the new strip's progress.
-      const key = `${ev.date}T${ev.time || "00:00"}|${group}`;
+      const savedAt = parseInt(ev.updatedAt, 10) || 0;
       const existing = latestGroupPerSize.get(ev.band.bandSize);
-      if (!existing || key > existing.key) {
-        latestGroupPerSize.set(ev.band.bandSize, { group, key });
+      if (!existing || savedAt > existing.savedAt) {
+        latestGroupPerSize.set(ev.band.bandSize, { group, savedAt });
       }
     }
 
@@ -945,7 +947,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           previousEventId: replacingPendingId ? null : (previousEventId || null),
           modifiedEventId: null,
           birdEventType,
-          updatedAt: previousEventId && !replacingPendingId ? String(Date.now()) : String(Date.parse(`${captureData.date} ${captureData.time}`)),
+          // Always use Date.now() (ms precision) so rapid sequential saves
+          // can be distinguished. Previously new captures used Date.parse(
+          // captureDate+time) which is minute-precision and tied for same-
+          // minute saves, breaking bandSizeToBandIdMap's "latest banding" lookup.
+          updatedAt: String(Date.now()),
         };
 
         // 2. Queue the bird event for sync (non-blocking).
