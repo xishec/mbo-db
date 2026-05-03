@@ -1,4 +1,5 @@
 import { Card, CardBody, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
+import { memo } from "react";
 import type { SpeciesRange } from "../../../types";
 import SpeciesTooltip from "./SpeciesTooltip";
 
@@ -11,7 +12,7 @@ interface PyleTableProps {
   withCard?: boolean;
 }
 
-export default function PyleTable({
+function PyleTableInner({
   title,
   speciesCode,
   speciesRange,
@@ -84,3 +85,9 @@ export default function PyleTable({
     </div>
   );
 }
+
+// HeroUI Table is heavy (~48ms per render). Skip re-rendering when props
+// haven't actually changed — speciesRange is a stable reference from
+// magicTable.pyle[code] until the code changes.
+const PyleTable = memo(PyleTableInner);
+export default PyleTable;

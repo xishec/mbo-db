@@ -10,7 +10,8 @@ import {
   type SortDescriptor,
 } from "@heroui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useData } from "../../services/useData";
+import { useAppStore, useActions, useIsLoggedIn } from "../../stores/useAppStore";
+import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import {
   BIRD_EVENT_ERROR_TYPE_CONFIG,
   type BirdEventError,
@@ -35,16 +36,13 @@ type ErrorColumn = {
 };
 
 export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
-  const {
-    birdEventsMap,
-    bandIdToBirdEventIdsMap,
-    magicTable,
-    dismissedConflictsMap,
-    dismissConflict,
-    resetDismissedConflicts,
-    isLoggedIn,
-    isOnline,
-  } = useData();
+  const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
+  const magicTable = useAppStore((s) => s.magicTable);
+  const dismissedConflictsMap = useAppStore((s) => s.dismissedConflictsMap);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const isLoggedIn = useIsLoggedIn();
+  const { dismissConflict, resetDismissedConflicts } = useActions();
+  const birdEventsVersion = useBirdEventsVersion();
   const [selectedBandId, setSelectedBandId] = useState<string | null>(null);
   const [selectedBirdEventId, setSelectedBirdEventId] = useState<string | null>(null);
   const [isCaptureHistoryModalOpen, setIsCaptureHistoryModalOpen] = useState(false);
@@ -70,7 +68,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
     setIsComputing(true);
 
     const timeoutId = setTimeout(() => {
-      const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsMap, magicTable);
+      const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsStore.getAll(), magicTable);
       const activeErrors: BirdEventError[] = [];
       let dismissedCount = 0;
 
@@ -93,7 +91,8 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [isOpen, isOnline, bandIdToBirdEventIdsMap, birdEventsMap, magicTable, dismissedConflictsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isOnline, bandIdToBirdEventIdsMap, birdEventsVersion, magicTable, dismissedConflictsMap]);
 
   const { errors, dismissedCount } = errorsState;
   const sortedErrors = useMemo(() => {

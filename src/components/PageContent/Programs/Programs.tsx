@@ -12,13 +12,18 @@ import {
 } from "@heroui/react";
 import BirdEvents from "./Captures/BirdEvents";
 import { useMemo, useState } from "react";
-import { useData } from "../../../services/useData";
+import { useAppStore, useActions, useIsLoggedIn } from "../../../stores/useAppStore";
 import AddProgramModal from "../../Modals/AddProgramModal";
 import type { Program } from "../../../types";
 import PageHeader from "../PageHeader";
 
 export default function Programs() {
-  const { selectProgram, selectedProgram, yearsToProgramMap, programsMap, isLoading, isLoggedIn } = useData();
+  const selectedProgram = useAppStore((s) => s.selectedProgram);
+  const yearsToProgramMap = useAppStore((s) => s.yearsToProgramMap);
+  const programsMap = useAppStore((s) => s.programsMap);
+  const isLoading = useAppStore((s) => s.isLoading);
+  const isLoggedIn = useIsLoggedIn();
+  const { selectProgram } = useActions();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
 
   // Year rows for the table (sorted descending)

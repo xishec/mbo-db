@@ -1,6 +1,6 @@
 import { Button, Input } from "@heroui/react";
 import { useState } from "react";
-import { useData } from "../../services/useData";
+import { useActions } from "../../stores/useAppStore";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "./modalDefaults";
 
@@ -10,7 +10,7 @@ interface AddProgramModalProps {
 }
 
 export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModalProps) {
-  const { addProgram } = useData();
+  const { addProgram } = useActions();
   const [programId, setProgramId] = useState("");
   const [year, setYear] = useState(() => new Date().getFullYear().toString());
   const [error, setError] = useState("");

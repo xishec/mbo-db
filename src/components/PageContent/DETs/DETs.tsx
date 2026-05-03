@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useData } from "../../../services/useData";
+import { useAppStore, useActions } from "../../../stores/useAppStore";
 import type { DET } from "../../../types/DET";
 import { Calendar, Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import type { DateValue } from "@internationalized/date";
@@ -11,7 +11,9 @@ import AddDETModal from "../../Modals/DET/AddDETModal";
 import { PencilIcon } from "@heroicons/react/24/outline";
 
 export default function DETs() {
-  const { DETsMap, isAdmin, saveDET } = useData();
+  const DETsMap = useAppStore((s) => s.DETsMap);
+  const isAdmin = useAppStore((s) => s.isAdmin);
+  const { saveDET } = useActions();
   const [selectedDET, setSelectedDET] = useState<DET | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

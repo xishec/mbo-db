@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { Tabs, Tab, Select, SelectItem, Button, Card, CardBody } from "@heroui/react";
-import { useData } from "../../../services/useData";
+import { useAppStore } from "../../../stores/useAppStore";
 import { SPECIES_MAP } from "../../../types/species";
 import type { DETsMap } from "../../../types";
 
@@ -14,8 +14,8 @@ interface YearlyHeatmapProps {
 export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapProps = {}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const dataContext = useData();
-  const DETsMap = DETsMapProp || dataContext.DETsMap;
+  const DETsMapFromStore = useAppStore((s) => s.DETsMap);
+  const DETsMap = DETsMapProp || DETsMapFromStore;
 
   const [viewMode, setViewMode] = useState<ViewMode>("det");
   const autocompleteRef = useRef<HTMLDivElement>(null);

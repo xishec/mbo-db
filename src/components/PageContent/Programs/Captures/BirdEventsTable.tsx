@@ -6,7 +6,8 @@ import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
 import { PencilSquareIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
-import { useData } from "../../../../services/useData";
+import { useAppStore, useIsLoggedIn } from "../../../../stores/useAppStore";
+import { birdEventsStore } from "../../../../services/birdEventsStore";
 import SpeciesTooltip from "../../../Helper/Info/SpeciesTooltip";
 import AgeTooltip from "../../../Helper/Info/AgeTooltip";
 import VolunteerTooltip from "../../../Helper/Info/VolunteerTooltip";
@@ -77,7 +78,11 @@ export default function BirdEventsTable({
   maxRows,
   scrollToEnd = false,
 }: BirdEventsTableProps) {
-  const { programsMap, isLoggedIn, isOnline, queuedEventIds, bandIdToBirdEventIdsMap } = useData();
+  const programsMap = useAppStore((s) => s.programsMap);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const queuedEventIds = useAppStore((s) => s.queuedEventIds);
+  const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
+  const isLoggedIn = useIsLoggedIn();
   const { sortDescriptors, handleSortChange } = useCascadingSort(
     initialSortDescriptors ?? [
       { column: "date", direction: "ascending" },
@@ -227,9 +232,16 @@ export default function BirdEventsTable({
   const renderCell = useCallback(
     (item: TableRow, columnKey: React.Key) => {
       if (columnKey === "actions") {
-        // Calculate band ID and count of events for this band
+        // Count only active captures for this band — modifications share a
+        // bandId with the event they supersede, and counting them would
+        // double-count a single capture's history.
         const bandId = item.bandGroup + item.bandLastTwoDigits;
-        const eventCount = bandIdToBirdEventIdsMap[bandId]?.length ?? 0;
+        const ids = bandIdToBirdEventIdsMap[bandId] ?? [];
+        let eventCount = 0;
+        for (const id of ids) {
+          const ev = birdEventsStore.get(id);
+          if (ev && ev.modifiedEventId == null) eventCount++;
+        }
 
         return (
           <div className="relative flex items-center justify-center gap-2">

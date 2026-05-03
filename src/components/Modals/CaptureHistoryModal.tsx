@@ -1,6 +1,8 @@
 import { Button } from "@heroui/react";
 import { useMemo } from "react";
-import { useData } from "../../services/useData";
+import { useAppStore } from "../../stores/useAppStore";
+import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
+import type { BirdEvent } from "../../types";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import PyleAndFunFacts from "../Helper/Info/PyleAndFunFacts";
 import { findErrorsInEvents } from "../../types/birdEventErrors";
@@ -23,16 +25,20 @@ export default function CaptureHistoryModal({
   bandId,
   birdEventIdToHighlight,
 }: CaptureHistoryModalProps) {
-  const { bandIdToBirdEventIdsMap, birdEventsMap, magicTable, speciesInfoMap } = useData();
+  const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
+  const magicTable = useAppStore((s) => s.magicTable);
+  const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
+  const birdEventsVersion = useBirdEventsVersion();
 
   const birdEvents = useMemo(() => {
     if (!bandId) return [];
     const eventIds = bandIdToBirdEventIdsMap[bandId] || [];
     return eventIds
-      .map((id) => birdEventsMap[id])
-      .filter(Boolean)
+      .map((id) => birdEventsStore.get(id))
+      .filter((event): event is BirdEvent => !!event)
       .filter((event) => event.modifiedEventId == null);
-  }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bandId, bandIdToBirdEventIdsMap, birdEventsVersion]);
 
   const birdInfo = useMemo(() => {
     if (birdEvents.length === 0) return null;

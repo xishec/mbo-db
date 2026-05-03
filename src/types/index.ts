@@ -1,13 +1,14 @@
 import type { DET } from "./DET";
-
-// Re-export DET type
 export type { DET } from "./DET";
 
 // Database structure types
 export type YearToProgramMap = Record<string, string[]>;
 export type ProgramsMap = Record<string, Program>;
 export type BandGroupsMap = Record<string, BandGroup>;
-export type BirdEventsMap = Record<string, BirdEvent>;
+// Bird events are stored outside React state in birdEventsStore (a singleton
+// Map). This type alias is the shape consumers see when they call
+// birdEventsStore.getAll(). We keep the name BirdEventsMap for continuity.
+export type BirdEventsMap = Map<string, BirdEvent>;
 export type BandIdToBirdEventIdsMap = Record<string, string[]>;
 export type BandSizeToBandIdMap = Record<BandSize, string>;
 export type DismissedConflictsMap = Record<string, boolean>;
@@ -176,12 +177,14 @@ export interface MagicTable {
   pyle: Record<string, SpeciesRange>;
 }
 
-// Database root type
+// Database root type. IndexedDB keeps birdEventsMap as a plain record for
+// compat with existing caches. The live, in-memory form is a Map held in
+// birdEventsStore — conversion happens at the read/write boundary.
 export interface DatabaseData {
   yearsToProgramMap: YearToProgramMap;
   programsMap: ProgramsMap;
   bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
-  birdEventsMap: BirdEventsMap;
+  birdEventsMap: Record<string, BirdEvent>;
   bandGroupsMap: BandGroupsMap;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
@@ -190,65 +193,6 @@ export interface DatabaseData {
   magicTable?: MagicTable;
   volunteersFullNameMap?: Record<string, string>;
   bandGroupNotesMap?: Record<string, string>;
-}
-
-// Service types
-export interface DataContextType {
-  // Loading state
-  isLoading: boolean;
-  loadingStatus: string;
-  error: string | null;
-
-  // User authentication
-  authReady: boolean;
-  isLoggedIn: boolean;
-  isAdmin: boolean;
-  userEmail: string | null;
-  signOut: () => Promise<void>;
-
-  // Selected program
-  selectedProgram: Program | null;
-  selectProgram: (program: Program | null) => void;
-
-  // Data
-  yearsToProgramMap: YearToProgramMap;
-  programsMap: ProgramsMap;
-  bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
-  birdEventsMap: BirdEventsMap;
-  bandGroupsMap: BandGroupsMap;
-  magicTable: MagicTable;
-  bandSizeToBandIdMap: BandSizeToBandIdMap;
-  dismissedConflictsMap: DismissedConflictsMap;
-  DETsMap: DETsMap;
-  volunteersMap: VolunteersMap;
-  speciesInfoMap: SpeciesInfoMap;
-
-  // Offline support
-  isOnline: boolean;
-  pendingCount: number;
-  queuedEventIds: Set<string>;
-  lastSyncedAt: number | null;
-
-  // Actions
-  addBirdEvent: (
-    captureData: CaptureFormData,
-    bandSize: BandSize,
-    previousEventId: string | undefined
-  ) => Promise<void>;
-  addProgram: (programId: string, year: string) => void;
-  syncQueue: () => Promise<void>;
-  isSyncing: boolean;
-  syncResult: "success" | "error" | null;
-  clearSyncResult: () => void;
-  dismissConflict: (conflictId: string) => Promise<void>;
-  resetDismissedConflicts: () => Promise<void>;
-  saveDET: (det: DET) => Promise<void>;
-  updateVolunteerName: (code: string, fullName: string) => Promise<void>;
-  bandGroupNotesMap: Record<string, string>;
-  updateBandGroupNote: (bandGroupId: string, note: string) => Promise<void>;
-  milestone: { banderCode: string; count: number } | null;
-  clearMilestone: () => void;
-  triggerTestMilestone: () => void;
 }
 
 // Form types

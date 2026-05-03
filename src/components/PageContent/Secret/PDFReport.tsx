@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo } from "react";
 import * as d3 from "d3";
-import { useData } from "../../../services/useData";
+import { useAppStore } from "../../../stores/useAppStore";
 import { SPECIES_MAP } from "../../../types/species";
 
 type ViewMode = "captured" | "observed";
@@ -300,7 +300,7 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 }
 
 export default function PDFReport() {
-  const { DETsMap } = useData();
+  const DETsMap = useAppStore((s) => s.DETsMap);
 
   // Get top 50 species by total DET count
   const topSpecies = useMemo(() => {

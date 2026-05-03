@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button, Chip, Select, SelectItem } from "@heroui/react";
 import { CURRENT_ENVIRONMENT, setEnvironment, type Environment } from "../../firebase";
-import { useData } from "../../services/useData";
+import { useActions } from "../../stores/useAppStore";
 import { clearAllIndexedDB, clearEnvironmentCache } from "../../services/indexedDB";
 import { logger, type LogEntry, LogLevel } from "../../services/logger";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -27,7 +27,7 @@ interface DeveloperModalProps {
 }
 
 export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
-  const { triggerTestMilestone } = useData();
+  const { triggerTestMilestone } = useActions();
   const [logs, setLogs] = useState<LogEntry[]>(logger.getLogs());
 
   useEffect(() => {

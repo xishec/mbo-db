@@ -29,7 +29,7 @@ import LoginModal from "./Modals/LoginModal";
 import { DeveloperModal } from "./Modals/DeveloperModal";
 import { ErrorsModal } from "./Modals/ErrorsModal";
 import { ActivityModal } from "./Modals/ActivityModal";
-import { useData } from "../services/useData";
+import { useAppStore, useActions, useIsLoggedIn, useUserEmail } from "../stores/useAppStore";
 import { CURRENT_ENVIRONMENT } from "../firebase";
 import mboLogo from "../assets/mbo-logo.svg";
 
@@ -45,19 +45,15 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
   const { isOpen: isActivityOpen, onOpen: onActivityOpen, onClose: onActivityClose } = useDisclosure();
-  const {
-    pendingCount,
-    lastSyncedAt,
-    isOnline,
-    isAdmin,
-    isLoggedIn,
-    userEmail,
-    isSyncing,
-    syncResult,
-    clearSyncResult,
-    selectProgram,
-    signOut: handleSignOut,
-  } = useData();
+  const pendingCount = useAppStore((s) => s.pendingCount);
+  const lastSyncedAt = useAppStore((s) => s.lastSyncedAt);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const isAdmin = useAppStore((s) => s.isAdmin);
+  const isSyncing = useAppStore((s) => s.isSyncing);
+  const syncResult = useAppStore((s) => s.syncResult);
+  const isLoggedIn = useIsLoggedIn();
+  const userEmail = useUserEmail();
+  const { clearSyncResult, selectProgram, signOut: handleSignOut } = useActions();
 
   const handleLogsOpen = () => !isLoading && onLogsOpen();
   const handleErrorsOpen = () => !isLoading && onErrorsOpen();

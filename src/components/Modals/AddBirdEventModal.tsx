@@ -13,7 +13,8 @@ import {
   addToast,
 } from "@heroui/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useData } from "../../services/useData";
+import { useAppStore, useActions } from "../../stores/useAppStore";
+import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import { Band, BandSize, BirdEventType, getBandGroupMapKey, type BirdEvent, type CaptureFormData } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
@@ -43,17 +44,15 @@ export default function AddBirdEventModal({
   isNewCapture,
   defaultNet,
 }: AddBirdEventModalProps) {
-  const {
-    selectedProgram,
-    bandGroupsMap,
-    magicTable,
-    bandIdToBirdEventIdsMap,
-    birdEventsMap,
-    addBirdEvent,
-    bandSizeToBandIdMap,
-    volunteersMap,
-    speciesInfoMap,
-  } = useData();
+  const selectedProgram = useAppStore((s) => s.selectedProgram);
+  const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
+  const magicTable = useAppStore((s) => s.magicTable);
+  const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
+  const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
+  const volunteersMap = useAppStore((s) => s.volunteersMap);
+  const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
+  const { addBirdEvent } = useActions();
+  const birdEventsVersion = useBirdEventsVersion();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
@@ -295,11 +294,12 @@ export default function AddBirdEventModal({
     if (!bandId) return [];
     const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
     return birdEventIds
-      .map((id) => birdEventsMap[id])
-      .filter(Boolean)
+      .map((id) => birdEventsStore.get(id))
+      .filter((event): event is BirdEvent => !!event)
       .filter((event) => event.modifiedEventId == null)
       .filter((event) => !birdEventToModify || event.id !== birdEventToModify.id);
-  }, [bandId, bandIdToBirdEventIdsMap, birdEventsMap, birdEventToModify]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bandId, bandIdToBirdEventIdsMap, birdEventsVersion, birdEventToModify]);
 
   // Compute suggested capture type (doesn't auto-update formData)
   const suggestedBirdEventType = useMemo(() => {
@@ -339,8 +339,8 @@ export default function AddBirdEventModal({
     } else {
       const birdEventIds = bandIdToBirdEventIdsMap[bandId] || [];
       const events = birdEventIds
-        .map((id) => birdEventsMap[id])
-        .filter(Boolean)
+        .map((id) => birdEventsStore.get(id))
+        .filter((event): event is BirdEvent => !!event)
         .filter((event) => event.modifiedEventId == null);
       existingSpecies = events[0]?.species;
     }

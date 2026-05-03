@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@heroui/react";
-import { useData } from "../../services/useData";
+import { useAppStore, useActions } from "../../stores/useAppStore";
 import ModalShell, { ModalBodyShell, ModalFooterShell } from "../Modals/ModalShell";
 import { modalPrimaryButtonProps } from "../Modals/modalDefaults";
 
@@ -28,7 +28,9 @@ function generateParticles(): Particle[] {
 }
 
 export default function MilestoneCelebration() {
-  const { milestone, clearMilestone, volunteersMap } = useData();
+  const milestone = useAppStore((s) => s.milestone);
+  const volunteersMap = useAppStore((s) => s.volunteersMap);
+  const { clearMilestone } = useActions();
   const [particles] = useState(generateParticles);
   const [visible, setVisible] = useState(false);
 

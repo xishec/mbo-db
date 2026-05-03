@@ -1,5 +1,5 @@
 import { Card, CardBody } from "@heroui/react";
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { SpeciesInfo } from "../../../types";
 import { formatSpanDays } from "./formatSpanDays";
 import SpeciesTooltip from "./SpeciesTooltip";
@@ -13,7 +13,7 @@ interface SpeciesFunFactsProps {
   className?: string;
 }
 
-export default function SpeciesFunFacts({
+function SpeciesFunFactsInner({
   speciesCode,
   speciesInfo,
   currentBandId = null,
@@ -156,3 +156,9 @@ export default function SpeciesFunFacts({
     </>
   );
 }
+
+// Memoized — skip re-render when species/info/currentBandId didn't change.
+// AddBirdEventModal re-renders on every keystroke but this panel doesn't
+// need to.
+const SpeciesFunFacts = memo(SpeciesFunFactsInner);
+export default SpeciesFunFacts;

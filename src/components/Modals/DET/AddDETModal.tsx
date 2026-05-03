@@ -4,7 +4,7 @@ import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "..
 import { BirdEventType } from "../../../types";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDate } from "../../../services/weatherService";
-import { useData } from "../../../services/useData";
+import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
 import DETObserverHoursModal from "./DETObserverHoursModal";
 import DETNetHoursModal from "./DETNetHoursModal";
@@ -28,7 +28,7 @@ interface AddDETModalProps {
 }
 
 export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET, mode }: AddDETModalProps) {
-  const { birdEventsMap } = useData();
+  const birdEventsVersion = useBirdEventsVersion();
 
   // Basic fields
   const [date, setDate] = useState("");
@@ -65,7 +65,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
     const banded: Record<string, number> = {};
     const repeat: Record<string, number> = {};
     const return_: Record<string, number> = {};
-    for (const ev of Object.values(birdEventsMap)) {
+    for (const ev of birdEventsStore.getAll().values()) {
       if (!ev || ev.date !== date || ev.modifiedEventId || !ev.species) continue;
       if (ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None) {
         banded[ev.species] = (banded[ev.species] ?? 0) + 1;
@@ -76,7 +76,8 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       }
     }
     return { banded, repeat, return_ };
-  }, [date, birdEventsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, birdEventsVersion]);
 
   useEffect(() => {
     setBandedSpeciesCount(computedFromEvents.banded);

@@ -10,7 +10,6 @@ import {
   YearToProgramMap,
   ProgramsMap,
   BandIdToBirdEventIdsMap,
-  BirdEventsMap,
   BandGroupsMap,
   BandGroup,
   generateBirdEventId,
@@ -245,7 +244,9 @@ export async function CSVToRTDB(csvContent: string, db: Database): Promise<void>
 }
 
 async function generateDB(birdEvents: BirdEvent[], db: Database) {
-  const birdEventsMap: BirdEventsMap = {};
+  // Plain record — persistence/RTDB format. The runtime BirdEventsMap type
+  // is a Map but this script writes the serialized record form.
+  const birdEventsMap: Record<string, BirdEvent> = {};
   const yearsToProgramMap: YearToProgramMap = {};
   const bandGroupsMap: BandGroupsMap = {};
   const programsMap: ProgramsMap = {};

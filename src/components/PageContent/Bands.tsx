@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Input, Button } from "@heroui/react";
 import { useMemo, useRef, useState } from "react";
-import { useData } from "../../services/useData";
+import { useAppStore, useActions, useIsLoggedIn } from "../../stores/useAppStore";
+import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import { useCascadingSort, cascadingSort } from "../../hooks/useCascadingSort";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../Modals/ModalShell";
@@ -60,7 +61,12 @@ const COLUMNS = [
 const numericColumns = new Set<string>();
 
 export default function Bands() {
-  const { bandGroupsMap, birdEventsMap, bandGroupNotesMap, updateBandGroupNote, isLoggedIn, isOnline } = useData();
+  const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
+  const bandGroupNotesMap = useAppStore((s) => s.bandGroupNotesMap);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const isLoggedIn = useIsLoggedIn();
+  const { updateBandGroupNote } = useActions();
+  const birdEventsVersion = useBirdEventsVersion();
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
     { column: "lastUsedDate", direction: "descending" },
   ]);
@@ -77,9 +83,10 @@ export default function Bands() {
     const bg = bandGroupsMap[selectedBandGroupId];
     if (!bg) return [];
     return bg.newCaptureIds
-      .map((id) => birdEventsMap[id])
-      .filter(Boolean) as BirdEvent[];
-  }, [selectedBandGroupId, bandGroupsMap, birdEventsMap]);
+      .map((id) => birdEventsStore.get(id))
+      .filter((ev): ev is BirdEvent => !!ev);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBandGroupId, bandGroupsMap, birdEventsVersion]);
 
   const rows = useMemo<Row[]>(() => {
     const result: Row[] = [];
@@ -89,7 +96,7 @@ export default function Bands() {
       let lastDate = "";
 
       for (const eventId of bg.newCaptureIds) {
-        const ev = birdEventsMap[eventId];
+        const ev = birdEventsStore.get(eventId);
         if (!ev) continue;
         usedDigits.add(ev.band.last2digits);
         if (ev.date > lastDate) lastDate = ev.date;
@@ -116,7 +123,8 @@ export default function Bands() {
     }
 
     return result;
-  }, [bandGroupsMap, birdEventsMap, bandGroupNotesMap, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bandGroupsMap, birdEventsVersion, bandGroupNotesMap, search]);
 
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
 

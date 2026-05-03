@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Button, Chip } from "@heroui/react";
-import { useData } from "../../services/useData";
+import { useAppStore } from "../../stores/useAppStore";
+import { birdEventsStore } from "../../services/birdEventsStore";
 import { getQueuedEvents, clearQueue } from "../../services/indexedDB";
 import type { PendingEvent, BirdEvent } from "../../types";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
@@ -14,7 +15,8 @@ interface ActivityModalProps {
 }
 
 export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
-  const { birdEventsMap, pendingCount, isOnline } = useData();
+  const pendingCount = useAppStore((s) => s.pendingCount);
+  const isOnline = useAppStore((s) => s.isOnline);
   const [queuedEvents, setQueuedEvents] = useState<PendingEvent[]>([]);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -27,13 +29,18 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
   // Only walk the full birdEventsMap when the modal is open. Sorting 700K+
   // events on every save burns ~1200ms on slow CPUs — and nobody sees the
   // result unless the modal is actually showing.
+  // Snapshot: read the store once when the modal opens. Other saves while
+  // the modal is open won't force a re-sort (the list stays what was shown
+  // at open). If the user wants fresh data they can close+reopen — matches
+  // the previous "only while open" semantic.
   const recentBirdEvents = useMemo(() => {
     if (!isOpen) return [];
-    return Object.values(birdEventsMap)
-      .filter((event): event is BirdEvent => event !== undefined && !event.modifiedEventId)
-      .sort((a, b) => parseInt(b.updatedAt) - parseInt(a.updatedAt))
-      .slice(0, 100);
-  }, [isOpen, birdEventsMap]);
+    const arr: BirdEvent[] = [];
+    for (const event of birdEventsStore.getAll().values()) {
+      if (event && !event.modifiedEventId) arr.push(event);
+    }
+    return arr.sort((a, b) => parseInt(b.updatedAt) - parseInt(a.updatedAt)).slice(0, 100);
+  }, [isOpen]);
 
   return (
     <ModalShell

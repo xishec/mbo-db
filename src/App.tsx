@@ -7,11 +7,11 @@ import Trends from "./components/PageContent/Trends";
 import LoadingProgressBar from "./components/Helper/LoadingProgressBar";
 import MilestoneCelebration from "./components/Helper/MilestoneCelebration";
 import { DataProvider } from "./services/DataService";
-import { useData } from "./services/useData";
+import { useAppStore, useIsLoggedIn } from "./stores/useAppStore";
 import mboLogo from "./assets/mbo-logo.svg";
 
 function BeforeUnloadGuard() {
-  const { isSyncing } = useData();
+  const isSyncing = useAppStore((s) => s.isSyncing);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -37,7 +37,10 @@ function getPageFromHash(): string {
 
 function AppContent() {
   const [activePage, setActivePage] = useState(getPageFromHash);
-  const { isLoading, isLoggedIn, isOnline, authReady } = useData();
+  const isLoading = useAppStore((s) => s.isLoading);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const authReady = useAppStore((s) => s.authReady);
+  const isLoggedIn = useIsLoggedIn();
 
   const handlePageChange = (page: string) => {
     if (!isLoading) {

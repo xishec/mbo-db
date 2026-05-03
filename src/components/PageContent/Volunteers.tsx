@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Input, Button } from "@heroui/react";
 import { useMemo, useRef, useState } from "react";
-import { useData } from "../../services/useData";
+import { useAppStore, useActions, useIsLoggedIn } from "../../stores/useAppStore";
+import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import { useCascadingSort, cascadingSort } from "../../hooks/useCascadingSort";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../Modals/ModalShell";
@@ -29,7 +30,11 @@ const numericColumns = new Set<string>(COLUMNS.filter((c) => c.type === "number"
 type BreakdownRole = "banded" | "scribed";
 
 export default function Volunteers() {
-  const { volunteersMap, birdEventsMap, isLoggedIn, isOnline, updateVolunteerName } = useData();
+  const volunteersMap = useAppStore((s) => s.volunteersMap);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const isLoggedIn = useIsLoggedIn();
+  const { updateVolunteerName } = useActions();
+  const birdEventsVersion = useBirdEventsVersion();
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
     { column: "totalBanded", direction: "descending" },
   ]);
@@ -49,7 +54,7 @@ export default function Volunteers() {
   const breakdownEvents = useMemo<BirdEvent[]>(() => {
     if (!breakdown) return [];
     const events: BirdEvent[] = [];
-    for (const ev of Object.values(birdEventsMap)) {
+    for (const ev of birdEventsStore.getAll().values()) {
       if (!ev || ev.modifiedEventId || !ev.species) continue;
       if (breakdown.role === "banded") {
         const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
@@ -60,7 +65,8 @@ export default function Volunteers() {
       events.push(ev);
     }
     return events;
-  }, [breakdown, birdEventsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakdown, birdEventsVersion]);
 
   const breakdownRows = useMemo(() => {
     const counts = new Map<string, number>();

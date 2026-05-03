@@ -1,6 +1,6 @@
 import { Tooltip } from "@heroui/react";
 import type { ReactNode } from "react";
-import { useData } from "../../../services/useData";
+import { useAppStore } from "../../../stores/useAppStore";
 
 interface VolunteerTooltipProps {
   volunteerCode: string;
@@ -9,8 +9,7 @@ interface VolunteerTooltipProps {
 }
 
 export default function VolunteerTooltip({ volunteerCode, disabled = false, children }: VolunteerTooltipProps) {
-  const { volunteersMap } = useData();
-  const volunteer = volunteersMap?.[volunteerCode];
+  const volunteer = useAppStore((s) => s.volunteersMap[volunteerCode]);
   const content = children ?? volunteerCode;
 
   if (disabled || !volunteer) {

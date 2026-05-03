@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import { SPECIES_GROUPS } from "../../types/DET";
 import { SPECIES_MAP } from "../../types/species";
-import { useData } from "../../services/useData";
+import { useAppStore } from "../../stores/useAppStore";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
 import PageHeader from "./PageHeader";
@@ -43,7 +43,7 @@ const SPECIES_COLUMNS: ColumnType[] = [
 ];
 
 export default function SpeciesGroups() {
-  const { speciesInfoMap } = useData();
+  const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
   const [selectedSpeciesCode, setSelectedSpeciesCode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort();

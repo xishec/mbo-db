@@ -1,10 +1,74 @@
 import { Button, Spinner, useDisclosure, Tab, Tabs, Select, SelectItem } from "@heroui/react";
-import { useState, useMemo, useCallback } from "react";
-import { useData } from "../../../../services/useData";
+import { memo, useState, useMemo, useCallback } from "react";
+import { useAppStore, useIsLoggedIn } from "../../../../stores/useAppStore";
+import { birdEventsStore, useBirdEventsVersion } from "../../../../services/birdEventsStore";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
-import { Band, BandSize, getBandGroupMapKey } from "../../../../types";
+import { Band, BandSize, getBandGroupMapKey, type BirdEvent } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
 import { PlusIcon } from "@heroicons/react/24/outline";
+
+// Memoized wrappers for HeroUI Select. HeroUI Select itself isn't memoized
+// and re-renders (~25ms each) whenever its parent commits, even with stable
+// props — adds up to ~2.5s of render work across a post-save cascade. These
+// thin wrappers short-circuit the render when the actual props haven't
+// changed (reference equality on items/selectedKeys/onChange).
+type PageSelectItem = { key: string; label: string };
+const MemoPageSelect = memo(function MemoPageSelect(props: {
+  items: PageSelectItem[];
+  selectedKeys: string[];
+  onChange: (selected: string | undefined) => void;
+}) {
+  return (
+    <Select
+      placeholder="Select page"
+      variant="bordered"
+      items={props.items}
+      selectedKeys={props.selectedKeys}
+      onSelectionChange={(keys) => props.onChange(Array.from(keys)[0] as string | undefined)}
+      size="md"
+      className="max-w-[200px]"
+      maxListboxHeight={9999}
+      classNames={{
+        trigger: "min-h-unit-10 h-unit-10",
+        value: "text-sm",
+      }}
+    >
+      {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+    </Select>
+  );
+});
+
+type OtherBandsItem = { key: string; label: string; count: number };
+const MemoOtherBandsSelect = memo(function MemoOtherBandsSelect(props: {
+  items: OtherBandsItem[];
+  selectedKeys: string[];
+  onChange: (selected: string) => void;
+}) {
+  return (
+    <Select
+      placeholder="Other band groups"
+      variant="bordered"
+      items={props.items}
+      selectedKeys={props.selectedKeys}
+      onSelectionChange={(keys) => {
+        const selected = Array.from(keys)[0] as string | undefined;
+        if (selected) props.onChange(selected);
+      }}
+      size="md"
+      className="max-w-[250px]"
+      classNames={{
+        trigger: "min-h-unit-10 h-unit-10",
+        value: "text-sm",
+      }}
+    >
+      {(item) => (
+        <SelectItem key={item.key} endContent={<span className="text-xs opacity-60">{item.count} used</span>}>
+          {item.label}
+        </SelectItem>
+      )}
+    </Select>
+  );
+});
 
 const NETS = [
   "A1",
@@ -28,7 +92,12 @@ const NETS = [
 
 export default function BirdEvents() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { selectedProgram, isLoading, bandSizeToBandIdMap, isLoggedIn, bandGroupsMap, birdEventsMap } = useData();
+  const selectedProgram = useAppStore((s) => s.selectedProgram);
+  const isLoading = useAppStore((s) => s.isLoading);
+  const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
+  const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
+  const isLoggedIn = useIsLoggedIn();
+  const birdEventsVersion = useBirdEventsVersion();
   const [selectedNet, setSelectedNet] = useState<string>("");
   // Three-state logic: undefined = auto-select default, null = show empty table, string = show this band group
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null | undefined>(undefined);
@@ -82,8 +151,8 @@ export default function BirdEvents() {
       const bandGroup = bandGroupsMap[bandGroupId];
       if (bandGroup) {
         const validEvents = bandGroup.newCaptureIds
-          .map((id) => birdEventsMap[id])
-          .filter((event) => event && event.modifiedEventId == null);
+          .map((id) => birdEventsStore.get(id))
+          .filter((event): event is BirdEvent => !!event && event.modifiedEventId == null);
 
         const count = validEvents.length;
 
@@ -123,7 +192,8 @@ export default function BirdEvents() {
     }
 
     return info;
-  }, [bandGroupIds, bandGroupsMap, birdEventsMap, bandSizeToBandGroup, bandSizeToBandIdMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bandGroupIds, bandGroupsMap, birdEventsVersion, bandSizeToBandGroup, bandSizeToBandIdMap]);
 
   // Get other band groups (have captures but no band size assigned in settings)
   const otherBandGroups = useMemo(() => {
@@ -138,7 +208,11 @@ export default function BirdEvents() {
     return other;
   }, [bandGroupIds, bandGroupToBandSize, bandGroupInfo]);
 
-  // Build page select items as a unified array to avoid React Aria collection issues
+  // Build page select items as a unified array to avoid React Aria collection issues.
+  // Label shows the PHYSICAL next band id from bandSizeToBandIdMap (the value the
+  // Add modal will prefill) — not `${groupKey}-${nextDigit}`, which is misleading
+  // when the next band is -00: strip "3060423" ends with physical band "3060424-00",
+  // so the label must say "3060424-00", not "3060423-00".
   const pageSelectItems = useMemo(() => {
     const items: { key: string; label: string }[] = [];
     Object.values(BandSize)
@@ -146,13 +220,17 @@ export default function BirdEvents() {
       .filter((size) => bandSizeToBandGroup[size])
       .forEach((size) => {
         const bandGroupId = bandSizeToBandGroup[size]!;
-        const { nextDigits } = bandGroupInfo[bandGroupId] ?? { count: 0, nextDigits: "01" };
-        items.push({ key: bandGroupId, label: `${size} - ${bandGroupId}-${nextDigits}` });
+        const nextFullId = bandSizeToBandIdMap[size as BandSize];
+        const labelBand =
+          nextFullId && nextFullId.length === 9
+            ? `${nextFullId.slice(0, 7)}-${nextFullId.slice(7, 9)}`
+            : `${bandGroupId}-${(bandGroupInfo[bandGroupId]?.nextDigits ?? "01")}`;
+        items.push({ key: bandGroupId, label: `${size} - ${labelBand}` });
       });
     items.push({ key: "other", label: "Other Size" });
     items.push({ key: "recaptures", label: "Recaptures" });
     return items;
-  }, [bandSizeToBandGroup, bandGroupInfo]);
+  }, [bandSizeToBandGroup, bandGroupInfo, bandSizeToBandIdMap]);
 
   // Determine which band group to display.
   //
@@ -192,14 +270,22 @@ export default function BirdEvents() {
   const captures = useMemo(() => {
     if (!displayBandGroupId) return [];
     const bandGroup = bandGroupsMap[displayBandGroupId];
-    return bandGroup?.newCaptureIds.map((id) => birdEventsMap[id]).filter(Boolean) ?? [];
-  }, [displayBandGroupId, bandGroupsMap, birdEventsMap]);
+    return (
+      bandGroup?.newCaptureIds
+        .map((id) => birdEventsStore.get(id))
+        .filter((ev): ev is BirdEvent => !!ev) ?? []
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayBandGroupId, bandGroupsMap, birdEventsVersion]);
 
   // Get recaptures for the current program
   const recaptures = useMemo(() => {
     if (!selectedProgram?.recaptureIds) return [];
-    return selectedProgram.recaptureIds.map((id) => birdEventsMap[id]).filter(Boolean);
-  }, [selectedProgram, birdEventsMap]);
+    return selectedProgram.recaptureIds
+      .map((id) => birdEventsStore.get(id))
+      .filter((ev): ev is BirdEvent => !!ev);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProgram, birdEventsVersion]);
 
   const handleNetTabChange = useCallback((key: React.Key) => {
     const netValue = key as string;
@@ -240,6 +326,44 @@ export default function BirdEvents() {
     setSelectedBandGroupId(undefined);
     setSelectedBandSize(null);
   }, []);
+
+  // Stable handler for the Page Select so its memo'd wrapper can skip re-renders.
+  const handlePageSelectChange = useCallback(
+    (selected: string | undefined) => {
+      if (selected === "recaptures") handleRecapturesSelect();
+      else if (selected === "other") handleBandGroupSelect(null);
+      else if (selected) handleBandGroupSelect(selected);
+    },
+    [handleBandGroupSelect, handleRecapturesSelect]
+  );
+
+  // Stable handler for the Other bands Select.
+  const handleOtherBandsSelectChange = useCallback(
+    (selected: string) => {
+      setSelectedBandGroupId(selected);
+      // "Other bands" groups aren't mapped to a size — clear the size
+      // tracking so the size-based lookup doesn't override.
+      setSelectedBandSize(null);
+      setShowRecaptures(false);
+    },
+    []
+  );
+
+  const otherBandsItems = useMemo(
+    () =>
+      otherBandGroups.map((bandGroupId) => ({
+        key: bandGroupId,
+        label: bandGroupId,
+        count: bandGroupInfo[bandGroupId]?.count ?? 0,
+      })),
+    [otherBandGroups, bandGroupInfo]
+  );
+
+  const otherBandsSelectedKeys = useMemo(
+    () =>
+      displayBandGroupId && otherBandGroups.includes(displayBandGroupId) ? [displayBandGroupId] : [],
+    [otherBandGroups, displayBandGroupId]
+  );
 
   const handleBandGroupAdd = useCallback(
     (bandGroupId: string) => {
@@ -299,31 +423,11 @@ export default function BirdEvents() {
 
         <div className="flex items-center gap-3 flex-wrap">
           <span>Active bands:</span>
-          <Select
-            placeholder="Select page"
-            variant="bordered"
+          <MemoPageSelect
             items={pageSelectItems}
             selectedKeys={pageSelectedKeys}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as string | undefined;
-              if (selected === "recaptures") {
-                handleRecapturesSelect();
-              } else if (selected === "other") {
-                handleBandGroupSelect(null);
-              } else if (selected) {
-                handleBandGroupSelect(selected);
-              }
-            }}
-            size="md"
-            className="max-w-[200px]"
-            maxListboxHeight={9999}
-            classNames={{
-              trigger: "min-h-unit-10 h-unit-10",
-              value: "text-sm",
-            }}
-          >
-            {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-          </Select>
+            onChange={handlePageSelectChange}
+          />
           <Button
             color="secondary"
             variant="solid"
@@ -342,37 +446,11 @@ export default function BirdEvents() {
           {otherBandGroups.length > 0 && (
             <>
               <span>Other bands:</span>
-              <Select
-                placeholder="Other band groups"
-                variant="bordered"
-                selectedKeys={otherBandGroups.includes(displayBandGroupId || "") ? [displayBandGroupId || ""] : []}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0] as string | undefined;
-                  if (selected) {
-                    setSelectedBandGroupId(selected);
-                    // "Other bands" groups aren't mapped to a size — clear the
-                    // size tracking so the size-based lookup doesn't override.
-                    setSelectedBandSize(null);
-                    setShowRecaptures(false);
-                  }
-                }}
-                size="md"
-                className="max-w-[250px]"
-                classNames={{
-                  trigger: "min-h-unit-10 h-unit-10",
-                  value: "text-sm",
-                }}
-              >
-                {otherBandGroups.map((bandGroupId) => {
-                  const { count } = bandGroupInfo[bandGroupId] ?? { count: 0 };
-
-                  return (
-                    <SelectItem key={bandGroupId} endContent={<span className="text-xs opacity-60">{count} used</span>}>
-                      {bandGroupId}
-                    </SelectItem>
-                  );
-                })}
-              </Select>
+              <MemoOtherBandsSelect
+                items={otherBandsItems}
+                selectedKeys={otherBandsSelectedKeys}
+                onChange={handleOtherBandsSelectChange}
+              />
             </>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { Input, Progress, Select, SelectItem, Chip, Button } from "@heroui/react";
 import { useState, useMemo, useCallback, useRef } from "react";
-import { useData } from "../../services/useData";
+import { useAppStore } from "../../stores/useAppStore";
+import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import type { BirdEvent } from "../../types";
 import { TABLE_COLUMNS } from "./Programs/Captures/helpers";
@@ -47,18 +48,20 @@ const SEARCH_COLUMNS = [
 ];
 
 export default function Search() {
-  const { birdEventsMap, isLoading } = useData();
+  const isLoading = useAppStore((s) => s.isLoading);
+  const version = useBirdEventsVersion();
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
 
   // Convert birdEventsMap to array
-  const allBirdEvents = useMemo(
-    () =>
-      Object.values(birdEventsMap)
-        .filter((event) => event.modifiedEventId == null)
-        .sort((a, b) => (a.date < b.date ? 1 : -1)),
-    [birdEventsMap]
-  );
+  const allBirdEvents = useMemo(() => {
+    const arr: BirdEvent[] = [];
+    for (const ev of birdEventsStore.getAll().values()) {
+      if (ev.modifiedEventId == null) arr.push(ev);
+    }
+    return arr.sort((a, b) => (a.date < b.date ? 1 : -1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version]);
 
   // Filter state
   const [filters, setFilters] = useState<Filter[]>([]);

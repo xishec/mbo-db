@@ -621,7 +621,9 @@ export function findBirdEventErrors(
 
     const eventIds = bandIdToBirdEventIdsMap[bandId];
     // Filter out modified events (events that have been superseded by newer versions)
-    const events = eventIds.map((id) => birdEventsMap[id]).filter((event) => event && !event.modifiedEventId);
+    const events = eventIds
+      .map((id) => birdEventsMap.get(id))
+      .filter((event): event is BirdEvent => !!event && !event.modifiedEventId);
 
     errors.push(...findErrorsInEvents(events, magicTable));
   }

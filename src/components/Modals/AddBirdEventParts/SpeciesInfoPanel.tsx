@@ -1,3 +1,4 @@
+import { memo } from "react";
 import PyleTable from "../../Helper/Info/PyleTable";
 import SpeciesFunFacts from "../../Helper/Info/SpeciesFunFacts";
 import type { SpeciesRange, SpeciesInfo } from "../../../types";
@@ -8,7 +9,7 @@ interface SpeciesInfoPanelProps {
   speciesInfo: SpeciesInfo | null;
 }
 
-export default function SpeciesInfoPanel({ speciesCode, pyleSpeciesRange, speciesInfo }: SpeciesInfoPanelProps) {
+function SpeciesInfoPanelInner({ speciesCode, pyleSpeciesRange, speciesInfo }: SpeciesInfoPanelProps) {
   if (speciesCode.length !== 4) return null;
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -19,3 +20,6 @@ export default function SpeciesInfoPanel({ speciesCode, pyleSpeciesRange, specie
     </div>
   );
 }
+
+const SpeciesInfoPanel = memo(SpeciesInfoPanelInner);
+export default SpeciesInfoPanel;

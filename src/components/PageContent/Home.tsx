@@ -1,14 +1,15 @@
 import { useMemo } from "react";
-import { useData } from "../../services/useData";
+import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 
 export default function Home() {
-  const { birdEventsMap } = useData();
+  const version = useBirdEventsVersion();
 
   const latestDaySummary = useMemo(() => {
     // Filter out modified/superseded events
-    const activeEvents = Object.values(birdEventsMap).filter(
-      (event) => event && !event.modifiedEventId
-    );
+    const activeEvents: Array<{ date: string; bander: string; scribe: string; species: string }> = [];
+    for (const event of birdEventsStore.getAll().values()) {
+      if (event && !event.modifiedEventId) activeEvents.push(event);
+    }
 
     // Find the latest date in a single pass
     let latestDate = "";
@@ -58,7 +59,8 @@ export default function Home() {
       mostCapturedSpecies,
       totalCaptures: latestDayEvents.length,
     };
-  }, [birdEventsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version]);
 
   if (!latestDaySummary) {
     return (

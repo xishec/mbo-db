@@ -1,7 +1,7 @@
 import { Button } from "@heroui/react";
 import { useMemo } from "react";
 import PyleAndFunFacts from "../Helper/Info/PyleAndFunFacts";
-import { useData } from "../../services/useData";
+import { useAppStore } from "../../stores/useAppStore";
 import { SPECIES_MAP } from "../../types/species";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
@@ -15,7 +15,8 @@ interface SpeciesInfoModalProps {
 }
 
 export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: SpeciesInfoModalProps) {
-  const { speciesInfoMap, magicTable } = useData();
+  const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
+  const magicTable = useAppStore((s) => s.magicTable);
   const species = SPECIES_MAP[speciesCode];
 
   const pyleSpeciesRange = useMemo(() => {
