@@ -15,6 +15,7 @@ export const BIRD_EVENT_ERROR_TYPE_CONFIG = {
   "age-consistency": { label: "Age Consistency" },
   "age-sequence": { label: "Age Sequence" },
   "age-season": { label: "Age Season" },
+  "species-not-in-pyle": { label: "Species Not In Pyle" },
 } as const;
 
 export type BirdEventErrorType = keyof typeof BIRD_EVENT_ERROR_TYPE_CONFIG;
@@ -531,10 +532,29 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
     }
   }
 
-  // Check all events for out-of-normal measurements
+  // Check all events for out-of-normal measurements, and flag species that
+  // are missing from Pyle. A 4-letter species code that isn't in the Pyle
+  // table means we have no reference data to validate it against — usually
+  // a typo (e.g. AMRO vs ARMO) or a species our Pyle source doesn't cover.
   if (magicTable) {
     for (const event of events) {
       const pyleRange = magicTable.pyle?.[event.species];
+
+      if (
+        event.species &&
+        event.species.length === 4 &&
+        event.species !== "BADE" &&
+        event.species !== "BALO" &&
+        !pyleRange
+      ) {
+        errors.push({
+          id: `${event.id}-species-not-in-pyle`,
+          errorType: "species-not-in-pyle",
+          birdEvent: event,
+          reason: `Species "${event.species}" not found in Pyle reference`,
+          severity: "danger",
+        });
+      }
 
       const measurementErrors = checkEventMeasurements(event, pyleRange);
       errors.push(...measurementErrors);

@@ -227,7 +227,10 @@ export default function AddBirdEventModal({
   const DATE_TIME_KEYS = ["date", "date-month", "date-day", "time", "time-minute"];
 
   const focusOrder = useMemo(() => {
-    const order = [...ROW1_KEYS.filter((k) => k !== "notes" && k !== "birdStatus"), ...ROW2_KEYS];
+    // Keep birdStatus and notes in the order so Tab from them lands on the
+    // next row (net). They're rendered as Buttons (not Inputs) so the
+    // tabIndex hooks still place them in the keyboard sequence.
+    const order = [...ROW1_KEYS, ...ROW2_KEYS];
     if (!useCurrentTime) order.push(...DATE_TIME_KEYS);
     return order;
   }, [useCurrentTime]);
@@ -537,9 +540,11 @@ export default function AddBirdEventModal({
           }));
           setLastBandId("");
           setIsSaving(false);
-          // Band fields auto-repopulate via the reset useEffect; net is kept.
-          // After that commit the first empty field is species.
-          focusTo("species");
+          // Band fields auto-repopulate via the reset useEffect only for new
+          // bandings (from bandSizeToBandIdMap). For recaptures the bander
+          // types the band manually, so start focus there. New bandings skip
+          // straight to species since band/net are already filled.
+          focusTo(isNewCapture ? "species" : "bandGroup");
         } else {
           onOpenChange(false);
         }
@@ -553,7 +558,7 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, selectedBandSize, addBirdEvent, birdEventToModify?.id, isSaving, onOpenChange]
+    [formData, selectedBandSize, isNewCapture, focusTo, addBirdEvent, birdEventToModify?.id, isSaving, onOpenChange]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);
