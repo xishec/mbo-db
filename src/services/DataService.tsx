@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { get, ref, set, update } from "firebase/database";
 import { db, CURRENT_ENVIRONMENT, auth } from "../firebase";
 import {
@@ -133,18 +133,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
    * - dummiest: band with most bird events (capture + recapture)
    * - oldest: individual with longest span between earliest and latest bird event
    * - favoriteBander: most repeated bander string
-   *
-   * Recomputing this on every save is expensive (~1.5s on slow CPUs with
-   * 700K+ events). We drive it off a deferred birdEventsMap so the expensive
-   * walk runs in a low-priority render AFTER the save paint — consumers
-   * (SpeciesGroups page, info modals) get the stale value for one frame.
    */
-  const deferredBirdEventsMapForSpecies = useDeferredValue(birdEventsMap);
   const speciesInfoMap = useMemo<SpeciesInfoMap>(() => {
     const infoMap: SpeciesInfoMap = {};
 
     // Filter out modified events
-    const validEvents = Object.values(deferredBirdEventsMapForSpecies).filter((event) => event && !event.modifiedEventId);
+    const validEvents = Object.values(birdEventsMap).filter((event) => event && !event.modifiedEventId);
 
     if (validEvents.length === 0) return infoMap;
 
@@ -257,55 +251,62 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
 
     return infoMap;
-  }, [deferredBirdEventsMapForSpecies]);
+  }, [birdEventsMap]);
 
   // For each band size, suggest the next available band id:
   //   1. Pick the latest banding (by date+time) for that size → its logical
   //      band group is the strip the bander is currently working.
-  //   2. Within that group, find the highest last2digits used in 01→99→00
-  //      order (-00 is the last band of a strip, not the first) and take
-  //      the next position in that order.
+  //   2. Within that group, find the highest last2digits banded in
+  //      01→99→00 order (-00 is the last band of a strip, not the first)
+  //      and take the next position in that order.
   //
-  // This iterates birdEventsMap twice (~1.4M ops for 700K events). On slow
-  // CPUs that's ~650ms — ran on every save. Drive it off a deferred map so
-  // it runs in a low-priority render after the save paints. The suggested
-  // next-band value will be one frame stale, which is fine — the Add modal
-  // reads it on open, not continuously.
-  const deferredBirdEventsMapForBands = useDeferredValue(birdEventsMap);
+  // Pass 1 — one scan over birdEventsMap: lexical date+time comparison (ISO
+  //   sorts correctly) and inline group-key math to avoid Date.parse + Band()
+  //   allocation per event on 700K events.
+  // Pass 2 — per-size lookup in bandGroupsMap.newCaptureIds: that list only
+  //   contains banded (new-capture) events, which is exactly what we need —
+  //   a repeat of a previously-banded digit doesn't claim a new position.
   const bandSizeToBandIdMap = useMemo(() => {
-    // Latest banding (by date+time) per size.
-    const latestGroupPerSize = new Map<BandSize, { group: string; timestamp: number }>();
-    for (const ev of Object.values(deferredBirdEventsMapForBands)) {
+    const latestGroupPerSize = new Map<BandSize, { group: string; key: string }>();
+    for (const ev of Object.values(birdEventsMap)) {
       if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
-      const ts = Date.parse(`${ev.date}T${ev.time || "00:00"}`);
-      if (Number.isNaN(ts)) continue;
-      const group = getBandGroupMapKey(new Band(ev.band.bandPrefix, ev.band.bandSuffix));
-      const existing = latestGroupPerSize.get(ev.band.bandSize);
-      if (!existing || ts > existing.timestamp) {
-        latestGroupPerSize.set(ev.band.bandSize, { group, timestamp: ts });
-      }
-    }
 
-    // All last2digits already used per logical group (any event counts —
-    // a band is a band regardless of event type). Encode -00 as 100 so
-    // comparisons reflect the physical 01→99→00 order.
-    const usedByGroup = new Map<string, Set<number>>();
-    for (const ev of Object.values(deferredBirdEventsMapForBands)) {
-      if (!ev?.band) continue;
-      const band = new Band(ev.band.bandPrefix, ev.band.bandSuffix);
-      const last2 = parseInt(band.last2digits, 10);
-      if (Number.isNaN(last2)) continue;
-      const group = getBandGroupMapKey(band);
-      if (!usedByGroup.has(group)) usedByGroup.set(group, new Set());
-      usedByGroup.get(group)!.add(last2 === 0 ? 100 : last2);
+      // Compute group key inline (mirrors getBandGroupMapKey) to skip Band()
+      // construction on 700K events.
+      const prefix = ev.band.bandPrefix;
+      const suffix = ev.band.bandSuffix;
+      const last2 = suffix.slice(-2);
+      const bandGroupId = prefix + suffix.slice(0, 3);
+      const group =
+        last2 !== "00"
+          ? bandGroupId
+          : (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0");
+
+      // Lexical compare of "YYYY-MM-DDTHH:MM" avoids Date.parse per event.
+      const key = `${ev.date}T${ev.time || "00:00"}`;
+      const existing = latestGroupPerSize.get(ev.band.bandSize);
+      if (!existing || key > existing.key) {
+        latestGroupPerSize.set(ev.band.bandSize, { group, key });
+      }
     }
 
     const map = {} as Record<BandSize, string>;
     for (const [size, { group }] of latestGroupPerSize) {
-      const used = usedByGroup.get(group);
-      if (!used || used.size === 0) continue;
+      const bandGroup = bandGroupsMap[group];
+      if (!bandGroup) continue;
+
+      // Find highest last2 used in this group (encode -00 as 100 so the
+      // 01→99→00 physical order compares correctly).
       let max = 0;
-      for (const n of used) if (n > max) max = n;
+      for (const eventId of bandGroup.newCaptureIds) {
+        const ev = birdEventsMap[eventId];
+        if (!ev?.band) continue;
+        const last2 = parseInt(ev.band.bandSuffix.slice(-2), 10);
+        if (Number.isNaN(last2)) continue;
+        const encoded = last2 === 0 ? 100 : last2;
+        if (encoded > max) max = encoded;
+      }
+      if (max === 0) continue;
 
       const groupPrefix = parseInt(group, 10);
       if (Number.isNaN(groupPrefix)) continue;
@@ -325,7 +326,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       map[size] = nextPrefix.toString().padStart(7, "0") + nextLast2.toString().padStart(2, "0");
     }
     return map;
-  }, [deferredBirdEventsMapForBands]);
+  }, [birdEventsMap, bandGroupsMap]);
 
   // Load data when logged in (online) or immediately (offline)
   const isLoggedIn = !!user || !isOnline;

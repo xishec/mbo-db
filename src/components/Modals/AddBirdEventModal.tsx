@@ -64,17 +64,21 @@ export default function AddBirdEventModal({
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(bandSize);
 
-  // Auto-update band size when band group changes (for new captures)
+  // Auto-update band size when band group changes (for new captures).
+  // Matching logic:
+  //   1. Recapture → always "Other"
+  //   2. Group matches an existing size's group → use that size
+  //   3. No match → keep the size the user opened the modal with. Setting
+  //      "Other" here would silently lose the user's intent when they type
+  //      a brand-new band group under a known size.
   useEffect(() => {
     if (birdEventToModify || !formData.bandGroup) return;
 
-    // If it's a recapture, set band size to "Other"
     if (formData.birdEventType !== BirdEventType.Banded && formData.birdEventType !== BirdEventType.None) {
       setSelectedBandSize(BandSize.Other);
       return;
     }
 
-    // Otherwise, derive band size from current band group
     for (const [size, bandId] of Object.entries(bandSizeToBandIdMap)) {
       if (bandId && bandId.length === 9) {
         const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
@@ -84,9 +88,9 @@ export default function AddBirdEventModal({
         }
       }
     }
-    setSelectedBandSize(BandSize.Other);
-  }, [formData.bandGroup, formData.birdEventType, bandSizeToBandIdMap, birdEventToModify]);
-
+    // No match — preserve the user's initial size intent.
+    setSelectedBandSize(bandSize);
+  }, [formData.bandGroup, formData.birdEventType, bandSizeToBandIdMap, birdEventToModify, bandSize]);
 
   // Reset form data when modal opens
   useEffect(() => {
@@ -497,9 +501,12 @@ export default function AddBirdEventModal({
       setIsSaving(true);
 
       try {
+        // Use the user's current size selection (selectedBandSize) — not the
+        // initial prop — so changing the band group mid-edit is reflected
+        // back into bandSizeToBandIdMap after save.
         const bandSizeToSend =
           formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None
-            ? bandSize
+            ? selectedBandSize
             : BandSize.Other;
         await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
 
@@ -538,7 +545,7 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, bandSize, addBirdEvent, birdEventToModify?.id, isSaving, focusTo, onOpenChange]
+    [formData, selectedBandSize, addBirdEvent, birdEventToModify?.id, isSaving, focusTo, onOpenChange]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);
@@ -775,7 +782,7 @@ export default function AddBirdEventModal({
             variant="ghost"
             onPress={() => setIsNotesModalOpen(true)}
             isDisabled={isSaving}
-            className="border-medium border-default-200 w-[75px] min-w-[75px] justify-start overflow-hidden"
+            className="border-medium border-default-200 w-full min-w-0 justify-start overflow-hidden"
           >
             <span className="truncate">{formData.notes || ""}</span>
           </Button>
@@ -893,7 +900,7 @@ export default function AddBirdEventModal({
           isDismissable: false,
           isOpen: isOpen && !isSaving,
           onOpenChange: handleModalOpenChange,
-          className: "!max-h-[calc(100%-4rem)] !max-w-fit",
+          className: "!max-h-[calc(100%-4rem)] !max-w-7xl",
           scrollBehavior: "inside",
         }}
       >
@@ -918,7 +925,7 @@ export default function AddBirdEventModal({
                   pyleSpeciesRange={pyleSpeciesRange}
                   speciesInfo={speciesInfoMap[formData.species] || null}
                 />
-                <Card shadow="sm" className="w-fit">
+                <Card shadow="sm" className="w-full">
                   <CardBody className="flex flex-col gap-2 p-3">
                     {/* Row 1: Most frequently edited - Band Group, Digit, Species, Wing, Age, How, Sex, How, Fat, Weight, Bander, Scribe */}
                     <div className="flex gap-1">
@@ -926,11 +933,14 @@ export default function AddBirdEventModal({
                         const metadata = getFieldMetadata(fieldKey);
                         if (!metadata) return null;
 
+                        // Notes grows to fill remaining space; everything else is fixed-width.
+                        const isNotes = fieldKey === "notes";
+
                         return (
                           <div
                             key={fieldKey}
-                            className="flex flex-col gap-1 shrink-0"
-                            style={{ width: metadata.width }}
+                            className={`flex flex-col gap-1 ${isNotes ? "flex-1 min-w-0" : "shrink-0"}`}
+                            style={isNotes ? undefined : { width: metadata.width }}
                           >
                             <span className="text-xs text-default-900 font-medium px-1 truncate">
                               {metadata.label}
