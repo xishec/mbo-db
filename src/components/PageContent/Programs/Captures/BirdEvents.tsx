@@ -32,6 +32,10 @@ export default function BirdEvents() {
   const [selectedNet, setSelectedNet] = useState<string>("");
   // Three-state logic: undefined = auto-select default, null = show empty table, string = show this band group
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null | undefined>(undefined);
+  // Track the size the user picked so the selection survives a strip rollover
+  // (when finishing a strip advances bandSizeToBandGroup to a new band group id,
+  // the user still wants to be viewing the same size).
+  const [selectedBandSize, setSelectedBandSize] = useState<BandSize | null>(null);
   const [modalBandSize, setModalBandSize] = useState<BandSize>(BandSize.Size0a);
   const [showRecaptures, setShowRecaptures] = useState(false);
 
@@ -150,13 +154,23 @@ export default function BirdEvents() {
     return items;
   }, [bandSizeToBandGroup, bandGroupInfo]);
 
-  // Determine which band group to display
+  // Determine which band group to display.
+  //
+  // Priority:
+  //   1. If user picked a size (selectedBandSize), follow that size's current
+  //      band group. This survives strip rollovers: after finishing the -00
+  //      band of a strip, bandSizeToBandGroup advances to the next group key
+  //      but the selected size is unchanged, so the dropdown stays selected.
+  //   2. Explicit null selection → show empty table.
+  //   3. Explicit band group id → use it (covers "Other bands" selections).
+  //   4. Default → first non-Other size's band group, or first id in program.
   const displayBandGroupId = useMemo(() => {
-    // User explicitly selected something (including null for empty band group)
+    if (selectedBandSize) {
+      return bandSizeToBandGroup[selectedBandSize] ?? null;
+    }
     if (selectedBandGroupId !== undefined) {
       return selectedBandGroupId;
     }
-    // Default to first non-Other band group
     for (const size of Object.values(BandSize)) {
       const bandGroupId = bandSizeToBandGroup[size];
       if (bandGroupId && size !== BandSize.Other) {
@@ -164,7 +178,7 @@ export default function BirdEvents() {
       }
     }
     return bandGroupIds[0] ?? null;
-  }, [selectedBandGroupId, bandGroupIds, bandSizeToBandGroup]);
+  }, [selectedBandSize, selectedBandGroupId, bandGroupIds, bandSizeToBandGroup]);
 
   // Stable selectedKeys reference to prevent unnecessary React Aria re-computation
   const pageSelectedKeys = useMemo(() => {
@@ -210,14 +224,21 @@ export default function BirdEvents() {
     []
   );
 
-  const handleBandGroupSelect = useCallback((bandGroupId: string | null) => {
-    setSelectedBandGroupId(bandGroupId);
-    setShowRecaptures(false);
-  }, []);
+  const handleBandGroupSelect = useCallback(
+    (bandGroupId: string | null) => {
+      setSelectedBandGroupId(bandGroupId);
+      // Remember the size so the selection survives strip rollover. null here
+      // clears the size-based tracking (e.g. "Other Size" selected).
+      setSelectedBandSize(bandGroupId ? bandGroupToBandSize[bandGroupId] ?? null : null);
+      setShowRecaptures(false);
+    },
+    [bandGroupToBandSize]
+  );
 
   const handleRecapturesSelect = useCallback(() => {
     setShowRecaptures(true);
     setSelectedBandGroupId(undefined);
+    setSelectedBandSize(null);
   }, []);
 
   const handleBandGroupAdd = useCallback(
@@ -225,6 +246,7 @@ export default function BirdEvents() {
       const bandSize = bandGroupToBandSize[bandGroupId];
       if (bandSize) {
         setSelectedBandGroupId(bandGroupId);
+        setSelectedBandSize(bandSize);
         setShowRecaptures(false);
         setModalBandSize(bandSize);
         onOpen();
@@ -328,6 +350,9 @@ export default function BirdEvents() {
                   const selected = Array.from(keys)[0] as string | undefined;
                   if (selected) {
                     setSelectedBandGroupId(selected);
+                    // "Other bands" groups aren't mapped to a size — clear the
+                    // size tracking so the size-based lookup doesn't override.
+                    setSelectedBandSize(null);
                     setShowRecaptures(false);
                   }
                 }}
