@@ -1,5 +1,6 @@
 import { type CaptureFormData, BirdEventType } from "../../../../types";
 import { DEFAULT_BIRD_STATUS } from "../../../../types/birdStatus";
+import { getLocalDateString } from "../../../../utils/dateUtils";
 
 import type { CaptureColumn } from "../../../../types";
 
@@ -152,7 +153,7 @@ export function isInRange(value: number, lower: number, upper: number): boolean 
 
 export function getDefaultFormData(programId: string): CaptureFormData {
   const now = new Date();
-  const date = now.toISOString().split("T")[0];
+  const date = getLocalDateString(now);
   const time = now.toTimeString().slice(0, 5);
 
   return {

@@ -22,6 +22,7 @@ import BirdStatusModal from "./BirdStatusModal";
 import ValidationMessages from "../Helper/ValidationMessages";
 import { TABLE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData } from "../PageContent/Programs/Captures/helpers";
+import { getLocalDateString } from "../../utils/dateUtils";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "./modalDefaults";
@@ -260,7 +261,7 @@ export default function AddBirdEventModal({
 
     const updateTime = () => {
       const now = new Date();
-      const currentDate = now.toISOString().split("T")[0];
+      const currentDate = getLocalDateString(now);
       const currentTime = now.toTimeString().slice(0, 5);
       setFormData((prev) => {
         if (prev.date === currentDate && prev.time === currentTime) return prev;

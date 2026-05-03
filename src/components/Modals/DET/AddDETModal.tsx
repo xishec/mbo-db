@@ -6,6 +6,7 @@ import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
+import { getLocalDateString } from "../../../utils/dateUtils";
 import DETObserverHoursModal from "./DETObserverHoursModal";
 import DETNetHoursModal from "./DETNetHoursModal";
 import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
@@ -157,7 +158,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setWeather(existingDET.weather);
     } else if (mode === "create") {
       // Reset form for new DET
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       setDate(today);
       setProgramId("");
       setLocation("");

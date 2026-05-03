@@ -753,7 +753,8 @@ export function validateBirdEventForm(
   }
 
   if (formData.age && formData.age !== "0" && formData.age !== "3" && formData.date && !isAgeValidationExcluded(formData.species)) {
-    const month = new Date(formData.date).getMonth() + 1;
+    // Month from YYYY-MM-DD string — avoids timezone drift from `new Date(str)`.
+    const month = parseInt(formData.date.slice(5, 7), 10);
     const ageSeasonReason = getAgeSeasonReason(formData.age, month);
     if (ageSeasonReason) {
       messages.push({ text: ageSeasonReason, severity: "warning" });
