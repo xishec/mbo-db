@@ -94,6 +94,8 @@ export default function BirdEvents() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const selectedProgram = useAppStore((s) => s.selectedProgram);
   const isLoading = useAppStore((s) => s.isLoading);
+  const isSyncing = useAppStore((s) => s.isSyncing);
+  const isSaving = useAppStore((s) => s.isSaving);
   const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const isLoggedIn = useIsLoggedIn();
@@ -428,21 +430,35 @@ export default function BirdEvents() {
             selectedKeys={pageSelectedKeys}
             onChange={handlePageSelectChange}
           />
-          <Button
-            color="secondary"
-            variant="solid"
-            onPress={() => {
-              if (showRecaptures || displayBandGroupId === null) {
-                setModalBandSize(BandSize.Other);
-                onOpen();
-              } else if (displayBandGroupId) {
-                handleBandGroupAdd(displayBandGroupId);
-              }
-            }}
-            className="min-w-[60px] mr-[110px]"
-          >
-            <PlusIcon className="w-5 h-5" />
-          </Button>
+          {(() => {
+            // Disabled when nothing is actionable:
+            //  - no page selected (displayBandGroupId === undefined)
+            //  - selected band group has no known size (handleBandGroupAdd would no-op)
+            //  - app is loading or syncing
+            const isSizedGroup =
+              displayBandGroupId != null && !!bandGroupToBandSize[displayBandGroupId];
+            const addEnabled =
+              !isLoading && !isSyncing && !isSaving &&
+              (showRecaptures || displayBandGroupId === null || isSizedGroup);
+            return (
+              <Button
+                color="secondary"
+                variant="solid"
+                isDisabled={!addEnabled}
+                onPress={() => {
+                  if (showRecaptures || displayBandGroupId === null) {
+                    setModalBandSize(BandSize.Other);
+                    onOpen();
+                  } else if (displayBandGroupId) {
+                    handleBandGroupAdd(displayBandGroupId);
+                  }
+                }}
+                className="min-w-[60px] mr-[110px]"
+              >
+                <PlusIcon className="w-5 h-5" />
+              </Button>
+            );
+          })()}
           {otherBandGroups.length > 0 && (
             <>
               <span>Other bands:</span>

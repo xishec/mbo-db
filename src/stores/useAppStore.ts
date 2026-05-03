@@ -62,6 +62,11 @@ export interface AppState {
   lastSyncedAt: number | null;
   isSyncing: boolean;
   syncResult: SyncResult;
+  // True while addBirdEvent's async tail (IDB write + optional online sync)
+  // is in flight. The modal closes instantly on Save, but UI that would
+  // race the persistence (like the Add + button) should stay disabled
+  // until this clears.
+  isSaving: boolean;
 
   // Milestones
   milestone: Milestone;
@@ -98,6 +103,7 @@ export const initialAppState: AppState = {
   lastSyncedAt: null,
   isSyncing: false,
   syncResult: null,
+  isSaving: false,
 
   milestone: null,
 };

@@ -467,6 +467,7 @@ export const actions = {
         queuedEventIds: nextQueuedIds,
         pendingCount: replacingPendingId ? state.pendingCount : state.pendingCount + 1,
         selectedProgram: nextSelectedProgram,
+        isSaving: true,
         ...(milestoneSet ? { milestone: milestoneSet } : {}),
       });
 
@@ -482,7 +483,7 @@ export const actions = {
         replacingPendingId && previousEventId && previousEventId !== newBirdEvent.id
           ? previousEventId
           : null;
-      queuePromise
+      const persistTail = queuePromise
         .then(() =>
           Promise.all([
             putBirdEvents(eventWrites),
@@ -499,13 +500,18 @@ export const actions = {
         )
         .catch((err) => logger.error("AddBirdEvent", "IndexedDB save failed", err));
 
-      if (isOnline) {
-        queuePromise
-          .then(() => syncQueue())
-          .catch((err) =>
+      const syncTail = isOnline
+        ? queuePromise.then(() => syncQueue()).catch((err) =>
             logger.warn("AddBirdEvent", "Online sync failed — will retry on next sync", err),
-          );
-      }
+          )
+        : Promise.resolve();
+
+      // Clear isSaving once both persistence and (if online) RTDB sync are
+      // done, so UI gated on it (Add + button, etc) re-enables only when
+      // the work is actually finished.
+      Promise.all([persistTail, syncTail]).finally(() => {
+        useAppStore.setState({ isSaving: false });
+      });
       logger.info("AddBirdEvent", "Bird event added", {
         eventId: newBirdEvent.id,
         programId: captureData.programId,
