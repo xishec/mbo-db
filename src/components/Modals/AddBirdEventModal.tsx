@@ -515,9 +515,15 @@ export default function AddBirdEventModal({
         if (formData.scribe) localStorage.setItem("lastScribe", formData.scribe);
 
         if (shouldContinue) {
+          // Clear band fields too: the reset useEffect will repopulate them
+          // from bandSizeToBandIdMap after this commit. Keeping the old band
+          // here causes validation to flash "recent capture" for one render
+          // against the just-saved event (now in pastBirdEvents).
+          // Net is kept — banders typically work one net for several captures.
           setFormData((prev) => ({
             ...prev,
-            net: "",
+            bandGroup: "",
+            bandLastTwoDigits: "",
             species: "",
             wing: "",
             age: "",
@@ -531,7 +537,9 @@ export default function AddBirdEventModal({
           }));
           setLastBandId("");
           setIsSaving(false);
-          focusTo("net");
+          // Band fields auto-repopulate via the reset useEffect; net is kept.
+          // After that commit the first empty field is species.
+          focusTo("species");
         } else {
           onOpenChange(false);
         }
@@ -545,7 +553,7 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, selectedBandSize, addBirdEvent, birdEventToModify?.id, isSaving, focusTo, onOpenChange]
+    [formData, selectedBandSize, addBirdEvent, birdEventToModify?.id, isSaving, onOpenChange]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);

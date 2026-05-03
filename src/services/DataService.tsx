@@ -282,8 +282,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           ? bandGroupId
           : (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0");
 
-      // Lexical compare of "YYYY-MM-DDTHH:MM" avoids Date.parse per event.
-      const key = `${ev.date}T${ev.time || "00:00"}`;
+      // Compare by date+time, with band group as tiebreaker. Minute-precision
+      // timestamps tie when a bander saves multiple bands in the same minute
+      // (common when finishing -99 then -00 then -01 rapidly). Without the
+      // tiebreaker, the iteration order decides — and if the prior strip's
+      // closing band wins, Pass 2 treats the strip as finished and advances,
+      // losing track of the new strip's progress.
+      const key = `${ev.date}T${ev.time || "00:00"}|${group}`;
       const existing = latestGroupPerSize.get(ev.band.bandSize);
       if (!existing || key > existing.key) {
         latestGroupPerSize.set(ev.band.bandSize, { group, key });

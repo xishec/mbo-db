@@ -298,7 +298,7 @@ export default function BirdEvents() {
         )}
 
         <div className="flex items-center gap-3 flex-wrap">
-          <span>Page:</span>
+          <span>Active bands:</span>
           <Select
             placeholder="Select page"
             variant="bordered"
@@ -335,7 +335,7 @@ export default function BirdEvents() {
                 handleBandGroupAdd(displayBandGroupId);
               }
             }}
-            className="min-w-[60px] mr-[185px]"
+            className="min-w-[60px] mr-[110px]"
           >
             <PlusIcon className="w-5 h-5" />
           </Button>
