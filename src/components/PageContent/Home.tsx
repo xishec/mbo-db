@@ -1,6 +1,7 @@
 import { Fragment, useMemo } from "react";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
+import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 
 export default function Home() {
   const version = useBirdEventsVersion();
@@ -124,7 +125,11 @@ export default function Home() {
           across <span className="font-bold text-primary">{uniqueSpeciesCount}</span> species
           {mostCapturedSpecies && (
             <>
-              , with <span className="font-bold text-secondary">{mostCapturedSpecies}</span> being the most captured
+              , with{" "}
+              <span className="font-bold text-secondary">
+                <SpeciesTooltip speciesCode={mostCapturedSpecies}>{mostCapturedSpecies}</SpeciesTooltip>
+              </span>{" "}
+              being the most captured
               {". "}
             </>
           )}

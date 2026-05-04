@@ -32,32 +32,26 @@ export default function SpeciesTooltip({ speciesCode, disabled = false, children
         <span className="font-semibold">Scientific:</span> <span className="italic">{species.speciesScientific}</span>
       </div>
     </div>
-  ) : null;
+  ) : (
+    <div className="flex flex-col gap-1 text-sm">
+      <div>
+        <span>Unknown</span>
+      </div>
+    </div>
+  );
 
   return (
     <>
       {disabled ? (
         <span>{content}</span>
       ) : (
-        <Tooltip
-          content={tooltipContent}
-          placement="right"
-          closeDelay={50}
-          className="max-w-xs"
-        >
-          <span
-            className="cursor-pointer hover:underline"
-            onClick={handleClick}
-          >
+        <Tooltip content={tooltipContent} placement="right" closeDelay={50} className="max-w-xs">
+          <span className="cursor-pointer hover:underline" onClick={handleClick}>
             {content}
           </span>
         </Tooltip>
       )}
-      <SpeciesInfoModal
-        isOpen={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        speciesCode={speciesCode}
-      />
+      <SpeciesInfoModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} speciesCode={speciesCode} />
     </>
   );
 }
