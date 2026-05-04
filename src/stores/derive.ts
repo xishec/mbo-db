@@ -219,6 +219,10 @@ export function computeBandSizeToBandIdMap(
     if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
     if (ev.previousEventId) continue;
     if (ev.modifiedEventId) continue;
+    // Recaptures can carry a bandSize on the Band (same band = same size),
+    // but they don't advance the strip. Including them would let a recap
+    // typed into a size's strip silently overwrite that size's active group.
+    if (ev.birdEventType !== BirdEventType.Banded && ev.birdEventType !== BirdEventType.None) continue;
 
     const prefix = ev.band.bandPrefix;
     const suffix = ev.band.bandSuffix;
