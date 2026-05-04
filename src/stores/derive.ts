@@ -214,7 +214,11 @@ export function computeBandSizeToBandIdMap(
   events: BirdEventsMap,
   groups: BandGroupsMap,
 ): Record<BandSize, string> {
-  const groupsPerSize = new Map<BandSize, Set<string>>();
+  // Per size, track which group holds the most recently banded event.
+  // Recency wins over numeric-max: banders don't always issue strips in
+  // strict numeric order, so a higher-numbered group that's been idle for
+  // years shouldn't override the strip that's actually in active use.
+  const latestPerSize = new Map<BandSize, { group: string; updatedAt: number }>();
   for (const ev of events.values()) {
     if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
     if (ev.previousEventId) continue;
@@ -233,27 +237,16 @@ export function computeBandSizeToBandIdMap(
         ? bandGroupId
         : (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0");
 
-    let set = groupsPerSize.get(ev.band.bandSize);
-    if (!set) {
-      set = new Set();
-      groupsPerSize.set(ev.band.bandSize, set);
+    const ts = parseInt(ev.updatedAt ?? "0", 10);
+    if (Number.isNaN(ts)) continue;
+    const current = latestPerSize.get(ev.band.bandSize);
+    if (!current || ts > current.updatedAt) {
+      latestPerSize.set(ev.band.bandSize, { group, updatedAt: ts });
     }
-    set.add(group);
   }
 
   const map = {} as Record<BandSize, string>;
-  for (const [size, groupSet] of groupsPerSize) {
-    let currentGroup = "";
-    let currentGroupNum = -1;
-    for (const g of groupSet) {
-      const n = parseInt(g, 10);
-      if (!Number.isNaN(n) && n > currentGroupNum) {
-        currentGroupNum = n;
-        currentGroup = g;
-      }
-    }
-    if (!currentGroup) continue;
-
+  for (const [size, { group: currentGroup }] of latestPerSize) {
     const bandGroup = groups[currentGroup];
     if (!bandGroup) continue;
 
@@ -269,10 +262,10 @@ export function computeBandSizeToBandIdMap(
     }
     if (max === 0) continue;
 
-    const groupPrefix = currentGroupNum;
+    const groupPrefixNum = parseInt(currentGroup, 10);
     const latestBandId =
       max === 100
-        ? (groupPrefix + 1).toString().padStart(7, "0") + "00"
+        ? (groupPrefixNum + 1).toString().padStart(7, "0") + "00"
         : currentGroup + max.toString().padStart(2, "0");
     const nextId = advanceBandId(latestBandId);
     if (nextId) map[size] = nextId;
