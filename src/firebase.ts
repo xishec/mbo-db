@@ -5,10 +5,11 @@ import { getDatabase } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
 // Environment configuration
-export type Environment = "alpha" | "beta" | "prod";
+export type Environment = "alpha" | "prod";
 const STORAGE_KEY = "mbo_environment";
+const storedEnv = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
 export const CURRENT_ENVIRONMENT: Environment =
-  (typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY) as Environment) || "prod";
+  storedEnv === "alpha" || storedEnv === "prod" ? storedEnv : "prod";
 
 export function setEnvironment(env: Environment) {
   localStorage.setItem(STORAGE_KEY, env);

@@ -1,23 +1,28 @@
 import type { DatabaseData, PendingEvent, DET, BirdEvent } from "../types";
+import type { Environment } from "../firebase";
 import { INDEPENDENT_MAP_NAMES } from "../types/mapNames";
 
 const DB_NAME = "mbo-db-20260503";
-const DB_VERSION = 20260503;
+const DB_VERSION = 20260504;
 
 // Store names
 const METADATA_STORE = "metadata";
 const DATA_STORE = "data";
 const QUEUE_STORE = "queue";
-// Bird events are stored per-row keyed by event id. Writing ONE event no
-// longer requires re-serializing the entire 700K-event blob — that's the
-// 10+ second save lag we saw on slow laptops. The `data` store keeps the
-// small index maps (programs, bandGroups, etc.) and the metadata needed
-// to know which environment's events are loaded.
-const BIRD_EVENTS_STORE = "birdEvents";
-// Key of the scalar metadata row that tracks which environment the rows
-// in BIRD_EVENTS_STORE currently belong to. Used to detect environment
-// switches and clear the per-event store rather than mixing rows.
-const EVENTS_ENV_KEY = "birdEventsEnvironment";
+// Bird events are stored per-env, per-row keyed by event id. Writing ONE
+// event no longer requires re-serializing the entire 700K-event blob —
+// that's the 10+ second save lag we saw on slow laptops. The `data` store
+// keeps the small index maps (programs, bandGroups, etc.).
+//
+// One store per env (birdEvents_alpha, birdEvents_prod) so switching
+// environments doesn't force a re-download — each env's rows live in
+// their own store and survive independently.
+const BIRD_EVENTS_STORE_PREFIX = "birdEvents_";
+const birdEventsStoreName = (env: Environment) => `${BIRD_EVENTS_STORE_PREFIX}${env}`;
+const ALL_BIRD_EVENTS_STORES = ["birdEvents_alpha", "birdEvents_prod"] as const;
+// Legacy single-env store + its marker, migrated away in v20260504.
+const LEGACY_EVENTS_STORE = "birdEvents";
+const LEGACY_EVENTS_ENV_KEY = "birdEventsEnvironment";
 
 interface MetadataEntry {
   key: string;
@@ -33,6 +38,7 @@ async function openDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
+      const upgradeTx = (event.target as IDBOpenDBRequest).transaction;
 
       if (!db.objectStoreNames.contains(METADATA_STORE)) {
         db.createObjectStore(METADATA_STORE, { keyPath: "key" });
@@ -43,40 +49,70 @@ async function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(QUEUE_STORE)) {
         db.createObjectStore(QUEUE_STORE, { keyPath: "id" });
       }
-      if (!db.objectStoreNames.contains(BIRD_EVENTS_STORE)) {
-        db.createObjectStore(BIRD_EVENTS_STORE);
+      for (const name of ALL_BIRD_EVENTS_STORES) {
+        if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
       }
-      // Upgrade path for existing users: older versions stored the full
-      // birdEventsMap inside DATA_STORE under the environment key. Splat
-      // those rows into the per-event store so the first save post-upgrade
-      // isn't forced to download everything again.
-      //
-      // The upgrade transaction is the one on `event.target.transaction`;
-      // we can't open a new one here. We splat synchronously inside it.
-      if (event.oldVersion < 2) {
-        const upgradeTx = (event.target as IDBOpenDBRequest).transaction;
-        if (upgradeTx) {
-          const dataStore = upgradeTx.objectStore(DATA_STORE);
-          const eventsStore = upgradeTx.objectStore(BIRD_EVENTS_STORE);
-          const metaStore = upgradeTx.objectStore(METADATA_STORE);
-          const cursorReq = dataStore.openCursor();
-          cursorReq.onsuccess = () => {
-            const cursor = cursorReq.result;
-            if (!cursor) return;
-            const envKey = cursor.key as string;
-            const blob = cursor.value as DatabaseData | undefined;
-            if (blob?.birdEventsMap) {
-              for (const [id, ev] of Object.entries(blob.birdEventsMap)) {
-                eventsStore.put(ev, id);
-              }
-              // Remove the per-event map from the big blob so it no longer
-              // gets re-serialized on every save.
-              const { birdEventsMap: _removed, ...rest } = blob;
-              void _removed;
-              dataStore.put(rest, envKey);
-              metaStore.put({ key: EVENTS_ENV_KEY, value: envKey } satisfies MetadataEntry);
+
+      // v1 → v2: split single-blob events into the per-event store.
+      if (event.oldVersion < 2 && upgradeTx && db.objectStoreNames.contains(LEGACY_EVENTS_STORE)) {
+        const dataStore = upgradeTx.objectStore(DATA_STORE);
+        const eventsStore = upgradeTx.objectStore(LEGACY_EVENTS_STORE);
+        const metaStore = upgradeTx.objectStore(METADATA_STORE);
+        const cursorReq = dataStore.openCursor();
+        cursorReq.onsuccess = () => {
+          const cursor = cursorReq.result;
+          if (!cursor) return;
+          const envKey = cursor.key as string;
+          const blob = cursor.value as DatabaseData | undefined;
+          if (blob?.birdEventsMap) {
+            for (const [id, ev] of Object.entries(blob.birdEventsMap)) {
+              eventsStore.put(ev, id);
             }
-            cursor.continue();
+            const { birdEventsMap: _removed, ...rest } = blob;
+            void _removed;
+            dataStore.put(rest, envKey);
+            metaStore.put({
+              key: LEGACY_EVENTS_ENV_KEY,
+              value: envKey,
+            } satisfies MetadataEntry);
+          }
+          cursor.continue();
+        };
+      }
+
+      // v20260504: split the single LEGACY_EVENTS_STORE into per-env
+      // stores. Read the marker to see which env the existing rows belong
+      // to, copy them into the matching new store, then drop the legacy
+      // store and marker. The other env will populate on first load.
+      if (event.oldVersion < 20260504 && upgradeTx) {
+        const legacyExists = db.objectStoreNames.contains(LEGACY_EVENTS_STORE);
+        if (legacyExists) {
+          const metaStore = upgradeTx.objectStore(METADATA_STORE);
+          const markerReq = metaStore.get(LEGACY_EVENTS_ENV_KEY);
+          markerReq.onsuccess = () => {
+            const marker = markerReq.result as MetadataEntry | undefined;
+            const env = marker?.value as Environment | undefined;
+            const targetStoreName = env ? birdEventsStoreName(env) : null;
+            const targetExists =
+              targetStoreName && db.objectStoreNames.contains(targetStoreName);
+            if (targetStoreName && targetExists) {
+              const legacy = upgradeTx.objectStore(LEGACY_EVENTS_STORE);
+              const target = upgradeTx.objectStore(targetStoreName);
+              const cursorReq = legacy.openCursor();
+              cursorReq.onsuccess = () => {
+                const cursor = cursorReq.result;
+                if (!cursor) {
+                  db.deleteObjectStore(LEGACY_EVENTS_STORE);
+                  metaStore.delete(LEGACY_EVENTS_ENV_KEY);
+                  return;
+                }
+                target.put(cursor.value, cursor.key);
+                cursor.continue();
+              };
+            } else {
+              db.deleteObjectStore(LEGACY_EVENTS_STORE);
+              metaStore.delete(LEGACY_EVENTS_ENV_KEY);
+            }
           };
         }
       }
@@ -94,17 +130,17 @@ export async function clearQueue(): Promise<void> {
   });
 }
 
-export async function clearEnvironmentCache(environment: string): Promise<void> {
+export async function clearEnvironmentCache(environment: Environment): Promise<void> {
   const db = await openDB();
+  const eventsStoreName = birdEventsStoreName(environment);
   const transaction = db.transaction(
-    [DATA_STORE, METADATA_STORE, BIRD_EVENTS_STORE],
+    [DATA_STORE, METADATA_STORE, eventsStoreName],
     "readwrite",
   );
   const metaStore = transaction.objectStore(METADATA_STORE);
   transaction.objectStore(DATA_STORE).delete(environment);
-  transaction.objectStore(BIRD_EVENTS_STORE).clear();
+  transaction.objectStore(eventsStoreName).clear();
   metaStore.delete(`lastUpdated_${environment}`);
-  metaStore.delete(EVENTS_ENV_KEY);
   for (const m of INDEPENDENT_MAP_NAMES) metaStore.delete(`lastModified_${m}_${environment}`);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => { db.close(); resolve(); };
@@ -115,14 +151,16 @@ export async function clearEnvironmentCache(environment: string): Promise<void> 
 export async function clearAllIndexedDB(): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction(
-    [METADATA_STORE, DATA_STORE, QUEUE_STORE, BIRD_EVENTS_STORE],
+    [METADATA_STORE, DATA_STORE, QUEUE_STORE, ...ALL_BIRD_EVENTS_STORES],
     "readwrite",
   );
 
   transaction.objectStore(METADATA_STORE).clear();
   transaction.objectStore(DATA_STORE).clear();
   transaction.objectStore(QUEUE_STORE).clear();
-  transaction.objectStore(BIRD_EVENTS_STORE).clear();
+  for (const name of ALL_BIRD_EVENTS_STORES) {
+    transaction.objectStore(name).clear();
+  }
 
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
@@ -144,11 +182,12 @@ export async function clearAllIndexedDB(): Promise<void> {
  * per-event store and stripped from the DATA_STORE blob; the caller gets
  * the incremental per-save benefit automatically.
  */
-export async function saveDataToIndexedDB(environment: string, data: DatabaseData): Promise<void> {
+export async function saveDataToIndexedDB(environment: Environment, data: DatabaseData): Promise<void> {
   const db = await openDB();
+  const eventsStoreName = birdEventsStoreName(environment);
   return new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(
-      [DATA_STORE, BIRD_EVENTS_STORE, METADATA_STORE],
+      [DATA_STORE, eventsStoreName],
       "readwrite",
     );
     transaction.oncomplete = () => { db.close(); resolve(); };
@@ -156,8 +195,7 @@ export async function saveDataToIndexedDB(environment: string, data: DatabaseDat
     transaction.onabort = () => { db.close(); reject(transaction.error); };
 
     const dataStore = transaction.objectStore(DATA_STORE);
-    const eventsStore = transaction.objectStore(BIRD_EVENTS_STORE);
-    const metaStore = transaction.objectStore(METADATA_STORE);
+    const eventsStore = transaction.objectStore(eventsStoreName);
 
     const { birdEventsMap, ...rest } = data;
     // Cache a minimal stub so getDataFromIndexedDB can detect "cached
@@ -171,7 +209,6 @@ export async function saveDataToIndexedDB(environment: string, data: DatabaseDat
       for (const [id, ev] of Object.entries(birdEventsMap)) {
         eventsStore.put(ev, id);
       }
-      metaStore.put({ key: EVENTS_ENV_KEY, value: environment } satisfies MetadataEntry);
     }
   });
 }
@@ -182,7 +219,7 @@ export async function saveDataToIndexedDB(environment: string, data: DatabaseDat
  * persist the new/updated event via putBirdEvent directly).
  */
 export async function saveDatabaseMetadataOnly(
-  environment: string,
+  environment: Environment,
   partial: Partial<Omit<DatabaseData, "birdEventsMap">>,
 ): Promise<void> {
   const db = await openDB();
@@ -215,20 +252,20 @@ export async function saveDatabaseMetadataOnly(
  * Reads the big blob and the per-event store, merging them back together
  * for consumers that expect the unified shape.
  */
-export async function getDataFromIndexedDB(environment: string): Promise<DatabaseData | null> {
+export async function getDataFromIndexedDB(environment: Environment): Promise<DatabaseData | null> {
   const db = await openDB();
+  const eventsStoreName = birdEventsStoreName(environment);
   const captured: {
     data: DatabaseData | null;
     keys: string[];
     vals: BirdEvent[];
-    envMeta: string | null;
-  } = { data: null, keys: [], vals: [], envMeta: null };
+  } = { data: null, keys: [], vals: [] };
 
   // Register oncomplete/onerror BEFORE awaiting — otherwise the tx can
   // commit inside the await and the handlers attach to a dead tx.
   const txClosed = new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(
-      [DATA_STORE, BIRD_EVENTS_STORE, METADATA_STORE],
+      [DATA_STORE, eventsStoreName],
       "readonly",
     );
     transaction.oncomplete = () => resolve();
@@ -236,13 +273,11 @@ export async function getDataFromIndexedDB(environment: string): Promise<Databas
     transaction.onabort = () => reject(transaction.error);
 
     const dataStore = transaction.objectStore(DATA_STORE);
-    const eventsStore = transaction.objectStore(BIRD_EVENTS_STORE);
-    const metaStore = transaction.objectStore(METADATA_STORE);
+    const eventsStore = transaction.objectStore(eventsStoreName);
 
     const dataReq = dataStore.get(environment);
     const keysReq = eventsStore.getAllKeys();
     const valsReq = eventsStore.getAll();
-    const metaReq = metaStore.get(EVENTS_ENV_KEY);
 
     dataReq.onsuccess = () => {
       captured.data = (dataReq.result as DatabaseData | undefined) ?? null;
@@ -253,10 +288,6 @@ export async function getDataFromIndexedDB(environment: string): Promise<Databas
     valsReq.onsuccess = () => {
       captured.vals = valsReq.result as BirdEvent[];
     };
-    metaReq.onsuccess = () => {
-      const row = metaReq.result as MetadataEntry | undefined;
-      captured.envMeta = (row?.value as string | undefined) ?? null;
-    };
   });
 
   try {
@@ -266,13 +297,9 @@ export async function getDataFromIndexedDB(environment: string): Promise<Databas
   }
 
   if (!captured.data) return null;
-  // If the per-event store holds a different environment's data (e.g. user
-  // switched alpha↔prod), discard those events so we don't mix envs.
   const eventsForEnv: Record<string, BirdEvent> = {};
-  if (captured.envMeta === environment) {
-    for (let i = 0; i < captured.keys.length; i++) {
-      eventsForEnv[captured.keys[i]] = captured.vals[i];
-    }
+  for (let i = 0; i < captured.keys.length; i++) {
+    eventsForEnv[captured.keys[i]] = captured.vals[i];
   }
   return { ...captured.data, birdEventsMap: eventsForEnv };
 }
@@ -281,10 +308,11 @@ export async function getDataFromIndexedDB(environment: string): Promise<Databas
  * Insert or update a single bird event. O(1) — the 700K-event blob is
  * untouched. This is what addBirdEvent calls on the hot path.
  */
-export async function putBirdEvent(event: BirdEvent): Promise<void> {
+export async function putBirdEvent(environment: Environment, event: BirdEvent): Promise<void> {
   const db = await openDB();
-  const transaction = db.transaction([BIRD_EVENTS_STORE], "readwrite");
-  transaction.objectStore(BIRD_EVENTS_STORE).put(event, event.id);
+  const storeName = birdEventsStoreName(environment);
+  const transaction = db.transaction([storeName], "readwrite");
+  transaction.objectStore(storeName).put(event, event.id);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => { db.close(); resolve(); };
     transaction.onerror = () => { db.close(); reject(transaction.error); };
@@ -296,10 +324,11 @@ export async function putBirdEvent(event: BirdEvent): Promise<void> {
  * still-queued event is replaced — the old row should disappear entirely
  * rather than hang around with `modifiedEventId` set.
  */
-export async function deleteBirdEvent(id: string): Promise<void> {
+export async function deleteBirdEvent(environment: Environment, id: string): Promise<void> {
   const db = await openDB();
-  const transaction = db.transaction([BIRD_EVENTS_STORE], "readwrite");
-  transaction.objectStore(BIRD_EVENTS_STORE).delete(id);
+  const storeName = birdEventsStoreName(environment);
+  const transaction = db.transaction([storeName], "readwrite");
+  transaction.objectStore(storeName).delete(id);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => { db.close(); resolve(); };
     transaction.onerror = () => { db.close(); reject(transaction.error); };
@@ -310,11 +339,12 @@ export async function deleteBirdEvent(id: string): Promise<void> {
  * Batch upsert. Used by syncQueue after writing N events to RTDB — stamps
  * `syncedAt` on each locally in a single IDB transaction.
  */
-export async function putBirdEvents(events: BirdEvent[]): Promise<void> {
+export async function putBirdEvents(environment: Environment, events: BirdEvent[]): Promise<void> {
   if (events.length === 0) return;
   const db = await openDB();
-  const transaction = db.transaction([BIRD_EVENTS_STORE], "readwrite");
-  const store = transaction.objectStore(BIRD_EVENTS_STORE);
+  const storeName = birdEventsStoreName(environment);
+  const transaction = db.transaction([storeName], "readwrite");
+  const store = transaction.objectStore(storeName);
   for (const ev of events) store.put(ev, ev.id);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => { db.close(); resolve(); };
@@ -346,11 +376,11 @@ export async function getMetadata(key: string): Promise<number | string | null> 
   });
 }
 
-export async function saveLastUpdated(environment: string, timestamp: number): Promise<void> {
+export async function saveLastUpdated(environment: Environment, timestamp: number): Promise<void> {
   return saveMetadata(`lastUpdated_${environment}`, timestamp);
 }
 
-export async function getLastUpdated(environment: string): Promise<number | null> {
+export async function getLastUpdated(environment: Environment): Promise<number | null> {
   return getMetadata(`lastUpdated_${environment}`) as Promise<number | null>;
 }
 
@@ -415,7 +445,7 @@ export async function getQueueCount(): Promise<number> {
   });
 }
 
-export async function updateDETInCache(environment: string, det: DET): Promise<void> {
+export async function updateDETInCache(environment: Environment, det: DET): Promise<void> {
   const db = await openDB();
   const data = await new Promise<DatabaseData | null>((resolve, reject) => {
     const tx = db.transaction([DATA_STORE], "readonly");

@@ -338,7 +338,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         };
 
         setStatus("Saving to cache...");
-        const cacheTimestamp = Date.now();
+        // Delta cursor for next sync = max server-stamped syncedAt we've seen.
+        // Using wall-clock `Date.now()` is unsafe: if this client's clock is
+        // ahead of the client that wrote the next event, `startAt(cursor + 1)`
+        // would skip that event forever.
+        let maxSyncedAt = lastEventSync ?? 0;
+        for (const ev of Object.values(allEvents)) {
+          if (typeof ev.syncedAt === "number" && ev.syncedAt > maxSyncedAt) {
+            maxSyncedAt = ev.syncedAt;
+          }
+        }
+        const cacheTimestamp = maxSyncedAt > 0 ? maxSyncedAt : Date.now();
         await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
         await saveLastUpdated(CURRENT_ENVIRONMENT, cacheTimestamp);
         if (rtdbMetadata) {
@@ -378,7 +388,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (fallbackData) {
               const queued = await getQueuedEvents().catch(() => [] as PendingEvent[]);
               populateStateFromData(fallbackData, queued);
-              useAppStore.setState({ lastSyncedAt: Date.now() });
+              const fallbackLastSync = await getLastUpdated(CURRENT_ENVIRONMENT).catch(() => null);
+              useAppStore.setState({ lastSyncedAt: fallbackLastSync });
               return;
             }
           } catch {

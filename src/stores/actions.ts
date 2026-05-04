@@ -10,6 +10,7 @@ import {
   removeFromQueue,
   replaceInQueue,
   saveDatabaseMetadataOnly,
+  saveMetadata,
   updateDETInCache,
 } from "../services/indexedDB";
 import { birdEventsStore } from "../services/birdEventsStore";
@@ -50,6 +51,10 @@ async function saveMapsToIndexedDB(
 async function updateMapTimestamp(mapName: IndependentMapName): Promise<void> {
   const now = Date.now();
   await set(ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified_${mapName}`), now);
+  // Mirror to IndexedDB so the next load's delta check sees the local cache
+  // as current. Without this, the saver's next session re-downloads the
+  // whole map it just edited.
+  await saveMetadata(`lastModified_${mapName}_${CURRENT_ENVIRONMENT}`, now);
 }
 
 export async function refreshQueueState(): Promise<void> {
@@ -114,7 +119,7 @@ export async function syncQueue(): Promise<void> {
       }
       birdEventsStore.setMany(updates);
       // Per-event batch write — no 700K-entry blob to re-serialize.
-      putBirdEvents(updates).catch((err) =>
+      putBirdEvents(CURRENT_ENVIRONMENT, updates).catch((err) =>
         logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err),
       );
     }
@@ -486,8 +491,10 @@ export const actions = {
       const persistTail = queuePromise
         .then(() =>
           Promise.all([
-            putBirdEvents(eventWrites),
-            droppedEventId ? deleteBirdEvent(droppedEventId) : Promise.resolve(),
+            putBirdEvents(CURRENT_ENVIRONMENT, eventWrites),
+            droppedEventId
+              ? deleteBirdEvent(CURRENT_ENVIRONMENT, droppedEventId)
+              : Promise.resolve(),
             saveMapsToIndexedDB({
               bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
               bandGroupsMap: newBandGroupsMap,
