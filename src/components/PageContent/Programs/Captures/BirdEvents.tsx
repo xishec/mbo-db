@@ -424,7 +424,7 @@ export default function BirdEvents() {
         )}
 
         <div className="flex items-center gap-3 flex-wrap">
-          <span>Active bands:</span>
+          <span>Active pages:</span>
           <MemoPageSelect
             items={pageSelectItems}
             selectedKeys={pageSelectedKeys}
@@ -461,7 +461,7 @@ export default function BirdEvents() {
           })()}
           {otherBandGroups.length > 0 && (
             <>
-              <span>Other bands:</span>
+              <span>Other pages:</span>
               <MemoOtherBandsSelect
                 items={otherBandsItems}
                 selectedKeys={otherBandsSelectedKeys}

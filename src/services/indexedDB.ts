@@ -20,7 +20,7 @@ const QUEUE_STORE = "queue";
 const BIRD_EVENTS_STORE_PREFIX = "birdEvents_";
 const birdEventsStoreName = (env: Environment) => `${BIRD_EVENTS_STORE_PREFIX}${env}`;
 const ALL_BIRD_EVENTS_STORES = ["birdEvents_alpha", "birdEvents_prod"] as const;
-// Legacy single-env store + its marker, migrated away in v20260504.
+// Legacy single-env store + its marker, dropped in v20260504.
 const LEGACY_EVENTS_STORE = "birdEvents";
 const LEGACY_EVENTS_ENV_KEY = "birdEventsEnvironment";
 
@@ -36,6 +36,14 @@ async function openDB(): Promise<IDBDatabase> {
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
 
+    // Schema upgrades must complete synchronously inside this callback —
+    // any async gap inside a version-change transaction risks auto-commit
+    // and silent failure. We deliberately do NOT copy rows from the
+    // legacy store: on a phone that's a multi-minute cursor scan which
+    // would hang the loader. Instead, we drop the legacy store, let the
+    // per-env stores come up empty, and rely on the next load's "no
+    // cached events" branch to re-fetch from Firebase. The queue store
+    // is preserved so no in-flight user work is lost.
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       const upgradeTx = (event.target as IDBOpenDBRequest).transaction;
@@ -53,68 +61,14 @@ async function openDB(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
       }
 
-      // v1 → v2: split single-blob events into the per-event store.
-      if (event.oldVersion < 2 && upgradeTx && db.objectStoreNames.contains(LEGACY_EVENTS_STORE)) {
-        const dataStore = upgradeTx.objectStore(DATA_STORE);
-        const eventsStore = upgradeTx.objectStore(LEGACY_EVENTS_STORE);
-        const metaStore = upgradeTx.objectStore(METADATA_STORE);
-        const cursorReq = dataStore.openCursor();
-        cursorReq.onsuccess = () => {
-          const cursor = cursorReq.result;
-          if (!cursor) return;
-          const envKey = cursor.key as string;
-          const blob = cursor.value as DatabaseData | undefined;
-          if (blob?.birdEventsMap) {
-            for (const [id, ev] of Object.entries(blob.birdEventsMap)) {
-              eventsStore.put(ev, id);
-            }
-            const { birdEventsMap: _removed, ...rest } = blob;
-            void _removed;
-            dataStore.put(rest, envKey);
-            metaStore.put({
-              key: LEGACY_EVENTS_ENV_KEY,
-              value: envKey,
-            } satisfies MetadataEntry);
-          }
-          cursor.continue();
-        };
+      // Drop the legacy single-env events store and its env marker. The
+      // next load sees `cachedEventCount === 0` and takes the full-
+      // download branch — correct for the fresh-start semantics.
+      if (db.objectStoreNames.contains(LEGACY_EVENTS_STORE)) {
+        db.deleteObjectStore(LEGACY_EVENTS_STORE);
       }
-
-      // v20260504: split the single LEGACY_EVENTS_STORE into per-env
-      // stores. Read the marker to see which env the existing rows belong
-      // to, copy them into the matching new store, then drop the legacy
-      // store and marker. The other env will populate on first load.
-      if (event.oldVersion < 20260504 && upgradeTx) {
-        const legacyExists = db.objectStoreNames.contains(LEGACY_EVENTS_STORE);
-        if (legacyExists) {
-          const metaStore = upgradeTx.objectStore(METADATA_STORE);
-          const markerReq = metaStore.get(LEGACY_EVENTS_ENV_KEY);
-          markerReq.onsuccess = () => {
-            const marker = markerReq.result as MetadataEntry | undefined;
-            const env = marker?.value as Environment | undefined;
-            const targetStoreName = env ? birdEventsStoreName(env) : null;
-            const targetExists =
-              targetStoreName && db.objectStoreNames.contains(targetStoreName);
-            if (targetStoreName && targetExists) {
-              const legacy = upgradeTx.objectStore(LEGACY_EVENTS_STORE);
-              const target = upgradeTx.objectStore(targetStoreName);
-              const cursorReq = legacy.openCursor();
-              cursorReq.onsuccess = () => {
-                const cursor = cursorReq.result;
-                if (!cursor) {
-                  db.deleteObjectStore(LEGACY_EVENTS_STORE);
-                  metaStore.delete(LEGACY_EVENTS_ENV_KEY);
-                  return;
-                }
-                target.put(cursor.value, cursor.key);
-                cursor.continue();
-              };
-            } else {
-              db.deleteObjectStore(LEGACY_EVENTS_STORE);
-              metaStore.delete(LEGACY_EVENTS_ENV_KEY);
-            }
-          };
-        }
+      if (upgradeTx && db.objectStoreNames.contains(METADATA_STORE)) {
+        upgradeTx.objectStore(METADATA_STORE).delete(LEGACY_EVENTS_ENV_KEY);
       }
     };
   });
