@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
+import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 
 export default function Home() {
   const version = useBirdEventsVersion();
@@ -83,21 +84,36 @@ export default function Home() {
       style={{ backgroundImage: "url(https://oommbo.org/wp-content/uploads/2024/04/hp-hero.svg)" }}
     >
       <div className="space-y-20 max-w-xl ml-24 font-medium text-4xl">
-        <p className="leading-relaxed text-foreground">
+        <p className="leading-relaxed text-foreground cursor-default">
           Latest banding was{" "}
           {daysAgo <= 0
             ? <span className="font-bold text-primary">today</span>
             : <><span className="font-bold text-primary">{daysAgo}</span> day{daysAgo !== 1 ? "s" : ""} ago</>}
           {banders.length > 0 && (
             <>
-              {", "}by <span className="font-bold text-secondary">{banders.join(", ")}</span>
+              {", "}by{" "}
+              <span className="font-bold text-secondary">
+                {banders.map((code, i) => (
+                  <Fragment key={code}>
+                    {i > 0 && ", "}
+                    <VolunteerTooltip volunteerCode={code}>{code}</VolunteerTooltip>
+                  </Fragment>
+                ))}
+              </span>
             </>
           )}
           {scribes.length > 0 && (
             <>
               {" "}
               with scribe{scribes.length > 1 ? "s" : ""}{" "}
-              <span className="font-bold text-secondary">{scribes.join(", ")}</span>
+              <span className="font-bold text-secondary">
+                {scribes.map((code, i) => (
+                  <Fragment key={code}>
+                    {i > 0 && ", "}
+                    <VolunteerTooltip volunteerCode={code}>{code}</VolunteerTooltip>
+                  </Fragment>
+                ))}
+              </span>
               {". "}
             </>
           )}

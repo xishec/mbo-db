@@ -29,7 +29,7 @@ export default function VolunteerTooltip({ volunteerCode, disabled = false, chil
 
   return (
     <Tooltip content={tooltipContent} placement="right" closeDelay={50} className="max-w-md">
-      <span className="cursor-pointer hover:underline">{content}</span>
+      <span className="cursor-default">{content}</span>
     </Tooltip>
   );
 }

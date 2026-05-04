@@ -275,11 +275,14 @@ export const actions = {
         ? replaceInQueue(replacingPendingId, newQueueEntry)
         : addToQueue(newQueueEntry);
 
+      // Snapshot the predecessor BEFORE mutating the store, so downstream
+      // dedup/decrement logic can see its pre-modification state regardless
+      // of whether we're doing a queued-swap or a modification chain.
+      const oldEvent = previousEventId
+        ? birdEventsStore.get(previousEventId) ?? null
+        : null;
+
       // Mutate birdEventsStore in place (O(1) — no 700K-entry spread).
-      const oldEvent =
-        replacingPendingId && previousEventId
-          ? birdEventsStore.get(previousEventId) ?? null
-          : null;
       if (replacingPendingId && previousEventId && previousEventId !== newBirdEvent.id) {
         birdEventsStore.delete(previousEventId);
       } else if (!replacingPendingId && previousEventId) {
@@ -290,11 +293,20 @@ export const actions = {
       }
       birdEventsStore.set(newBirdEvent);
 
-      // Update derived maps — when replacing a queued event, first strip the
-      // old id from every aggregate so counts stay correct.
-      const strippedBandIds = oldEvent
-        ? (bandIdToBirdEventIdsMap[band.id] || []).filter((id) => id !== previousEventId)
-        : bandIdToBirdEventIdsMap[band.id] || [];
+      // Update derived maps. The predecessor needs to disappear from every
+      // "live" aggregate (new-capture lists, recapture lists, volunteer
+      // counts) because rebuild filters `modifiedEventId`-stamped events
+      // out. Without stripping here, the incremental path would diverge
+      // from the post-reload rebuild.
+      //
+      // Queued-swap path also strips from bandIdToBirdEventIdsMap since the
+      // predecessor row gets deleted outright. Modification-chain path
+      // keeps the predecessor in bandIdToBirdEventIdsMap — rebuild does too
+      // (that map is used to walk modification history).
+      const strippedBandIds =
+        replacingPendingId && previousEventId
+          ? (bandIdToBirdEventIdsMap[band.id] || []).filter((id) => id !== previousEventId)
+          : bandIdToBirdEventIdsMap[band.id] || [];
       const newBandIdToBirdEventIdsMap = {
         ...bandIdToBirdEventIdsMap,
         [band.id]: [...strippedBandIds, newBirdEvent.id],
@@ -306,38 +318,71 @@ export const actions = {
         ? oldEvent.birdEventType === BirdEventType.Banded ||
           oldEvent.birdEventType === BirdEventType.None
         : false;
-      const existingNewCaptureIds = bandGroupsMap[bgKey]?.newCaptureIds || [];
-      const strippedNewCaptureIds =
-        oldEvent && oldWasNewCapture
-          ? existingNewCaptureIds.filter((id) => id !== previousEventId)
-          : existingNewCaptureIds;
-      if (isNewCapture || strippedNewCaptureIds.length > 0) {
+      const oldBgKey =
+        oldEvent?.band?.bandPrefix && oldEvent?.band?.bandSuffix
+          ? getBandGroupMapKey(new Band(oldEvent.band.bandPrefix, oldEvent.band.bandSuffix))
+          : null;
+
+      // Strip the predecessor from its OLD bgKey's newCaptureIds (may
+      // differ from the new bgKey if the band was edited).
+      if (oldEvent && oldWasNewCapture && oldBgKey) {
+        const oldGroupIds = bandGroupsMap[oldBgKey]?.newCaptureIds || [];
+        const stripped = oldGroupIds.filter((id) => id !== previousEventId);
+        if (stripped.length > 0) {
+          newBandGroupsMap[oldBgKey] = { id: oldBgKey, newCaptureIds: stripped };
+        } else if (bandGroupsMap[oldBgKey]) {
+          delete newBandGroupsMap[oldBgKey];
+        }
+      }
+
+      // Add the new event to its (possibly new) bgKey's newCaptureIds.
+      const targetNewCaptureIds =
+        (oldBgKey === bgKey ? newBandGroupsMap[bgKey]?.newCaptureIds : bandGroupsMap[bgKey]?.newCaptureIds) || [];
+      if (isNewCapture) {
         newBandGroupsMap[bgKey] = {
           id: bgKey,
-          newCaptureIds: isNewCapture
-            ? [...strippedNewCaptureIds, newBirdEvent.id]
-            : strippedNewCaptureIds,
+          newCaptureIds: [...targetNewCaptureIds, newBirdEvent.id],
         };
-      } else if (oldWasNewCapture && strippedNewCaptureIds.length === 0) {
-        delete newBandGroupsMap[bgKey];
+      } else if (targetNewCaptureIds.length > 0 && oldBgKey !== bgKey) {
+        // Not a new capture and the new event's bgKey already exists —
+        // preserve the existing entry untouched.
+        newBandGroupsMap[bgKey] = {
+          id: bgKey,
+          newCaptureIds: targetNewCaptureIds,
+        };
       }
 
       const existingProgram = programsMap[captureData.programId]!;
       const year = captureData.date.substring(0, 4);
       const eventDate = captureData.date;
 
+      // Strip predecessor from recaptureIds whenever it was a recapture,
+      // regardless of queued vs non-queued.
       const strippedRecaptureIds =
         oldEvent && !oldWasNewCapture
           ? existingProgram.recaptureIds.filter((id) => id !== previousEventId)
           : existingProgram.recaptureIds;
+
+      // `bandGroupIds` may need `bgKey` removed if this modify drained the
+      // old group's only new capture. Rebuild only includes a bgKey while a
+      // non-modified new capture references it.
+      let nextBandGroupIds = existingProgram.bandGroupIds;
+      if (oldEvent && oldWasNewCapture && oldBgKey && !newBandGroupsMap[oldBgKey]) {
+        nextBandGroupIds = nextBandGroupIds.filter((id) => id !== oldBgKey);
+      }
+      if (isNewCapture && !nextBandGroupIds.includes(bgKey)) {
+        nextBandGroupIds = [...nextBandGroupIds, bgKey];
+      }
+
+      // first/lastCaptureDate: incremental bound-tightening only. Can't
+      // shrink without a full rescan, which would defeat the incremental
+      // path. Rebuild recomputes exactly on next load, so temporary
+      // staleness after an edit that narrows the range is self-healing.
       const newProgramsMap = {
         ...programsMap,
         [captureData.programId]: {
           ...existingProgram,
-          bandGroupIds:
-            isNewCapture && !existingProgram.bandGroupIds.includes(bgKey)
-              ? [...existingProgram.bandGroupIds, bgKey]
-              : existingProgram.bandGroupIds,
+          bandGroupIds: nextBandGroupIds,
           recaptureIds: !isNewCapture
             ? [...strippedRecaptureIds, newBirdEvent.id]
             : strippedRecaptureIds,
@@ -392,7 +437,16 @@ export const actions = {
         };
         const oldCount = existing.totalBanded;
         newVolunteersMap[normalizedBander] = { ...existing, totalBanded: oldCount + 1 };
-        if (Math.floor((oldCount + 1) / 1000) > Math.floor(oldCount / 1000)) {
+        // Only fire the milestone if this bander wasn't already credited for
+        // the predecessor. When modifying a same-bander new capture, the
+        // decrement above dropped the count from N→N−1 and we're taking it
+        // back to N — no new threshold crossed, just a restore.
+        const previouslyCreditedSameBander =
+          oldEvent?.bander === normalizedBander && oldWasNewCapture;
+        if (
+          !previouslyCreditedSameBander &&
+          Math.floor((oldCount + 1) / 1000) > Math.floor(oldCount / 1000)
+        ) {
           milestoneSet = { banderCode: normalizedBander, count: oldCount + 1 };
         }
       }

@@ -12,6 +12,7 @@ import {
   CardBody,
   addToast,
 } from "@heroui/react";
+import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, useActions } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
@@ -956,15 +957,30 @@ export default function AddBirdEventModal({
                         // Notes grows to fill remaining space; everything else is fixed-width.
                         const isNotes = fieldKey === "notes";
 
+                        // Hover the label to see the volunteer's full name
+                        // and totals once the code resolves.
+                        const volunteerCode =
+                          (fieldKey === "bander" || fieldKey === "scribe") && formData[fieldKey]
+                            ? formData[fieldKey]
+                            : null;
+
                         return (
                           <div
                             key={fieldKey}
                             className={`flex flex-col gap-1 ${isNotes ? "flex-1 min-w-0" : "shrink-0"}`}
                             style={isNotes ? undefined : { width: metadata.width }}
                           >
-                            <span className="text-xs text-default-900 font-medium px-1 truncate">
-                              {metadata.label}
-                            </span>
+                            {volunteerCode ? (
+                              <span className="text-xs text-default-900 font-medium px-1 truncate underline">
+                                <VolunteerTooltip volunteerCode={volunteerCode}>
+                                  {metadata.label}
+                                </VolunteerTooltip>
+                              </span>
+                            ) : (
+                              <span className="text-xs text-default-900 font-medium px-1 truncate">
+                                {metadata.label}
+                              </span>
+                            )}
                             {renderField(fieldKey)}
                           </div>
                         );

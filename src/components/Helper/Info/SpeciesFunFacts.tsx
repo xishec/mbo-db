@@ -4,6 +4,7 @@ import type { SpeciesInfo } from "../../../types";
 import { formatSpanDays } from "./formatSpanDays";
 import SpeciesTooltip from "./SpeciesTooltip";
 import CaptureHistoryModal from "../../Modals/CaptureHistoryModal";
+import VolunteerTooltip from "./VolunteerTooltip";
 
 interface SpeciesFunFactsProps {
   speciesCode: string;
@@ -73,7 +74,8 @@ function SpeciesFunFactsInner({
     <>
       <div className={containerClassName}>
         <h4 className="text-sm mb-2">
-          <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> records - {speciesInfo.totalCaptures} captures
+          <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> records - {speciesInfo.totalCaptures}{" "}
+          captures
         </h4>
         <Card className="flex-1 flex flex-col" shadow="sm">
           <CardBody className="gap-2 p-4 flex-1">
@@ -94,14 +96,10 @@ function SpeciesFunFactsInner({
               >
                 <div className="font-semibold text-default-900 mb-1">Fattest</div>
                 <div className="text-default-700">
-                  Fat {fattest.fat}, {fattest.weight}g
-                  {renderCurrentBirdNote(fattest.band.id)}
+                  Fat {fattest.fat}, {fattest.weight}g{renderCurrentBirdNote(fattest.band.id)}
                 </div>
               </div>
-              <div
-                className={getStatItemClass(dummiest.band.id)}
-                onClick={() => handleStatClick(dummiest.band.id)}
-              >
+              <div className={getStatItemClass(dummiest.band.id)} onClick={() => handleStatClick(dummiest.band.id)}>
                 <div className="font-semibold text-default-900 mb-1">Dummiest</div>
                 <div className="text-default-700">
                   {speciesInfo.dummiestCount} time{speciesInfo.dummiestCount !== 1 ? "s" : ""}
@@ -128,7 +126,11 @@ function SpeciesFunFactsInner({
               <div className="text-xs">
                 <div className="font-semibold text-default-900 mb-1">Favorite Bander</div>
                 <div className="text-default-700">
-                  {speciesInfo.favoriteBander || "N/A"}
+                  <span>
+                    <VolunteerTooltip volunteerCode={speciesInfo.favoriteBander}>
+                      {speciesInfo.favoriteBander}
+                    </VolunteerTooltip>
+                  </span>
                   {speciesInfo.favoriteBander && speciesInfo.favoriteBanderRate > 0 && (
                     <span className="ml-1">({formatRate(speciesInfo.favoriteBanderRate)})</span>
                   )}
