@@ -13,12 +13,14 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "prompt",
+      registerType: "autoUpdate",
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        skipWaiting: true,
-        clientsClaim: true,
+        // autoUpdate mode: the plugin injects skipWaiting + clientsClaim
+        // into the generated SW automatically. We reload on the
+        // controllerchange event in main.tsx so the page's chunk hashes
+        // stay consistent with whichever SW is serving them.
       },
       manifest: {
         name: "MBO Database",

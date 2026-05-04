@@ -15,21 +15,32 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-// Register service worker AFTER app is mounted to avoid blocking initial hydration
-// Using window load event ensures React has attached event handlers before SW can intercept
+// Register service worker AFTER app is mounted to avoid blocking initial hydration.
+// Using window load event ensures React has attached event handlers before SW can intercept.
+//
+// autoUpdate mode: the new SW calls skipWaiting + clientsClaim on its own.
+// We listen for controllerchange and reload so the HTML stops running the
+// old build's JS before any lazy chunk fetch hits the new SW's precache
+// (which only holds new-hashed chunks) and 404s. Refresh is keyed off a
+// guard so the very first controller (cold load, no previous SW) doesn't
+// trigger a pointless reload.
 if ('serviceWorker' in navigator) {
+  // Capture before register() so the first-install case (no prior controller)
+  // is distinguishable from a real update. Inside the handler, .controller
+  // already reflects the new SW, so we can't check it there.
+  const hadControllerAtLoad = !!navigator.serviceWorker.controller;
+
   window.addEventListener('load', () => {
-    const updateSW = registerSW({
-      onNeedRefresh() {
-        if (confirm('New version available! Reload to update?')) {
-          updateSW(true).then(() => {
-            window.location.reload();
-          });
-        }
-      },
-      onOfflineReady() {
-        console.log('App ready to work offline');
-      },
+    registerSW({ immediate: true });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      // First install on a fresh tab — the new SW is claiming a page that
+      // already has its matching chunks. Nothing to reload for.
+      if (!hadControllerAtLoad) return;
+      refreshing = true;
+      window.location.reload();
     });
   });
 }

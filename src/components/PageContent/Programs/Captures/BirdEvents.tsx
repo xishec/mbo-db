@@ -474,6 +474,7 @@ export default function BirdEvents() {
 
       {showRecaptures || displayBandGroupId !== undefined ? (
         <BirdEventsTable
+          key={showRecaptures ? "recaptures" : "captures"}
           programId={selectedProgram?.id}
           birdEvents={showRecaptures ? recaptures : captures}
           maxTableHeight={600}
