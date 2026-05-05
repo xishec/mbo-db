@@ -63,6 +63,7 @@ export default function AddBirdEventModal({
   const [wasOpen, setWasOpen] = useState(false);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(bandSize);
 
   // Auto-update band size when band group changes (for new captures).
@@ -224,6 +225,21 @@ export default function AddBirdEventModal({
   useEffect(() => {
     if (!isOpen) lastAppliedBandIdRef.current = null;
   }, [isOpen, bandSize]);
+
+  // When the Notes dialog opens, focus the textarea after HeroUI's focus
+  // trap settles (it briefly reclaims focus on mount). Place the caret at
+  // the end so appending to existing notes feels natural.
+  useEffect(() => {
+    if (!isNotesModalOpen) return;
+    const raf = requestAnimationFrame(() => {
+      const el = notesTextareaRef.current;
+      if (!el) return;
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isNotesModalOpen]);
 
   // Focus order matches visual layout
   // Row 1: Most frequently edited fields
@@ -1102,11 +1118,11 @@ export default function AddBirdEventModal({
               </ModalHeaderShell>
               <ModalBodyShell>
                 <textarea
+                  ref={notesTextareaRef}
                   className="w-full min-h-[200px] p-3 rounded-medium border-medium border-default-200 bg-default-50 text-sm resize-y"
                   value={formData.notes}
                   onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                   placeholder="Add notes..."
-                  autoFocus
                 />
               </ModalBodyShell>
               <ModalFooterShell>
