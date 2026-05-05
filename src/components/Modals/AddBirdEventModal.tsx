@@ -192,11 +192,20 @@ export default function AddBirdEventModal({
   // After save-and-next, advance the band to the next suggestion. Must run
   // BEFORE paint (useLayoutEffect) — otherwise validation briefly sees the
   // stale band + the newly-arrived past event and flashes "< 12h recapture".
+  //
+  // Only act when the map entry for this size actually changes (i.e. a new
+  // banding landed). Actions always replace `bandSizeToBandIdMap` with a
+  // new object reference even for recapture saves, which would otherwise
+  // re-run this effect and clobber fields we just cleared for the next
+  // recapture.
+  const lastAppliedBandIdRef = useRef<string | null>(null);
   useLayoutEffect(() => {
     if (!isOpen || birdEventToModify || !wasOpen) return;
     if (bandSize === BandSize.Other) return;
     const bandId = bandSizeToBandIdMap[bandSize];
     if (!bandId || bandId.length !== 9) return;
+    if (lastAppliedBandIdRef.current === bandId) return;
+    lastAppliedBandIdRef.current = bandId;
 
     // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
     const bandPrefix = bandId.slice(0, 4);
@@ -209,6 +218,12 @@ export default function AddBirdEventModal({
     );
     setLastBandId("");
   }, [isOpen, bandSize, birdEventToModify, bandSizeToBandIdMap, wasOpen]);
+
+  // Reset the "last applied" tracker whenever the modal closes or changes
+  // target size, so reopening for the same size still prefills fresh.
+  useEffect(() => {
+    if (!isOpen) lastAppliedBandIdRef.current = null;
+  }, [isOpen, bandSize]);
 
   // Focus order matches visual layout
   // Row 1: Most frequently edited fields
@@ -526,13 +541,18 @@ export default function AddBirdEventModal({
         if (formData.scribe) localStorage.setItem("lastScribe", formData.scribe);
 
         if (shouldContinue) {
-          // Band fields are advanced by the reset useEffect when the
-          // bandSizeToBandIdMap update reaches the modal — we don't clear
-          // them here because that clear would race after the effect and
-          // wipe the newly-suggested band. Validation no longer flashes a
-          // "recent capture" warning because the advanced band differs from
-          // the just-saved one. Net is kept intentionally — banders
-          // typically work one net for several captures.
+          // Whether THIS save was a new capture (Banded/None) — the modal's
+          // `isNewCapture` prop reflects how the modal was opened, not what
+          // the user actually entered. A Size-1 modal where the user typed
+          // a Repeat should behave like a recapture on save-and-next.
+          const savedAsNewCapture =
+            formData.birdEventType === BirdEventType.Banded ||
+            formData.birdEventType === BirdEventType.None;
+
+          // New capture: band fields auto-repopulate via the reset
+          // useLayoutEffect when bandSizeToBandIdMap advances. Recapture:
+          // the map doesn't advance, so we must clear the band fields
+          // ourselves — the next recap's band is unrelated.
           setFormData((prev) => ({
             ...prev,
             species: "",
@@ -545,14 +565,13 @@ export default function AddBirdEventModal({
             weight: "",
             birdStatus: DEFAULT_BIRD_STATUS,
             notes: "",
+            ...(savedAsNewCapture ? {} : { bandGroup: "", bandLastTwoDigits: "" }),
           }));
           setLastBandId("");
           setIsSaving(false);
-          // Band fields auto-repopulate via the reset useEffect only for new
-          // bandings (from bandSizeToBandIdMap). For recaptures the bander
-          // types the band manually, so start focus there. New bandings skip
-          // straight to species since band/net are already filled.
-          focusTo(isNewCapture ? "species" : "bandGroup");
+          // New bandings skip to species (band/net already filled);
+          // recaptures start at bandGroup since the bander types it.
+          focusTo(savedAsNewCapture ? "species" : "bandGroup");
         } else {
           onOpenChange(false);
         }
