@@ -7,11 +7,17 @@ import type { DETsMap } from "../../../types";
 
 type ViewMode = "det" | "captured" | "observed";
 
-interface YearlyHeatmapProps {
+interface SpeciesWeeklyHeatmapProps {
   DETsMap?: DETsMap;
+  selectedSpecies?: string;
+  onSelectedSpeciesChange?: (species: string) => void;
 }
 
-export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapProps = {}) {
+export default function SpeciesWeeklyHeatmap({
+  DETsMap: DETsMapProp,
+  selectedSpecies: controlledSpecies,
+  onSelectedSpeciesChange,
+}: SpeciesWeeklyHeatmapProps = {}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const DETsMapFromStore = useAppStore((s) => s.DETsMap);
@@ -34,9 +40,15 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
     return Array.from(speciesCounts, ([species, count]) => ({ species, count })).sort((a, b) => b.count - a.count);
   }, [DETsMap]);
 
-  const [selectedSpecies, setSelectedSpecies] = useState<string>(() =>
+  const [uncontrolledSpecies, setUncontrolledSpecies] = useState<string>(() =>
     allSpecies.length > 0 ? allSpecies[0].species : ""
   );
+  const isControlled = controlledSpecies !== undefined;
+  const selectedSpecies = isControlled ? controlledSpecies : uncontrolledSpecies;
+  const setSelectedSpecies = (species: string) => {
+    if (isControlled) onSelectedSpeciesChange?.(species);
+    else setUncontrolledSpecies(species);
+  };
 
   const exportChart = async () => {
     if (!svgRef.current) return;

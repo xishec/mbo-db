@@ -7,7 +7,7 @@ import Volunteers from "./Volunteers";
 import Bands from "./Bands";
 import FunStats from "./FunStats";
 import Reports from "./Reports/Reports";
-import Trends from "./Trends";
+import Trends from "./Trends/Trends";
 
 interface PageContentProps {
   activePage: string;

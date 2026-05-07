@@ -1,12 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Spinner, Card, CardBody, Divider } from "@heroui/react";
-import YearlyHeatmap from "./Secret/YearlyHeatmap";
-import type { DETsMap } from "../../types";
+import SpeciesWeeklyHeatmap from "./SpeciesWeeklyHeatmap";
+import SpeciesMeasurementBoxPlot, { type MeasurementMap } from "./SpeciesMeasurementBoxPlot";
+import type { DETsMap } from "../../../types";
+
+interface TrendsPayload {
+  dets: DETsMap;
+  wings: MeasurementMap;
+  weights: MeasurementMap;
+}
 
 export default function Trends() {
-  const [DETsMap, setDETsMap] = useState<DETsMap | null>(null);
+  const [payload, setPayload] = useState<TrendsPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSpecies, setSelectedSpecies] = useState<string>("");
 
   useEffect(() => {
     fetch("/data/trends-data.json")
@@ -15,7 +23,28 @@ export default function Trends() {
         return res.json();
       })
       .then((data) => {
-        setDETsMap(data);
+        // Back-compat: older trends-data.json was a flat DETsMap. Current
+        // shape is { dets, wings, weights }.
+        const normalized: TrendsPayload =
+          data && typeof data === "object" && "dets" in data
+            ? {
+                dets: data.dets,
+                wings: data.wings ?? {},
+                weights: data.weights ?? {},
+              }
+            : { dets: data as DETsMap, wings: {}, weights: {} };
+        setPayload(normalized);
+
+        const counts = new Map<string, number>();
+        Object.values(normalized.dets).forEach((det) => {
+          const detSpeciesCount = (det as any).d || (det as any).DETSpeciesCount || {};
+          for (const [species, count] of Object.entries(detSpeciesCount)) {
+            counts.set(species, (counts.get(species) || 0) + (count as number));
+          }
+        });
+        const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+        if (top) setSelectedSpecies(top[0]);
+
         setIsLoading(false);
       })
       .catch((err) => {
@@ -24,6 +53,17 @@ export default function Trends() {
         setIsLoading(false);
       });
   }, []);
+
+  const yearRange = useMemo(() => {
+    if (!payload) return { min: 2002, max: new Date().getFullYear() };
+    const years = new Set<number>();
+    for (const date of Object.keys(payload.dets)) {
+      years.add(new Date(date).getFullYear());
+    }
+    const min = Math.min(...Array.from(years), 2002);
+    const max = Math.max(...Array.from(years));
+    return { min, max };
+  }, [payload]);
 
   if (isLoading) {
     return (
@@ -44,7 +84,7 @@ export default function Trends() {
     );
   }
 
-  if (!DETsMap) {
+  if (!payload) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-default-600">No data available</p>
@@ -142,7 +182,31 @@ export default function Trends() {
           </CardBody>
         </Card>
 
-        <YearlyHeatmap DETsMap={DETsMap} />
+        <SpeciesWeeklyHeatmap
+          DETsMap={payload.dets}
+          selectedSpecies={selectedSpecies}
+          onSelectedSpeciesChange={setSelectedSpecies}
+        />
+
+        <SpeciesMeasurementBoxPlot
+          dataMap={payload.wings}
+          selectedSpecies={selectedSpecies}
+          yearRange={yearRange}
+          measurementLabel="Wing chord"
+          unit="mm"
+          filenameSuffix="wing"
+          precision={1}
+        />
+
+        <SpeciesMeasurementBoxPlot
+          dataMap={payload.weights}
+          selectedSpecies={selectedSpecies}
+          yearRange={yearRange}
+          measurementLabel="Weight"
+          unit="g"
+          filenameSuffix="weight"
+          precision={1}
+        />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { Button, Spinner, useDisclosure } from "@heroui/react";
 import Navigation from "./components/Navigation";
 import LoginModal from "./components/Modals/LoginModal";
 import PageContent from "./components/PageContent/PageContent";
-import Trends from "./components/PageContent/Trends";
+import Trends from "./components/PageContent/Trends/Trends";
 import LoadingProgressBar from "./components/Helper/LoadingProgressBar";
 import MilestoneCelebration from "./components/Helper/MilestoneCelebration";
 import { DataProvider } from "./services/DataService";
