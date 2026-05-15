@@ -584,7 +584,6 @@ export default function AddBirdEventModal({
             ...(savedAsNewCapture ? {} : { bandGroup: "", bandLastTwoDigits: "" }),
           }));
           setLastBandId("");
-          setIsSaving(false);
           // New bandings skip to species (band/net already filled);
           // recaptures start at bandGroup since the bander types it.
           focusTo(savedAsNewCapture ? "species" : "bandGroup");
@@ -598,6 +597,11 @@ export default function AddBirdEventModal({
           description: "Failed to save capture. Please try again.",
           color: "danger",
         });
+      } finally {
+        // Always clear so the "Saving..." spinner modal can't stick if
+        // anything between addBirdEvent resolving and the post-save reset
+        // throws — that path used to leave the app wedged behind the
+        // backdrop with no way to recover but a force quit.
         setIsSaving(false);
       }
     },
