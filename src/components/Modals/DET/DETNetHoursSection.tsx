@@ -69,14 +69,6 @@ function formatDecimal(value: number): string {
   return Number(value.toFixed(2)).toString();
 }
 
-function formatHours(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "0:00";
-  const totalMinutes = Math.round(value * 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${hours}:${String(minutes).padStart(2, "0")}`;
-}
-
 function netHoursToCsv(netHours: NetHours): string {
   const netsById = new Map((netHours.nets ?? []).map((net) => [net.id, net]));
   const ids = [
@@ -94,12 +86,12 @@ function netHoursToCsv(netHours: NetHours): string {
       net?.closed2 ?? "",
       net?.open3 ?? "",
       net?.closed3 ?? "",
-      formatHours(hours),
+      formatDecimal(hours),
     ];
   });
 
   const trapHours = parseNumber(netHours.hummingbirdTrapTotal);
-  rows.push([HUMMINGBIRD_TRAP_ID, "", "", "", "", "", "", formatHours(trapHours)]);
+  rows.push([HUMMINGBIRD_TRAP_ID, "", "", "", "", "", "", formatDecimal(trapHours)]);
 
   return stringifyCsv([NET_HOURS_HEADERS, ...rows]);
 }
@@ -152,6 +144,10 @@ function csvToNetHours(csv: string): NetHours {
 
 export default function DETNetHoursSection({ netHours, onChange }: DETNetHoursSectionProps) {
   const netHoursCsv = useMemo(() => netHoursToCsv(netHours), [netHours]);
+  const calculatedTotal = useMemo(
+    () => (netHours.nets ?? []).reduce((sum, net) => sum + calculateNetHours(net), 0),
+    [netHours.nets]
+  );
 
   const handleNetHoursCsvChange = useCallback(
     (csv: string) => {
@@ -171,11 +167,11 @@ export default function DETNetHoursSection({ netHours, onChange }: DETNetHoursSe
       />
       <div className="mt-2 flex justify-between gap-3 text-small pb-1 mr-3">
         <span>Total Net Hours</span>
-        <span>{formatHours(parseNumber(netHours.total))}</span>
+        <span>{formatDecimal(calculatedTotal)}</span>
       </div>
       <div className="flex justify-between gap-3 text-small pb-1 mr-3">
         <span>Hummingbird Trap Hours</span>
-        <span>{formatHours(parseNumber(netHours.hummingbirdTrapTotal))}</span>
+        <span>{formatDecimal(parseNumber(netHours.hummingbirdTrapTotal))}</span>
       </div>
     </div>
   );

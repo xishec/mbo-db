@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button, Input, Select, SelectItem, Textarea } from "@heroui/react";
-import type { DET, ObserverHours, NetHours, Weather } from "../../../types/DET";
+import type { DET, Net, ObserverHours, NetHours, Weather } from "../../../types/DET";
 import { BirdEventType } from "../../../types";
 import { useAppStore } from "../../../stores/useAppStore";
 import { loadDETCalendar, type DETCalendarEntry } from "../../../services/detCalendarService";
@@ -50,6 +50,55 @@ interface EventSpeciesCounts {
   banded: Record<string, number>;
   repeat: Record<string, number>;
   return_: Record<string, number>;
+}
+
+const DEFAULT_NET_IDS = [
+  "A1",
+  "A2",
+  "B2",
+  "B3",
+  "C1",
+  "C2",
+  "D1",
+  "D2",
+  "D3",
+  "D4",
+  "E1",
+  "E2",
+  "H1",
+  "H2",
+  "N1",
+  "N3",
+];
+
+function timeToMinutes(time: string): number | null {
+  const [hours, minutes] = time.split(":").map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function scheduledNetHours(open: string, closed: string): NetHours {
+  const openMinutes = timeToMinutes(open);
+  const closedMinutes = timeToMinutes(closed);
+  const hours =
+    openMinutes !== null && closedMinutes !== null && closedMinutes > openMinutes
+      ? Number(((closedMinutes - openMinutes) / 60).toFixed(2)).toString()
+      : "0";
+  const total = Number((Number(hours) * DEFAULT_NET_IDS.length).toFixed(2)).toString();
+  const nets: Net[] = DEFAULT_NET_IDS.map((id) => ({
+    id,
+    open,
+    closed,
+    hours,
+    multiplier: 1,
+    total: hours,
+  }));
+
+  return {
+    nets,
+    hummingbirdTrapTotal: "0",
+    total,
+  };
 }
 
 export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET, defaultDate, mode }: AddDETModalProps) {
@@ -280,6 +329,11 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
     setEnd(calendarEntry?.end ?? "");
     setCensusStart(calendarEntry?.censusStart ?? "");
     setCensusEnd(calendarEntry?.censusEnd ?? "");
+    setNetHours(
+      calendarEntry?.start && calendarEntry?.end
+        ? scheduledNetHours(calendarEntry.start, calendarEntry.end)
+        : { nets: [], hummingbirdTrapTotal: "0", total: "0" }
+    );
   }, [date, detCalendar, isOpen, mode]);
 
   // Auto-populate weather for the DET time window.

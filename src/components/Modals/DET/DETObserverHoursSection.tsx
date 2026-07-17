@@ -22,8 +22,8 @@ function calculateObserverTotal(hoursObserved: number, classValue: number): numb
   return hoursObserved * (multipliers[classValue] ?? 0);
 }
 
-function formatObserverNumber(value: number): string {
-  if (!Number.isFinite(value)) return "";
+function formatObserverNumber(value: number, options: { blankZero?: boolean } = {}): string {
+  if (!Number.isFinite(value) || (options.blankZero && value === 0)) return "";
   return Number(value.toFixed(2)).toString();
 }
 
@@ -38,7 +38,7 @@ function getVolunteer(code: string, volunteersMap: VolunteersMap) {
 
 function getObserverClass(initials: string, currentValue: string, volunteersMap: VolunteersMap): number {
   const code = initials.trim().toUpperCase();
-  return normalizeObserverClass(currentValue) || getVolunteer(code, volunteersMap)?.observerClass || 0;
+  return getVolunteer(code, volunteersMap)?.observerClass || normalizeObserverClass(currentValue) || 0;
 }
 
 function observerHoursToCsv(observerHours: ObserverHours, volunteersMap: VolunteersMap): string {
@@ -47,14 +47,14 @@ function observerHoursToCsv(observerHours: ObserverHours, volunteersMap: Volunte
 
     return [
       observer.initials,
-      formatObserverNumber(observer.hoursObserved),
+      formatObserverNumber(observer.hoursObserved, { blankZero: true }),
       classValue ? String(classValue) : "",
-      formatObserverNumber(calculateObserverTotal(observer.hoursObserved, classValue)),
+      formatObserverNumber(calculateObserverTotal(observer.hoursObserved, classValue), { blankZero: true }),
     ];
   });
 
   while (rows.length < MIN_OBSERVER_ROWS) {
-    rows.push(["", "", "", "0"]);
+    rows.push(["", "", "", ""]);
   }
 
   return stringifyCsv([OBSERVER_HOURS_HEADERS, ...rows]);

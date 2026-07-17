@@ -16,6 +16,7 @@ import {
   BandSize,
   type BirdEvent,
   type DatabaseData,
+  type DETsMap,
   type MagicTable,
   type PendingEvent,
   type Volunteer,
@@ -36,34 +37,83 @@ import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
 
 function normalizeObserverClass(value: unknown): Volunteer["observerClass"] {
-  return value === 1 || value === 2 || value === 3 ? value : 3;
+  const parsed = Number(value);
+  return parsed === 1 || parsed === 2 || parsed === 3 ? parsed : 3;
+}
+
+function normalizeVolunteerCode(code: string): string {
+  return code.trim().toUpperCase();
 }
 
 function getVolunteerMetadata(data: DatabaseData | null | undefined): VolunteersMap {
   const volunteersMap: VolunteersMap = {};
 
   for (const [code, volunteer] of Object.entries(data?.volunteersMap ?? {})) {
-    volunteersMap[code] = {
+    const normalizedCode = normalizeVolunteerCode(code);
+    if (!normalizedCode) continue;
+    volunteersMap[normalizedCode] = {
       fullName: volunteer.fullName ?? "",
       observerClass: normalizeObserverClass(volunteer.observerClass),
     };
   }
 
   for (const [code, fullName] of Object.entries(data?.volunteersFullNameMap ?? {})) {
-    volunteersMap[code] = {
+    const normalizedCode = normalizeVolunteerCode(code);
+    if (!normalizedCode) continue;
+    volunteersMap[normalizedCode] = {
       fullName,
-      observerClass: volunteersMap[code]?.observerClass ?? 3,
+      observerClass: volunteersMap[normalizedCode]?.observerClass ?? 3,
     };
   }
 
   for (const [code, observerClass] of Object.entries(data?.volunteersObserverClassMap ?? {})) {
-    volunteersMap[code] = {
-      fullName: volunteersMap[code]?.fullName ?? "",
+    const normalizedCode = normalizeVolunteerCode(code);
+    if (!normalizedCode) continue;
+    volunteersMap[normalizedCode] = {
+      fullName: volunteersMap[normalizedCode]?.fullName ?? "",
       observerClass: normalizeObserverClass(observerClass),
     };
   }
 
   return volunteersMap;
+}
+
+function calculateObserverTotal(hoursObserved: number, observerClass: number): number {
+  if (observerClass === 1) return hoursObserved;
+  if (observerClass === 2) return hoursObserved * 0.5;
+  if (observerClass === 3) return hoursObserved * 0.33;
+  return 0;
+}
+
+function normalizeDETObserverClasses(detsMap: DETsMap | undefined, volunteersMap: VolunteersMap): DETsMap {
+  const normalized: DETsMap = {};
+
+  for (const [date, det] of Object.entries(detsMap ?? {})) {
+    const observers = det.observerHours?.observers?.map((observer) => {
+      const initials = observer.initials?.trim().toUpperCase() ?? "";
+      const volunteer = volunteersMap[initials];
+      const observerClass = volunteer?.observerClass ?? normalizeObserverClass(observer.class);
+      const hoursObserved = Number(observer.hoursObserved) || 0;
+
+      return {
+        ...observer,
+        name: volunteer?.fullName ?? observer.name,
+        initials,
+        class: observerClass,
+        totalHours: calculateObserverTotal(hoursObserved, observerClass),
+      };
+    });
+
+    const observerHours = {
+      ...(det.observerHours ?? { total: 0 }),
+      observers,
+      total: observers?.reduce((sum, observer) => sum + observer.totalHours, 0) ?? det.observerHours?.total ?? 0,
+    };
+
+    normalized[date] = { ...det, observerHours };
+  }
+
+  return normalized;
 }
 
 /**
@@ -73,6 +123,7 @@ function getVolunteerMetadata(data: DatabaseData | null | undefined): Volunteers
  */
 function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void {
   const volunteersMap = getVolunteerMetadata(data);
+  const detsMap = normalizeDETObserverClasses(data.DETsMap, volunteersMap);
   const speciesAliasesMap = normalizeSpeciesAliasesMap(data.speciesAliasesMap ?? {});
   const mergedEvents = overlayQueuedEvents(data.birdEventsMap ?? {}, queued);
   const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(mergedEvents, volunteersMap);
@@ -97,7 +148,7 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
     volunteerStatsMap: volunteerStats,
     bandSizeToBandIdMap: computeBandSizeToBandIdMap(hydratedEvents, bandGroups),
     speciesInfoMap: computeSpeciesInfoMap(hydratedEvents, speciesAliasesMap),
-    DETsMap: data.DETsMap ?? {},
+    DETsMap: detsMap,
     dismissedConflictsMap: data.dismissedConflictsMap ?? {},
     bandGroupNotesMap: data.bandGroupNotesMap ?? {},
   });
@@ -349,7 +400,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           yearsToProgramMap: years,
           bandSizeToBandIdMap: {} as Record<BandSize, string>,
           dismissedConflictsMap: dismissedMap,
-          DETsMap: detsMap,
+          DETsMap: normalizeDETObserverClasses(detsMap, volunteersMap),
           volunteersMap,
           magicTable: magicTableData,
           bandGroupNotesMap: notesMap,
@@ -391,7 +442,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups),
           speciesInfoMap: computeSpeciesInfoMap(reconstructed, speciesAliasesMap),
           dismissedConflictsMap: dismissedMap,
-          DETsMap: detsMap,
+          DETsMap: data.DETsMap ?? {},
           lastSyncedAt: cacheTimestamp,
           loadingStatus: "Ready",
         });
