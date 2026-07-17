@@ -82,7 +82,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
       setSpeciesKey("");
     } catch (err) {
       addToast({
-        title: "Could not save alias",
+        title: "Could not save code",
         description: err instanceof Error ? err.message : "Unknown error",
         color: "danger",
       });
@@ -97,7 +97,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
       await updateSpeciesAlias(key, null);
     } catch (err) {
       addToast({
-        title: "Could not delete alias",
+        title: "Could not delete code",
         description: err instanceof Error ? err.message : "Unknown error",
         color: "danger",
       });
@@ -125,7 +125,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
               <div className="grid grid-cols-[1fr_140px_auto] gap-3 items-end">
                 <Select
                   {...modalInputProps}
-                  label="Species"
+                  label="Current Code"
                   placeholder=" "
                   size="sm"
                   selectedKeys={speciesKey ? [speciesKey] : []}
@@ -139,7 +139,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
                 </Select>
                 <Input
                   {...modalInputProps}
-                  label="Alias"
+                  label="New Code"
                   placeholder=" "
                   maxLength={4}
                   size="sm"
