@@ -1,4 +1,3 @@
-
 export interface DET {
   date: string;
   programId: string;
@@ -10,7 +9,6 @@ export interface DET {
   observerHours: ObserverHours;
   netHours: NetHours;
   coverageCode: number;
-
 
   narrative: string;
   deviations: string;
@@ -69,6 +67,10 @@ export interface Net {
   id: string;
   open?: string;
   closed?: string;
+  open2?: string;
+  closed2?: string;
+  open3?: string;
+  closed3?: string;
   hours?: string;
   multiplier?: number;
   total: string;
@@ -114,8 +116,7 @@ export interface Released {
 export type SpeciesPriority = "A" | "B" | "C" | "D";
 
 export type SpeciesListItem =
-  | { type: "group"; groupName: string }
-  | { type: "species"; code: string; priority?: SpeciesPriority };
+  { type: "group"; groupName: string } | { type: "species"; code: string; priority?: SpeciesPriority };
 
 // Species groups with species in exact order from the classification table
 // Already flattened with group dividers - ready to use directly
@@ -356,6 +357,7 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
 
 // Calculate DET species codes set - useful for checking if a code is a DET species
 export const DET_SPECIES_CODES_SET = new Set<string>(
-  SPECIES_GROUPS.filter((item): item is { type: "species"; code: string } => item.type === "species")
-    .map((item) => item.code)
+  SPECIES_GROUPS.filter((item): item is { type: "species"; code: string } => item.type === "species").map(
+    (item) => item.code
+  )
 );

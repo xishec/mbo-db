@@ -3,22 +3,18 @@ import { Button, Input, Textarea } from "@heroui/react";
 import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "../../../types/DET";
 import { BirdEventType } from "../../../types";
 import { PencilIcon } from "@heroicons/react/24/outline";
-import { fetchWeatherForDate } from "../../../services/weatherService";
+import { fetchWeatherForDateTimeRange } from "../../../services/weatherService";
 import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
 import { getLocalDateString } from "../../../utils/dateUtils";
-import DETObserverHoursModal from "./DETObserverHoursModal";
-import DETNetHoursModal from "./DETNetHoursModal";
+import DETObserverHoursSection from "./DETObserverHoursSection";
+import DETNetHoursSection from "./DETNetHoursSection";
 import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
 import DETInjuriesModal from "./DETInjuriesModal";
 import DETReleasedModal from "./DETReleasedModal";
 import DETVisitorsModal from "./DETVisitorsModal";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
-import {
-  modalInputProps,
-  modalCancelButtonProps,
-  modalPrimaryButtonProps,
-} from "../modalDefaults";
+import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
 
 interface AddDETModalProps {
   isOpen: boolean;
@@ -62,7 +58,12 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
   // Auto-compute banded/repeat species from bird events for the selected date
   const computedFromEvents = useMemo(() => {
-    if (!date) return { banded: {} as Record<string, number>, repeat: {} as Record<string, number>, return_: {} as Record<string, number> };
+    if (!date)
+      return {
+        banded: {} as Record<string, number>,
+        repeat: {} as Record<string, number>,
+        return_: {} as Record<string, number>,
+      };
     const banded: Record<string, number> = {};
     const repeat: Record<string, number> = {};
     const return_: Record<string, number> = {};
@@ -121,8 +122,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
 
   // Modal states for complex objects
-  const [isObserverHoursModalOpen, setIsObserverHoursModalOpen] = useState(false);
-  const [isNetHoursModalOpen, setIsNetHoursModalOpen] = useState(false);
   const [isVisitorsModalOpen, setIsVisitorsModalOpen] = useState(false);
   const [isUnifiedSpeciesModalOpen, setIsUnifiedSpeciesModalOpen] = useState(false);
   const [isInjuriesModalOpen, setIsInjuriesModalOpen] = useState(false);
@@ -142,7 +141,15 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setDeviations(existingDET.deviations);
       setStationManagement(existingDET.stationManagement);
       setObserverHours(existingDET.observerHours || { total: 0, observers: [] });
-      setNetHours(existingDET.netHours ? { nets: existingDET.netHours.nets || [], hummingbirdTrapTotal: existingDET.netHours.hummingbirdTrapTotal || "0", total: existingDET.netHours.total || "0" } : { nets: [], hummingbirdTrapTotal: "0", total: "0" });
+      setNetHours(
+        existingDET.netHours
+          ? {
+              nets: existingDET.netHours.nets || [],
+              hummingbirdTrapTotal: existingDET.netHours.hummingbirdTrapTotal || "0",
+              total: existingDET.netHours.total || "0",
+            }
+          : { nets: [], hummingbirdTrapTotal: "0", total: "0" }
+      );
       setVisitors(existingDET.visitors || []);
       setInjuries(existingDET.injuries || []);
       setReleased(existingDET.released || []);
@@ -184,45 +191,37 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setReturnSpeciesCount({});
       setDETSpeciesCount({});
       setWeather(undefined);
-      
-      // Fetch weather for today when modal opens
-      if (isOpen) {
-        setIsLoadingWeather(true);
-        fetchWeatherForDate(today)
-          .then((fetchedWeather) => {
-            if (fetchedWeather) {
-              setWeather(fetchedWeather);
-            }
-          })
-          .catch((err) => {
-            console.error("Failed to fetch weather:", err);
-          })
-          .finally(() => {
-            setIsLoadingWeather(false);
-          });
-      }
     }
     setError("");
   }, [mode, existingDET, isOpen]);
 
-  // Auto-populate weather when date changes (only in create mode)
+  // Auto-populate weather for the DET time window.
   useEffect(() => {
-    if (date && mode === "create") {
-      setIsLoadingWeather(true);
-      fetchWeatherForDate(date)
-        .then((fetchedWeather) => {
-          if (fetchedWeather) {
-            setWeather(fetchedWeather);
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to fetch weather:", err);
-        })
-        .finally(() => {
-          setIsLoadingWeather(false);
-        });
+    if (!isOpen) return;
+    if (!date || !start || !end) {
+      setWeather(undefined);
+      setIsLoadingWeather(false);
+      return;
     }
-  }, [date, mode]);
+
+    let cancelled = false;
+    setIsLoadingWeather(true);
+    fetchWeatherForDateTimeRange(date, start, end)
+      .then((fetchedWeather) => {
+        if (!cancelled) setWeather(fetchedWeather ?? undefined);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch weather:", err);
+        if (!cancelled) setWeather(undefined);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingWeather(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [date, end, isOpen, start]);
 
   const handleSave = async () => {
     setError("");
@@ -238,6 +237,22 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
     }
     if (!location) {
       setError("Location is required");
+      return;
+    }
+    if (!start) {
+      setError("Start Time is required");
+      return;
+    }
+    if (!end) {
+      setError("End Time is required");
+      return;
+    }
+    if (end <= start) {
+      setError("End Time must be after Start Time");
+      return;
+    }
+    if (isLoadingWeather) {
+      setError("Wait for weather data to finish loading");
       return;
     }
 
@@ -304,273 +319,232 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       >
         {(onClose) => (
           <>
-              <ModalHeaderShell>{mode === "create" ? "Add New DET" : "Edit DET"}</ModalHeaderShell>
-              <ModalBodyShell>
-                <div className="flex flex-col gap-4">
-                  {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
+            <ModalHeaderShell>{mode === "create" ? "Add New DET" : "Edit DET"}</ModalHeaderShell>
+            <ModalBodyShell>
+              <div className="flex flex-col gap-4">
+                {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
 
-                  {/* Basic Information */}
-                  <div className="space-y-4">
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Date"
+                      {...modalInputProps}
+                      type="date"
+                      value={date}
+                      onValueChange={setDate}
+                      isRequired
+                      isDisabled={mode === "edit"}
+                      description={isLoadingWeather ? "Loading weather data..." : ""}
+                    />
+                    <Input
+                      label="Program ID"
+                      {...modalInputProps}
+                      value={programId}
+                      onValueChange={setProgramId}
+                      isRequired
+                      placeholder="e.g., FALL2024"
+                    />
+                    <Input
+                      label="Location"
+                      {...modalInputProps}
+                      value={location}
+                      onValueChange={setLocation}
+                      isRequired
+                      placeholder="e.g., MBO"
+                    />
+                    <Input
+                      label="Coverage Code (auto)"
+                      {...modalInputProps}
+                      variant="flat"
+                      type="number"
+                      value={coverageCode}
+                      isReadOnly
+                    />
+                    <Input
+                      label="Bander in Charge"
+                      {...modalInputProps}
+                      value={banderInCharge}
+                      onValueChange={setBanderInCharge}
+                      placeholder="SLS"
+                    />
                     <div className="grid grid-cols-2 gap-4">
                       <Input
-                        label="Date"
+                        label="Start Time"
                         {...modalInputProps}
-                        type="date"
-                        value={date}
-                        onValueChange={setDate}
+                        type="time"
+                        value={start}
+                        onValueChange={setStart}
                         isRequired
-                        isDisabled={mode === "edit"}
-                        description={
-                          isLoadingWeather ? "Loading weather data..." : weather ? "Weather data loaded" : ""
-                        }
                       />
                       <Input
-                        label="Program ID"
+                        label="End Time"
                         {...modalInputProps}
-                        value={programId}
-                        onValueChange={setProgramId}
+                        type="time"
+                        value={end}
+                        onValueChange={setEnd}
                         isRequired
-                        placeholder="e.g., FALL2024"
+                      />
+                    </div>
+                    <Input
+                      label="Censuser"
+                      {...modalInputProps}
+                      value={censuser}
+                      onValueChange={setCensuser}
+                      placeholder="Censuser name"
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <Input
+                        label="Census Start"
+                        {...modalInputProps}
+                        type="time"
+                        value={censusStart}
+                        onValueChange={setCensusStart}
                       />
                       <Input
-                        label="Location"
+                        label="Census End"
                         {...modalInputProps}
-                        value={location}
-                        onValueChange={setLocation}
-                        isRequired
-                        placeholder="e.g., MBO"
+                        type="time"
+                        value={censusEnd}
+                        onValueChange={setCensusEnd}
                       />
-                      <Input
-                        label="Coverage Code (auto)"
-                        {...modalInputProps}
-                        variant="flat"
-                        type="number"
-                        value={coverageCode}
-                        isReadOnly
-                      />
-                      <Input
-                        label="Bander in Charge"
-                        {...modalInputProps}
-                        value={banderInCharge}
-                        onValueChange={setBanderInCharge}
-                        placeholder="SLS"
-                      />
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          label="Start Time"
-                          {...modalInputProps}
-                          type="time"
-                          value={start}
-                          onValueChange={setStart}
-                        />
-                        <Input label="End Time" {...modalInputProps} type="time" value={end} onValueChange={setEnd} />
-                      </div>
-                      <Input
-                        label="Censuser"
-                        {...modalInputProps}
-                        value={censuser}
-                        onValueChange={setCensuser}
-                        placeholder="Censuser name"
-                      />
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          label="Census Start"
-                          {...modalInputProps}
-                          type="time"
-                          value={censusStart}
-                          onValueChange={setCensusStart}
-                        />
-                        <Input
-                          label="Census End"
-                          {...modalInputProps}
-                          type="time"
-                          value={censusEnd}
-                          onValueChange={setCensusEnd}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Weather */}
-                  <div>
-                    <p className="text-small pb-1">Weather at MBO</p>
-                    <div className="rounded-medium border border-default-100 py-2 px-3">
-                      <WeatherDisplay weather={weather} isLoading={isLoadingWeather} />
-                    </div>
-                  </div>
-
-                  {/* Observer Hours */}
-                  <div>
-                    <p className="text-small pb-1">Observer Hours</p>
-                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        Total: {observerHours.total} hours | Observers: {observerHours.observers?.length || 0}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsObserverHoursModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Net Hours */}
-                  <div>
-                    <p className="text-small pb-1">Net Hours</p>
-                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        Total: {netHours.total} | Hummingbird Trap: {netHours.hummingbirdTrapTotal} | Nets:{" "}
-                        {netHours.nets?.length || 0}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsNetHoursModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Unified Species Data Entry */}
-                  <div>
-                    <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
-                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
-                        <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
-                        <p>Banded: {getSpeciesCountSummary(bandedSpeciesCount)}</p>
-                        <p>Repeats: {getSpeciesCountSummary(repeatSpeciesCount)}</p>
-                        <p>Return: {getSpeciesCountSummary(returnSpeciesCount)}</p>
-                        <p>DET: {getSpeciesCountSummary(DETSpeciesCount)}</p>
-                      </div>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsUnifiedSpeciesModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Textarea
-                    label="Narrative"
-                    labelPlacement="outside"
-                    value={narrative}
-                    onValueChange={setNarrative}
-                    variant="bordered"
-                    minRows={3}
-                    placeholder="Daily narrative..."
-                  />
-
-                  <Textarea
-                    label="Deviations"
-                    labelPlacement="outside"
-                    value={deviations}
-                    onValueChange={setDeviations}
-                    variant="bordered"
-                    minRows={3}
-                    placeholder="Any deviations from protocol..."
-                  />
-
-                  {/* Visitors */}
-                  <div>
-                    <p className="text-small pb-1">Visitors</p>
-                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsVisitorsModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Textarea
-                    label="Station Management"
-                    labelPlacement="outside"
-                    value={stationManagement}
-                    onValueChange={setStationManagement}
-                    variant="bordered"
-                    minRows={3}
-                    placeholder="Station management notes..."
-                  />
-
-                  {/* Injuries */}
-                  <div>
-                    <p className="text-small pb-1">Injuries</p>
-                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsInjuriesModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Released */}
-                  <div>
-                    <p className="text-small pb-1">Released</p>
-                    <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                      <p className="text-sm text-gray-600">
-                        {released.length} released record{released.length !== 1 ? "s" : ""}
-                      </p>
-                      <Button
-                        startContent={<PencilIcon className="h-4 w-4" />}
-                        onPress={() => setIsReleasedModalOpen(true)}
-                        color="primary"
-                        variant="light"
-                      >
-                        Edit
-                      </Button>
                     </div>
                   </div>
                 </div>
-              </ModalBodyShell>
-              <ModalFooterShell>
-                <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
-                  Cancel
-                </Button>
-                <Button {...modalPrimaryButtonProps} onPress={handleSave} isLoading={isSaving}>
-                  {mode === "create" ? "Create DET" : "Save Changes"}
-                </Button>
-              </ModalFooterShell>
+
+                {/* Weather */}
+                <div>
+                  <p className="text-small pb-1">Weather at MBO</p>
+                  <div className="rounded-medium border border-default-100 py-2 px-3">
+                    <WeatherDisplay weather={weather} isLoading={isLoadingWeather} />
+                  </div>
+                </div>
+
+                <DETObserverHoursSection observerHours={observerHours} onChange={setObserverHours} />
+
+                <DETNetHoursSection netHours={netHours} onChange={setNetHours} />
+
+                {/* Unified Species Data Entry */}
+                <div>
+                  <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
+                  <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
+                      <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
+                      <p>Banded: {getSpeciesCountSummary(bandedSpeciesCount)}</p>
+                      <p>Repeats: {getSpeciesCountSummary(repeatSpeciesCount)}</p>
+                      <p>Return: {getSpeciesCountSummary(returnSpeciesCount)}</p>
+                      <p>DET: {getSpeciesCountSummary(DETSpeciesCount)}</p>
+                    </div>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsUnifiedSpeciesModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+
+                <Textarea
+                  label="Narrative"
+                  labelPlacement="outside"
+                  value={narrative}
+                  onValueChange={setNarrative}
+                  variant="bordered"
+                  minRows={3}
+                  placeholder="Daily narrative..."
+                />
+
+                <Textarea
+                  label="Deviations"
+                  labelPlacement="outside"
+                  value={deviations}
+                  onValueChange={setDeviations}
+                  variant="bordered"
+                  minRows={3}
+                  placeholder="Any deviations from protocol..."
+                />
+
+                {/* Visitors */}
+                <div>
+                  <p className="text-small pb-1">Visitors</p>
+                  <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
+                    <p className="text-sm text-gray-600">
+                      {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
+                    </p>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsVisitorsModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+
+                <Textarea
+                  label="Station Management"
+                  labelPlacement="outside"
+                  value={stationManagement}
+                  onValueChange={setStationManagement}
+                  variant="bordered"
+                  minRows={3}
+                  placeholder="Station management notes..."
+                />
+
+                {/* Injuries */}
+                <div>
+                  <p className="text-small pb-1">Injuries</p>
+                  <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
+                    <p className="text-sm text-gray-600">
+                      {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
+                    </p>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsInjuriesModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Released */}
+                <div>
+                  <p className="text-small pb-1">Released</p>
+                  <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
+                    <p className="text-sm text-gray-600">
+                      {released.length} released record{released.length !== 1 ? "s" : ""}
+                    </p>
+                    <Button
+                      startContent={<PencilIcon className="h-4 w-4" />}
+                      onPress={() => setIsReleasedModalOpen(true)}
+                      color="primary"
+                      variant="light"
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </ModalBodyShell>
+            <ModalFooterShell>
+              <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
+                Cancel
+              </Button>
+              <Button {...modalPrimaryButtonProps} onPress={handleSave} isLoading={isSaving}>
+                {mode === "create" ? "Create DET" : "Save Changes"}
+              </Button>
+            </ModalFooterShell>
           </>
         )}
       </ModalShell>
 
       {/* Complex Object Modals */}
-      <DETObserverHoursModal
-        isOpen={isObserverHoursModalOpen}
-        onOpenChange={() => setIsObserverHoursModalOpen(!isObserverHoursModalOpen)}
-        observerHours={observerHours}
-        onSave={setObserverHours}
-      />
-
-      <DETNetHoursModal
-        isOpen={isNetHoursModalOpen}
-        onOpenChange={() => setIsNetHoursModalOpen(!isNetHoursModalOpen)}
-        netHours={netHours}
-        onSave={setNetHours}
-      />
-
       <DETUnifiedSpeciesModal
         isOpen={isUnifiedSpeciesModalOpen}
         onOpenChange={() => setIsUnifiedSpeciesModalOpen(!isUnifiedSpeciesModalOpen)}

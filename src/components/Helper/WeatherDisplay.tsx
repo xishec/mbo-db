@@ -22,27 +22,29 @@ export default function WeatherDisplay({ weather, isLoading = false }: WeatherDi
     weather.totalRainfallMm !== undefined ||
     weather.windSpeed !== undefined ||
     weather.totalSnowCm !== undefined ||
-    weather.meanSnowDepthCm !== undefined;
+    weather.meanSnowDepthCm !== undefined ||
+    weather.maxSnowDepthCm !== undefined ||
+    weather.humidity !== undefined;
 
   return (
     <div className="text-sm text-gray-600 space-y-2">
       {/* Temperature Section */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {weather.dailyMeanTemp !== undefined && (
           <div>
-            <p className="text-xs text-gray-500 mb-0.5">Mean Daily Temp</p>
+            <p className="text-xs text-gray-500 mb-0.5">Mean Temp</p>
             <p className="font-medium">{weather.dailyMeanTemp.toFixed(1)}°C</p>
           </div>
         )}
         {weather.dailyHighTemp !== undefined && (
           <div>
-            <p className="text-xs text-gray-500 mb-0.5">Daily High</p>
+            <p className="text-xs text-gray-500 mb-0.5">High Temp</p>
             <p className="font-medium">{weather.dailyHighTemp.toFixed(1)}°C</p>
           </div>
         )}
         {weather.dailyLowTemp !== undefined && (
           <div>
-            <p className="text-xs text-gray-500 mb-0.5">Daily Low</p>
+            <p className="text-xs text-gray-500 mb-0.5">Low Temp</p>
             <p className="font-medium">{weather.dailyLowTemp.toFixed(1)}°C</p>
           </div>
         )}
@@ -50,8 +52,7 @@ export default function WeatherDisplay({ weather, isLoading = false }: WeatherDi
 
       {/* Precipitation Section */}
       <div className="border-t border-default-100 pt-2">
-        <p className="text-xs font-semibold text-gray-700 mb-1.5">Precipitation</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {weather.totalRainfallMm !== undefined && (
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Total Rain</p>
@@ -82,17 +83,16 @@ export default function WeatherDisplay({ weather, isLoading = false }: WeatherDi
       {/* Snow Depth Section */}
       {(weather.meanSnowDepthCm !== undefined || weather.maxSnowDepthCm !== undefined) && (
         <div className="border-t border-default-100 pt-2">
-          <p className="text-xs font-semibold text-gray-700 mb-1.5">Snow Depth</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {weather.meanSnowDepthCm !== undefined && (
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Mean</p>
+                <p className="text-xs text-gray-500 mb-0.5">Mean Snow Depth</p>
                 <p className="font-medium">{weather.meanSnowDepthCm.toFixed(1)} cm</p>
               </div>
             )}
             {weather.maxSnowDepthCm !== undefined && (
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Max</p>
+                <p className="text-xs text-gray-500 mb-0.5">Max Snow Depth</p>
                 <p className="font-medium">{weather.maxSnowDepthCm.toFixed(1)} cm</p>
               </div>
             )}
@@ -102,8 +102,7 @@ export default function WeatherDisplay({ weather, isLoading = false }: WeatherDi
 
       {/* Wind & Cloud Section */}
       <div className="border-t border-default-100 pt-2">
-        <p className="text-xs font-semibold text-gray-700 mb-1.5">Wind & Conditions</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {weather.windSpeed !== undefined && (
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Wind Speed</p>

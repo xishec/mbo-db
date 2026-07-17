@@ -3,7 +3,6 @@ import {
   Input,
   Select,
   SelectItem,
-  Switch,
   Spinner,
   Modal,
   ModalContent,
@@ -23,7 +22,6 @@ import BirdStatusModal from "./BirdStatusModal";
 import ValidationMessages from "../Helper/ValidationMessages";
 import { TABLE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
 import { formatFieldValue, getApplicableRange, getDefaultFormData } from "../PageContent/Programs/Captures/helpers";
-import { getLocalDateString } from "../../utils/dateUtils";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "./modalDefaults";
@@ -58,7 +56,6 @@ export default function AddBirdEventModal({
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
-  const [useCurrentTime, setUseCurrentTime] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [wasOpen, setWasOpen] = useState(false);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
@@ -134,7 +131,6 @@ export default function AddBirdEventModal({
       defaultData.birdStatus = birdEventToModify.birdStatus;
       defaultData.notes = birdEventToModify.notes;
 
-      setUseCurrentTime(false); // Disable auto-update when modifying
       setFormData(defaultData);
       setLastBandId("");
 
@@ -152,12 +148,8 @@ export default function AddBirdEventModal({
       setSelectedBandSize(derivedBandSize);
       setWasOpen(true);
     } else if (!wasOpen) {
-      // First time opening modal - reset to defaults
-      // Preserve date/time if useCurrentTime is false
-      if (!useCurrentTime) {
-        defaultData.date = formData.date;
-        defaultData.time = formData.time;
-      }
+      // First time opening modal - reset to defaults.
+      // Date/time come from getDefaultFormData (current local date/time).
 
       // Populate bandGroup and bandLastTwoDigits from bandSize
       if (bandSize !== BandSize.Other && bandSizeToBandIdMap[bandSize]) {
@@ -268,10 +260,8 @@ export default function AddBirdEventModal({
     // Keep birdStatus and notes in the order so Tab from them lands on the
     // next row (net). They're rendered as Buttons (not Inputs) so the
     // tabIndex hooks still place them in the keyboard sequence.
-    const order = [...ROW1_KEYS, ...ROW2_KEYS];
-    if (!useCurrentTime) order.push(...DATE_TIME_KEYS);
-    return order;
-  }, [useCurrentTime]);
+    return [...ROW1_KEYS, ...ROW2_KEYS, ...DATE_TIME_KEYS];
+  }, []);
 
   const firstEditableField = useMemo(() => {
     return focusOrder[0] ?? "bandGroup";
@@ -286,25 +276,6 @@ export default function AddBirdEventModal({
   const registerRef = useCallback((key: string, el: HTMLInputElement | null) => {
     if (el) inputRefs.current.set(key, el);
   }, []);
-
-  // Update date/time when useCurrentTime is enabled
-  useEffect(() => {
-    if (!useCurrentTime) return;
-
-    const updateTime = () => {
-      const now = new Date();
-      const currentDate = getLocalDateString(now);
-      const currentTime = now.toTimeString().slice(0, 5);
-      setFormData((prev) => {
-        if (prev.date === currentDate && prev.time === currentTime) return prev;
-        return { ...prev, date: currentDate, time: currentTime };
-      });
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, [useCurrentTime]);
 
   // Species range lookups
   const pyleSpeciesRange = useMemo(() => {
@@ -767,15 +738,6 @@ export default function AddBirdEventModal({
         const sub = subFields[fieldKey];
         if (!sub) return null;
 
-        // Show as readonly when using current time
-        if (useCurrentTime) {
-          return (
-            <div className="px-3 py-2 text-sm text-default-900 bg-default-50 rounded-medium border-medium border-default-50 whitespace-nowrap">
-              {sub.value}
-            </div>
-          );
-        }
-
         return (
           <Input
             ref={(el: HTMLInputElement | null) => registerRef(fieldKey, el)}
@@ -902,7 +864,6 @@ export default function AddBirdEventModal({
       selectedBandSize,
       bandSizeToBandIdMap,
       handleBandSizeChange,
-      useCurrentTime,
       birdEventToModify,
       isSaving,
       getInputColor,
@@ -967,15 +928,8 @@ export default function AddBirdEventModal({
         {() => (
           <>
             <ModalHeaderShell>
-              <div className="flex w-full items-center justify-between">
-                <div className="flex flex-row items-center gap-1 font-bold">
-                  {birdEventToModify ? "Modify" : "Add"} Capture
-                </div>
-                {!birdEventToModify && (
-                  <Switch isSelected={useCurrentTime} onValueChange={setUseCurrentTime}>
-                    Use current time
-                  </Switch>
-                )}
+              <div className="flex flex-row items-center gap-1 font-bold">
+                {birdEventToModify ? "Modify" : "Add"} Capture
               </div>
             </ModalHeaderShell>
             <ModalBodyShell>
