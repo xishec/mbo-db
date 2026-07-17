@@ -169,16 +169,16 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
 
               <Table aria-label="Species aliases table" removeWrapper>
                 <TableHeader>
-                  <TableColumn>New Code</TableColumn>
                   <TableColumn>Old Code</TableColumn>
+                  <TableColumn>New Code</TableColumn>
                   <TableColumn>Species</TableColumn>
                   <TableColumn width={60}> </TableColumn>
                 </TableHeader>
                 <TableBody items={rows} emptyContent="No aliases">
                   {(row) => (
                     <TableRow key={row.speciesKey}>
-                      <TableCell className="font-mono">{row.aliasCode}</TableCell>
                       <TableCell className="font-mono">{row.speciesKey}</TableCell>
+                      <TableCell className="font-mono">{row.aliasCode}</TableCell>
                       <TableCell>{row.speciesName}</TableCell>
                       <TableCell>
                         <Button
