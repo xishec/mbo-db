@@ -10,6 +10,24 @@ import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/DET/AddDETModal";
 import { PencilIcon } from "@heroicons/react/24/outline";
 
+function textFieldToString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (!Array.isArray(value)) return "";
+
+  return value
+    .map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object") {
+        return Object.values(item)
+          .filter((part) => typeof part === "string" && part.trim())
+          .join(" - ");
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 export default function DETs() {
   const DETsMap = useAppStore((s) => s.DETsMap);
   const isAdmin = useAppStore((s) => s.isAdmin);
@@ -201,7 +219,8 @@ export default function DETs() {
             <p className="text-small font-semibold mb-2">Observer Hours</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600">
-                Total: {selectedDET.observerHours?.total || 0} hours | Observers: {selectedDET.observerHours?.observers?.length || 0}
+                Total: {selectedDET.observerHours?.total || 0} hours | Observers:{" "}
+                {selectedDET.observerHours?.observers?.length || 0}
               </p>
               {selectedDET.observerHours?.observers && selectedDET.observerHours.observers.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -220,8 +239,8 @@ export default function DETs() {
             <p className="text-small font-semibold mb-2">Net Hours</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600">
-                Total: {selectedDET.netHours?.total || "0"} | Hummingbird Trap: {selectedDET.netHours?.hummingbirdTrapTotal || "0"} | Nets:{" "}
-                {selectedDET.netHours?.nets?.length || 0}
+                Total: {selectedDET.netHours?.total || "0"} | Hummingbird Trap:{" "}
+                {selectedDET.netHours?.hummingbirdTrapTotal || "0"} | Nets: {selectedDET.netHours?.nets?.length || 0}
               </p>
               {selectedDET.netHours?.nets && selectedDET.netHours.nets.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -270,18 +289,9 @@ export default function DETs() {
           <div>
             <p className="text-small font-semibold mb-2">Visitors</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
-              <p className="text-sm text-gray-600 mb-2">
-                {selectedDET.visitors?.length || 0} visitor{selectedDET.visitors?.length !== 1 ? "s" : ""}
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                {textFieldToString(selectedDET.visitors) || "—"}
               </p>
-              {selectedDET.visitors && selectedDET.visitors.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedDET.visitors.map((visitor, idx) => (
-                    <Chip key={idx} variant="flat" color="default" size="sm">
-                      {visitor}
-                    </Chip>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
@@ -297,41 +307,9 @@ export default function DETs() {
           <div>
             <p className="text-small font-semibold mb-2">Injuries</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
-              <p className="text-sm text-gray-600 mb-2">
-                {selectedDET.injuries?.length || 0} injury record{selectedDET.injuries?.length !== 1 ? "s" : ""}
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                {textFieldToString(selectedDET.injuries) || "No injuries recorded"}
               </p>
-              {selectedDET.injuries && selectedDET.injuries.length > 0 ? (
-                <div className="space-y-3">
-                  {selectedDET.injuries.map((injury, idx) => (
-                    <div key={idx} className="border-b border-default-100 pb-2 last:border-b-0 last:pb-0">
-                      <div className="grid grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Species</p>
-                          <SpeciesTooltip speciesCode={injury.specie}>
-                            <Chip variant="flat" color="default" size="sm">
-                              {injury.specie}
-                            </Chip>
-                          </SpeciesTooltip>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Band ID</p>
-                          <p className="font-medium">{injury.bandId || <span className="text-gray-400">—</span>}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Net</p>
-                          <p className="font-medium">{injury.net || <span className="text-gray-400">—</span>}</p>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-500 mb-1">Description</p>
-                        <p className="text-sm">{injury.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400">No injuries recorded</p>
-              )}
             </div>
           </div>
 
@@ -339,55 +317,9 @@ export default function DETs() {
           <div>
             <p className="text-small font-semibold mb-2">Released</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
-              <p className="text-sm text-gray-600 mb-2">
-                {selectedDET.released?.length || 0} released record{selectedDET.released?.length !== 1 ? "s" : ""}
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                {textFieldToString(selectedDET.released) || "No birds released"}
               </p>
-              {selectedDET.released && selectedDET.released.length > 0 ? (
-                <div className="space-y-3">
-                  {selectedDET.released.map((bird, idx) => (
-                    <div key={idx} className="border-b border-default-100 pb-2 last:border-b-0 last:pb-0">
-                      <div className="grid grid-cols-4 gap-3 text-sm">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Species</p>
-                          <SpeciesTooltip speciesCode={bird.specie}>
-                            <Chip variant="flat" color="default" size="sm">
-                              {bird.specie}
-                            </Chip>
-                          </SpeciesTooltip>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Age</p>
-                          <p className="font-medium">{bird.age || <span className="text-gray-400">—</span>}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">How Aged</p>
-                          <p className="font-medium">{bird.howAged || <span className="text-gray-400">—</span>}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Sex</p>
-                          <p className="font-medium">{bird.sex || <span className="text-gray-400">—</span>}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-3 mt-2 text-sm">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">How Sexed</p>
-                          <p className="font-medium">{bird.howSexed || <span className="text-gray-400">—</span>}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Net</p>
-                          <p className="font-medium">{bird.net || <span className="text-gray-400">—</span>}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Description</p>
-                          <p className="font-medium">{bird.description || <span className="text-gray-400">—</span>}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400">No birds released</p>
-              )}
             </div>
           </div>
         </CardBody>

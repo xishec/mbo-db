@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Textarea } from "@heroui/react";
-import type { DET, ObserverHours, NetHours, Injury, Released, Weather } from "../../../types/DET";
+import type { DET, ObserverHours, NetHours, Weather } from "../../../types/DET";
 import { BirdEventType } from "../../../types";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDateTimeRange } from "../../../services/weatherService";
@@ -10,9 +10,6 @@ import { getLocalDateString } from "../../../utils/dateUtils";
 import DETObserverHoursSection from "./DETObserverHoursSection";
 import DETNetHoursSection from "./DETNetHoursSection";
 import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
-import DETInjuriesModal from "./DETInjuriesModal";
-import DETReleasedModal from "./DETReleasedModal";
-import DETVisitorsModal from "./DETVisitorsModal";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
 
@@ -22,6 +19,24 @@ interface AddDETModalProps {
   onSave: (det: DET) => Promise<void>;
   existingDET?: DET | null;
   mode: "create" | "edit";
+}
+
+function textFieldToString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (!Array.isArray(value)) return "";
+
+  return value
+    .map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object") {
+        return Object.values(item)
+          .filter((part) => typeof part === "string" && part.trim())
+          .join(" - ");
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
 }
 
 export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET, mode }: AddDETModalProps) {
@@ -42,9 +57,9 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   // Complex objects
   const [observerHours, setObserverHours] = useState<ObserverHours>({ total: 0, observers: [] });
   const [netHours, setNetHours] = useState<NetHours>({ nets: [], hummingbirdTrapTotal: "0", total: "0" });
-  const [visitors, setVisitors] = useState<string[]>([]);
-  const [injuries, setInjuries] = useState<Injury[]>([]);
-  const [released, setReleased] = useState<Released[]>([]);
+  const [visitors, setVisitors] = useState("");
+  const [injuries, setInjuries] = useState("");
+  const [released, setReleased] = useState("");
   const [observedSpeciesCount, setObservedSpeciesCount] = useState<Record<string, number>>({});
   const [censuser, setCensuser] = useState("");
   const [censusStart, setCensusStart] = useState("");
@@ -122,10 +137,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
 
   // Modal states for complex objects
-  const [isVisitorsModalOpen, setIsVisitorsModalOpen] = useState(false);
   const [isUnifiedSpeciesModalOpen, setIsUnifiedSpeciesModalOpen] = useState(false);
-  const [isInjuriesModalOpen, setIsInjuriesModalOpen] = useState(false);
-  const [isReleasedModalOpen, setIsReleasedModalOpen] = useState(false);
 
   // Prefill form when editing
   useEffect(() => {
@@ -150,9 +162,9 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
             }
           : { nets: [], hummingbirdTrapTotal: "0", total: "0" }
       );
-      setVisitors(existingDET.visitors || []);
-      setInjuries(existingDET.injuries || []);
-      setReleased(existingDET.released || []);
+      setVisitors(textFieldToString(existingDET.visitors));
+      setInjuries(textFieldToString(existingDET.injuries));
+      setReleased(textFieldToString(existingDET.released));
       setObservedSpeciesCount(existingDET.observedSpeciesCount || {});
       setCensuser(existingDET.censuser || "");
       setCensusStart(existingDET.censusStart || "");
@@ -178,9 +190,9 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setStationManagement("");
       setObserverHours({ total: 0, observers: [] });
       setNetHours({ nets: [], hummingbirdTrapTotal: "0", total: "0" });
-      setVisitors([]);
-      setInjuries([]);
-      setReleased([]);
+      setVisitors("");
+      setInjuries("");
+      setReleased("");
       setObservedSpeciesCount({});
       setCensuser("");
       setCensusStart("");
@@ -313,8 +325,12 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
         modalProps={{
           isOpen,
           onOpenChange,
-          size: "5xl",
+          size: "full",
+          isDismissable: false,
           scrollBehavior: "inside",
+        }}
+        contentProps={{
+          className: "h-dvh max-h-dvh rounded-none",
         }}
       >
         {(onClose) => (
@@ -372,18 +388,18 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       <Input
                         label="Start Time"
                         {...modalInputProps}
-                        type="time"
                         value={start}
                         onValueChange={setStart}
                         isRequired
+                        placeholder="06:30"
                       />
                       <Input
                         label="End Time"
                         {...modalInputProps}
-                        type="time"
                         value={end}
                         onValueChange={setEnd}
                         isRequired
+                        placeholder="11:11"
                       />
                     </div>
                     <Input
@@ -397,16 +413,16 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       <Input
                         label="Census Start"
                         {...modalInputProps}
-                        type="time"
                         value={censusStart}
                         onValueChange={setCensusStart}
+                        placeholder="06:30"
                       />
                       <Input
                         label="Census End"
                         {...modalInputProps}
-                        type="time"
                         value={censusEnd}
                         onValueChange={setCensusEnd}
+                        placeholder="11:11"
                       />
                     </div>
                   </div>
@@ -467,23 +483,15 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   placeholder="Any deviations from protocol..."
                 />
 
-                {/* Visitors */}
-                <div>
-                  <p className="text-small pb-1">Visitors</p>
-                  <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                    <p className="text-sm text-gray-600">
-                      {visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
-                    </p>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsVisitorsModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </div>
+                <Textarea
+                  label="Visitors"
+                  labelPlacement="outside"
+                  value={visitors}
+                  onValueChange={setVisitors}
+                  variant="bordered"
+                  minRows={3}
+                  placeholder="Visitor notes..."
+                />
 
                 <Textarea
                   label="Station Management"
@@ -495,41 +503,25 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   placeholder="Station management notes..."
                 />
 
-                {/* Injuries */}
-                <div>
-                  <p className="text-small pb-1">Injuries</p>
-                  <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                    <p className="text-sm text-gray-600">
-                      {injuries.length} injury record{injuries.length !== 1 ? "s" : ""}
-                    </p>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsInjuriesModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </div>
+                <Textarea
+                  label="Injuries"
+                  labelPlacement="outside"
+                  value={injuries}
+                  onValueChange={setInjuries}
+                  variant="bordered"
+                  minRows={3}
+                  placeholder="Injury notes..."
+                />
 
-                {/* Released */}
-                <div>
-                  <p className="text-small pb-1">Released</p>
-                  <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                    <p className="text-sm text-gray-600">
-                      {released.length} released record{released.length !== 1 ? "s" : ""}
-                    </p>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsReleasedModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </div>
+                <Textarea
+                  label="Released"
+                  labelPlacement="outside"
+                  value={released}
+                  onValueChange={setReleased}
+                  variant="bordered"
+                  minRows={3}
+                  placeholder="Released bird notes..."
+                />
               </div>
             </ModalBodyShell>
             <ModalFooterShell>
@@ -559,27 +551,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
           setCensusSpeciesCount(censusSpeciesCount);
           setDETSpeciesCount(DETSpeciesCount);
         }}
-      />
-
-      <DETInjuriesModal
-        isOpen={isInjuriesModalOpen}
-        onOpenChange={() => setIsInjuriesModalOpen(!isInjuriesModalOpen)}
-        injuries={injuries}
-        onSave={setInjuries}
-      />
-
-      <DETReleasedModal
-        isOpen={isReleasedModalOpen}
-        onOpenChange={() => setIsReleasedModalOpen(!isReleasedModalOpen)}
-        released={released}
-        onSave={setReleased}
-      />
-
-      <DETVisitorsModal
-        isOpen={isVisitorsModalOpen}
-        onOpenChange={() => setIsVisitorsModalOpen(!isVisitorsModalOpen)}
-        visitors={visitors}
-        onSave={setVisitors}
       />
     </>
   );

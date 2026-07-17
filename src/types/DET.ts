@@ -12,10 +12,10 @@ export interface DET {
 
   narrative: string;
   deviations: string;
-  visitors: string[];
+  visitors: string;
   stationManagement: string;
-  injuries: Injury[];
-  released: Released[];
+  injuries: string;
+  released: string;
 
   censuser?: string;
   censusStart?: string;
