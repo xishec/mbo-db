@@ -1,10 +1,12 @@
 import { useCallback, useMemo } from "react";
 import type { Observer, ObserverHours } from "../../../types/DET";
+import type { VolunteersMap } from "../../../types";
 import CsvEditor from "../../Helper/CsvEditor";
 import { parseCsv, stringifyCsv } from "../../../utils/csv";
 
 interface DETObserverHoursSectionProps {
   observerHours: ObserverHours;
+  volunteersMap: VolunteersMap;
   onChange: (observerHours: ObserverHours) => void;
 }
 
@@ -30,13 +32,26 @@ function normalizeObserverClass(value: string): number {
   return parsed >= 1 && parsed <= 3 ? parsed : 0;
 }
 
-function observerHoursToCsv(observerHours: ObserverHours): string {
-  const rows = (observerHours.observers ?? []).map((observer) => [
-    observer.initials,
-    formatObserverNumber(observer.hoursObserved),
-    observer.class ? String(observer.class) : "",
-    formatObserverNumber(calculateObserverTotal(observer.hoursObserved, observer.class)),
-  ]);
+function getVolunteer(code: string, volunteersMap: VolunteersMap) {
+  return volunteersMap[code] ?? volunteersMap[code.toUpperCase()] ?? volunteersMap[code.toLowerCase()];
+}
+
+function getObserverClass(initials: string, currentValue: string, volunteersMap: VolunteersMap): number {
+  const code = initials.trim().toUpperCase();
+  return normalizeObserverClass(currentValue) || getVolunteer(code, volunteersMap)?.observerClass || 0;
+}
+
+function observerHoursToCsv(observerHours: ObserverHours, volunteersMap: VolunteersMap): string {
+  const rows = (observerHours.observers ?? []).map((observer) => {
+    const classValue = getObserverClass(observer.initials, String(observer.class || ""), volunteersMap);
+
+    return [
+      observer.initials,
+      formatObserverNumber(observer.hoursObserved),
+      classValue ? String(classValue) : "",
+      formatObserverNumber(calculateObserverTotal(observer.hoursObserved, classValue)),
+    ];
+  });
 
   while (rows.length < MIN_OBSERVER_ROWS) {
     rows.push(["", "", "", "0"]);
@@ -45,19 +60,20 @@ function observerHoursToCsv(observerHours: ObserverHours): string {
   return stringifyCsv([OBSERVER_HOURS_HEADERS, ...rows]);
 }
 
-function csvToObserverHours(csv: string): ObserverHours {
+function csvToObserverHours(csv: string, volunteersMap: VolunteersMap): ObserverHours {
   const observers: Observer[] = parseCsv(csv)
     .slice(1)
     .flatMap((row) => {
       const initials = (row[0] ?? "").trim().toUpperCase();
       const hoursObserved = Number(row[1]) || 0;
-      const classValue = normalizeObserverClass(row[2] ?? "");
+      const volunteer = getVolunteer(initials, volunteersMap);
+      const classValue = getObserverClass(initials, row[2] ?? "", volunteersMap);
 
       if (!initials && !hoursObserved && !classValue) return [];
 
       return [
         {
-          name: "",
+          name: volunteer?.fullName ?? "",
           initials,
           hoursObserved,
           class: classValue,
@@ -72,14 +88,21 @@ function csvToObserverHours(csv: string): ObserverHours {
   };
 }
 
-export default function DETObserverHoursSection({ observerHours, onChange }: DETObserverHoursSectionProps) {
-  const observerHoursCsv = useMemo(() => observerHoursToCsv(observerHours), [observerHours]);
+export default function DETObserverHoursSection({
+  observerHours,
+  volunteersMap,
+  onChange,
+}: DETObserverHoursSectionProps) {
+  const observerHoursCsv = useMemo(
+    () => observerHoursToCsv(observerHours, volunteersMap),
+    [observerHours, volunteersMap]
+  );
 
   const handleObserverHoursCsvChange = useCallback(
     (csv: string) => {
-      onChange(csvToObserverHours(csv));
+      onChange(csvToObserverHours(csv, volunteersMap));
     },
-    [onChange]
+    [onChange, volunteersMap]
   );
 
   return (

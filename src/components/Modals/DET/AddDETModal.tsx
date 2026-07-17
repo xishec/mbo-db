@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
-import { Button, Input, Textarea } from "@heroui/react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Button, Input, Select, SelectItem, Textarea } from "@heroui/react";
 import type { DET, ObserverHours, NetHours, Weather } from "../../../types/DET";
 import { BirdEventType } from "../../../types";
+import { useAppStore } from "../../../stores/useAppStore";
+import { loadDETCalendar, type DETCalendarEntry } from "../../../services/detCalendarService";
 import { fetchWeatherForDateTimeRange } from "../../../services/weatherService";
 import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
@@ -11,7 +13,6 @@ import DETNetHoursSection from "./DETNetHoursSection";
 import DETSpeciesDataSection from "./DETSpeciesDataSection";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
-import { useAppStore } from "../../../stores/useAppStore";
 import { resolveSpeciesKey } from "../../../types/species";
 
 interface AddDETModalProps {
@@ -19,6 +20,7 @@ interface AddDETModalProps {
   onOpenChange: () => void;
   onSave: (det: DET) => Promise<void>;
   existingDET?: DET | null;
+  defaultDate?: string | null;
   mode: "create" | "edit";
 }
 
@@ -40,8 +42,21 @@ function textFieldToString(value: unknown): string {
     .join("\n");
 }
 
-export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET, mode }: AddDETModalProps) {
+function cloneCount(count?: Record<string, number>): Record<string, number> {
+  return { ...(count || {}) };
+}
+
+interface EventSpeciesCounts {
+  banded: Record<string, number>;
+  repeat: Record<string, number>;
+  return_: Record<string, number>;
+}
+
+export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET, defaultDate, mode }: AddDETModalProps) {
   const birdEventsVersion = useBirdEventsVersion();
+  const volunteersMap = useAppStore((state) => state.volunteersMap);
+  const DETsMap = useAppStore((state) => state.DETsMap);
+  const programsMap = useAppStore((state) => state.programsMap);
 
   // Basic fields
   const [date, setDate] = useState("");
@@ -73,19 +88,12 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [weather, setWeather] = useState<Weather | undefined>(undefined);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
 
-  // Auto-compute banded/repeat species from bird events for the selected date
-  const computedFromEvents = useMemo(() => {
-    if (!date)
-      return {
-        banded: {} as Record<string, number>,
-        repeat: {} as Record<string, number>,
-        return_: {} as Record<string, number>,
-      };
+  const getSpeciesCountsFromEvents = useCallback((eventDate: string): EventSpeciesCounts => {
     const banded: Record<string, number> = {};
     const repeat: Record<string, number> = {};
     const return_: Record<string, number> = {};
     for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.date !== date || ev.modifiedEventId || !ev.species) continue;
+      if (!ev || ev.date !== eventDate || ev.modifiedEventId || !ev.species) continue;
       const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
       if (ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None) {
         banded[speciesKey] = (banded[speciesKey] ?? 0) + 1;
@@ -96,8 +104,44 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       }
     }
     return { banded, repeat, return_ };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, birdEventsVersion, speciesAliasesMap]);
+  }, [speciesAliasesMap]);
+
+  const getProgramIdsForDate = useCallback((eventDate: string): string[] => {
+    const programIds = new Set<string>();
+    for (const ev of birdEventsStore.getAll().values()) {
+      if (!ev || ev.date !== eventDate || ev.modifiedEventId || !ev.programId) continue;
+      programIds.add(ev.programId);
+    }
+    return Array.from(programIds).sort((a, b) => a.localeCompare(b));
+  }, []);
+
+  const programIdsForDate = useMemo(() => {
+    if (!date) return [];
+    return getProgramIdsForDate(date);
+  }, [date, birdEventsVersion, getProgramIdsForDate]);
+
+  useEffect(() => {
+    if (mode !== "create" || !date) return;
+    if (programIdsForDate.length === 0) {
+      setProgramId("");
+      return;
+    }
+    if (!programIdsForDate.includes(programId)) {
+      setProgramId(programIdsForDate[0]);
+    }
+  }, [date, mode, programId, programIdsForDate]);
+
+  // Auto-compute banded/repeat species from bird events for the selected date
+  const computedFromEvents = useMemo(() => {
+    if (!date)
+      return {
+        banded: {} as Record<string, number>,
+        repeat: {} as Record<string, number>,
+        return_: {} as Record<string, number>,
+      };
+
+    return getSpeciesCountsFromEvents(date);
+  }, [date, birdEventsVersion, getSpeciesCountsFromEvents]);
 
   useEffect(() => {
     setBandedSpeciesCount(computedFromEvents.banded);
@@ -138,6 +182,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
+  const [detCalendar, setDetCalendar] = useState<Record<string, DETCalendarEntry>>({});
 
   // Prefill form when editing
   useEffect(() => {
@@ -177,10 +222,13 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setWeather(existingDET.weather);
     } else if (mode === "create") {
       // Reset form for new DET
-      const today = getLocalDateString();
-      setDate(today);
-      setProgramId("");
-      setLocation("");
+      const sourceDET = defaultDate ? DETsMap[defaultDate] : null;
+      const nextDate = defaultDate || getLocalDateString();
+      const eventCounts = getSpeciesCountsFromEvents(nextDate);
+      const dateProgramIds = getProgramIdsForDate(nextDate);
+      setDate(nextDate);
+      setProgramId(dateProgramIds[0] || "");
+      setLocation("MBO");
       setBanderInCharge("");
       setStart("");
       setEnd("");
@@ -193,19 +241,46 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setVisitors("");
       setInjuries("");
       setReleased("");
-      setObservedSpeciesCount({});
+      setObservedSpeciesCount(cloneCount(sourceDET?.observedSpeciesCount));
       setCensuser("");
       setCensusStart("");
       setCensusEnd("");
-      setCensusSpeciesCount({});
-      setBandedSpeciesCount({});
-      setRepeatSpeciesCount({});
-      setReturnSpeciesCount({});
-      setDETSpeciesCount({});
+      setCensusSpeciesCount(cloneCount(sourceDET?.censusSpeciesCount));
+      setBandedSpeciesCount(eventCounts.banded);
+      setRepeatSpeciesCount(eventCounts.repeat);
+      setReturnSpeciesCount(eventCounts.return_);
+      setDETSpeciesCount(cloneCount(sourceDET?.DETSpeciesCount));
       setWeather(undefined);
     }
     setError("");
-  }, [mode, existingDET, isOpen]);
+  }, [mode, existingDET, defaultDate, DETsMap, getProgramIdsForDate, getSpeciesCountsFromEvents, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let cancelled = false;
+    loadDETCalendar()
+      .then((calendar) => {
+        if (!cancelled) setDetCalendar(calendar);
+      })
+      .catch((err) => {
+        console.error("Failed to load DET calendar:", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || mode !== "create" || !date) return;
+
+    const calendarEntry = detCalendar[date];
+    setStart(calendarEntry?.start ?? "");
+    setEnd(calendarEntry?.end ?? "");
+    setCensusStart(calendarEntry?.censusStart ?? "");
+    setCensusEnd(calendarEntry?.censusEnd ?? "");
+  }, [date, detCalendar, isOpen, mode]);
 
   // Auto-populate weather for the DET time window.
   useEffect(() => {
@@ -320,6 +395,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
           onOpenChange,
           size: "full",
           isDismissable: false,
+          isKeyboardDismissDisabled: true,
           scrollBehavior: "inside",
         }}
         contentProps={{
@@ -346,14 +422,21 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                       isDisabled={mode === "edit"}
                       description={isLoadingWeather ? "Loading weather data..." : ""}
                     />
-                    <Input
+                    <Select
                       label="Program ID"
                       {...modalInputProps}
-                      value={programId}
-                      onValueChange={setProgramId}
+                      selectedKeys={programId ? [programId] : []}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0];
+                        setProgramId(selected ? String(selected) : "");
+                      }}
                       isRequired
-                      placeholder="e.g., FALL2024"
-                    />
+                      placeholder={programIdsForDate.length > 0 ? "Select program" : "No programs for selected date"}
+                    >
+                      {programIdsForDate.map((id) => (
+                        <SelectItem key={id}>{programsMap[id]?.displayName || id}</SelectItem>
+                      ))}
+                    </Select>
                     <Input
                       label="Location"
                       {...modalInputProps}
@@ -423,13 +506,24 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
                 {/* Weather */}
                 <div>
-                  <p className="text-small pb-1">Weather at MBO</p>
+                  <p className="text-small pb-1">
+                    Weather at MBO
+                    {(start || end) && (
+                      <span className="ml-2">
+                        from {start || "—"} to {end || "—"}
+                      </span>
+                    )}
+                  </p>
                   <div className="rounded-medium border border-default-100 py-2 px-3">
                     <WeatherDisplay weather={weather} isLoading={isLoadingWeather} />
                   </div>
                 </div>
 
-                <DETObserverHoursSection observerHours={observerHours} onChange={setObserverHours} />
+                <DETObserverHoursSection
+                  observerHours={observerHours}
+                  volunteersMap={volunteersMap}
+                  onChange={setObserverHours}
+                />
 
                 <DETNetHoursSection netHours={netHours} onChange={setNetHours} />
 

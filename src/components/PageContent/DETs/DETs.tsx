@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useAppStore, useActions } from "../../../stores/useAppStore";
 import type { DET } from "../../../types/DET";
-import { Calendar, Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
-import type { DateValue } from "@internationalized/date";
+import { Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import SpeciesTooltip from "../../Helper/Info/SpeciesTooltip";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
 import PageHeader from "../PageHeader";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/DET/AddDETModal";
-import { PencilIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../types/species";
 
 function textFieldToString(value: unknown): string {
@@ -29,6 +28,10 @@ function textFieldToString(value: unknown): string {
     .join("\n");
 }
 
+function toDateString(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 export default function DETs() {
   const DETsMap = useAppStore((s) => s.DETsMap);
   const isAdmin = useAppStore((s) => s.isAdmin);
@@ -40,24 +43,23 @@ export default function DETs() {
   const [editedDET, setEditedDET] = useState<DET | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Get available dates as a Set for quick lookup
   const availableDatesSet = new Set(Object.keys(DETsMap));
 
-  const handleDateChange = async (value: DateValue | null) => {
+  const handleDateChange = async (dateStr: string) => {
     // Cancel edit mode when changing dates
     if (isEditing) {
       setIsEditing(false);
       setEditedDET(null);
     }
 
-    if (!value) {
-      setSelectedDET(null);
-      return;
-    }
-
-    // Convert the date value to YYYY-MM-DD format
-    const dateStr = `${value.year}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+    setSelectedDate(dateStr);
     const det = availableDatesSet.has(dateStr) ? DETsMap[dateStr] : null;
 
     if (det && !det.weather) {
@@ -76,10 +78,26 @@ export default function DETs() {
     }
   };
 
-  // Function to check if a date is unavailable
-  const isDateUnavailable = (date: DateValue) => {
-    const dateStr = `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
-    return !availableDatesSet.has(dateStr);
+  const changeMonth = (offset: number) => {
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+  };
+
+  const monthYear = `${visibleMonth.getFullYear()}-${String(visibleMonth.getMonth() + 1).padStart(2, "0")}`;
+
+  const calendarDays = (() => {
+    const year = visibleMonth.getFullYear();
+    const month = visibleMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    return [
+      ...Array.from({ length: firstDay }, () => null),
+      ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+    ];
+  })();
+
+  const handleMonthInputChange = (value: string) => {
+    const [year, month] = value.split("-").map(Number);
+    if (year && month) setVisibleMonth(new Date(year, month - 1, 1));
   };
 
   // Edit mode handlers
@@ -266,7 +284,7 @@ export default function DETs() {
 
           {/* Species Data */}
           <div>
-            <p className="text-small font-semibold mb-2">Species Data (Obs, Cns, Ret, DET)</p>
+            <p className="text-small font-semibold mb-2">Species Data</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
               <div className="space-y-3">
                 {renderSpeciesCategory("Observed", selectedDET.observedSpeciesCount, "primary", "No observed species")}
@@ -353,29 +371,63 @@ export default function DETs() {
 
       <div className="w-full mb-4 flex gap-4 items-start">
         <Card className="" shadow="sm">
-          <CardBody className="p-0">
-            <Calendar
-              aria-label="Select DET date"
-              showMonthAndYearPickers
-              isDateUnavailable={isDateUnavailable}
-              onChange={handleDateChange}
-              classNames={{
-                base: "bg-white",
-                title: "text-default-900",
-                headerWrapper: "py-4",
-                gridHeaderCell: "text-default-900 font-normal",
-                header: "bg-default-000",
-                gridHeader: "shadow-none",
-                prevButton: "text-default-900 hover:bg-default-200",
-                nextButton: "text-default-900 hover:bg-default-200",
-              }}
-            />
+          <CardBody className="p-4 gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <Button isIconOnly size="sm" variant="light" aria-label="Previous month" onPress={() => changeMonth(-1)}>
+                <ChevronLeftIcon className="h-5 w-5" />
+              </Button>
+              <input
+                aria-label="Select month"
+                className="min-w-36 rounded-medium border border-default-200 px-2 py-1 text-center text-sm font-medium"
+                type="month"
+                value={monthYear}
+                onChange={(event) => handleMonthInputChange(event.target.value)}
+              />
+              <Button isIconOnly size="sm" variant="light" aria-label="Next month" onPress={() => changeMonth(1)}>
+                <ChevronRightIcon className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-default-500">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div key={day} className="py-1">
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {calendarDays.map((day, index) => {
+                if (!day) return <div key={`empty-${index}`} className="h-9" />;
+
+                const dateStr = toDateString(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, day);
+                const hasDET = availableDatesSet.has(dateStr);
+                const isSelected = selectedDate === dateStr;
+
+                return (
+                  <button
+                    key={dateStr}
+                    type="button"
+                    className={[
+                      "h-9 rounded-medium text-sm transition-colors",
+                      hasDET ? "font-medium text-default-900 hover:bg-default-100" : "text-default-400 hover:bg-default-50",
+                      isSelected ? "bg-secondary text-white hover:bg-secondary" : "",
+                    ].join(" ")}
+                    onClick={() => handleDateChange(dateStr)}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
           </CardBody>
         </Card>
 
         {DETDisplay || (
           <div className="flex-1 text-center text-gray-500">
-            <p className="text-lg">Please select a date from the calendar to view DET information</p>
+            <p className="text-lg">
+              {selectedDate ? `No DET information for ${selectedDate}` : "Please select a date to view DET information"}
+            </p>
           </div>
         )}
       </div>
@@ -385,6 +437,7 @@ export default function DETs() {
         onOpenChange={() => setIsModalOpen(!isModalOpen)}
         onSave={handleModalSave}
         existingDET={modalMode === "edit" ? editedDET : null}
+        defaultDate={modalMode === "create" ? selectedDate : null}
         mode={modalMode}
       />
     </div>

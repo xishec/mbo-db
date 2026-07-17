@@ -15,7 +15,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}", "data/det-calendar.json"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // autoUpdate mode: the plugin injects skipWaiting + clientsClaim
         // into the generated SW automatically. We reload on the

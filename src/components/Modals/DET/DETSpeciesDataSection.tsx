@@ -153,7 +153,7 @@ export default function DETSpeciesDataSection({
 
   return (
     <div>
-      <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
+      <p className="text-small pb-1">Species Data</p>
       <div className="space-y-5">
         {groups.map((group) => (
           <section key={group.name}>
