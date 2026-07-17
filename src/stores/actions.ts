@@ -28,6 +28,7 @@ import {
   type ObserverClass,
   type PendingBirdEvent,
   type Program,
+  type SpeciesOverride,
 } from "../types";
 import { type IndependentMapName } from "../types/mapNames";
 import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
@@ -709,6 +710,59 @@ export const actions = {
       await saveMapsToIndexedDB({ speciesAliasesMap: next });
     } catch (err) {
       logger.error("UpdateSpeciesAlias", `Error updating species alias ${speciesKey}`, err);
+      throw err;
+    }
+  },
+
+  updateSpeciesMetadata: async (
+    speciesKey: string,
+    aliasCode: string | null,
+    override: SpeciesOverride
+  ): Promise<void> => {
+    const { user, isOnline, speciesAliasesMap, speciesOverridesMap } = useAppStore.getState();
+    if (!user) throw new Error("Must be logged in to update species metadata");
+    if (!isOnline) throw new Error("Cannot update species metadata while offline");
+
+    const key = speciesKey.trim().toUpperCase();
+    if (!SPECIES_MAP[key]) throw new Error(`Species "${speciesKey}" not found`);
+
+    const alias = aliasCode?.trim().toUpperCase() ?? "";
+    if (alias && !/^[A-Z]{4}$/.test(alias)) throw new Error("Alias must be a 4-letter code");
+    if (alias && SPECIES_KEY_BY_CURRENT_CODE[alias] && SPECIES_KEY_BY_CURRENT_CODE[alias] !== key) {
+      throw new Error(`"${alias}" is already a current species code`);
+    }
+    const aliasOwner = Object.entries(speciesAliasesMap).find(([, value]) => value === alias)?.[0];
+    if (alias && aliasOwner && aliasOwner !== key) throw new Error(`"${alias}" is already used as an alias`);
+
+    const cleanOverride: SpeciesOverride = {
+      speciesDescriptionMBO: override.speciesDescriptionMBO?.trim() || undefined,
+      speciesDescriptionCMMN: override.speciesDescriptionCMMN?.trim() || undefined,
+      speciesFrench: override.speciesFrench?.trim() || undefined,
+      speciesScientific: override.speciesScientific?.trim() || undefined,
+    };
+
+    try {
+      const nextAliases = { ...speciesAliasesMap };
+      if (alias) nextAliases[key] = alias;
+      else delete nextAliases[key];
+
+      const nextOverrides = { ...speciesOverridesMap };
+      if (Object.values(cleanOverride).some(Boolean)) nextOverrides[key] = cleanOverride;
+      else delete nextOverrides[key];
+
+      useAppStore.setState({
+        speciesAliasesMap: nextAliases,
+        speciesOverridesMap: nextOverrides,
+        speciesInfoMap: computeSpeciesInfoMap(birdEventsStore.getAll(), nextAliases),
+      });
+      await update(ref(db), {
+        [`${CURRENT_ENVIRONMENT}/speciesAliasesMap/${key}`]: alias || null,
+        [`${CURRENT_ENVIRONMENT}/speciesOverridesMap/${key}`]: nextOverrides[key] ?? null,
+      });
+      await Promise.all([updateMapTimestamp("speciesAliasesMap"), updateMapTimestamp("speciesOverridesMap")]);
+      await saveMapsToIndexedDB({ speciesAliasesMap: nextAliases, speciesOverridesMap: nextOverrides });
+    } catch (err) {
+      logger.error("UpdateSpeciesMetadata", `Error updating species metadata ${key}`, err);
       throw err;
     }
   },

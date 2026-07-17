@@ -2199,6 +2199,16 @@ export function getSpeciesDisplayCode(speciesKey: string, aliases: Record<string
   return legacyAlias ?? SPECIES_CURRENT_CODE_BY_KEY[normalizedKey] ?? normalizedKey;
 }
 
+export function getSpeciesWithOverrides(
+  speciesKey: string,
+  overrides: Record<string, Partial<Species>> = {}
+): Species | undefined {
+  const normalizedKey = speciesKey.toUpperCase();
+  const species = SPECIES_MAP[normalizedKey];
+  if (!species) return undefined;
+  return { ...species, ...(overrides[normalizedKey] ?? {}) };
+}
+
 export function normalizeSpeciesAliasesMap(aliases: Record<string, string> = {}): Record<string, string> {
   const normalized: Record<string, string> = {};
 

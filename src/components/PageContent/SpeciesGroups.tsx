@@ -1,15 +1,29 @@
-import { Button, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Tab, Tabs } from "@heroui/react";
-import { useMemo, useRef, useState } from "react";
+import {
+  Button,
+  Input,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+  Tab,
+  Tabs,
+  addToast,
+} from "@heroui/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import { SPECIES_GROUPS } from "../../types/DET";
-import { getSpeciesDisplayCode, SPECIES_MAP } from "../../types/species";
-import { useAppStore } from "../../stores/useAppStore";
+import { getSpeciesDisplayCode, getSpeciesWithOverrides, SPECIES_MAP } from "../../types/species";
+import { useActions, useAppStore } from "../../stores/useAppStore";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
 import SpeciesAliasesModal from "../Modals/SpeciesAliasesModal";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import PageHeader from "./PageHeader";
 import { useCascadingSort, cascadingSort } from "../../hooks/useCascadingSort";
+import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../Modals/ModalShell";
+import { modalCancelButtonProps, modalInputProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
 
 type SpeciesGroup = {
   name: string;
@@ -36,9 +50,9 @@ type PyleRow = {
 };
 
 type ColumnType<T> = {
-  key: keyof T;
+  key: keyof T | "actions";
   label: string;
-  type: "string" | "number";
+  type: "string" | "number" | "actions";
   align?: "end";
   width?: number;
 };
@@ -46,22 +60,30 @@ type ColumnType<T> = {
 const DET_COLUMNS: ColumnType<DetRow>[] = [
   { key: "groupName", label: "Group", type: "string", width: 200 },
   { key: "code", label: "Code", type: "string", width: 100 },
+  { key: "englishName", label: "English Name", type: "string", width: 240 },
   { key: "totalCaptures", label: "Total Captures", type: "number", align: "end", width: 100 },
   { key: "dummiestCount", label: "Dummiest Count", type: "number", align: "end", width: 100 },
   { key: "oldestSpanDays", label: "Oldest Span", type: "number", align: "end", width: 150 },
+  { key: "actions", label: "Actions", type: "actions", align: "end", width: 110 },
 ];
 
 const PYLE_COLUMNS: ColumnType<PyleRow>[] = [
   { key: "code", label: "Code", type: "string", width: 90 },
+  { key: "englishName", label: "English Name", type: "string", width: 260 },
   { key: "totalCaptures", label: "Total Captures", type: "number", align: "end", width: 110 },
   { key: "dummiestCount", label: "Dummiest Count", type: "number", align: "end", width: 120 },
   { key: "oldestSpanDays", label: "Oldest Span", type: "number", align: "end", width: 130 },
+  { key: "actions", label: "Actions", type: "actions", align: "end", width: 110 },
 ];
 
 export default function SpeciesGroups() {
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const speciesOverridesMap = useAppStore((s) => s.speciesOverridesMap);
+  const user = useAppStore((s) => s.user);
+  const isOnline = useAppStore((s) => s.isOnline);
   const [selectedSpeciesCode, setSelectedSpeciesCode] = useState<string | null>(null);
+  const [editingSpeciesCode, setEditingSpeciesCode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAliasesModalOpen, setIsAliasesModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"pyle" | "det">("pyle");
@@ -119,7 +141,7 @@ export default function SpeciesGroups() {
     const allRows: DetRow[] = [];
     for (const group of groupedSpecies) {
       for (const code of group.speciesCodes) {
-        const species = SPECIES_MAP[code];
+        const species = getSpeciesWithOverrides(code, speciesOverridesMap);
         allRows.push({
           groupName: group.name,
           code,
@@ -132,24 +154,37 @@ export default function SpeciesGroups() {
       }
     }
     return allRows;
-  }, [groupedSpecies, speciesInfoMap]);
+  }, [groupedSpecies, speciesInfoMap, speciesOverridesMap]);
 
   const pyleRows = useMemo<PyleRow[]>(() => {
     const rows: PyleRow[] = [];
     for (const [code, species] of Object.entries(SPECIES_MAP)) {
-      const englishName = species.speciesDescriptionMBO || species.speciesDescriptionCMMN;
+      const overriddenSpecies = getSpeciesWithOverrides(code, speciesOverridesMap) ?? species;
+      const englishName = overriddenSpecies.speciesDescriptionMBO || overriddenSpecies.speciesDescriptionCMMN;
       if (!englishName) continue;
       rows.push({
         code,
         englishName,
-        frenchName: species.speciesFrench || "Unknown",
+        frenchName: overriddenSpecies.speciesFrench || "Unknown",
         totalCaptures: speciesInfoMap[code]?.totalCaptures ?? 0,
         dummiestCount: speciesInfoMap[code]?.dummiestCount ?? 0,
         oldestSpanDays: speciesInfoMap[code]?.oldestSpanDays ?? -1,
       });
     }
     return rows;
-  }, [speciesInfoMap]);
+  }, [speciesInfoMap, speciesOverridesMap]);
+
+  const renderEditButton = (code: string) => (
+    <Button
+      size="sm"
+      variant="flat"
+      color="primary"
+      isDisabled={!user || !isOnline}
+      onPress={() => setEditingSpeciesCode(code)}
+    >
+      Edit
+    </Button>
+  );
 
   const activeSort = activeTab === "det" ? detSort : pyleSort;
 
@@ -184,7 +219,7 @@ export default function SpeciesGroups() {
           <Tab key="det" title="DET" />
         </Tabs>
         <Button color="primary" variant="flat" onPress={() => setIsAliasesModalOpen(true)}>
-          Edit aliases
+          All aliases
         </Button>
       </div>
 
@@ -198,6 +233,7 @@ export default function SpeciesGroups() {
               maxTableHeight={tableHeight}
               sortDescriptor={detSort.sortDescriptors[0]}
               onSortChange={detSort.handleSortChange}
+              onRowAction={(key) => handleRowClick(String(key))}
               selectionMode="single"
               classNames={{
                 wrapper: "shadow-none",
@@ -211,7 +247,7 @@ export default function SpeciesGroups() {
                 {(column) => (
                   <TableColumn
                     key={column.key as string}
-                    allowsSorting
+                    allowsSorting={column.key !== "actions"}
                     width={column.width}
                     className={`${column.align === "end" ? "text-right" : ""}`}
                   >
@@ -224,8 +260,15 @@ export default function SpeciesGroups() {
                 emptyContent="No species found"
               >
                 {(item) => (
-                  <TableRow key={item.code} onClick={() => handleRowClick(item.code)} className="cursor-pointer">
+                  <TableRow key={item.code} className="cursor-pointer">
                     {(columnKey) => {
+                      if (columnKey === "actions") {
+                        return (
+                          <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                            {renderEditButton(item.code)}
+                          </TableCell>
+                        );
+                      }
                       const value = item[columnKey as keyof DetRow];
                       if (columnKey === "code") {
                         return (
@@ -266,6 +309,7 @@ export default function SpeciesGroups() {
               maxTableHeight={tableHeight}
               sortDescriptor={pyleSort.sortDescriptors[0]}
               onSortChange={pyleSort.handleSortChange}
+              onRowAction={(key) => handleRowClick(String(key))}
               selectionMode="single"
               classNames={{
                 wrapper: "shadow-none",
@@ -279,7 +323,7 @@ export default function SpeciesGroups() {
                 {(column) => (
                   <TableColumn
                     key={column.key as string}
-                    allowsSorting
+                    allowsSorting={column.key !== "actions"}
                     width={column.width}
                     className={`${column.align === "end" ? "text-right" : ""}`}
                   >
@@ -292,8 +336,15 @@ export default function SpeciesGroups() {
                 emptyContent="No Pyle reference data"
               >
                 {(item) => (
-                  <TableRow key={item.code} onClick={() => handleRowClick(item.code)} className="cursor-pointer">
+                  <TableRow key={item.code} className="cursor-pointer">
                     {(columnKey) => {
+                      if (columnKey === "actions") {
+                        return (
+                          <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                            {renderEditButton(item.code)}
+                          </TableCell>
+                        );
+                      }
                       const value = item[columnKey as keyof PyleRow];
                       if (columnKey === "code") {
                         return (
@@ -329,6 +380,146 @@ export default function SpeciesGroups() {
         <SpeciesInfoModal isOpen={isModalOpen} onOpenChange={handleModalOpenChange} speciesCode={selectedSpeciesCode} />
       )}
       <SpeciesAliasesModal isOpen={isAliasesModalOpen} onOpenChange={setIsAliasesModalOpen} />
+      <SpeciesMetadataModal
+        speciesCode={editingSpeciesCode}
+        isOpen={!!editingSpeciesCode}
+        onOpenChange={(open) => {
+          if (!open) setEditingSpeciesCode(null);
+        }}
+      />
     </div>
+  );
+}
+
+function SpeciesMetadataModal({
+  speciesCode,
+  isOpen,
+  onOpenChange,
+}: {
+  speciesCode: string | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const speciesOverridesMap = useAppStore((s) => s.speciesOverridesMap);
+  const user = useAppStore((s) => s.user);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const { updateSpeciesMetadata } = useActions();
+  const species = speciesCode ? SPECIES_MAP[speciesCode] : null;
+  const override = speciesCode ? speciesOverridesMap[speciesCode] : undefined;
+  const currentAlias = speciesCode ? speciesAliasesMap[speciesCode] : undefined;
+  const baseEnglishName = species?.speciesDescriptionMBO || species?.speciesDescriptionCMMN || "";
+  const baseFrenchName = species?.speciesFrench || "";
+  const baseScientificName = species?.speciesScientific || "";
+  const [aliasCode, setAliasCode] = useState("");
+  const [englishName, setEnglishName] = useState("");
+  const [frenchName, setFrenchName] = useState("");
+  const [scientificName, setScientificName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const canEdit = !!user && isOnline;
+
+  useEffect(() => {
+    if (!speciesCode || !species) return;
+    setAliasCode("");
+    setEnglishName(override?.speciesDescriptionMBO ?? baseEnglishName);
+    setFrenchName(override?.speciesFrench ?? baseFrenchName);
+    setScientificName(override?.speciesScientific ?? baseScientificName);
+  }, [baseEnglishName, baseFrenchName, baseScientificName, override, species, speciesCode]);
+
+  if (!speciesCode || !species) return null;
+
+  const normalizedAlias = aliasCode.trim().toUpperCase();
+
+  const handleSave = async () => {
+    if (!canEdit || isSaving) return;
+    setIsSaving(true);
+    try {
+      await updateSpeciesMetadata(speciesCode, normalizedAlias || currentAlias || null, {
+        speciesDescriptionMBO: englishName.trim() === baseEnglishName ? undefined : englishName,
+        speciesDescriptionCMMN: englishName.trim() === baseEnglishName ? undefined : englishName,
+        speciesFrench: frenchName.trim() === baseFrenchName ? undefined : frenchName,
+        speciesScientific: scientificName.trim() === baseScientificName ? undefined : scientificName,
+      });
+      onOpenChange(false);
+    } catch (err) {
+      addToast({
+        title: "Could not save species",
+        description: err instanceof Error ? err.message : "Unknown error",
+        color: "danger",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell
+      modalProps={{
+        isDismissable: false,
+        isOpen,
+        onOpenChange,
+        placement: "top-center",
+        size: "2xl",
+      }}
+    >
+      {(onClose) => (
+        <>
+          <ModalHeaderShell>
+            Edit Species <span className="font-mono">{speciesCode}</span>
+          </ModalHeaderShell>
+          <ModalBodyShell>
+            <div className="grid grid-cols-1 gap-4">
+              <Input {...modalInputProps} label="Current Code" value={speciesCode} isReadOnly />
+              <Input
+                {...modalInputProps}
+                label="New Code"
+                placeholder={currentAlias ? `Current alias: ${currentAlias}` : "Enter 4-letter code"}
+                maxLength={4}
+                value={aliasCode}
+                autoFocus
+                onChange={(event) =>
+                  setAliasCode(
+                    event.target.value
+                      .replace(/[^a-zA-Z]/g, "")
+                      .toUpperCase()
+                      .slice(0, 4)
+                  )
+                }
+                isDisabled={!canEdit || isSaving}
+              />
+              <Input
+                {...modalInputProps}
+                label="English Name"
+                value={englishName}
+                onValueChange={setEnglishName}
+                isDisabled={!canEdit || isSaving}
+              />
+              <Input
+                {...modalInputProps}
+                label="French Name"
+                value={frenchName}
+                onValueChange={setFrenchName}
+                isDisabled={!canEdit || isSaving}
+              />
+              <Input
+                {...modalInputProps}
+                label="Scientific Name"
+                value={scientificName}
+                onValueChange={setScientificName}
+                isDisabled={!canEdit || isSaving}
+              />
+            </div>
+          </ModalBodyShell>
+          <ModalFooterShell>
+            <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
+              Cancel
+            </Button>
+            <Button {...modalPrimaryButtonProps} onPress={handleSave} isLoading={isSaving} isDisabled={!canEdit}>
+              Save
+            </Button>
+          </ModalFooterShell>
+        </>
+      )}
+    </ModalShell>
   );
 }
