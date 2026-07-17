@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import type { BirdEvent } from "../../../types";
+import { useAppStore } from "../../../stores/useAppStore";
+import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../types/species";
 
 interface BirdEventsByNetHeatmapProps {
   data: BirdEvent[];
@@ -8,9 +10,12 @@ interface BirdEventsByNetHeatmapProps {
 
 export default function BirdEventsByNetHeatmap({ data }: BirdEventsByNetHeatmapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
 
   useEffect(() => {
     if (!svgRef.current || data.length === 0) return;
+    const getSpeciesKey = (species: string) => resolveSpeciesKey(species, speciesAliasesMap);
+    const getDisplayCode = (species: string) => getSpeciesDisplayCode(species, speciesAliasesMap);
 
     // Clear previous chart
     d3.select(svgRef.current).selectAll("*").remove();
@@ -19,7 +24,7 @@ export default function BirdEventsByNetHeatmap({ data }: BirdEventsByNetHeatmapP
     const speciesCounts = d3.rollup(
       data,
       (v) => v.length,
-      (d) => d.species
+      (d) => getSpeciesKey(d.species)
     );
     const topSpecies = Array.from(speciesCounts, ([species, count]) => ({ species, count }))
       .sort((a, b) => b.count - a.count)
@@ -37,15 +42,13 @@ export default function BirdEventsByNetHeatmap({ data }: BirdEventsByNetHeatmapP
       .map((d) => d.net);
 
     // Filter data to top species and nets
-    const filteredData = data.filter(
-      (d) => topSpecies.includes(d.species) && topNets.includes(d.net)
-    );
+    const filteredData = data.filter((d) => topSpecies.includes(getSpeciesKey(d.species)) && topNets.includes(d.net));
 
     // Create matrix: species x net
     const matrix = d3.rollup(
       filteredData,
       (v) => v.length,
-      (d) => d.species,
+      (d) => getSpeciesKey(d.species),
       (d) => d.net
     );
 
@@ -73,21 +76,11 @@ export default function BirdEventsByNetHeatmap({ data }: BirdEventsByNetHeatmapP
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
     // Create scales
-    const xScale = d3
-      .scaleBand()
-      .domain(topNets)
-      .range([0, width])
-      .padding(0.05);
+    const xScale = d3.scaleBand().domain(topNets).range([0, width]).padding(0.05);
 
-    const yScale = d3
-      .scaleBand()
-      .domain(topSpecies)
-      .range([0, height])
-      .padding(0.05);
+    const yScale = d3.scaleBand().domain(topSpecies).range([0, height]).padding(0.05);
 
-    const colorScale = d3
-      .scaleSequential(d3.interpolateBlues)
-      .domain([0, d3.max(heatmapData, (d) => d.count) || 0]);
+    const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([0, d3.max(heatmapData, (d) => d.count) || 0]);
 
     // Add cells
     svg
@@ -116,7 +109,7 @@ export default function BirdEventsByNetHeatmap({ data }: BirdEventsByNetHeatmapP
           .style("border-radius", "4px")
           .style("pointer-events", "none")
           .style("z-index", "1000")
-          .html(`Species: ${d.species}<br/>Net: ${d.net}<br/>Captures: ${d.count}`)
+          .html(`Species: ${getDisplayCode(d.species)}<br/>Net: ${d.net}<br/>Captures: ${d.count}`)
           .style("left", `${event.pageX + 10}px`)
           .style("top", `${event.pageY - 10}px`);
       })
@@ -151,11 +144,7 @@ export default function BirdEventsByNetHeatmap({ data }: BirdEventsByNetHeatmapP
       .attr("fill", "currentColor");
 
     // Add Y axis
-    svg
-      .append("g")
-      .call(d3.axisLeft(yScale))
-      .selectAll("text")
-      .attr("fill", "currentColor");
+    svg.append("g").call(d3.axisLeft(yScale).tickFormat(getDisplayCode)).selectAll("text").attr("fill", "currentColor");
 
     // Style axis lines
     svg.selectAll(".domain, .tick line").attr("stroke", "currentColor");
@@ -178,7 +167,7 @@ export default function BirdEventsByNetHeatmap({ data }: BirdEventsByNetHeatmapP
       .style("text-anchor", "middle")
       .attr("fill", "currentColor")
       .text("Species");
-  }, [data]);
+  }, [data, speciesAliasesMap]);
 
   return (
     <div className="w-full overflow-x-auto">

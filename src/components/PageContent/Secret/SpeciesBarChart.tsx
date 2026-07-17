@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import type { BirdEvent } from "../../../types";
+import { useAppStore } from "../../../stores/useAppStore";
+import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../types/species";
 
 interface SpeciesBarChartProps {
   data: BirdEvent[];
@@ -8,9 +10,12 @@ interface SpeciesBarChartProps {
 
 export default function SpeciesBarChart({ data }: SpeciesBarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
 
   useEffect(() => {
     if (!svgRef.current || data.length === 0) return;
+    const getSpeciesKey = (species: string) => resolveSpeciesKey(species, speciesAliasesMap);
+    const getDisplayCode = (species: string) => getSpeciesDisplayCode(species, speciesAliasesMap);
 
     // Clear previous chart
     d3.select(svgRef.current).selectAll("*").remove();
@@ -19,7 +24,7 @@ export default function SpeciesBarChart({ data }: SpeciesBarChartProps) {
     const speciesCounts = d3.rollup(
       data,
       (v) => v.length,
-      (d) => d.species
+      (d) => getSpeciesKey(d.species)
     );
 
     // Convert to array and sort by count (top 20)
@@ -92,18 +97,14 @@ export default function SpeciesBarChart({ data }: SpeciesBarChartProps) {
     svg
       .append("g")
       .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(x))
+      .call(d3.axisBottom(x).tickFormat(getDisplayCode))
       .selectAll("text")
       .attr("transform", "rotate(-45)")
       .style("text-anchor", "end")
       .attr("fill", "currentColor");
 
     // Add Y axis
-    svg
-      .append("g")
-      .call(d3.axisLeft(y))
-      .selectAll("text")
-      .attr("fill", "currentColor");
+    svg.append("g").call(d3.axisLeft(y)).selectAll("text").attr("fill", "currentColor");
 
     // Style axis lines
     svg.selectAll(".domain, .tick line").attr("stroke", "currentColor");
@@ -118,7 +119,7 @@ export default function SpeciesBarChart({ data }: SpeciesBarChartProps) {
       .style("text-anchor", "middle")
       .attr("fill", "currentColor")
       .text("Number of Captures");
-  }, [data]);
+  }, [data, speciesAliasesMap]);
 
   return (
     <div className="w-full overflow-x-auto">

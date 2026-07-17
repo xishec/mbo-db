@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo } from "react";
 import * as d3 from "d3";
 import { useAppStore } from "../../../stores/useAppStore";
-import { SPECIES_MAP } from "../../../types/species";
+import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
 
 type ViewMode = "captured" | "observed";
 
@@ -15,9 +15,14 @@ interface HeatmapProps {
 function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return;
+    const getSpeciesCount = (counts: Record<string, number> | undefined) =>
+      Object.entries(counts ?? {}).reduce((sum, [species, count]) => {
+        return resolveSpeciesKey(species, speciesAliasesMap) === speciesCode ? sum + Number(count) : sum;
+      }, 0);
 
     d3.select(svgRef.current).selectAll("*").remove();
 
@@ -34,13 +39,16 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
     };
 
     // Build weekly data
-    const weeklyMap = new Map<string, {
-      year: number;
-      week: number;
-      count: number;
-      netHours?: number;
-      observerHours?: number;
-    }>();
+    const weeklyMap = new Map<
+      string,
+      {
+        year: number;
+        week: number;
+        count: number;
+        netHours?: number;
+        observerHours?: number;
+      }
+    >();
 
     Object.entries(DETsMap).forEach(([dateStr, det]: [string, any]) => {
       const netHours = parseFloat(det?.netHours?.total || "0");
@@ -64,11 +72,12 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
       // Get count based on view mode
       let count = 0;
       if (viewMode === "captured") {
-        count = (det.bandedSpeciesCount?.[speciesCode] || 0) +
-                (det.repeatSpeciesCount?.[speciesCode] || 0) +
-                (det.returnSpeciesCount?.[speciesCode] || 0);
+        count =
+          getSpeciesCount(det.bandedSpeciesCount) +
+          getSpeciesCount(det.repeatSpeciesCount) +
+          getSpeciesCount(det.returnSpeciesCount);
       } else if (viewMode === "observed") {
-        count = det.observedSpeciesCount?.[speciesCode] || 0;
+        count = getSpeciesCount(det.observedSpeciesCount);
       }
 
       data.count += count;
@@ -77,7 +86,7 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
     });
 
     // Calculate value based on view mode
-    const weeklyData = Array.from(weeklyMap.values()).map(d => {
+    const weeklyData = Array.from(weeklyMap.values()).map((d) => {
       let value = d.count;
       if (viewMode === "captured" && d.netHours! > 0) {
         value = d.count / d.netHours!;
@@ -89,7 +98,7 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 
     // Get all years from DET data
     const allDETYears = new Set<number>();
-    Object.keys(DETsMap).forEach(dateStr => {
+    Object.keys(DETsMap).forEach((dateStr) => {
       const year = new Date(dateStr).getFullYear();
       allDETYears.add(year);
     });
@@ -106,24 +115,23 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
     if (weeklyData.length === 0) return;
 
     // Size scale based on hours
-    const hours = weeklyData.map(d =>
-      viewMode === "captured" ? (d.netHours || 0) : (d.observerHours || 0)
-    ).filter(h => h > 0).sort((a, b) => a - b);
+    const hours = weeklyData
+      .map((d) => (viewMode === "captured" ? d.netHours || 0 : d.observerHours || 0))
+      .filter((h) => h > 0)
+      .sort((a, b) => a - b);
 
     const minHours = d3.min(hours) || 0;
-    const medianHours = d3.quantile(hours, 0.50) || d3.max(hours) || 1;
+    const medianHours = d3.quantile(hours, 0.5) || d3.max(hours) || 1;
 
-    const sizeScale = d3.scaleLinear()
-      .domain([minHours, medianHours])
-      .range([minCellSize, maxCellSize])
-      .clamp(true);
+    const sizeScale = d3.scaleLinear().domain([minHours, medianHours]).range([minCellSize, maxCellSize]).clamp(true);
 
     const getSize = (d: any) => {
-      const hours = viewMode === "captured" ? (d.netHours || 0) : (d.observerHours || 0);
+      const hours = viewMode === "captured" ? d.netHours || 0 : d.observerHours || 0;
       return hours > 0 ? sizeScale(hours) : minCellSize;
     };
 
-    const svg = d3.select(svgRef.current)
+    const svg = d3
+      .select(svgRef.current)
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom);
 
@@ -131,30 +139,33 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 
     // Title
     const speciesInfo = SPECIES_MAP[speciesCode];
+    const displaySpecies = getSpeciesDisplayCode(speciesCode, speciesAliasesMap);
     const commonName = speciesInfo?.speciesDescriptionMBO || speciesCode;
     const frenchName = speciesInfo?.speciesFrench || "";
     const startYear = years[0];
     const endYear = years[years.length - 1];
     const totalEvents = weeklyData.reduce((sum, d) => sum + d.count, 0);
 
-    const viewModeLabel = viewMode === "captured"
-      ? "Capture rate (birds per net-hour)"
-      : "Observation rate (birds per observer-hour)";
+    const viewModeLabel =
+      viewMode === "captured" ? "Capture rate (birds per net-hour)" : "Observation rate (birds per observer-hour)";
 
-    const sizeNote = viewMode === "captured"
-      ? " with square size representing net-hours"
-      : " with square size representing observer-hours";
+    const sizeNote =
+      viewMode === "captured"
+        ? " with square size representing net-hours"
+        : " with square size representing observer-hours";
 
     // Title
-    svg.append("text")
+    svg
+      .append("text")
       .attr("x", (width + margin.left + margin.right) / 2)
       .attr("y", 20)
       .attr("text-anchor", "middle")
       .style("font-size", "14px")
       .style("font-weight", "600")
-      .text(`${viewModeLabel} of ${commonName} (${frenchName}) from ${startYear} to ${endYear}`);
+      .text(`${viewModeLabel} of ${commonName} (${displaySpecies}, ${frenchName}) from ${startYear} to ${endYear}`);
 
-    svg.append("text")
+    svg
+      .append("text")
       .attr("x", (width + margin.left + margin.right) / 2)
       .attr("y", 35)
       .attr("text-anchor", "middle")
@@ -164,42 +175,51 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 
     // Scales
     const xPadding = maxCellSize;
-    const xScale = d3.scaleLinear()
+    const xScale = d3
+      .scaleLinear()
       .domain([0, 54])
       .range([xPadding, width - xPadding])
       .clamp(false);
 
-    const yScale = d3.scaleBand()
-      .domain(years.map(String))
-      .range([0, height])
-      .padding(0.1);
+    const yScale = d3.scaleBand().domain(years.map(String)).range([0, height]).padding(0.1);
 
     // Color scale - use global scale if provided for consistency across species
-    const minValue = globalScale?.min ?? (d3.min(weeklyData.map(d => d.value).filter(v => v > 0)) || 0);
-    const maxValue = globalScale?.max ?? (d3.quantile(weeklyData.map(d => d.value).filter(v => v > 0).sort((a, b) => a - b), 0.95) || d3.max(weeklyData.map(d => d.value).filter(v => v > 0)) || 1);
+    const minValue = globalScale?.min ?? (d3.min(weeklyData.map((d) => d.value).filter((v) => v > 0)) || 0);
+    const maxValue =
+      globalScale?.max ??
+      (d3.quantile(
+        weeklyData
+          .map((d) => d.value)
+          .filter((v) => v > 0)
+          .sort((a, b) => a - b),
+        0.95
+      ) ||
+        d3.max(weeklyData.map((d) => d.value).filter((v) => v > 0)) ||
+        1);
 
-    const colorScale = d3.scaleSequential(d3.interpolateYlOrRd)
+    const colorScale = d3
+      .scaleSequential(d3.interpolateYlOrRd)
       .domain([Math.sqrt(minValue), Math.sqrt(maxValue)])
       .clamp(true);
 
-    const getColor = (value: number) => value > 0 ? colorScale(Math.sqrt(value)) : "#f0f0f0";
+    const getColor = (value: number) => (value > 0 ? colorScale(Math.sqrt(value)) : "#f0f0f0");
 
     // Draw cells
     g.selectAll("rect")
       .data(weeklyData)
       .enter()
       .append("rect")
-      .attr("x", d => {
+      .attr("x", (d) => {
         const size = getSize(d);
         return xScale(d.week) - size / 2;
       })
-      .attr("y", d => {
+      .attr("y", (d) => {
         const size = getSize(d);
         return (yScale(String(d.year)) || 0) + (yScale.bandwidth() - size) / 2;
       })
-      .attr("width", d => getSize(d) - cellGap)
-      .attr("height", d => getSize(d) - cellGap)
-      .attr("fill", d => getColor(d.value));
+      .attr("width", (d) => getSize(d) - cellGap)
+      .attr("height", (d) => getSize(d) - cellGap)
+      .attr("fill", (d) => getColor(d.value));
 
     // X-axis
     const monthWeeks = [1, 5, 9, 14, 18, 23, 27, 32, 36, 40, 45, 49];
@@ -207,9 +227,12 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 
     g.append("g")
       .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(xScale)
-        .tickValues(monthWeeks)
-        .tickFormat((_d, i) => monthNames[i]))
+      .call(
+        d3
+          .axisBottom(xScale)
+          .tickValues(monthWeeks)
+          .tickFormat((_d, i) => monthNames[i])
+      )
       .selectAll("text")
       .style("font-size", "10px");
 
@@ -222,10 +245,7 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
       .text("Month of Year");
 
     // Y-axis
-    g.append("g")
-      .call(d3.axisLeft(yScale))
-      .selectAll("text")
-      .style("font-size", "10px");
+    g.append("g").call(d3.axisLeft(yScale)).selectAll("text").style("font-size", "10px");
 
     g.append("text")
       .attr("transform", "rotate(-90)")
@@ -239,10 +259,10 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
     // Legend
     const legendHeight = Math.min(height, 150);
     const legendWidth = 20;
-    const legend = g.append("g")
-      .attr("transform", `translate(${width + 25}, 10)`);
+    const legend = g.append("g").attr("transform", `translate(${width + 25}, 10)`);
 
-    legend.append("text")
+    legend
+      .append("text")
       .attr("x", legendWidth / 2)
       .attr("y", -5)
       .attr("text-anchor", "middle")
@@ -250,7 +270,8 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
       .style("font-weight", "600")
       .text("Rate");
 
-    const gradient = svg.append("defs")
+    const gradient = svg
+      .append("defs")
       .append("linearGradient")
       .attr("id", `legend-gradient-${speciesCode}-${viewMode}`)
       .attr("x1", "0%")
@@ -261,12 +282,14 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
     for (let i = 0; i <= 20; i++) {
       const t = i / 20;
       const sqrtValue = Math.sqrt(minValue) + t * (Math.sqrt(maxValue) - Math.sqrt(minValue));
-      gradient.append("stop")
+      gradient
+        .append("stop")
         .attr("offset", `${i * 5}%`)
         .attr("stop-color", colorScale(sqrtValue));
     }
 
-    legend.append("rect")
+    legend
+      .append("rect")
       .attr("x", 0)
       .attr("y", 0)
       .attr("width", legendWidth)
@@ -275,22 +298,18 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
       .style("stroke", "#ccc")
       .style("stroke-width", 0.5);
 
-    const legendScale = d3.scaleLinear()
-      .domain([minValue, maxValue])
-      .range([legendHeight, 0]);
+    const legendScale = d3.scaleLinear().domain([minValue, maxValue]).range([legendHeight, 0]);
 
     const tickFormat = d3.format(".2f");
 
-    legend.append("g")
+    legend
+      .append("g")
       .attr("transform", `translate(${legendWidth + 3}, 0)`)
-      .call(d3.axisRight(legendScale)
-        .ticks(5)
-        .tickFormat(tickFormat))
-      .call(g => g.select(".domain").remove())
+      .call(d3.axisRight(legendScale).ticks(5).tickFormat(tickFormat))
+      .call((g) => g.select(".domain").remove())
       .selectAll("text")
       .style("font-size", "9px");
-
-  }, [speciesCode, viewMode, DETsMap, globalScale]);
+  }, [speciesCode, viewMode, DETsMap, globalScale, speciesAliasesMap]);
 
   return (
     <div ref={containerRef} className="w-full">
@@ -301,20 +320,22 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 
 export default function PDFReport() {
   const DETsMap = useAppStore((s) => s.DETsMap);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
 
   // Get top 50 species by total DET count
   const topSpecies = useMemo(() => {
     const speciesCounts = new Map<string, number>();
     Object.values(DETsMap).forEach((det: any) => {
       Object.entries(det.DETSpeciesCount || {}).forEach(([species, count]) => {
-        speciesCounts.set(species, (speciesCounts.get(species) || 0) + (count as number));
+        const speciesKey = resolveSpeciesKey(species, speciesAliasesMap);
+        speciesCounts.set(speciesKey, (speciesCounts.get(speciesKey) || 0) + (count as number));
       });
     });
     return Array.from(speciesCounts, ([species, count]) => ({ species, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 50)
-      .map(s => s.species);
-  }, [DETsMap]);
+      .map((s) => s.species);
+  }, [DETsMap, speciesAliasesMap]);
 
   // Calculate global scales for consistent coloring across all species
   const globalScales = useMemo(() => {
@@ -328,7 +349,7 @@ export default function PDFReport() {
       return Math.floor(diff / oneWeek) + 1;
     };
 
-    topSpecies.forEach(species => {
+    topSpecies.forEach((species) => {
       const weeklyMap = new Map<string, { count: number; netHours: number; observerHours: number }>();
 
       Object.entries(DETsMap).forEach(([dateStr, det]: [string, any]) => {
@@ -346,11 +367,16 @@ export default function PDFReport() {
         const data = weeklyMap.get(key)!;
 
         // Captured count
-        const capturedCount = (det.bandedSpeciesCount?.[species] || 0) +
-                              (det.repeatSpeciesCount?.[species] || 0) +
-                              (det.returnSpeciesCount?.[species] || 0);
+        const getSpeciesCount = (counts: Record<string, number> | undefined) =>
+          Object.entries(counts ?? {}).reduce((sum, [code, count]) => {
+            return resolveSpeciesKey(code, speciesAliasesMap) === species ? sum + Number(count) : sum;
+          }, 0);
+        const capturedCount =
+          getSpeciesCount(det.bandedSpeciesCount) +
+          getSpeciesCount(det.repeatSpeciesCount) +
+          getSpeciesCount(det.returnSpeciesCount);
         // Observed count
-        const observedCount = det.observedSpeciesCount?.[species] || 0;
+        const observedCount = getSpeciesCount(det.observedSpeciesCount);
 
         data.count += capturedCount;
         data.netHours += netHours;
@@ -380,7 +406,7 @@ export default function PDFReport() {
         max: d3.quantile(observedSorted, 0.95) || d3.max(observedValues) || 1,
       },
     };
-  }, [DETsMap, topSpecies]);
+  }, [DETsMap, topSpecies, speciesAliasesMap]);
 
   useEffect(() => {
     // Auto-print when page loads

@@ -12,11 +12,7 @@ import {
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useAppStore, useActions, useIsLoggedIn } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
-import {
-  BIRD_EVENT_ERROR_TYPE_CONFIG,
-  type BirdEventError,
-  findBirdEventErrors,
-} from "../../types/birdEventErrors";
+import { BIRD_EVENT_ERROR_TYPE_CONFIG, type BirdEventError, findBirdEventErrors } from "../../types/birdEventErrors";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../Helper/ExportButton";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
@@ -40,6 +36,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   const magicTable = useAppStore((s) => s.magicTable);
   const dismissedConflictsMap = useAppStore((s) => s.dismissedConflictsMap);
   const isOnline = useAppStore((s) => s.isOnline);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const isLoggedIn = useIsLoggedIn();
   const { dismissConflict, resetDismissedConflicts } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
@@ -68,7 +65,12 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
     setIsComputing(true);
 
     const timeoutId = setTimeout(() => {
-      const allErrors = findBirdEventErrors(bandIdToBirdEventIdsMap, birdEventsStore.getAll(), magicTable);
+      const allErrors = findBirdEventErrors(
+        bandIdToBirdEventIdsMap,
+        birdEventsStore.getAll(),
+        magicTable,
+        speciesAliasesMap
+      );
       const activeErrors: BirdEventError[] = [];
       let dismissedCount = 0;
 
@@ -91,8 +93,15 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isOnline, bandIdToBirdEventIdsMap, birdEventsVersion, magicTable, dismissedConflictsMap]);
+  }, [
+    isOpen,
+    isOnline,
+    bandIdToBirdEventIdsMap,
+    birdEventsVersion,
+    magicTable,
+    dismissedConflictsMap,
+    speciesAliasesMap,
+  ]);
 
   const { errors, dismissedCount } = errorsState;
   const sortedErrors = useMemo(() => {

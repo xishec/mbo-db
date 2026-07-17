@@ -91,9 +91,13 @@ export default function Home() {
       <div className="space-y-20 max-w-xl ml-24 font-medium text-4xl">
         <p className="leading-relaxed text-foreground cursor-default">
           Latest banding was{" "}
-          {daysAgo <= 0
-            ? <span className="font-bold text-primary">today</span>
-            : <><span className="font-bold text-primary">{daysAgo}</span> day{daysAgo !== 1 ? "s" : ""} ago</>}
+          {daysAgo <= 0 ? (
+            <span className="font-bold text-primary">today</span>
+          ) : (
+            <>
+              <span className="font-bold text-primary">{daysAgo}</span> day{daysAgo !== 1 ? "s" : ""} ago
+            </>
+          )}
           {banders.length > 0 && (
             <>
               {", "}by{" "}
@@ -131,7 +135,7 @@ export default function Home() {
             <>
               , with{" "}
               <span className="font-bold text-secondary">
-                <SpeciesTooltip speciesCode={mostCapturedSpecies}>{mostCapturedSpecies}</SpeciesTooltip>
+                <SpeciesTooltip speciesCode={mostCapturedSpecies} />
               </span>{" "}
               being the most captured
               {". "}

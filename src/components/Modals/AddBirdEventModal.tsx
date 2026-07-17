@@ -463,7 +463,7 @@ export default function AddBirdEventModal({
     }
 
     // Existing errors from past bird events
-    const existingErrors = findErrorsInEvents(pastBirdEvents, magicTable);
+    const existingErrors = findErrorsInEvents(pastBirdEvents, magicTable, speciesAliasesMap);
 
     // Current entry validation messages
     const messages = validateBirdEventForm(
@@ -516,7 +516,17 @@ export default function AddBirdEventModal({
       existingErrors,
       warningMessages: messages,
     };
-  }, [formData, pastBirdEvents, magicTable, TABLE_COLUMNS, sexCode, pyleSpeciesRange, volunteersMap, volunteerStatsMap]);
+  }, [
+    formData,
+    pastBirdEvents,
+    magicTable,
+    TABLE_COLUMNS,
+    sexCode,
+    pyleSpeciesRange,
+    volunteersMap,
+    volunteerStatsMap,
+    speciesAliasesMap,
+  ]);
 
   const focusNext = useCallback(
     (currentKey: string) => {

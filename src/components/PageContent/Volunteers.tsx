@@ -20,6 +20,7 @@ import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import ExportButton from "../Helper/ExportButton";
 import { BirdEventType, type BirdEvent, type ObserverClass } from "../../types";
+import { resolveSpeciesKey } from "../../types/species";
 import PageHeader from "./PageHeader";
 
 type Row = {
@@ -51,6 +52,7 @@ type BreakdownRole = "banded" | "scribed";
 
 export default function Volunteers() {
   const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const isOnline = useAppStore((s) => s.isOnline);
   const isLoggedIn = useIsLoggedIn();
   const { updateVolunteer } = useActions();
@@ -92,12 +94,13 @@ export default function Volunteers() {
   const breakdownRows = useMemo(() => {
     const counts = new Map<string, number>();
     for (const ev of breakdownEvents) {
-      counts.set(ev.species, (counts.get(ev.species) ?? 0) + 1);
+      const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
+      counts.set(speciesKey, (counts.get(speciesKey) ?? 0) + 1);
     }
     return [...counts.entries()]
       .map(([species, count]) => ({ species, count }))
       .sort((a, b) => b.count - a.count || a.species.localeCompare(b.species));
-  }, [breakdownEvents]);
+  }, [breakdownEvents, speciesAliasesMap]);
 
   const rows = useMemo<Row[]>(() => {
     const allRows = Object.values(volunteerStatsMap).map((b) => ({
@@ -199,9 +202,7 @@ export default function Volunteers() {
                     }
                     if (columnKey === "observerClass") {
                       return (
-                        <TableCell className="text-right tabular-nums text-default-900">
-                          {item.observerClass}
-                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-default-900">{item.observerClass}</TableCell>
                       );
                     }
                     if (columnKey === "totalBanded" || columnKey === "totalScribed") {
@@ -296,10 +297,7 @@ export default function Volunteers() {
           <Button {...modalCancelButtonProps} onPress={() => setIsEditModalOpen(false)}>
             Cancel
           </Button>
-          <Button
-            {...modalPrimaryButtonProps}
-            onPress={handleSaveVolunteer}
-          >
+          <Button {...modalPrimaryButtonProps} onPress={handleSaveVolunteer}>
             Save
           </Button>
         </ModalFooterShell>

@@ -1,6 +1,6 @@
 import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap, MagicTable, SpeciesRange } from ".";
 import { BirdEventType } from ".";
-import { SPECIES_MAP } from "./species";
+import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "./species";
 
 export type ErrorSeverity = "danger" | "warning";
 
@@ -331,9 +331,17 @@ function checkAgeSequenceOrder(events: BirdEvent[]): BirdEventError[] {
  */
 function getAllowedAgesForMonth(month: number): Set<string> {
   const allowed = new Set<string>(["0"]);
-  if (month >= 1 && month <= 8) { allowed.add("5"); allowed.add("6"); }
-  if (month >= 7 && month <= 12) { allowed.add("2"); allowed.add("1"); }
-  if (month >= 4 && month <= 9) { allowed.add("4"); }
+  if (month >= 1 && month <= 8) {
+    allowed.add("5");
+    allowed.add("6");
+  }
+  if (month >= 7 && month <= 12) {
+    allowed.add("2");
+    allowed.add("1");
+  }
+  if (month >= 4 && month <= 9) {
+    allowed.add("4");
+  }
   return allowed;
 }
 
@@ -476,8 +484,16 @@ function checkEventMeasurements(event: BirdEvent, pyleRange?: SpeciesRange): Bir
  * Finds errors in an array of bird events.
  * Checks for sex changes (4 ↔ 5), species changes, recaptures within 12 hours, and out-of-normal measurements.
  */
-export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable): BirdEventError[] {
+export function findErrorsInEvents(
+  events: BirdEvent[],
+  magicTable?: MagicTable,
+  speciesAliasesMap: Record<string, string> = {}
+): BirdEventError[] {
   const errors: BirdEventError[] = [];
+  const normalizedEvents = events.map((event) => ({
+    ...event,
+    species: resolveSpeciesKey(event.species, speciesAliasesMap),
+  }));
 
   // Check consecutive events for sex/species changes
   for (let i = 1; i < events.length; i++) {
@@ -486,8 +502,8 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
 
     const currentSex = currentEvent.sex;
     const previousSex = previousEvent.sex;
-    const currentSpecies = currentEvent.species;
-    const previousSpecies = previousEvent.species;
+    const currentSpecies = resolveSpeciesKey(currentEvent.species, speciesAliasesMap);
+    const previousSpecies = resolveSpeciesKey(previousEvent.species, speciesAliasesMap);
 
     if (previousSex === "4" && currentSex === "5") {
       errors.push({
@@ -510,7 +526,10 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
         id: `${currentEvent.id}-species-change`,
         errorType: "species-change",
         birdEvent: currentEvent,
-        reason: `Species changed from ${previousSpecies} to ${currentSpecies}`,
+        reason: `Species changed from ${getSpeciesDisplayCode(previousSpecies, speciesAliasesMap)} to ${getSpeciesDisplayCode(
+          currentSpecies,
+          speciesAliasesMap
+        )}`,
         severity: "danger",
       });
     }
@@ -538,7 +557,8 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
   // a typo (e.g. AMRO vs ARMO) or a species our Pyle source doesn't cover.
   if (magicTable) {
     for (const event of events) {
-      const pyleRange = magicTable.pyle?.[event.species];
+      const speciesKey = resolveSpeciesKey(event.species, speciesAliasesMap);
+      const pyleRange = magicTable.pyle?.[speciesKey];
 
       if (
         event.species &&
@@ -551,27 +571,27 @@ export function findErrorsInEvents(events: BirdEvent[], magicTable?: MagicTable)
           id: `${event.id}-species-not-in-pyle`,
           errorType: "species-not-in-pyle",
           birdEvent: event,
-          reason: `Species "${event.species}" not found in Pyle reference`,
+          reason: `Species "${getSpeciesDisplayCode(speciesKey, speciesAliasesMap)}" not found in Pyle reference`,
           severity: "danger",
         });
       }
 
-      const measurementErrors = checkEventMeasurements(event, pyleRange);
+      const measurementErrors = checkEventMeasurements({ ...event, species: speciesKey }, pyleRange);
       errors.push(...measurementErrors);
     }
   }
 
-  errors.push(...checkAgeConsistency(events));
-  errors.push(...checkAgeSequenceOrder(events));
+  errors.push(...checkAgeConsistency(normalizedEvents));
+  errors.push(...checkAgeSequenceOrder(normalizedEvents));
 
-  for (const event of events) {
+  for (const event of normalizedEvents) {
     const ageSeasonError = checkAgeSeasonCompatibility(event);
     if (ageSeasonError) {
       errors.push(ageSeasonError);
     }
   }
 
-  errors.push(...checkDuplicateBanding(events));
+  errors.push(...checkDuplicateBanding(normalizedEvents));
 
   return errors;
 }
@@ -611,7 +631,8 @@ function checkDuplicateBanding(events: BirdEvent[]): BirdEventError[] {
 export function findBirdEventErrors(
   bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap,
   birdEventsMap: BirdEventsMap,
-  magicTable?: MagicTable
+  magicTable?: MagicTable,
+  speciesAliasesMap: Record<string, string> = {}
 ): BirdEventError[] {
   const errors: BirdEventError[] = [];
 
@@ -625,7 +646,7 @@ export function findBirdEventErrors(
       .map((id) => birdEventsMap.get(id))
       .filter((event): event is BirdEvent => !!event && !event.modifiedEventId);
 
-    errors.push(...findErrorsInEvents(events, magicTable));
+    errors.push(...findErrorsInEvents(events, magicTable, speciesAliasesMap));
   }
 
   return errors;
@@ -752,7 +773,13 @@ export function validateBirdEventForm(
     }
   }
 
-  if (formData.age && formData.age !== "0" && formData.age !== "3" && formData.date && !isAgeValidationExcluded(formData.species)) {
+  if (
+    formData.age &&
+    formData.age !== "0" &&
+    formData.age !== "3" &&
+    formData.date &&
+    !isAgeValidationExcluded(formData.species)
+  ) {
     // Month from YYYY-MM-DD string — avoids timezone drift from `new Date(str)`.
     const month = parseInt(formData.date.slice(5, 7), 10);
     const ageSeasonReason = getAgeSeasonReason(formData.age, month);

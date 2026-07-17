@@ -9,6 +9,7 @@ import PageHeader from "../PageHeader";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/DET/AddDETModal";
 import { PencilIcon } from "@heroicons/react/24/outline";
+import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../types/species";
 
 function textFieldToString(value: unknown): string {
   if (typeof value === "string") return value;
@@ -31,6 +32,7 @@ function textFieldToString(value: unknown): string {
 export default function DETs() {
   const DETsMap = useAppStore((s) => s.DETsMap);
   const isAdmin = useAppStore((s) => s.isAdmin);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const { saveDET } = useActions();
   const [selectedDET, setSelectedDET] = useState<DET | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
@@ -116,18 +118,26 @@ export default function DETs() {
     chipColor: "default" | "success" | "warning" | "secondary" | "primary",
     emptyMessage: string
   ) => {
-    const hasSpecies = Object.keys(speciesCount || {}).length > 0;
+    const normalizedSpeciesCount = Object.entries(speciesCount || {}).reduce<Record<string, number>>(
+      (acc, [species, count]) => {
+        const speciesKey = resolveSpeciesKey(species, speciesAliasesMap);
+        acc[speciesKey] = (acc[speciesKey] ?? 0) + Number(count);
+        return acc;
+      },
+      {}
+    );
+    const hasSpecies = Object.keys(normalizedSpeciesCount).length > 0;
     return (
       <div>
         <p className="text-sm text-gray-600 mb-2">
-          {title}: {getSpeciesCountSummary(speciesCount)}
+          {title}: {getSpeciesCountSummary(normalizedSpeciesCount)}
         </p>
         {hasSpecies ? (
           <div className="flex flex-wrap gap-2">
-            {Object.entries(speciesCount || {}).map(([species, count]) => (
-              <SpeciesTooltip key={species} speciesCode={species}>
+            {Object.entries(normalizedSpeciesCount).map(([speciesKey, count]) => (
+              <SpeciesTooltip key={speciesKey} speciesCode={speciesKey}>
                 <Chip variant="flat" color={chipColor} size="sm">
-                  {species}: {count}
+                  {getSpeciesDisplayCode(speciesKey, speciesAliasesMap)}: {count}
                 </Chip>
               </SpeciesTooltip>
             ))}

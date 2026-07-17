@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { Tabs, Tab, Select, SelectItem, Button, Card, CardBody } from "@heroui/react";
 import { useAppStore } from "../../../stores/useAppStore";
-import { SPECIES_MAP } from "../../../types/species";
+import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
 import type { DETsMap } from "../../../types";
 
 type ViewMode = "det" | "captured" | "observed";
@@ -15,6 +15,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const DETsMapFromStore = useAppStore((s) => s.DETsMap);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const DETsMap = DETsMapProp || DETsMapFromStore;
 
   const [viewMode, setViewMode] = useState<ViewMode>("det");
@@ -28,11 +29,12 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       // Handle both full key (DETSpeciesCount) and short key (d)
       const detSpeciesCount = (det as any).d || det.DETSpeciesCount || {};
       Object.entries(detSpeciesCount).forEach(([species, count]) => {
-        speciesCounts.set(species, (speciesCounts.get(species) || 0) + (count as number));
+        const speciesKey = resolveSpeciesKey(species, speciesAliasesMap);
+        speciesCounts.set(speciesKey, (speciesCounts.get(speciesKey) || 0) + (count as number));
       });
     });
     return Array.from(speciesCounts, ([species, count]) => ({ species, count })).sort((a, b) => b.count - a.count);
-  }, [DETsMap]);
+  }, [DETsMap, speciesAliasesMap]);
 
   const [selectedSpecies, setSelectedSpecies] = useState<string>(() =>
     allSpecies.length > 0 ? allSpecies[0].species : ""
@@ -68,7 +70,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
               const url = URL.createObjectURL(blob);
               const link = document.createElement("a");
               link.href = url;
-              link.download = `${selectedSpecies}_${viewMode}.jpg`;
+              link.download = `${getSpeciesDisplayCode(selectedSpecies, speciesAliasesMap)}_${viewMode}.jpg`;
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
@@ -133,6 +135,10 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || !selectedSpecies) return;
+    const getSpeciesCount = (counts: Record<string, number>) =>
+      Object.entries(counts).reduce((sum, [species, count]) => {
+        return resolveSpeciesKey(species, speciesAliasesMap) === selectedSpecies ? sum + Number(count) : sum;
+      }, 0);
 
     d3.select(svgRef.current).selectAll("*").remove();
 
@@ -186,18 +192,15 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       let count = 0;
       if (viewMode === "det") {
         const detSpeciesCount = detAny.d || det.DETSpeciesCount || {};
-        count = detSpeciesCount[selectedSpecies] || 0;
+        count = getSpeciesCount(detSpeciesCount);
       } else if (viewMode === "captured") {
         const bandedCount = detAny.b || det.bandedSpeciesCount || {};
         const repeatCount = detAny.rp || det.repeatSpeciesCount || {};
         const returnCount = detAny.rt || det.returnSpeciesCount || {};
-        count =
-          (bandedCount[selectedSpecies] || 0) +
-          (repeatCount[selectedSpecies] || 0) +
-          (returnCount[selectedSpecies] || 0);
+        count = getSpeciesCount(bandedCount) + getSpeciesCount(repeatCount) + getSpeciesCount(returnCount);
       } else if (viewMode === "observed") {
         const observedCount = detAny.o || det.observedSpeciesCount || {};
-        count = observedCount[selectedSpecies] || 0;
+        count = getSpeciesCount(observedCount);
       }
 
       data.count += count;
@@ -265,6 +268,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
     // Title
     const speciesInfo = SPECIES_MAP[selectedSpecies];
+    const displaySpecies = getSpeciesDisplayCode(selectedSpecies, speciesAliasesMap);
     const commonName = speciesInfo?.speciesDescriptionMBO || selectedSpecies;
     const frenchName = speciesInfo?.speciesFrench || "";
     const startYear = years[0];
@@ -293,7 +297,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       .attr("text-anchor", "middle")
       .style("font-size", "16px")
       .style("font-weight", "600")
-      .text(`${viewModeLabel} of ${commonName} (${frenchName}) from ${startYear} to ${endYear}`);
+      .text(`${viewModeLabel} of ${commonName} (${displaySpecies}, ${frenchName}) from ${startYear} to ${endYear}`);
 
     // Second line - metadata
     const secondLineText =
@@ -532,7 +536,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
           .text(ex.label);
       });
     }
-  }, [selectedSpecies, viewMode, DETsMap]);
+  }, [selectedSpecies, viewMode, DETsMap, speciesAliasesMap]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -540,7 +544,9 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
         <CardBody className="p-4 md:p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             <div className="space-y-2 md:space-y-3">
-              <label className="text-sm font-semibold">View Mode <span className="hidden md:inline">(← → arrows)</span></label>
+              <label className="text-sm font-semibold">
+                View Mode <span className="hidden md:inline">(← → arrows)</span>
+              </label>
               <Tabs
                 selectedKey={viewMode}
                 onSelectionChange={(key) => setViewMode(key as ViewMode)}
@@ -556,7 +562,9 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
             </div>
 
             <div className="space-y-2 md:space-y-3" ref={autocompleteRef}>
-              <label className="text-sm font-semibold">Species <span className="hidden md:inline">(↑ ↓ arrows)</span></label>
+              <label className="text-sm font-semibold">
+                Species <span className="hidden md:inline">(↑ ↓ arrows)</span>
+              </label>
               <Select
                 placeholder="Select species..."
                 selectedKeys={selectedSpecies ? [selectedSpecies] : []}
@@ -569,7 +577,10 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
               >
                 {allSpecies.map(({ species, count }) => {
                   const speciesInfo = SPECIES_MAP[species];
-                  const label = `${speciesInfo?.speciesDescriptionMBO || species} (${species}) - ${count} records`;
+                  const label = `${speciesInfo?.speciesDescriptionMBO || species} (${getSpeciesDisplayCode(
+                    species,
+                    speciesAliasesMap
+                  )}) - ${count} records`;
                   return <SelectItem key={species}>{label}</SelectItem>;
                 })}
               </Select>
@@ -585,7 +596,14 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
               <svg ref={svgRef}></svg>
             </div>
             <div className="flex justify-center md:justify-end mt-6 md:mt-12">
-              <Button color="default" variant="light" onPress={exportChart} isLoading={isExporting} size="sm" className="md:size-md">
+              <Button
+                color="default"
+                variant="light"
+                onPress={exportChart}
+                isLoading={isExporting}
+                size="sm"
+                className="md:size-md"
+              >
                 {isExporting ? "Exporting..." : "Export Chart as JPEG"}
               </Button>
             </div>

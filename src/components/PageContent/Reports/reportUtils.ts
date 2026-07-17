@@ -1,4 +1,5 @@
 import { BirdEventType, type BirdEvent } from "../../../types";
+import { resolveSpeciesKey } from "../../../types/species";
 
 export type ReportCapture = {
   id: string;
@@ -111,7 +112,11 @@ export const enumerateDates = (start: string, end: string): string[] => {
   return dates;
 };
 
-export const buildDailyTrend = (dates: string[], valuesByDate: Map<string, number>, windowSize = 7): DailyTrendPoint[] => {
+export const buildDailyTrend = (
+  dates: string[],
+  valuesByDate: Map<string, number>,
+  windowSize = 7
+): DailyTrendPoint[] => {
   if (!dates.length) return [];
   const values = dates.map((date) => valuesByDate.get(date) ?? 0);
   const trend = values.map((value, index) => {
@@ -128,10 +133,10 @@ export const buildDailyTrend = (dates: string[], valuesByDate: Map<string, numbe
   return trend;
 };
 
-export const toReportCapture = (event: BirdEvent): ReportCapture => ({
+export const toReportCapture = (event: BirdEvent, speciesAliasesMap: Record<string, string> = {}): ReportCapture => ({
   id: event.id,
   programId: event.programId,
-  species: event.species || "Unknown",
+  species: event.species ? resolveSpeciesKey(event.species, speciesAliasesMap) : "Unknown",
   wing: event.wing ?? 0,
   age: event.age || "Unknown",
   sex: event.sex || "Unknown",

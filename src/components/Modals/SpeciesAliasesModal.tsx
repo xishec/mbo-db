@@ -169,8 +169,8 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
 
               <Table aria-label="Species aliases table" removeWrapper>
                 <TableHeader>
-                  <TableColumn>Alias</TableColumn>
-                  <TableColumn>Species Key</TableColumn>
+                  <TableColumn>New Code</TableColumn>
+                  <TableColumn>Old Code</TableColumn>
                   <TableColumn>Species</TableColumn>
                   <TableColumn width={60}> </TableColumn>
                 </TableHeader>

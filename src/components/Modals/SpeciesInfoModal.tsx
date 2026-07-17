@@ -2,11 +2,9 @@ import { Button } from "@heroui/react";
 import { useMemo } from "react";
 import PyleAndFunFacts from "../Helper/Info/PyleAndFunFacts";
 import { useAppStore } from "../../stores/useAppStore";
-import { resolveSpeciesKey, SPECIES_MAP } from "../../types/species";
+import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../types/species";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
-import {
-  modalPrimaryButtonProps,
-} from "./modalDefaults";
+import { modalPrimaryButtonProps } from "./modalDefaults";
 
 interface SpeciesInfoModalProps {
   isOpen: boolean;
@@ -19,6 +17,7 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
   const magicTable = useAppStore((s) => s.magicTable);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const resolvedSpeciesCode = resolveSpeciesKey(speciesCode, speciesAliasesMap);
+  const displaySpeciesCode = getSpeciesDisplayCode(resolvedSpeciesCode, speciesAliasesMap);
   const species = SPECIES_MAP[resolvedSpeciesCode];
 
   const pyleSpeciesRange = useMemo(() => {
@@ -39,7 +38,7 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
       {(onClose) => (
         <>
           <ModalHeaderShell>
-            <h2 className="text-xl font-bold">Species Information: {resolvedSpeciesCode}</h2>
+            <h2 className="text-xl font-bold">Species Information: {displaySpeciesCode}</h2>
             {species && (
               <div className="flex flex-col gap-1 mt-2 text-sm font-normal">
                 <div>
@@ -49,7 +48,8 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
                   <span className="font-semibold">French:</span> {species.speciesFrench}
                 </div>
                 <div>
-                  <span className="font-semibold">Scientific:</span> <span className="italic">{species.speciesScientific}</span>
+                  <span className="font-semibold">Scientific:</span>{" "}
+                  <span className="italic">{species.speciesScientific}</span>
                 </div>
               </div>
             )}

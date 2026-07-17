@@ -2,7 +2,7 @@ import { Button, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow
 import { useMemo, useRef, useState } from "react";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import { SPECIES_GROUPS } from "../../types/DET";
-import { SPECIES_MAP } from "../../types/species";
+import { getSpeciesDisplayCode, SPECIES_MAP } from "../../types/species";
 import { useAppStore } from "../../stores/useAppStore";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
@@ -60,6 +60,7 @@ const PYLE_COLUMNS: ColumnType<PyleRow>[] = [
 
 export default function SpeciesGroups() {
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const [selectedSpeciesCode, setSelectedSpeciesCode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAliasesModalOpen, setIsAliasesModalOpen] = useState(false);
@@ -229,7 +230,9 @@ export default function SpeciesGroups() {
                       if (columnKey === "code") {
                         return (
                           <TableCell className="font-mono text-default-900">
-                            <SpeciesTooltip speciesCode={String(value)}>{value}</SpeciesTooltip>
+                            <SpeciesTooltip speciesCode={String(value)}>
+                              {getSpeciesDisplayCode(String(value), speciesAliasesMap)}
+                            </SpeciesTooltip>
                           </TableCell>
                         );
                       }
@@ -295,7 +298,9 @@ export default function SpeciesGroups() {
                       if (columnKey === "code") {
                         return (
                           <TableCell height={50} className="font-mono text-default-900">
-                            <SpeciesTooltip speciesCode={String(value)}>{value}</SpeciesTooltip>
+                            <SpeciesTooltip speciesCode={String(value)}>
+                              {getSpeciesDisplayCode(String(value), speciesAliasesMap)}
+                            </SpeciesTooltip>
                           </TableCell>
                         );
                       }

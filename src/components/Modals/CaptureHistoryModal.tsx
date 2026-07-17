@@ -106,8 +106,8 @@ export default function CaptureHistoryModal({
   const resolvedBirdSpecies = birdInfo ? resolveSpeciesKey(birdInfo.species, speciesAliasesMap) : "";
 
   const errors = useMemo(() => {
-    return findErrorsInEvents(birdEvents, magicTable);
-  }, [birdEvents, magicTable]);
+    return findErrorsInEvents(birdEvents, magicTable, speciesAliasesMap);
+  }, [birdEvents, magicTable, speciesAliasesMap]);
 
   return (
     <ModalShell
