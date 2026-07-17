@@ -2,7 +2,7 @@ import { Button } from "@heroui/react";
 import { useMemo } from "react";
 import PyleAndFunFacts from "../Helper/Info/PyleAndFunFacts";
 import { useAppStore } from "../../stores/useAppStore";
-import { SPECIES_MAP } from "../../types/species";
+import { resolveSpeciesKey, SPECIES_MAP } from "../../types/species";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import {
   modalPrimaryButtonProps,
@@ -17,12 +17,14 @@ interface SpeciesInfoModalProps {
 export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: SpeciesInfoModalProps) {
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
   const magicTable = useAppStore((s) => s.magicTable);
-  const species = SPECIES_MAP[speciesCode];
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const resolvedSpeciesCode = resolveSpeciesKey(speciesCode, speciesAliasesMap);
+  const species = SPECIES_MAP[resolvedSpeciesCode];
 
   const pyleSpeciesRange = useMemo(() => {
-    if (!speciesCode || speciesCode.length !== 4 || !magicTable || !magicTable.pyle) return null;
-    return magicTable.pyle[speciesCode] || null;
-  }, [speciesCode, magicTable]);
+    if (!resolvedSpeciesCode || resolvedSpeciesCode.length !== 4 || !magicTable || !magicTable.pyle) return null;
+    return magicTable.pyle[resolvedSpeciesCode] || null;
+  }, [resolvedSpeciesCode, magicTable]);
 
   return (
     <ModalShell
@@ -37,7 +39,7 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
       {(onClose) => (
         <>
           <ModalHeaderShell>
-            <h2 className="text-xl font-bold">Species Information: {speciesCode}</h2>
+            <h2 className="text-xl font-bold">Species Information: {resolvedSpeciesCode}</h2>
             {species && (
               <div className="flex flex-col gap-1 mt-2 text-sm font-normal">
                 <div>
@@ -53,11 +55,11 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
             )}
           </ModalHeaderShell>
           <ModalBodyShell>
-            {speciesCode.length === 4 && pyleSpeciesRange && speciesInfoMap[speciesCode] && (
+            {resolvedSpeciesCode.length === 4 && pyleSpeciesRange && speciesInfoMap[resolvedSpeciesCode] && (
               <PyleAndFunFacts
-                speciesCode={speciesCode}
+                speciesCode={resolvedSpeciesCode}
                 pyleSpeciesRange={pyleSpeciesRange}
-                speciesInfo={speciesInfoMap[speciesCode]}
+                speciesInfo={speciesInfoMap[resolvedSpeciesCode]}
                 disabled
               />
             )}

@@ -22,6 +22,7 @@ import {
   type VolunteersMap,
 } from "../types";
 import { INDEPENDENT_MAP_NAMES, type IndependentMapName } from "../types/mapNames";
+import { normalizeSpeciesAliasesMap } from "../types/species";
 import {
   getDataFromIndexedDB,
   getLastUpdated,
@@ -72,7 +73,7 @@ function getVolunteerMetadata(data: DatabaseData | null | undefined): Volunteers
  */
 function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void {
   const volunteersMap = getVolunteerMetadata(data);
-  const speciesAliasesMap = data.speciesAliasesMap ?? {};
+  const speciesAliasesMap = normalizeSpeciesAliasesMap(data.speciesAliasesMap ?? {});
   const mergedEvents = overlayQueuedEvents(data.birdEventsMap ?? {}, queued);
   const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(mergedEvents, volunteersMap);
   const hydratedEntries: Array<[string, BirdEvent]> = Object.entries(mergedEvents).map(([id, event]) => [
@@ -95,7 +96,7 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
     yearsToProgramMap: years,
     volunteerStatsMap: volunteerStats,
     bandSizeToBandIdMap: computeBandSizeToBandIdMap(hydratedEvents, bandGroups),
-    speciesInfoMap: computeSpeciesInfoMap(hydratedEvents),
+    speciesInfoMap: computeSpeciesInfoMap(hydratedEvents, speciesAliasesMap),
     DETsMap: data.DETsMap ?? {},
     dismissedConflictsMap: data.dismissedConflictsMap ?? {},
     bandGroupNotesMap: data.bandGroupNotesMap ?? {},
@@ -285,7 +286,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {} };
         let volunteersMap = getVolunteerMetadata(cachedData);
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
-        let speciesAliasesMap: Record<string, string> = cachedData?.speciesAliasesMap ?? {};
+        let speciesAliasesMap: Record<string, string> = normalizeSpeciesAliasesMap(cachedData?.speciesAliasesMap ?? {});
         if (mapsToFetch.size > 0) {
           const fetching = [...mapsToFetch];
           logger.info("DataLoad", `Fetching changed maps: ${fetching.join(", ")}`);
@@ -312,7 +313,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 notesMap = val ?? {};
                 break;
               case "speciesAliasesMap":
-                speciesAliasesMap = val ?? {};
+                speciesAliasesMap = normalizeSpeciesAliasesMap(val ?? {});
                 break;
             }
           }
@@ -388,7 +389,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           yearsToProgramMap: years,
           volunteerStatsMap: volunteerStats,
           bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups),
-          speciesInfoMap: computeSpeciesInfoMap(reconstructed),
+          speciesInfoMap: computeSpeciesInfoMap(reconstructed, speciesAliasesMap),
           dismissedConflictsMap: dismissedMap,
           DETsMap: detsMap,
           lastSyncedAt: cacheTimestamp,

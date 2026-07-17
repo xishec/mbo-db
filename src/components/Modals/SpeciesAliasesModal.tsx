@@ -37,16 +37,17 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
   const [aliasCode, setAliasCode] = useState("");
   const [speciesKey, setSpeciesKey] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const canEdit = !!user && isOnline;
 
   const rows = useMemo<AliasRow[]>(
     () =>
       Object.entries(speciesAliasesMap)
-        .map(([alias, key]) => ({
+        .map(([key, alias]) => ({
           aliasCode: alias,
           speciesKey: key,
           speciesName: SPECIES_MAP[key]?.speciesDescriptionMBO ?? "Unknown",
         }))
-        .sort((a, b) => a.aliasCode.localeCompare(b.aliasCode)),
+        .sort((a, b) => a.speciesKey.localeCompare(b.speciesKey)),
     [speciesAliasesMap]
   );
 
@@ -68,14 +69,15 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
     /^[A-Z]{4}$/.test(normalizedAlias) &&
     !!speciesKey &&
     !SPECIES_KEY_BY_CURRENT_CODE[normalizedAlias] &&
-    !speciesAliasesMap[normalizedAlias] &&
+    !speciesAliasesMap[speciesKey] &&
+    !Object.values(speciesAliasesMap).includes(normalizedAlias) &&
     !isSaving;
 
   const handleSave = async () => {
     if (!canSave) return;
     setIsSaving(true);
     try {
-      await updateSpeciesAlias(normalizedAlias, speciesKey);
+      await updateSpeciesAlias(speciesKey, normalizedAlias);
       setAliasCode("");
       setSpeciesKey("");
     } catch (err) {
@@ -89,10 +91,10 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
     }
   };
 
-  const handleDelete = async (alias: string) => {
+  const handleDelete = async (key: string) => {
     setIsSaving(true);
     try {
-      await updateSpeciesAlias(alias, null);
+      await updateSpeciesAlias(key, null);
     } catch (err) {
       addToast({
         title: "Could not delete alias",
@@ -122,13 +124,13 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-[1fr_140px_auto] gap-3 items-end">
                 <Select
+                  {...modalInputProps}
                   label="Species"
-                  labelPlacement="outside"
+                  placeholder=" "
                   size="sm"
-                  variant="bordered"
                   selectedKeys={speciesKey ? [speciesKey] : []}
                   onSelectionChange={(keys) => setSpeciesKey(String(Array.from(keys)[0] ?? ""))}
-                  isDisabled={isSaving || !user || !isOnline}
+                  isDisabled={isSaving || !canEdit}
                   classNames={{ trigger: "h-10 min-h-10" }}
                 >
                   {speciesOptions.map((option) => (
@@ -150,7 +152,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
                         .slice(0, 4)
                     )
                   }
-                  isDisabled={isSaving || !user || !isOnline}
+                  isDisabled={isSaving || !canEdit}
                   classNames={{ inputWrapper: "h-10 min-h-10" }}
                 />
                 <Button
@@ -174,7 +176,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
                 </TableHeader>
                 <TableBody items={rows} emptyContent="No aliases">
                   {(row) => (
-                    <TableRow key={row.aliasCode}>
+                    <TableRow key={row.speciesKey}>
                       <TableCell className="font-mono">{row.aliasCode}</TableCell>
                       <TableCell className="font-mono">{row.speciesKey}</TableCell>
                       <TableCell>{row.speciesName}</TableCell>
@@ -183,9 +185,10 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
                           isIconOnly
                           size="sm"
                           variant="light"
+                          color="danger"
                           aria-label={`Delete alias ${row.aliasCode}`}
-                          onPress={() => handleDelete(row.aliasCode)}
-                          isDisabled={isSaving || !user || !isOnline}
+                          onPress={() => handleDelete(row.speciesKey)}
+                          isDisabled={isSaving || !canEdit}
                         >
                           <TrashIcon className="h-4 w-4" />
                         </Button>

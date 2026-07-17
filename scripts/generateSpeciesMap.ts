@@ -119,13 +119,44 @@ export const SPECIES_KEY_BY_CURRENT_CODE: Record<string, string> = Object.fromEn
   Object.entries(SPECIES_CURRENT_CODE_BY_KEY).map(([key, currentCode]) => [currentCode.toUpperCase(), key])
 );
 
-export function getSpeciesDisplayCode(speciesKey: string): string {
-  return SPECIES_CURRENT_CODE_BY_KEY[speciesKey] ?? speciesKey;
+export function getSpeciesDisplayCode(speciesKey: string, aliases: Record<string, string> = {}): string {
+  const normalizedKey = speciesKey.toUpperCase();
+  const directAlias = aliases[normalizedKey];
+  if (directAlias) return directAlias;
+
+  const legacyAlias = Object.entries(aliases).find(([, key]) => key === normalizedKey)?.[0];
+  return legacyAlias ?? SPECIES_CURRENT_CODE_BY_KEY[normalizedKey] ?? normalizedKey;
+}
+
+export function normalizeSpeciesAliasesMap(aliases: Record<string, string> = {}): Record<string, string> {
+  const normalized: Record<string, string> = {};
+
+  Object.entries(aliases).forEach(([key, value]) => {
+    const normalizedKey = key.toUpperCase();
+    const normalizedValue = value.toUpperCase();
+
+    if (SPECIES_MAP[normalizedKey]) {
+      normalized[normalizedKey] = normalizedValue;
+      return;
+    }
+
+    if (SPECIES_MAP[normalizedValue]) {
+      normalized[normalizedValue] = normalizedKey;
+    }
+  });
+
+  return normalized;
 }
 
 export function resolveSpeciesKey(speciesCode: string, aliases: Record<string, string> = {}): string {
   const normalizedCode = speciesCode.toUpperCase();
-  return SPECIES_KEY_BY_CURRENT_CODE[normalizedCode] ?? aliases[normalizedCode] ?? normalizedCode;
+  const currentSpeciesKey = SPECIES_KEY_BY_CURRENT_CODE[normalizedCode];
+  if (currentSpeciesKey) return currentSpeciesKey;
+
+  const aliasSpeciesKey = Object.entries(aliases).find(([, alias]) => alias === normalizedCode)?.[0];
+  if (aliasSpeciesKey) return aliasSpeciesKey;
+
+  return aliases[normalizedCode] ?? normalizedCode;
 }
 `;
 

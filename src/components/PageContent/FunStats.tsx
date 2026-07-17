@@ -7,6 +7,7 @@ import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import CaptureHistoryModal from "../Modals/CaptureHistoryModal";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import PageHeader from "./PageHeader";
+import { resolveSpeciesKey } from "../../types/species";
 
 function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(b) - Date.parse(a)) / (1000 * 60 * 60 * 24));
@@ -65,6 +66,7 @@ function RankedList({ items, unit, isSpecies, onDetailClick }: {
 
 export default function FunStats() {
   const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const birdEventsVersion = useBirdEventsVersion();
 
   const eventDatesSet = useMemo(() => {
@@ -131,9 +133,10 @@ export default function FunStats() {
     const speciesLastSeenBefore = new Map<string, string>();
     for (const ev of birdEventsStore.getAll().values()) {
       if (!ev || ev.modifiedEventId || !ev.species || !ev.date) continue;
+      const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
       if (ev.date < startDate) {
-        const existing = speciesLastSeenBefore.get(ev.species);
-        if (!existing || ev.date > existing) speciesLastSeenBefore.set(ev.species, ev.date);
+        const existing = speciesLastSeenBefore.get(speciesKey);
+        if (!existing || ev.date > existing) speciesLastSeenBefore.set(speciesKey, ev.date);
       }
     }
 
@@ -145,26 +148,27 @@ export default function FunStats() {
     let oldestSpanDays = 0;
 
     for (const ev of events) {
-      if (ev.species) species.add(ev.species);
+      const speciesKey = ev.species ? resolveSpeciesKey(ev.species, speciesAliasesMap) : "";
+      if (speciesKey) species.add(speciesKey);
 
       const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
       if (isNewCapture) {
         banded++;
-        if (ev.species) {
-          bandedSpecies.add(ev.species);
-          bandedSpeciesCounts.set(ev.species, (bandedSpeciesCounts.get(ev.species) ?? 0) + 1);
+        if (speciesKey) {
+          bandedSpecies.add(speciesKey);
+          bandedSpeciesCounts.set(speciesKey, (bandedSpeciesCounts.get(speciesKey) ?? 0) + 1);
         }
       } else if (ev.birdEventType === BirdEventType.Repeat) {
         repeat++;
-        if (ev.species) {
-          recaptureSpecies.add(ev.species);
-          recaptureSpeciesCounts.set(ev.species, (recaptureSpeciesCounts.get(ev.species) ?? 0) + 1);
+        if (speciesKey) {
+          recaptureSpecies.add(speciesKey);
+          recaptureSpeciesCounts.set(speciesKey, (recaptureSpeciesCounts.get(speciesKey) ?? 0) + 1);
         }
       } else if (ev.birdEventType === BirdEventType.Return) {
         returnCount++;
-        if (ev.species) {
-          recaptureSpecies.add(ev.species);
-          recaptureSpeciesCounts.set(ev.species, (recaptureSpeciesCounts.get(ev.species) ?? 0) + 1);
+        if (speciesKey) {
+          recaptureSpecies.add(speciesKey);
+          recaptureSpeciesCounts.set(speciesKey, (recaptureSpeciesCounts.get(speciesKey) ?? 0) + 1);
         }
       }
 
@@ -172,7 +176,7 @@ export default function FunStats() {
       if (ev.net) netCounts.set(ev.net, (netCounts.get(ev.net) ?? 0) + 1);
 
       // Species counts (all capture types)
-      if (ev.species) speciesCounts.set(ev.species, (speciesCounts.get(ev.species) ?? 0) + 1);
+      if (speciesKey) speciesCounts.set(speciesKey, (speciesCounts.get(speciesKey) ?? 0) + 1);
 
       // Bander/scribe counts
       if (ev.bander && isNewCapture) banderCounts.set(ev.bander, (banderCounts.get(ev.bander) ?? 0) + 1);
@@ -194,7 +198,7 @@ export default function FunStats() {
           existing.count++;
           existing.latest = ev;
         } else {
-          bandIdRecapCount.set(bandId, { count: 1, species: ev.species || "?", latest: ev });
+          bandIdRecapCount.set(bandId, { count: 1, species: speciesKey || "?", latest: ev });
         }
       }
 
@@ -297,7 +301,7 @@ export default function FunStats() {
       dummest,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion, volunteerStatsMap, startDate, endDate]);
+  }, [birdEventsVersion, volunteerStatsMap, speciesAliasesMap, startDate, endDate]);
 
   return (
     <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4">

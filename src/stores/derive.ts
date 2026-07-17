@@ -15,6 +15,7 @@ import {
   type VolunteerStatsMap,
   type YearToProgramMap,
 } from "../types";
+import { resolveSpeciesKey } from "../types/species";
 
 type FavoriteRateResult = { value: string; rate: number };
 type BandStats = {
@@ -291,7 +292,7 @@ export function computeBandSizeToBandIdMap(
  * bander / favourite net). Computed on load — too expensive per-save,
  * and stats barely shift with one more capture.
  */
-export function computeSpeciesInfoMap(source: BirdEventsMap): SpeciesInfoMap {
+export function computeSpeciesInfoMap(source: BirdEventsMap, speciesAliasesMap: Record<string, string> = {}): SpeciesInfoMap {
   const infoMap: SpeciesInfoMap = {};
   const validEvents = [...source.values()].filter((event) => event && !event.modifiedEventId);
   if (validEvents.length === 0) return infoMap;
@@ -299,9 +300,10 @@ export function computeSpeciesInfoMap(source: BirdEventsMap): SpeciesInfoMap {
   const eventsBySpecies = new Map<string, BirdEvent[]>();
   for (const event of validEvents) {
     if (!event.species || event.species.length !== 4) continue;
-    const speciesEvents = eventsBySpecies.get(event.species);
+    const speciesKey = resolveSpeciesKey(event.species, speciesAliasesMap);
+    const speciesEvents = eventsBySpecies.get(speciesKey);
     if (speciesEvents) speciesEvents.push(event);
-    else eventsBySpecies.set(event.species, [event]);
+    else eventsBySpecies.set(speciesKey, [event]);
   }
 
   for (const [speciesCode, events] of eventsBySpecies.entries()) {

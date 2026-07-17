@@ -332,10 +332,14 @@ export default function AddBirdEventModal({
   }, []);
 
   // Species range lookups
+  const resolvedFormSpecies = useMemo(
+    () => resolveSpeciesKey(formData.species, speciesAliasesMap),
+    [formData.species, speciesAliasesMap]
+  );
   const pyleSpeciesRange = useMemo(() => {
-    if (formData.species.length !== 4 || !magicTable || !magicTable.pyle) return null;
-    return magicTable.pyle[formData.species] || null;
-  }, [formData.species, magicTable]);
+    if (resolvedFormSpecies.length !== 4 || !magicTable || !magicTable.pyle) return null;
+    return magicTable.pyle[resolvedFormSpecies] || null;
+  }, [resolvedFormSpecies, magicTable]);
 
   const sexCode = formData.sex.charAt(0);
   const wingAutoAdvanceRange = useMemo(
@@ -916,7 +920,7 @@ export default function AddBirdEventModal({
           validationBehavior="aria"
           value={
             columnKey === "species" && formData.species.length === 4
-              ? getSpeciesDisplayCode(formData.species)
+              ? getSpeciesDisplayCode(formData.species, speciesAliasesMap)
               : formData[columnKey]
           }
           tabIndex={getTabIndex(columnKey)}
@@ -945,6 +949,7 @@ export default function AddBirdEventModal({
       registerRef,
       focusNext,
       setFormData,
+      speciesAliasesMap,
     ]
   );
 
@@ -1007,9 +1012,9 @@ export default function AddBirdEventModal({
             <ModalBodyShell>
               <div className="flex flex-col gap-4">
                 <SpeciesInfoPanel
-                  speciesCode={formData.species}
+                  speciesCode={resolvedFormSpecies}
                   pyleSpeciesRange={pyleSpeciesRange}
-                  speciesInfo={speciesInfoMap[formData.species] || null}
+                  speciesInfo={speciesInfoMap[resolvedFormSpecies] || null}
                 />
                 <Card shadow="sm" className="w-full">
                   <CardBody className="flex flex-col gap-2 p-3">

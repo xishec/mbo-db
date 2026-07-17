@@ -31,7 +31,7 @@ import {
 } from "../types";
 import { type IndependentMapName } from "../types/mapNames";
 import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
-import { advanceBandId } from "./derive";
+import { advanceBandId, computeSpeciesInfoMap } from "./derive";
 import { useAppStore } from "./useAppStore";
 
 // Mutex for serializing IndexedDB writes. Prevents concurrent
@@ -685,27 +685,30 @@ export const actions = {
     }
   },
 
-  updateSpeciesAlias: async (aliasCode: string, speciesKey: string | null): Promise<void> => {
+  updateSpeciesAlias: async (speciesKey: string, aliasCode: string | null): Promise<void> => {
     const { user, isOnline, speciesAliasesMap } = useAppStore.getState();
     if (!user) throw new Error("Must be logged in to update species aliases");
     if (!isOnline) throw new Error("Cannot update species aliases while offline");
 
-    const alias = aliasCode.trim().toUpperCase();
-    if (!/^[A-Z]{4}$/.test(alias)) throw new Error("Alias must be a 4-letter code");
-    if (SPECIES_KEY_BY_CURRENT_CODE[alias]) throw new Error(`"${alias}" is already a current species code`);
-    if (speciesKey !== null && !SPECIES_MAP[speciesKey]) throw new Error(`Species "${speciesKey}" not found`);
+    if (!SPECIES_MAP[speciesKey]) throw new Error(`Species "${speciesKey}" not found`);
+    const alias = aliasCode?.trim().toUpperCase() ?? "";
+    if (alias && !/^[A-Z]{4}$/.test(alias)) throw new Error("Alias must be a 4-letter code");
+    if (alias && SPECIES_KEY_BY_CURRENT_CODE[alias]) throw new Error(`"${alias}" is already a current species code`);
 
     try {
       const next = { ...speciesAliasesMap };
-      if (speciesKey) next[alias] = speciesKey;
-      else delete next[alias];
+      if (alias) next[speciesKey] = alias;
+      else delete next[speciesKey];
 
-      useAppStore.setState({ speciesAliasesMap: next });
-      await set(ref(db, `${CURRENT_ENVIRONMENT}/speciesAliasesMap/${alias}`), speciesKey || null);
+      useAppStore.setState({
+        speciesAliasesMap: next,
+        speciesInfoMap: computeSpeciesInfoMap(birdEventsStore.getAll(), next),
+      });
+      await set(ref(db, `${CURRENT_ENVIRONMENT}/speciesAliasesMap/${speciesKey}`), alias || null);
       await updateMapTimestamp("speciesAliasesMap");
       await saveMapsToIndexedDB({ speciesAliasesMap: next });
     } catch (err) {
-      logger.error("UpdateSpeciesAlias", `Error updating species alias ${alias}`, err);
+      logger.error("UpdateSpeciesAlias", `Error updating species alias ${speciesKey}`, err);
       throw err;
     }
   },

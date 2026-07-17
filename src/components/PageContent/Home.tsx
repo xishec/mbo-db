@@ -2,9 +2,12 @@ import { Fragment, useMemo } from "react";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
+import { useAppStore } from "../../stores/useAppStore";
+import { resolveSpeciesKey } from "../../types/species";
 
 export default function Home() {
   const version = useBirdEventsVersion();
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
 
   const latestDaySummary = useMemo(() => {
     // Filter out modified/superseded events
@@ -45,11 +48,12 @@ export default function Home() {
     let maxCount = 0;
     for (const event of latestDayEvents) {
       if (!event.species) continue;
-      const count = (speciesCounts.get(event.species) ?? 0) + 1;
-      speciesCounts.set(event.species, count);
+      const speciesKey = resolveSpeciesKey(event.species, speciesAliasesMap);
+      const count = (speciesCounts.get(speciesKey) ?? 0) + 1;
+      speciesCounts.set(speciesKey, count);
       if (count > maxCount) {
         maxCount = count;
-        mostCapturedSpecies = event.species;
+        mostCapturedSpecies = speciesKey;
       }
     }
 
@@ -62,7 +66,7 @@ export default function Home() {
       totalCaptures: latestDayEvents.length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version]);
+  }, [version, speciesAliasesMap]);
 
   if (!latestDaySummary) {
     return (

@@ -1,7 +1,8 @@
 import { Button } from "@heroui/react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { useAppStore } from "../../stores/useAppStore";
 import type { BirdEvent } from "../../types";
-import { getSpeciesDisplayCode } from "../../types/species";
+import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 
 interface ExportButtonProps {
   birdEvents: BirdEvent[];
@@ -30,6 +31,7 @@ export default function ExportButton({
   filename = "bird_events.csv",
   additionalComments = {},
 }: ExportButtonProps) {
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const handleExport = () => {
     if (birdEvents.length === 0) {
       return;
@@ -65,7 +67,7 @@ export default function ExportButton({
       event.programId,
       event.band?.bandGroupId || "",
       event.band?.last2digits || "",
-      getSpeciesDisplayCode(event.species),
+      getSpeciesDisplayCode(resolveSpeciesKey(event.species, speciesAliasesMap), speciesAliasesMap),
       event.date,
       event.time,
       event.birdEventType,

@@ -9,6 +9,7 @@ import { findErrorsInEvents } from "../../types/birdEventErrors";
 import ValidationMessages from "../Helper/ValidationMessages";
 import BirdInfoCard from "../Helper/Info/BirdInfoCard";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
+import { resolveSpeciesKey } from "../../types/species";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
@@ -28,6 +29,7 @@ export default function CaptureHistoryModal({
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
   const magicTable = useAppStore((s) => s.magicTable);
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const birdEventsVersion = useBirdEventsVersion();
 
   const birdEvents = useMemo(() => {
@@ -99,8 +101,9 @@ export default function CaptureHistoryModal({
 
   const pyleSpeciesRange = useMemo(() => {
     if (!birdInfo || birdInfo.species.length !== 4 || !magicTable || !magicTable.pyle) return null;
-    return magicTable.pyle[birdInfo.species] || null;
-  }, [birdInfo, magicTable]);
+    return magicTable.pyle[resolveSpeciesKey(birdInfo.species, speciesAliasesMap)] || null;
+  }, [birdInfo, magicTable, speciesAliasesMap]);
+  const resolvedBirdSpecies = birdInfo ? resolveSpeciesKey(birdInfo.species, speciesAliasesMap) : "";
 
   const errors = useMemo(() => {
     return findErrorsInEvents(birdEvents, magicTable);
@@ -129,7 +132,7 @@ export default function CaptureHistoryModal({
               <PyleAndFunFacts
                 speciesCode={birdInfo.species}
                 pyleSpeciesRange={pyleSpeciesRange}
-                speciesInfo={speciesInfoMap[birdInfo.species]}
+                speciesInfo={speciesInfoMap[resolvedBirdSpecies]}
                 currentBandId={bandId}
               />
             )}

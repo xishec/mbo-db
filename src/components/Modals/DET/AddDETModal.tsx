@@ -11,6 +11,8 @@ import DETNetHoursSection from "./DETNetHoursSection";
 import DETSpeciesDataSection from "./DETSpeciesDataSection";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
+import { useAppStore } from "../../../stores/useAppStore";
+import { resolveSpeciesKey } from "../../../types/species";
 
 interface AddDETModalProps {
   isOpen: boolean;
@@ -69,6 +71,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [returnSpeciesCount, setReturnSpeciesCount] = useState<Record<string, number>>({});
   const [DETSpeciesCount, setDETSpeciesCount] = useState<Record<string, number>>({});
   const [weather, setWeather] = useState<Weather | undefined>(undefined);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
 
   // Auto-compute banded/repeat species from bird events for the selected date
   const computedFromEvents = useMemo(() => {
@@ -83,17 +86,18 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
     const return_: Record<string, number> = {};
     for (const ev of birdEventsStore.getAll().values()) {
       if (!ev || ev.date !== date || ev.modifiedEventId || !ev.species) continue;
+      const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
       if (ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None) {
-        banded[ev.species] = (banded[ev.species] ?? 0) + 1;
+        banded[speciesKey] = (banded[speciesKey] ?? 0) + 1;
       } else if (ev.birdEventType === BirdEventType.Repeat) {
-        repeat[ev.species] = (repeat[ev.species] ?? 0) + 1;
+        repeat[speciesKey] = (repeat[speciesKey] ?? 0) + 1;
       } else if (ev.birdEventType === BirdEventType.Return) {
-        return_[ev.species] = (return_[ev.species] ?? 0) + 1;
+        return_[speciesKey] = (return_[speciesKey] ?? 0) + 1;
       }
     }
     return { banded, repeat, return_ };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, birdEventsVersion]);
+  }, [date, birdEventsVersion, speciesAliasesMap]);
 
   useEffect(() => {
     setBandedSpeciesCount(computedFromEvents.banded);
