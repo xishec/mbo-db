@@ -2,14 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Textarea } from "@heroui/react";
 import type { DET, ObserverHours, NetHours, Weather } from "../../../types/DET";
 import { BirdEventType } from "../../../types";
-import { PencilIcon } from "@heroicons/react/24/outline";
 import { fetchWeatherForDateTimeRange } from "../../../services/weatherService";
 import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
 import { getLocalDateString } from "../../../utils/dateUtils";
 import DETObserverHoursSection from "./DETObserverHoursSection";
 import DETNetHoursSection from "./DETNetHoursSection";
-import DETUnifiedSpeciesModal from "./DETUnifiedSpeciesModal";
+import DETSpeciesDataSection from "./DETSpeciesDataSection";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
 
@@ -135,9 +134,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
-
-  // Modal states for complex objects
-  const [isUnifiedSpeciesModalOpen, setIsUnifiedSpeciesModalOpen] = useState(false);
 
   // Prefill form when editing
   useEffect(() => {
@@ -312,13 +308,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
     }
   };
 
-  // Helper functions
-  const getSpeciesCountSummary = (count: Record<string, number>) => {
-    const total = Object.values(count).reduce((sum, val) => sum + val, 0);
-    const speciesCount = Object.keys(count).length;
-    return `${speciesCount} species, ${total} individuals`;
-  };
-
   return (
     <>
       <ModalShell
@@ -327,6 +316,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
           onOpenChange,
           size: "full",
           isDismissable: false,
+          isKeyboardDismissDisabled: true,
           scrollBehavior: "inside",
         }}
         contentProps={{
@@ -440,28 +430,17 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
                 <DETNetHoursSection netHours={netHours} onChange={setNetHours} />
 
-                {/* Unified Species Data Entry */}
-                <div>
-                  <p className="text-small pb-1">Species Data (Obs, Cns, Ret, DET)</p>
-                  <div className="flex justify-between items-center rounded-medium border border-default-100 py-2 px-3">
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>Observed: {getSpeciesCountSummary(observedSpeciesCount)}</p>
-                      <p>Census: {getSpeciesCountSummary(censusSpeciesCount)}</p>
-                      <p>Banded: {getSpeciesCountSummary(bandedSpeciesCount)}</p>
-                      <p>Repeats: {getSpeciesCountSummary(repeatSpeciesCount)}</p>
-                      <p>Return: {getSpeciesCountSummary(returnSpeciesCount)}</p>
-                      <p>DET: {getSpeciesCountSummary(DETSpeciesCount)}</p>
-                    </div>
-                    <Button
-                      startContent={<PencilIcon className="h-4 w-4" />}
-                      onPress={() => setIsUnifiedSpeciesModalOpen(true)}
-                      color="primary"
-                      variant="light"
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </div>
+                <DETSpeciesDataSection
+                  observedSpeciesCount={observedSpeciesCount}
+                  censusSpeciesCount={censusSpeciesCount}
+                  bandedSpeciesCount={bandedSpeciesCount}
+                  repeatSpeciesCount={repeatSpeciesCount}
+                  returnSpeciesCount={returnSpeciesCount}
+                  DETSpeciesCount={DETSpeciesCount}
+                  onObservedChange={setObservedSpeciesCount}
+                  onCensusChange={setCensusSpeciesCount}
+                  onDETChange={setDETSpeciesCount}
+                />
 
                 <Textarea
                   label="Narrative"
@@ -535,23 +514,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
           </>
         )}
       </ModalShell>
-
-      {/* Complex Object Modals */}
-      <DETUnifiedSpeciesModal
-        isOpen={isUnifiedSpeciesModalOpen}
-        onOpenChange={() => setIsUnifiedSpeciesModalOpen(!isUnifiedSpeciesModalOpen)}
-        observedSpeciesCount={observedSpeciesCount}
-        censusSpeciesCount={censusSpeciesCount}
-        bandedSpeciesCount={bandedSpeciesCount}
-        repeatSpeciesCount={repeatSpeciesCount}
-        returnSpeciesCount={returnSpeciesCount}
-        DETSpeciesCount={DETSpeciesCount}
-        onSave={({ observedSpeciesCount, censusSpeciesCount, DETSpeciesCount }) => {
-          setObservedSpeciesCount(observedSpeciesCount);
-          setCensusSpeciesCount(censusSpeciesCount);
-          setDETSpeciesCount(DETSpeciesCount);
-        }}
-      />
     </>
   );
 }

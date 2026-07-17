@@ -15,7 +15,15 @@ import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, useActions } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
-import { Band, BandSize, BirdEventType, getBandGroupMapKey, type BirdEvent, type CaptureFormData } from "../../types";
+import {
+  Band,
+  BandSize,
+  BirdEventType,
+  getBandGroupMapKey,
+  type BirdEvent,
+  type CaptureFormData,
+  type SpeciesRange,
+} from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
 import BirdStatusModal from "./BirdStatusModal";
@@ -26,6 +34,48 @@ import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "./modalDefaults";
 import SpeciesInfoPanel from "./AddBirdEventParts/SpeciesInfoPanel";
+
+const AUTO_ADVANCE_FIELDS = new Set<keyof CaptureFormData>([
+  "bandGroup",
+  "bandLastTwoDigits",
+  "species",
+  "age",
+  "howAged",
+  "sex",
+  "howSexed",
+  "fat",
+  "bander",
+  "scribe",
+  "net",
+  "birdStatus",
+]);
+
+function shouldAutoAdvanceWing(value: string, range: ReturnType<typeof getApplicableRange>): boolean {
+  if (!value || !range || range.wingLower <= 0 || range.wingUpper <= 0) return false;
+
+  const wingValue = Number(value);
+  if (!Number.isFinite(wingValue)) return false;
+
+  const lowerWithMargin = Math.floor(range.wingLower * 0.8);
+  const upperWithMargin = Math.ceil(range.wingUpper * 1.2);
+
+  return wingValue >= lowerWithMargin && wingValue <= upperWithMargin && wingValue * 10 > upperWithMargin;
+}
+
+function getWingAutoAdvanceRange(speciesRange: SpeciesRange | undefined): ReturnType<typeof getApplicableRange> {
+  if (!speciesRange) return null;
+
+  const lowers = [speciesRange.fWingLower, speciesRange.mWingLower].filter((value) => value > 0);
+  const uppers = [speciesRange.fWingUpper, speciesRange.mWingUpper].filter((value) => value > 0);
+  if (lowers.length === 0 || uppers.length === 0) return null;
+
+  return {
+    weightLower: 0,
+    weightUpper: 0,
+    wingLower: Math.min(...lowers),
+    wingUpper: Math.max(...uppers),
+  };
+}
 
 interface AddBirdEventModalProps {
   isOpen: boolean;
@@ -284,6 +334,10 @@ export default function AddBirdEventModal({
   }, [formData.species, magicTable]);
 
   const sexCode = formData.sex.charAt(0);
+  const wingAutoAdvanceRange = useMemo(
+    () => getWingAutoAdvanceRange(pyleSpeciesRange ?? undefined),
+    [pyleSpeciesRange]
+  );
 
   // Build bandId from bandGroup and bandLastTwoDigits
   const bandId = useMemo(() => {
@@ -476,8 +530,13 @@ export default function AddBirdEventModal({
         [field]: formattedValue,
       }));
 
-      // Auto-focus next input when maxLength is reached
-      if (maxLength && formattedValue.length >= maxLength) {
+      // Auto-focus fixed-length fields only. Wing can be 2-4 digits, so
+      // maxLength is just an input limit there, not a completion signal.
+      if (maxLength && AUTO_ADVANCE_FIELDS.has(field) && formattedValue.length >= maxLength) {
+        focusNext(field);
+      }
+
+      if (field === "wing" && shouldAutoAdvanceWing(formattedValue, wingAutoAdvanceRange)) {
         focusNext(field);
       }
 
@@ -486,7 +545,7 @@ export default function AddBirdEventModal({
         focusNext(field);
       }
     },
-    [focusNext]
+    [focusNext, wingAutoAdvanceRange]
   );
 
   const getTabIndex = useCallback(
