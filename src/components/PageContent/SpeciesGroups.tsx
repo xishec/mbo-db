@@ -1,4 +1,4 @@
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Tab, Tabs } from "@heroui/react";
+import { Button, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Tab, Tabs } from "@heroui/react";
 import { useMemo, useRef, useState } from "react";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import { SPECIES_GROUPS } from "../../types/DET";
@@ -6,6 +6,7 @@ import { SPECIES_MAP } from "../../types/species";
 import { useAppStore } from "../../stores/useAppStore";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
+import SpeciesAliasesModal from "../Modals/SpeciesAliasesModal";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import PageHeader from "./PageHeader";
 import { useCascadingSort, cascadingSort } from "../../hooks/useCascadingSort";
@@ -61,6 +62,7 @@ export default function SpeciesGroups() {
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
   const [selectedSpeciesCode, setSelectedSpeciesCode] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAliasesModalOpen, setIsAliasesModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"pyle" | "det">("pyle");
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
@@ -170,15 +172,20 @@ export default function SpeciesGroups() {
         />
       </div>
 
-      <Tabs
-        selectedKey={activeTab}
-        onSelectionChange={(k) => setActiveTab(k as "pyle" | "det")}
-        color="primary"
-        size="md"
-      >
-        <Tab key="pyle" title="Pyle" />
-        <Tab key="det" title="DET" />
-      </Tabs>
+      <div className="flex items-center justify-between gap-3">
+        <Tabs
+          selectedKey={activeTab}
+          onSelectionChange={(k) => setActiveTab(k as "pyle" | "det")}
+          color="primary"
+          size="md"
+        >
+          <Tab key="pyle" title="Pyle" />
+          <Tab key="det" title="DET" />
+        </Tabs>
+        <Button color="primary" variant="flat" onPress={() => setIsAliasesModalOpen(true)}>
+          Edit aliases
+        </Button>
+      </div>
 
       <div ref={tableRef} className="min-h-0">
         <div className="overflow-hidden rounded-medium border border-default-200">
@@ -227,7 +234,9 @@ export default function SpeciesGroups() {
                         );
                       }
                       if (columnKey === "groupName") {
-                        return <TableCell className="text-default-900 whitespace-normal break-words">{value}</TableCell>;
+                        return (
+                          <TableCell className="text-default-900 whitespace-normal break-words">{value}</TableCell>
+                        );
                       }
                       if (columnKey === "oldestSpanDays") {
                         const numValue = typeof value === "number" ? value : Number(value) || -1;
@@ -299,13 +308,9 @@ export default function SpeciesGroups() {
                         );
                       }
                       if (typeof value === "number") {
-                        return (
-                          <TableCell className="text-right tabular-nums text-default-900">{value}</TableCell>
-                        );
+                        return <TableCell className="text-right tabular-nums text-default-900">{value}</TableCell>;
                       }
-                      return (
-                        <TableCell className="text-default-900 whitespace-normal break-words">{value}</TableCell>
-                      );
+                      return <TableCell className="text-default-900 whitespace-normal break-words">{value}</TableCell>;
                     }}
                   </TableRow>
                 )}
@@ -318,6 +323,7 @@ export default function SpeciesGroups() {
       {selectedSpeciesCode && (
         <SpeciesInfoModal isOpen={isModalOpen} onOpenChange={handleModalOpenChange} speciesCode={selectedSpeciesCode} />
       )}
+      <SpeciesAliasesModal isOpen={isAliasesModalOpen} onOpenChange={setIsAliasesModalOpen} />
     </div>
   );
 }

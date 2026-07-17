@@ -316,7 +316,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
           onOpenChange,
           size: "full",
           isDismissable: false,
-          isKeyboardDismissDisabled: true,
           scrollBehavior: "inside",
         }}
         contentProps={{

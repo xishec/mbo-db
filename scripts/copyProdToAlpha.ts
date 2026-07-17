@@ -8,6 +8,7 @@ const SMALL_KEYS = [
   "dismissedConflictsMap",
   "DETsMap",
   "volunteersMap",
+  "speciesAliasesMap",
   "metadata",
 ];
 

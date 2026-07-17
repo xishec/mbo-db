@@ -1,6 +1,7 @@
 import { Button } from "@heroui/react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import type { BirdEvent } from "../../types";
+import { getSpeciesDisplayCode } from "../../types/species";
 
 interface ExportButtonProps {
   birdEvents: BirdEvent[];
@@ -64,7 +65,7 @@ export default function ExportButton({
       event.programId,
       event.band?.bandGroupId || "",
       event.band?.last2digits || "",
-      event.species,
+      getSpeciesDisplayCode(event.species),
       event.date,
       event.time,
       event.birdEventType,

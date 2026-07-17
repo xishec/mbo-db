@@ -12,6 +12,7 @@ import {
   type ProgramsMap,
   type SpeciesInfoMap,
   type VolunteersMap,
+  type VolunteerStatsMap,
   type YearToProgramMap,
 } from "../types";
 
@@ -85,19 +86,29 @@ export function overlayQueuedEvents(
  */
 export function rebuildMapsFromEvents(
   allEvents: Record<string, BirdEvent>,
-  fullNameMap: Record<string, string>,
+  volunteersMap: VolunteersMap,
 ): {
   bandIdMap: BandIdToBirdEventIdsMap;
   bandGroups: BandGroupsMap;
   programs: ProgramsMap;
   years: YearToProgramMap;
-  volCounts: VolunteersMap;
+  volunteerStats: VolunteerStatsMap;
 } {
   const bandIdMap: BandIdToBirdEventIdsMap = {};
   const bandGroups: BandGroupsMap = {};
   const programs: ProgramsMap = {};
   const years: YearToProgramMap = {};
-  const volCounts: VolunteersMap = {};
+  const volunteerStats: VolunteerStatsMap = {};
+
+  for (const [code, volunteer] of Object.entries(volunteersMap)) {
+    volunteerStats[code] = {
+      code,
+      fullName: volunteer.fullName ?? "",
+      observerClass: volunteer.observerClass ?? 3,
+      totalBanded: 0,
+      totalScribed: 0,
+    };
+  }
 
   for (const [id, ev] of Object.entries(allEvents)) {
     if (!ev || !ev.date) continue;
@@ -150,28 +161,30 @@ export function rebuildMapsFromEvents(
     if (!years[year].includes(pid)) years[year].push(pid);
 
     if (ev.bander && isNewCapture) {
-      if (!volCounts[ev.bander])
-        volCounts[ev.bander] = {
+      if (!volunteerStats[ev.bander])
+        volunteerStats[ev.bander] = {
           code: ev.bander,
-          fullName: fullNameMap[ev.bander] ?? "",
+          fullName: volunteersMap[ev.bander]?.fullName ?? "",
+          observerClass: volunteersMap[ev.bander]?.observerClass ?? 3,
           totalBanded: 0,
           totalScribed: 0,
         };
-      volCounts[ev.bander].totalBanded++;
+      volunteerStats[ev.bander].totalBanded++;
     }
     if (ev.scribe) {
-      if (!volCounts[ev.scribe])
-        volCounts[ev.scribe] = {
+      if (!volunteerStats[ev.scribe])
+        volunteerStats[ev.scribe] = {
           code: ev.scribe,
-          fullName: fullNameMap[ev.scribe] ?? "",
+          fullName: volunteersMap[ev.scribe]?.fullName ?? "",
+          observerClass: volunteersMap[ev.scribe]?.observerClass ?? 3,
           totalBanded: 0,
           totalScribed: 0,
         };
-      volCounts[ev.scribe].totalScribed++;
+      volunteerStats[ev.scribe].totalScribed++;
     }
   }
 
-  return { bandIdMap, bandGroups, programs, years, volCounts };
+  return { bandIdMap, bandGroups, programs, years, volunteerStats };
 }
 
 // Physical band sequence within a strip: 01, 02, ..., 99, then the NEXT

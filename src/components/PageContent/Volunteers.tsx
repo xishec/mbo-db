@@ -1,4 +1,15 @@
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Input, Button } from "@heroui/react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+  Input,
+  Button,
+  Select,
+  SelectItem,
+} from "@heroui/react";
 import { useMemo, useRef, useState } from "react";
 import { useAppStore, useActions, useIsLoggedIn } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
@@ -8,12 +19,13 @@ import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import ExportButton from "../Helper/ExportButton";
-import { BirdEventType, type BirdEvent } from "../../types";
+import { BirdEventType, type BirdEvent, type ObserverClass } from "../../types";
 import PageHeader from "./PageHeader";
 
 type Row = {
   code: string;
   fullName: string;
+  observerClass: ObserverClass;
   totalBanded: number;
   totalScribed: number;
 };
@@ -21,8 +33,16 @@ type Row = {
 const COLUMNS = [
   { key: "code" as const, label: "Code", type: "string" as const, width: 100 },
   { key: "fullName" as const, label: "Full Name", type: "string" as const, width: 300 },
+  {
+    key: "observerClass" as const,
+    label: "Observer Class",
+    type: "number" as const,
+    align: "end" as const,
+    width: 150,
+  },
   { key: "totalBanded" as const, label: "Banded", type: "number" as const, align: "end" as const, width: 150 },
   { key: "totalScribed" as const, label: "Scribed", type: "number" as const, align: "end" as const, width: 150 },
+  { key: "actions" as const, label: "Actions", type: "actions" as const, align: "end" as const, width: 110 },
 ];
 
 const numericColumns = new Set<string>(COLUMNS.filter((c) => c.type === "number").map((c) => c.key));
@@ -30,10 +50,10 @@ const numericColumns = new Set<string>(COLUMNS.filter((c) => c.type === "number"
 type BreakdownRole = "banded" | "scribed";
 
 export default function Volunteers() {
-  const volunteersMap = useAppStore((s) => s.volunteersMap);
+  const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
   const isOnline = useAppStore((s) => s.isOnline);
   const isLoggedIn = useIsLoggedIn();
-  const { updateVolunteerName } = useActions();
+  const { updateVolunteer } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
     { column: "totalBanded", direction: "descending" },
@@ -41,6 +61,7 @@ export default function Volunteers() {
   const [search, setSearch] = useState("");
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingObserverClass, setEditingObserverClass] = useState<ObserverClass>(3);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [breakdown, setBreakdown] = useState<{ code: string; role: BreakdownRole } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -79,9 +100,10 @@ export default function Volunteers() {
   }, [breakdownEvents]);
 
   const rows = useMemo<Row[]>(() => {
-    const allRows = Object.values(volunteersMap).map((b) => ({
+    const allRows = Object.values(volunteerStatsMap).map((b) => ({
       code: b.code,
       fullName: b.fullName || "",
+      observerClass: b.observerClass ?? 3,
       totalBanded: b.totalBanded,
       totalScribed: b.totalScribed,
     }));
@@ -92,15 +114,25 @@ export default function Volunteers() {
     }
 
     return allRows;
-  }, [volunteersMap, search]);
+  }, [volunteerStatsMap, search]);
 
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
+  const handleOpenEditModal = (row: Row) => {
+    setEditingCode(row.code);
+    setEditingName(row.fullName);
+    setEditingObserverClass(row.observerClass);
+    setIsEditModalOpen(true);
+  };
+  const handleSaveVolunteer = () => {
+    if (editingCode) updateVolunteer(editingCode, editingName, editingObserverClass);
+    setIsEditModalOpen(false);
+  };
 
   return (
     <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4 overflow-hidden">
       <PageHeader
         title="Volunteers"
-        subtitle={`${Object.keys(volunteersMap).length} volunteers`}
+        subtitle={`${Object.keys(volunteerStatsMap).length} volunteers`}
         actions={
           sortDescriptors.length > 0 ? (
             <button
@@ -142,7 +174,7 @@ export default function Volunteers() {
               {(column) => (
                 <TableColumn
                   key={column.key}
-                  allowsSorting
+                  allowsSorting={column.type !== "actions"}
                   className={column.align === "end" ? "text-right" : ""}
                   width={column.width}
                 >
@@ -160,18 +192,15 @@ export default function Volunteers() {
                     }
                     if (columnKey === "fullName") {
                       return (
-                        <TableCell
-                          className={`text-default-700 ${isLoggedIn && isOnline ? "cursor-pointer hover:text-primary" : ""}`}
-                          onClick={(e) => {
-                            if (isLoggedIn && isOnline) {
-                              e.stopPropagation();
-                              setEditingCode(item.code);
-                              setEditingName(item.fullName);
-                              setIsEditModalOpen(true);
-                            }
-                          }}
-                        >
+                        <TableCell className="text-default-700">
                           {value || <span className="text-default-400">-</span>}
+                        </TableCell>
+                      );
+                    }
+                    if (columnKey === "observerClass") {
+                      return (
+                        <TableCell className="text-right tabular-nums text-default-900">
+                          {item.observerClass}
                         </TableCell>
                       );
                     }
@@ -197,6 +226,21 @@ export default function Volunteers() {
                         </TableCell>
                       );
                     }
+                    if (columnKey === "actions") {
+                      return (
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            isDisabled={!isLoggedIn || !isOnline}
+                            onPress={() => handleOpenEditModal(item)}
+                          >
+                            Edit
+                          </Button>
+                        </TableCell>
+                      );
+                    }
                     if (typeof value === "number") {
                       return <TableCell className="text-right tabular-nums text-default-900">{value}</TableCell>;
                     }
@@ -218,7 +262,7 @@ export default function Volunteers() {
         }}
       >
         <ModalHeaderShell>
-          Edit Full Name for <span className="font-mono">{editingCode}</span>
+          Edit Volunteer <>{editingCode}</>
         </ModalHeaderShell>
         <ModalBodyShell>
           <Input
@@ -230,11 +274,23 @@ export default function Volunteers() {
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                if (editingCode) updateVolunteerName(editingCode, editingName);
-                setIsEditModalOpen(false);
+                handleSaveVolunteer();
               }
             }}
           />
+          <Select
+            label="Observer Class"
+            {...modalInputProps}
+            selectedKeys={[String(editingObserverClass)]}
+            onSelectionChange={(keys) => {
+              const value = Number(Array.from(keys)[0]);
+              setEditingObserverClass(value === 1 || value === 2 || value === 3 ? value : 3);
+            }}
+          >
+            <SelectItem key="1">Class 1</SelectItem>
+            <SelectItem key="2">Class 2</SelectItem>
+            <SelectItem key="3">Class 3</SelectItem>
+          </Select>
         </ModalBodyShell>
         <ModalFooterShell>
           <Button {...modalCancelButtonProps} onPress={() => setIsEditModalOpen(false)}>
@@ -242,10 +298,7 @@ export default function Volunteers() {
           </Button>
           <Button
             {...modalPrimaryButtonProps}
-            onPress={() => {
-              if (editingCode) updateVolunteerName(editingCode, editingName);
-              setIsEditModalOpen(false);
-            }}
+            onPress={handleSaveVolunteer}
           >
             Save
           </Button>

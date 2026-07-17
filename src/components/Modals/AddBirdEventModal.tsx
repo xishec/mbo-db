@@ -26,6 +26,7 @@ import {
 } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
+import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 import BirdStatusModal from "./BirdStatusModal";
 import ValidationMessages from "../Helper/ValidationMessages";
 import { TABLE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
@@ -100,7 +101,9 @@ export default function AddBirdEventModal({
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
   const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
   const volunteersMap = useAppStore((s) => s.volunteersMap);
+  const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const { addBirdEvent } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
@@ -223,10 +226,11 @@ export default function AddBirdEventModal({
       setLastBandId("");
       setSelectedBandSize(bandSize);
       setWasOpen(true);
-      const firstEmpty = focusOrder.find((key) => {
-        const colKey = key.includes("-") ? key.split("-")[0] : key;
-        return !defaultData[colKey as keyof CaptureFormData];
-      }) ?? firstEditableField;
+      const firstEmpty =
+        focusOrder.find((key) => {
+          const colKey = key.includes("-") ? key.split("-")[0] : key;
+          return !defaultData[colKey as keyof CaptureFormData];
+        }) ?? firstEditableField;
       focusTo(firstEmpty);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -482,8 +486,10 @@ export default function AddBirdEventModal({
     }
 
     // Volunteer validation
-    const banderUnknown = formData.bander.length >= 2 && !volunteersMap[formData.bander];
-    const scribeUnknown = formData.scribe.length >= 2 && !volunteersMap[formData.scribe];
+    const banderUnknown =
+      formData.bander.length >= 2 && !volunteersMap[formData.bander] && !volunteerStatsMap[formData.bander];
+    const scribeUnknown =
+      formData.scribe.length >= 2 && !volunteersMap[formData.scribe] && !volunteerStatsMap[formData.scribe];
     if (banderUnknown) {
       messages.push({
         text: `Unknown bander "${formData.bander}". Saving will auto-add them to the volunteer list.`,
@@ -506,7 +512,7 @@ export default function AddBirdEventModal({
       existingErrors,
       warningMessages: messages,
     };
-  }, [formData, pastBirdEvents, magicTable, TABLE_COLUMNS, sexCode, pyleSpeciesRange, volunteersMap]);
+  }, [formData, pastBirdEvents, magicTable, TABLE_COLUMNS, sexCode, pyleSpeciesRange, volunteersMap, volunteerStatsMap]);
 
   const focusNext = useCallback(
     (currentKey: string) => {
@@ -518,16 +524,17 @@ export default function AddBirdEventModal({
     [focusOrder]
   );
 
-
-
-
   const handleInputChange = useCallback(
     (field: keyof CaptureFormData, value: string, maxLength?: number) => {
       const formattedValue = formatFieldValue(field, value);
+      const nextValue =
+        field === "species" && formattedValue.length === 4
+          ? resolveSpeciesKey(formattedValue, speciesAliasesMap)
+          : formattedValue;
 
       setFormData((prev) => ({
         ...prev,
-        [field]: formattedValue,
+        [field]: nextValue,
       }));
 
       // Auto-focus fixed-length fields only. Wing can be 2-4 digits, so
@@ -545,7 +552,7 @@ export default function AddBirdEventModal({
         focusNext(field);
       }
     },
-    [focusNext, wingAutoAdvanceRange]
+    [focusNext, speciesAliasesMap, wingAutoAdvanceRange]
   );
 
   const getTabIndex = useCallback(
@@ -592,8 +599,7 @@ export default function AddBirdEventModal({
           // the user actually entered. A Size-1 modal where the user typed
           // a Repeat should behave like a recapture on save-and-next.
           const savedAsNewCapture =
-            formData.birdEventType === BirdEventType.Banded ||
-            formData.birdEventType === BirdEventType.None;
+            formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None;
 
           // New capture: band fields auto-repopulate via the reset
           // useLayoutEffect when bandSizeToBandIdMap advances. Recapture:
@@ -705,38 +711,41 @@ export default function AddBirdEventModal({
   }, []);
 
   // Handle band size selection
-  const handleBandSizeChange = useCallback((size: BandSize) => {
-    setSelectedBandSize(size);
+  const handleBandSizeChange = useCallback(
+    (size: BandSize) => {
+      setSelectedBandSize(size);
 
-    if (size === BandSize.Other) {
-      // Clear band fields for "other"
-      setFormData((prev) => ({
-        ...prev,
-        bandGroup: "",
-        bandLastTwoDigits: "",
-      }));
-      return;
-    }
+      if (size === BandSize.Other) {
+        // Clear band fields for "other"
+        setFormData((prev) => ({
+          ...prev,
+          bandGroup: "",
+          bandLastTwoDigits: "",
+        }));
+        return;
+      }
 
-    const bandId = bandSizeToBandIdMap[size];
-    if (bandId && bandId.length === 9) {
-      const bandPrefix = bandId.slice(0, 4);
-      const bandSuffix = bandId.slice(4, 9);
-      const band = new Band(bandPrefix, bandSuffix);
-      setFormData((prev) => ({
-        ...prev,
-        bandGroup: band.bandGroupId,
-        bandLastTwoDigits: band.last2digits,
-      }));
-    } else {
-      // No next band available - clear fields for manual entry
-      setFormData((prev) => ({
-        ...prev,
-        bandGroup: "",
-        bandLastTwoDigits: "",
-      }));
-    }
-  }, [bandSizeToBandIdMap]);
+      const bandId = bandSizeToBandIdMap[size];
+      if (bandId && bandId.length === 9) {
+        const bandPrefix = bandId.slice(0, 4);
+        const bandSuffix = bandId.slice(4, 9);
+        const band = new Band(bandPrefix, bandSuffix);
+        setFormData((prev) => ({
+          ...prev,
+          bandGroup: band.bandGroupId,
+          bandLastTwoDigits: band.last2digits,
+        }));
+      } else {
+        // No next band available - clear fields for manual entry
+        setFormData((prev) => ({
+          ...prev,
+          bandGroup: "",
+          bandLastTwoDigits: "",
+        }));
+      }
+    },
+    [bandSizeToBandIdMap]
+  );
 
   // Render a single field (used for unified row rendering)
   const renderField = useCallback(
@@ -905,7 +914,11 @@ export default function AddBirdEventModal({
           type={column.type}
           maxLength={column.maxLength}
           validationBehavior="aria"
-          value={formData[columnKey]}
+          value={
+            columnKey === "species" && formData.species.length === 4
+              ? getSpeciesDisplayCode(formData.species)
+              : formData[columnKey]
+          }
           tabIndex={getTabIndex(columnKey)}
           onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
           onFocus={(e) => (e.target as HTMLInputElement).select()}
@@ -1024,9 +1037,7 @@ export default function AddBirdEventModal({
                           >
                             {volunteerCode ? (
                               <span className="text-xs text-default-900 font-medium px-1 truncate underline">
-                                <VolunteerTooltip volunteerCode={volunteerCode}>
-                                  {metadata.label}
-                                </VolunteerTooltip>
+                                <VolunteerTooltip volunteerCode={volunteerCode}>{metadata.label}</VolunteerTooltip>
                               </span>
                             ) : (
                               <span className="text-xs text-default-900 font-medium px-1 truncate">
@@ -1051,9 +1062,7 @@ export default function AddBirdEventModal({
                             className="flex flex-col gap-1 shrink-0"
                             style={{ width: metadata.width }}
                           >
-                            <span className="text-xs text-default-900 font-medium px-1 truncate">
-                              {metadata.label}
-                            </span>
+                            <span className="text-xs text-default-900 font-medium px-1 truncate">{metadata.label}</span>
                             {renderField(fieldKey)}
                           </div>
                         );

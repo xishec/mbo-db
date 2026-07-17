@@ -21,6 +21,8 @@
     "generate:DETs:prod": "cross-env NODE_ENV=production npx tsx scripts/generateDETsMap.ts",
     "build": "tsc -b && vite build",
     "copy:prod-to-alpha": "npx tsx scripts/copyProdToAlpha.ts",
+    "migrate:volunteers:alpha": "cross-env NODE_ENV=development VITE_ENVIRONMENT=alpha npx tsx scripts/migrateVolunteersMap.ts",
+    "migrate:volunteers:prod": "cross-env NODE_ENV=production VITE_ENVIRONMENT=prod npx tsx scripts/migrateVolunteersMap.ts",
     "deploy": "npm run build && firebase deploy --only hosting,database",
     "generate:icons": "npx tsx scripts/generate-icons.ts",
     "generate:icns": "bash scripts/generate-icns.sh",

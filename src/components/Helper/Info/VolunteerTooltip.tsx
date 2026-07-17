@@ -9,7 +9,7 @@ interface VolunteerTooltipProps {
 }
 
 export default function VolunteerTooltip({ volunteerCode, disabled = false, children }: VolunteerTooltipProps) {
-  const volunteer = useAppStore((s) => s.volunteersMap[volunteerCode]);
+  const volunteer = useAppStore((s) => s.volunteerStatsMap[volunteerCode]);
   const content = children ?? volunteerCode;
 
   if (disabled || !volunteer) {

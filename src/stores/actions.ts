@@ -25,10 +25,12 @@ import {
   generateBirdEventId,
   getBandGroupMapKey,
   type BirdEvent,
+  type ObserverClass,
   type PendingBirdEvent,
   type Program,
 } from "../types";
 import { type IndependentMapName } from "../types/mapNames";
+import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
 import { advanceBandId } from "./derive";
 import { useAppStore } from "./useAppStore";
 
@@ -42,9 +44,7 @@ function idbMutex(fn: () => Promise<void>): Promise<void> {
 
 // Persist only the small index maps. Bird events are written separately
 // via putBirdEvent — they don't need to be re-serialized on every save.
-async function saveMapsToIndexedDB(
-  overrides: Partial<Omit<DatabaseData, "birdEventsMap">>,
-): Promise<void> {
+async function saveMapsToIndexedDB(overrides: Partial<Omit<DatabaseData, "birdEventsMap">>): Promise<void> {
   await idbMutex(() => saveDatabaseMetadataOnly(CURRENT_ENVIRONMENT, overrides));
 }
 
@@ -62,9 +62,7 @@ export async function refreshQueueState(): Promise<void> {
   useAppStore.setState({
     pendingCount: queued.length,
     queuedEventIds: new Set(
-      queued
-        .filter((p) => p.type === "bird-event")
-        .map((p) => (p as PendingBirdEvent).pendingEvent.id),
+      queued.filter((p) => p.type === "bird-event").map((p) => (p as PendingBirdEvent).pendingEvent.id)
     ),
   });
 }
@@ -88,8 +86,7 @@ export async function syncQueue(): Promise<void> {
             [`${pending.environment}/birdEventsMap/${birdEvent.id}`]: { ...birdEvent, syncedAt: now },
           };
           if (birdEvent.previousEventId) {
-            updates[`${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`] =
-              birdEvent.id;
+            updates[`${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`] = birdEvent.id;
             updates[`${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/syncedAt`] = now;
           }
           await update(ref(db), updates);
@@ -120,7 +117,7 @@ export async function syncQueue(): Promise<void> {
       birdEventsStore.setMany(updates);
       // Per-event batch write — no 700K-entry blob to re-serialize.
       putBirdEvents(CURRENT_ENVIRONMENT, updates).catch((err) =>
-        logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err),
+        logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err)
       );
     }
 
@@ -190,11 +187,20 @@ export const actions = {
   addBirdEvent: async (
     captureData: CaptureFormData,
     bandSize: BandSize,
-    previousEventId: string | undefined,
+    previousEventId: string | undefined
   ): Promise<void> => {
     const state = useAppStore.getState();
-    const { user, isOnline, programsMap, bandIdToBirdEventIdsMap, bandGroupsMap,
-      yearsToProgramMap, volunteersMap, volunteersFullNameMap } = state;
+    const {
+      user,
+      isOnline,
+      programsMap,
+      bandIdToBirdEventIdsMap,
+      bandGroupsMap,
+      yearsToProgramMap,
+      volunteersMap,
+      volunteerStatsMap,
+      speciesAliasesMap,
+    } = state;
 
     if (!user && isOnline) throw new Error("Must be logged in to add bird events");
     if (!captureData.bandGroup) throw new Error("Band group is required");
@@ -211,9 +217,9 @@ export const actions = {
       const bandPrefix = bandGroup.substring(0, 4);
       const bandSuffix = bandGroup.substring(4) + bandLastTwoDigits;
       const band = new Band(bandPrefix, bandSuffix, bandSize !== BandSize.Other ? bandSize : null);
-      const isNewCapture =
-        birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
+      const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
       // Normalize codes to uppercase so new events don't create case-variant duplicates.
+      const normalizedSpeciesKey = resolveSpeciesKey(captureData.species, speciesAliasesMap);
       const normalizedBander = (captureData.bander ?? "").toUpperCase();
       const normalizedScribe = (captureData.scribe ?? "").toUpperCase();
 
@@ -223,7 +229,7 @@ export const actions = {
       if (previousEventId) {
         const queuedEntries = await getQueuedEvents();
         const match = queuedEntries.find(
-          (p) => p.type === "bird-event" && (p as PendingBirdEvent).pendingEvent.id === previousEventId,
+          (p) => p.type === "bird-event" && (p as PendingBirdEvent).pendingEvent.id === previousEventId
         );
         if (match) replacingPendingId = match.id;
       }
@@ -235,11 +241,11 @@ export const actions = {
           captureData.net,
           captureData.wing,
           captureData.weight,
-          previousEventId !== undefined && !replacingPendingId,
+          previousEventId !== undefined && !replacingPendingId
         ),
         programId: captureData.programId,
         band,
-        species: captureData.species,
+        species: normalizedSpeciesKey,
         wing: captureData.wing ? Number(captureData.wing) : 0,
         age: captureData.age,
         howAged: captureData.howAged,
@@ -278,9 +284,7 @@ export const actions = {
       // Snapshot the predecessor BEFORE mutating the store, so downstream
       // dedup/decrement logic can see its pre-modification state regardless
       // of whether we're doing a queued-swap or a modification chain.
-      const oldEvent = previousEventId
-        ? birdEventsStore.get(previousEventId) ?? null
-        : null;
+      const oldEvent = previousEventId ? (birdEventsStore.get(previousEventId) ?? null) : null;
 
       // Mutate birdEventsStore in place (O(1) — no 700K-entry spread).
       if (replacingPendingId && previousEventId && previousEventId !== newBirdEvent.id) {
@@ -315,8 +319,7 @@ export const actions = {
       const newBandGroupsMap = { ...bandGroupsMap };
       const bgKey = getBandGroupMapKey(band);
       const oldWasNewCapture = oldEvent
-        ? oldEvent.birdEventType === BirdEventType.Banded ||
-          oldEvent.birdEventType === BirdEventType.None
+        ? oldEvent.birdEventType === BirdEventType.Banded || oldEvent.birdEventType === BirdEventType.None
         : false;
       const oldBgKey =
         oldEvent?.band?.bandPrefix && oldEvent?.band?.bandSuffix
@@ -383,9 +386,7 @@ export const actions = {
         [captureData.programId]: {
           ...existingProgram,
           bandGroupIds: nextBandGroupIds,
-          recaptureIds: !isNewCapture
-            ? [...strippedRecaptureIds, newBirdEvent.id]
-            : strippedRecaptureIds,
+          recaptureIds: !isNewCapture ? [...strippedRecaptureIds, newBirdEvent.id] : strippedRecaptureIds,
           firstCaptureDate:
             !existingProgram.firstCaptureDate || eventDate < existingProgram.firstCaptureDate
               ? eventDate
@@ -406,21 +407,21 @@ export const actions = {
       };
 
       // Volunteer counts. Replace: decrement old before incrementing new.
-      const newVolunteersMap = { ...volunteersMap };
+      const newVolunteerStatsMap = { ...volunteerStatsMap };
       if (oldEvent) {
         if (oldEvent.bander && oldWasNewCapture) {
-          const existing = newVolunteersMap[oldEvent.bander];
+          const existing = newVolunteerStatsMap[oldEvent.bander];
           if (existing) {
-            newVolunteersMap[oldEvent.bander] = {
+            newVolunteerStatsMap[oldEvent.bander] = {
               ...existing,
               totalBanded: Math.max(0, existing.totalBanded - 1),
             };
           }
         }
         if (oldEvent.scribe) {
-          const existing = newVolunteersMap[oldEvent.scribe];
+          const existing = newVolunteerStatsMap[oldEvent.scribe];
           if (existing) {
-            newVolunteersMap[oldEvent.scribe] = {
+            newVolunteerStatsMap[oldEvent.scribe] = {
               ...existing,
               totalScribed: Math.max(0, existing.totalScribed - 1),
             };
@@ -429,35 +430,33 @@ export const actions = {
       }
       let milestoneSet: { banderCode: string; count: number } | null = null;
       if (normalizedBander && isNewCapture) {
-        const existing = newVolunteersMap[normalizedBander] ?? {
+        const existing = newVolunteerStatsMap[normalizedBander] ?? {
           code: normalizedBander,
-          fullName: volunteersFullNameMap[normalizedBander] ?? "",
+          fullName: volunteersMap[normalizedBander]?.fullName ?? "",
+          observerClass: volunteersMap[normalizedBander]?.observerClass ?? 3,
           totalBanded: 0,
           totalScribed: 0,
         };
         const oldCount = existing.totalBanded;
-        newVolunteersMap[normalizedBander] = { ...existing, totalBanded: oldCount + 1 };
+        newVolunteerStatsMap[normalizedBander] = { ...existing, totalBanded: oldCount + 1 };
         // Only fire the milestone if this bander wasn't already credited for
         // the predecessor. When modifying a same-bander new capture, the
         // decrement above dropped the count from N→N−1 and we're taking it
         // back to N — no new threshold crossed, just a restore.
-        const previouslyCreditedSameBander =
-          oldEvent?.bander === normalizedBander && oldWasNewCapture;
-        if (
-          !previouslyCreditedSameBander &&
-          Math.floor((oldCount + 1) / 1000) > Math.floor(oldCount / 1000)
-        ) {
+        const previouslyCreditedSameBander = oldEvent?.bander === normalizedBander && oldWasNewCapture;
+        if (!previouslyCreditedSameBander && Math.floor((oldCount + 1) / 1000) > Math.floor(oldCount / 1000)) {
           milestoneSet = { banderCode: normalizedBander, count: oldCount + 1 };
         }
       }
       if (normalizedScribe) {
-        const existing = newVolunteersMap[normalizedScribe] ?? {
+        const existing = newVolunteerStatsMap[normalizedScribe] ?? {
           code: normalizedScribe,
-          fullName: volunteersFullNameMap[normalizedScribe] ?? "",
+          fullName: volunteersMap[normalizedScribe]?.fullName ?? "",
+          observerClass: volunteersMap[normalizedScribe]?.observerClass ?? 3,
           totalBanded: 0,
           totalScribed: 0,
         };
-        newVolunteersMap[normalizedScribe] = {
+        newVolunteerStatsMap[normalizedScribe] = {
           ...existing,
           totalScribed: existing.totalScribed + 1,
         };
@@ -468,12 +467,7 @@ export const actions = {
       // -01..03 of N+1), naive would be already banded — resolve via actual
       // max in the NEXT strip.
       const newBandSizeToBandIdMap = { ...state.bandSizeToBandIdMap };
-      if (
-        isNewCapture &&
-        band.bandSize &&
-        band.bandSize !== BandSize.Other &&
-        !previousEventId
-      ) {
+      if (isNewCapture && band.bandSize && band.bandSize !== BandSize.Other && !previousEventId) {
         const naiveNext = advanceBandId(band.id);
         let resolvedNext: string | null = naiveNext;
         if (naiveNext && naiveNext.length === 9) {
@@ -521,7 +515,7 @@ export const actions = {
         bandGroupsMap: newBandGroupsMap,
         programsMap: newProgramsMap,
         yearsToProgramMap: newYearsToProgramMap,
-        volunteersMap: newVolunteersMap,
+        volunteerStatsMap: newVolunteerStatsMap,
         bandSizeToBandIdMap: newBandSizeToBandIdMap,
         queuedEventIds: nextQueuedIds,
         pendingCount: replacingPendingId ? state.pendingCount : state.pendingCount + 1,
@@ -539,32 +533,27 @@ export const actions = {
         if (prev) eventWrites.push(prev);
       }
       const droppedEventId =
-        replacingPendingId && previousEventId && previousEventId !== newBirdEvent.id
-          ? previousEventId
-          : null;
+        replacingPendingId && previousEventId && previousEventId !== newBirdEvent.id ? previousEventId : null;
       const persistTail = queuePromise
         .then(() =>
           Promise.all([
             putBirdEvents(CURRENT_ENVIRONMENT, eventWrites),
-            droppedEventId
-              ? deleteBirdEvent(CURRENT_ENVIRONMENT, droppedEventId)
-              : Promise.resolve(),
+            droppedEventId ? deleteBirdEvent(CURRENT_ENVIRONMENT, droppedEventId) : Promise.resolve(),
             saveMapsToIndexedDB({
               bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
               bandGroupsMap: newBandGroupsMap,
               programsMap: newProgramsMap,
               yearsToProgramMap: newYearsToProgramMap,
-              volunteersMap: newVolunteersMap,
             }),
             refreshQueueState(),
-          ]),
+          ])
         )
         .catch((err) => logger.error("AddBirdEvent", "IndexedDB save failed", err));
 
       const syncTail = isOnline
-        ? queuePromise.then(() => syncQueue()).catch((err) =>
-            logger.warn("AddBirdEvent", "Online sync failed — will retry on next sync", err),
-          )
+        ? queuePromise
+            .then(() => syncQueue())
+            .catch((err) => logger.warn("AddBirdEvent", "Online sync failed — will retry on next sync", err))
         : Promise.resolve();
 
       // Clear isSaving once both persistence and (if online) RTDB sync are
@@ -642,31 +631,36 @@ export const actions = {
     }
   },
 
-  updateVolunteerName: async (code: string, fullName: string): Promise<void> => {
+  updateVolunteer: async (code: string, fullName: string, observerClass: ObserverClass): Promise<void> => {
     const state = useAppStore.getState();
-    if (!state.user) throw new Error("Must be logged in to update volunteer name");
+    if (!state.user) throw new Error("Must be logged in to update volunteer");
     if (!state.isOnline) throw new Error("Cannot update volunteers while offline");
 
     try {
-      const existing = state.volunteersMap[code];
-      if (!existing) return;
-
       const trimmed = fullName.trim();
-      const newVolunteersMap = { ...state.volunteersMap, [code]: { ...existing, fullName: trimmed } };
-      const newFullNameMap = { ...state.volunteersFullNameMap, [code]: trimmed };
+      const newVolunteersMap = {
+        ...state.volunteersMap,
+        [code]: { fullName: trimmed, observerClass },
+      };
+      const existingStats = state.volunteerStatsMap[code];
+      const newVolunteerStatsMap = existingStats
+        ? {
+            ...state.volunteerStatsMap,
+            [code]: { ...existingStats, fullName: trimmed, observerClass },
+          }
+        : state.volunteerStatsMap;
       useAppStore.setState({
         volunteersMap: newVolunteersMap,
-        volunteersFullNameMap: newFullNameMap,
+        volunteerStatsMap: newVolunteerStatsMap,
       });
 
-      await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersFullNameMap/${code}`), trimmed);
-      await updateMapTimestamp("volunteersFullNameMap");
+      await set(ref(db, `${CURRENT_ENVIRONMENT}/volunteersMap/${code}`), { fullName: trimmed, observerClass });
+      await updateMapTimestamp("volunteersMap");
       await saveMapsToIndexedDB({
         volunteersMap: newVolunteersMap,
-        volunteersFullNameMap: newFullNameMap,
       });
     } catch (err) {
-      logger.error("UpdateVolunteerName", `Error updating volunteer ${code}`, err);
+      logger.error("UpdateVolunteer", `Error updating volunteer ${code}`, err);
       throw err;
     }
   },
@@ -687,6 +681,31 @@ export const actions = {
       await saveMapsToIndexedDB({ bandGroupNotesMap: newNotesMap });
     } catch (err) {
       logger.error("UpdateBandGroupNote", `Error updating note for ${bandGroupId}`, err);
+      throw err;
+    }
+  },
+
+  updateSpeciesAlias: async (aliasCode: string, speciesKey: string | null): Promise<void> => {
+    const { user, isOnline, speciesAliasesMap } = useAppStore.getState();
+    if (!user) throw new Error("Must be logged in to update species aliases");
+    if (!isOnline) throw new Error("Cannot update species aliases while offline");
+
+    const alias = aliasCode.trim().toUpperCase();
+    if (!/^[A-Z]{4}$/.test(alias)) throw new Error("Alias must be a 4-letter code");
+    if (SPECIES_KEY_BY_CURRENT_CODE[alias]) throw new Error(`"${alias}" is already a current species code`);
+    if (speciesKey !== null && !SPECIES_MAP[speciesKey]) throw new Error(`Species "${speciesKey}" not found`);
+
+    try {
+      const next = { ...speciesAliasesMap };
+      if (speciesKey) next[alias] = speciesKey;
+      else delete next[alias];
+
+      useAppStore.setState({ speciesAliasesMap: next });
+      await set(ref(db, `${CURRENT_ENVIRONMENT}/speciesAliasesMap/${alias}`), speciesKey || null);
+      await updateMapTimestamp("speciesAliasesMap");
+      await saveMapsToIndexedDB({ speciesAliasesMap: next });
+    } catch (err) {
+      logger.error("UpdateSpeciesAlias", `Error updating species alias ${alias}`, err);
       throw err;
     }
   },

@@ -1,6 +1,6 @@
 import { Tooltip } from "@heroui/react";
 import { useState, type ReactNode } from "react";
-import { SPECIES_MAP } from "../../../types/species";
+import { getSpeciesDisplayCode, SPECIES_MAP } from "../../../types/species";
 import SpeciesInfoModal from "../../Modals/SpeciesInfoModal";
 
 interface SpeciesTooltipProps {
@@ -13,7 +13,7 @@ interface SpeciesTooltipProps {
 export default function SpeciesTooltip({ speciesCode, disabled = false, children }: SpeciesTooltipProps) {
   const species = SPECIES_MAP[speciesCode];
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const content = children ?? speciesCode;
+  const content = children ?? getSpeciesDisplayCode(speciesCode);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();

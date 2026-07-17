@@ -64,7 +64,7 @@ function RankedList({ items, unit, isSpecies, onDetailClick }: {
 }
 
 export default function FunStats() {
-  const volunteersMap = useAppStore((s) => s.volunteersMap);
+  const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
   const birdEventsVersion = useBirdEventsVersion();
 
   const eventDatesSet = useMemo(() => {
@@ -235,7 +235,7 @@ export default function FunStats() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([code, count]) => ({
-        label: volunteersMap[code]?.fullName || code,
+        label: volunteerStatsMap[code]?.fullName || code,
         value: count,
         detail: code,
       }));
@@ -245,7 +245,7 @@ export default function FunStats() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([code, count]) => ({
-        label: volunteersMap[code]?.fullName || code,
+        label: volunteerStatsMap[code]?.fullName || code,
         value: count,
         detail: code,
       }));
@@ -297,7 +297,7 @@ export default function FunStats() {
       dummest,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion, volunteersMap, startDate, endDate]);
+  }, [birdEventsVersion, volunteerStatsMap, startDate, endDate]);
 
   return (
     <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4">

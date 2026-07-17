@@ -9,9 +9,11 @@ import type {
   MagicTable,
   ProgramsMap,
   SpeciesInfoMap,
+  VolunteerStatsMap,
   VolunteersMap,
   YearToProgramMap,
   Program,
+  SpeciesAliasesMap,
 } from "../types";
 
 export type SyncResult = "success" | "error" | null;
@@ -52,8 +54,9 @@ export interface AppState {
   dismissedConflictsMap: DismissedConflictsMap;
   DETsMap: DETsMap;
   volunteersMap: VolunteersMap;
-  volunteersFullNameMap: Record<string, string>;
+  volunteerStatsMap: VolunteerStatsMap;
   bandGroupNotesMap: Record<string, string>;
+  speciesAliasesMap: SpeciesAliasesMap;
   speciesInfoMap: SpeciesInfoMap;
 
   // Queue / sync
@@ -94,8 +97,9 @@ export const initialAppState: AppState = {
   dismissedConflictsMap: {},
   DETsMap: {},
   volunteersMap: {},
-  volunteersFullNameMap: {},
+  volunteerStatsMap: {},
   bandGroupNotesMap: {},
+  speciesAliasesMap: {},
   speciesInfoMap: {},
 
   pendingCount: 0,

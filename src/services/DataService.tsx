@@ -18,6 +18,8 @@ import {
   type DatabaseData,
   type MagicTable,
   type PendingEvent,
+  type Volunteer,
+  type VolunteersMap,
 } from "../types";
 import { INDEPENDENT_MAP_NAMES, type IndependentMapName } from "../types/mapNames";
 import {
@@ -32,38 +34,66 @@ import {
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
 
+function normalizeObserverClass(value: unknown): Volunteer["observerClass"] {
+  return value === 1 || value === 2 || value === 3 ? value : 3;
+}
+
+function getVolunteerMetadata(data: DatabaseData | null | undefined): VolunteersMap {
+  const volunteersMap: VolunteersMap = {};
+
+  for (const [code, volunteer] of Object.entries(data?.volunteersMap ?? {})) {
+    volunteersMap[code] = {
+      fullName: volunteer.fullName ?? "",
+      observerClass: normalizeObserverClass(volunteer.observerClass),
+    };
+  }
+
+  for (const [code, fullName] of Object.entries(data?.volunteersFullNameMap ?? {})) {
+    volunteersMap[code] = {
+      fullName,
+      observerClass: volunteersMap[code]?.observerClass ?? 3,
+    };
+  }
+
+  for (const [code, observerClass] of Object.entries(data?.volunteersObserverClassMap ?? {})) {
+    volunteersMap[code] = {
+      fullName: volunteersMap[code]?.fullName ?? "",
+      observerClass: normalizeObserverClass(observerClass),
+    };
+  }
+
+  return volunteersMap;
+}
+
 /**
  * Hydrate a DatabaseData record into the store. Rebuilds derived maps,
  * reconstructs Band class instances from serialized data, and replaces
  * birdEventsStore with the merged (events ∪ queued) view.
  */
 function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void {
-  const fnMap = data.volunteersFullNameMap ?? {};
+  const volunteersMap = getVolunteerMetadata(data);
+  const speciesAliasesMap = data.speciesAliasesMap ?? {};
   const mergedEvents = overlayQueuedEvents(data.birdEventsMap ?? {}, queued);
-  const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(
-    mergedEvents,
-    fnMap,
-  );
-  const hydratedEntries: Array<[string, BirdEvent]> = Object.entries(mergedEvents).map(
-    ([id, event]) => [
-      id,
-      {
-        ...event,
-        band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null),
-      },
-    ],
-  );
+  const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(mergedEvents, volunteersMap);
+  const hydratedEntries: Array<[string, BirdEvent]> = Object.entries(mergedEvents).map(([id, event]) => [
+    id,
+    {
+      ...event,
+      band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null),
+    },
+  ]);
   const hydratedEvents = new Map<string, BirdEvent>(hydratedEntries);
   birdEventsStore.replace(hydratedEvents);
 
   useAppStore.setState({
     magicTable: data.magicTable ?? { pyle: {} },
-    volunteersFullNameMap: fnMap,
+    volunteersMap,
+    speciesAliasesMap,
     bandIdToBirdEventIdsMap: bandIdMap,
     bandGroupsMap: bandGroups,
     programsMap: programs,
     yearsToProgramMap: years,
-    volunteersMap: volCounts,
+    volunteerStatsMap: volunteerStats,
     bandSizeToBandIdMap: computeBandSizeToBandIdMap(hydratedEvents, bandGroups),
     speciesInfoMap: computeSpeciesInfoMap(hydratedEvents),
     DETsMap: data.DETsMap ?? {},
@@ -128,11 +158,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const logDownloadSummary = () => {
         const total = downloads.reduce((sum, d) => sum + d.bytes, 0);
         const formatSize = (b: number) =>
-          b < 1024
-            ? `${b} B`
-            : b < 1024 * 1024
-              ? `${(b / 1024).toFixed(1)} KB`
-              : `${(b / 1024 / 1024).toFixed(2)} MB`;
+          b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1024 / 1024).toFixed(2)} MB`;
         const breakdown = downloads.map((d) => `${d.path}: ${formatSize(d.bytes)}`).join(" · ");
         logger.info("DataLoad", `Downloaded ${formatSize(total)} — ${breakdown || "nothing"}`);
       };
@@ -168,9 +194,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
           const [snap, ...cached] = await Promise.all([
             get(ref(db, `${env}/metadata`)),
-            ...INDEPENDENT_MAP_NAMES.map(
-              (m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>,
-            ),
+            ...INDEPENDENT_MAP_NAMES.map((m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>),
           ]);
           rtdbMetadata = snap.exists() ? snap.val() : null;
           recordDownload(`${env}/metadata`, rtdbMetadata);
@@ -205,7 +229,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         let allEvents: Record<string, BirdEvent>;
         logger.info(
           "DataLoad",
-          `Cache: ${cachedData ? "yes" : "no"}, lastEventSync: ${lastEventSync}, mapsToFetch: ${mapsToFetch.size}`,
+          `Cache: ${cachedData ? "yes" : "no"}, lastEventSync: ${lastEventSync}, mapsToFetch: ${mapsToFetch.size}`
         );
 
         const cachedEventCount = Object.keys(cachedData?.birdEventsMap ?? {}).length;
@@ -214,11 +238,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           try {
             const { query: fbQuery, orderByChild, startAt } = await import("firebase/database");
             const deltaSnap = await get(
-              fbQuery(
-                ref(db, `${env}/birdEventsMap`),
-                orderByChild("syncedAt"),
-                startAt(lastEventSync + 1),
-              ),
+              fbQuery(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(lastEventSync + 1))
             );
             const deltaEvents: Record<string, BirdEvent> = deltaSnap.exists()
               ? (deltaSnap.val() as Record<string, BirdEvent>)
@@ -263,17 +283,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
         let detsMap = cachedData?.DETsMap ?? {};
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {} };
-        let fullNameMap: Record<string, string> = cachedData?.volunteersFullNameMap ?? {};
+        let volunteersMap = getVolunteerMetadata(cachedData);
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
+        let speciesAliasesMap: Record<string, string> = cachedData?.speciesAliasesMap ?? {};
         if (mapsToFetch.size > 0) {
           const fetching = [...mapsToFetch];
           logger.info("DataLoad", `Fetching changed maps: ${fetching.join(", ")}`);
-          setStatus(
-            `Downloading ${fetching.length} updated map${fetching.length > 1 ? "s" : ""}...`,
-          );
-          const snapshots = await Promise.all(
-            fetching.map((m) => get(ref(db, `${env}/${m}`))),
-          );
+          setStatus(`Downloading ${fetching.length} updated map${fetching.length > 1 ? "s" : ""}...`);
+          const snapshots = await Promise.all(fetching.map((m) => get(ref(db, `${env}/${m}`))));
           for (let i = 0; i < fetching.length; i++) {
             const snap = snapshots[i];
             const val = snap.exists() ? snap.val() : null;
@@ -288,11 +305,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               case "magicTable":
                 magicTableData = val ?? { pyle: {} };
                 break;
-              case "volunteersFullNameMap":
-                fullNameMap = val ?? {};
+              case "volunteersMap":
+                volunteersMap = getVolunteerMetadata({ ...(cachedData ?? {}), volunteersMap: val ?? {} } as DatabaseData);
                 break;
               case "bandGroupNotesMap":
                 notesMap = val ?? {};
+                break;
+              case "speciesAliasesMap":
+                speciesAliasesMap = val ?? {};
                 break;
             }
           }
@@ -306,14 +326,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const mergedEvents = overlayQueuedEvents(allEvents, queued);
 
         setStatus("Rebuilding maps...");
-        const { bandIdMap, bandGroups, programs, years, volCounts } = rebuildMapsFromEvents(
+        const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(
           mergedEvents,
-          fullNameMap,
+          volunteersMap
         );
 
-        const reconstructedEntries: Array<[string, BirdEvent]> = Object.entries(
-          mergedEvents,
-        ).map(([id, event]) => [
+        const reconstructedEntries: Array<[string, BirdEvent]> = Object.entries(mergedEvents).map(([id, event]) => [
           id,
           {
             ...event,
@@ -331,10 +349,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandSizeToBandIdMap: {} as Record<BandSize, string>,
           dismissedConflictsMap: dismissedMap,
           DETsMap: detsMap,
-          volunteersMap: volCounts,
+          volunteersMap,
           magicTable: magicTableData,
-          volunteersFullNameMap: fullNameMap,
           bandGroupNotesMap: notesMap,
+          speciesAliasesMap,
         };
 
         setStatus("Saving to cache...");
@@ -354,23 +372,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (rtdbMetadata) {
           await Promise.all(
             [...mapsToFetch]
-              .filter((m) => rtdbMetadata![`lastModified_${m}`] != null)
-              .map((m) =>
-                saveMetadata(`lastModified_${m}_${env}`, rtdbMetadata![`lastModified_${m}`]),
-              ),
+              .map((m) => saveMetadata(`lastModified_${m}_${env}`, rtdbMetadata![`lastModified_${m}`] ?? Date.now()))
           );
         }
 
         birdEventsStore.replace(reconstructed);
         useAppStore.setState({
           magicTable: magicTableData,
-          volunteersFullNameMap: fullNameMap,
+          volunteersMap,
           bandGroupNotesMap: notesMap,
+          speciesAliasesMap,
           bandIdToBirdEventIdsMap: bandIdMap,
           bandGroupsMap: bandGroups,
           programsMap: programs,
           yearsToProgramMap: years,
-          volunteersMap: volCounts,
+          volunteerStatsMap: volunteerStats,
           bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups),
           speciesInfoMap: computeSpeciesInfoMap(reconstructed),
           dismissedConflictsMap: dismissedMap,

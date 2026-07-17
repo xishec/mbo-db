@@ -1,5 +1,8 @@
+import { SPECIES_CURRENT_CODE_OVERRIDES } from "./speciesCodeOverrides";
+
 export interface Species {
-  code: string; // Species code (e.g., "ABDU", "AMGO")
+  code: string; // Stable internal species key (e.g., "ABDU", "AMGO")
+  currentCode: string; // Current display/input species code
   pseudoSpeciesType: string; // Type (e.g., "Species", "Hybrid")
   speciesDescriptionMBO: string; // MBO description
   speciesDescriptionCMMN: string; // CMMN description
@@ -10,6 +13,7 @@ export interface Species {
 export const SPECIES_MAP: Record<string, Species> = {
   ABDU: {
     code: "ABDU",
+    currentCode: "ABDU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Black Duck",
     speciesDescriptionCMMN: "American Black Duck",
@@ -18,6 +22,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AGWT: {
     code: "AGWT",
+    currentCode: "AGWT",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "(American) Green-winged Teal",
     speciesDescriptionCMMN: "Green-winged (American) Teal",
@@ -26,6 +31,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   ALFL: {
     code: "ALFL",
+    currentCode: "ALFL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Alder Flycatcher",
     speciesDescriptionCMMN: "Alder Flycatcher",
@@ -34,6 +40,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMBI: {
     code: "AMBI",
+    currentCode: "AMBI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Bittern",
     speciesDescriptionCMMN: "American Bittern",
@@ -42,6 +49,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMCR: {
     code: "AMCR",
+    currentCode: "AMCR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Crow",
     speciesDescriptionCMMN: "American Crow",
@@ -50,6 +58,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMGO: {
     code: "AMGO",
+    currentCode: "AMGO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Goldfinch",
     speciesDescriptionCMMN: "American Goldfinch",
@@ -58,6 +67,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMKE: {
     code: "AMKE",
+    currentCode: "AMKE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Kestrel",
     speciesDescriptionCMMN: "American Kestrel",
@@ -66,6 +76,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMPI: {
     code: "AMPI",
+    currentCode: "AMPI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Pipit",
     speciesDescriptionCMMN: "American Pipit",
@@ -74,6 +85,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMRE: {
     code: "AMRE",
+    currentCode: "AMRE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Redstart",
     speciesDescriptionCMMN: "American Redstart",
@@ -82,6 +94,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMRO: {
     code: "AMRO",
+    currentCode: "AMRO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Robin",
     speciesDescriptionCMMN: "American Robin",
@@ -90,6 +103,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMWI: {
     code: "AMWI",
+    currentCode: "AMWI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Wigeon",
     speciesDescriptionCMMN: "American Wigeon",
@@ -98,6 +112,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   AMWO: {
     code: "AMWO",
+    currentCode: "AMWO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Woodcock",
     speciesDescriptionCMMN: "American Woodcock",
@@ -106,6 +121,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   ATBR: {
     code: "ATBR",
+    currentCode: "ATBR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Atlantic Brant",
     speciesDescriptionCMMN: "Atlantic Brant",
@@ -114,6 +130,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   ATSP: {
     code: "ATSP",
+    currentCode: "ATSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "American Tree Sparrow",
     speciesDescriptionCMMN: "American Tree Sparrow",
@@ -122,6 +139,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BAEA: {
     code: "BAEA",
+    currentCode: "BAEA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Bald Eagle",
     speciesDescriptionCMMN: "Bald Eagle",
@@ -130,6 +148,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BANS: {
     code: "BANS",
+    currentCode: "BANS",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Bank Swallow",
     speciesDescriptionCMMN: "Bank Swallow",
@@ -138,6 +157,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BAOR: {
     code: "BAOR",
+    currentCode: "BAOR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Baltimore Oriole",
     speciesDescriptionCMMN: "Baltimore Oriole",
@@ -146,6 +166,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BARS: {
     code: "BARS",
+    currentCode: "BARS",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Barn Swallow",
     speciesDescriptionCMMN: "Barn Swallow",
@@ -154,6 +175,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BAWW: {
     code: "BAWW",
+    currentCode: "BAWW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black-and-white Warbler",
     speciesDescriptionCMMN: "Black-and-white Warbler",
@@ -162,6 +184,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BBCU: {
     code: "BBCU",
+    currentCode: "BBCU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black-billed Cuckoo",
     speciesDescriptionCMMN: "Black-billed Cuckoo",
@@ -170,6 +193,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BBPL: {
     code: "BBPL",
+    currentCode: "BBPL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black-bellied Plover",
     speciesDescriptionCMMN: "Black-bellied Plover",
@@ -178,6 +202,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BBWA: {
     code: "BBWA",
+    currentCode: "BBWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Bay-breasted Warbler",
     speciesDescriptionCMMN: "Bay-breasted Warbler",
@@ -186,6 +211,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BBWO: {
     code: "BBWO",
+    currentCode: "BBWO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black-backed Woodpecker",
     speciesDescriptionCMMN: "Black-backer Woodpecker",
@@ -194,6 +220,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BCCH: {
     code: "BCCH",
+    currentCode: "BCCH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black-capped Chickadee",
     speciesDescriptionCMMN: "Black-capped Chickadee",
@@ -202,6 +229,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BCNH: {
     code: "BCNH",
+    currentCode: "BCNH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black-crowned Night-Heron",
     speciesDescriptionCMMN: "Black-crowned Night-Heron",
@@ -210,6 +238,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BDOW: {
     code: "BDOW",
+    currentCode: "BDOW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Barred Owl",
     speciesDescriptionCMMN: "Barred Owl",
@@ -218,6 +247,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BEKI: {
     code: "BEKI",
+    currentCode: "BEKI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Belted Kingfisher",
     speciesDescriptionCMMN: "Belted Kingfisher",
@@ -226,6 +256,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BGGN: {
     code: "BGGN",
+    currentCode: "BGGN",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Blue-gray Gnatcatcher",
     speciesDescriptionCMMN: "Blue-gray Gnatcatcher",
@@ -234,6 +265,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BHCO: {
     code: "BHCO",
+    currentCode: "BHCO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Brown-headed Cowbird",
     speciesDescriptionCMMN: "Brown-headed Cowbird",
@@ -242,6 +274,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BHVI: {
     code: "BHVI",
+    currentCode: "BHVI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Blue-headed Vireo",
     speciesDescriptionCMMN: "Blue-headed Vireo",
@@ -250,6 +283,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BITH: {
     code: "BITH",
+    currentCode: "BITH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Bicknell's Thrush",
     speciesDescriptionCMMN: "Bicknell's Thrush",
@@ -258,6 +292,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BLBW: {
     code: "BLBW",
+    currentCode: "BLBW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Blackburnian Warbler",
     speciesDescriptionCMMN: "Blackburnian Warbler",
@@ -266,6 +301,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BLJA: {
     code: "BLJA",
+    currentCode: "BLJA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Blue Jay",
     speciesDescriptionCMMN: "Blue Jay",
@@ -274,6 +310,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BLPW: {
     code: "BLPW",
+    currentCode: "BLPW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Blackpoll Warbler",
     speciesDescriptionCMMN: "Blackpoll Warbler",
@@ -282,6 +319,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BLSC: {
     code: "BLSC",
+    currentCode: "BLSC",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black Scoter",
     speciesDescriptionCMMN: "Black Scoter",
@@ -290,6 +328,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BLTE: {
     code: "BLTE",
+    currentCode: "BLTE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black Tern",
     speciesDescriptionCMMN: "Black Tern",
@@ -298,6 +337,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BOBO: {
     code: "BOBO",
+    currentCode: "BOBO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Bobolink",
     speciesDescriptionCMMN: "Bobolink",
@@ -306,6 +346,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BOCH: {
     code: "BOCH",
+    currentCode: "BOCH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Boreal Chickadee",
     speciesDescriptionCMMN: "Boreal Chickadee",
@@ -314,6 +355,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BOOW: {
     code: "BOOW",
+    currentCode: "BOOW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Boreal Owl",
     speciesDescriptionCMMN: "Boreal Owl",
@@ -322,6 +364,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BOWA: {
     code: "BOWA",
+    currentCode: "BOWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Bohemian Waxwing",
     speciesDescriptionCMMN: "Bohemian Waxwing",
@@ -330,6 +373,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BRCR: {
     code: "BRCR",
+    currentCode: "BRCR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Brown Creeper",
     speciesDescriptionCMMN: "Brown Creeper",
@@ -338,6 +382,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BRTH: {
     code: "BRTH",
+    currentCode: "BRTH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Brown Thrasher",
     speciesDescriptionCMMN: "Brown Thrasher",
@@ -346,6 +391,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BRWA: {
     code: "BRWA",
+    currentCode: "BRWA",
     pseudoSpeciesType: "Hybrid",
     speciesDescriptionMBO: "Brewster's Warbler",
     speciesDescriptionCMMN: "Brewster's Warbler",
@@ -354,6 +400,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BTBW: {
     code: "BTBW",
+    currentCode: "BTBW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black-throated Blue Warbler",
     speciesDescriptionCMMN: "Black-throated Blue Warbler",
@@ -362,6 +409,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BTNW: {
     code: "BTNW",
+    currentCode: "BTNW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Black-throated Green Warbler",
     speciesDescriptionCMMN: "Black-throated Green Warbler",
@@ -370,6 +418,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BUFF: {
     code: "BUFF",
+    currentCode: "BUFF",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Bufflehead",
     speciesDescriptionCMMN: "Bufflehead",
@@ -378,6 +427,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BWHA: {
     code: "BWHA",
+    currentCode: "BWHA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Broad-winged Hawk",
     speciesDescriptionCMMN: "Broad-winged Hawk",
@@ -386,6 +436,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BWTE: {
     code: "BWTE",
+    currentCode: "BWTE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Blue-winged Teal",
     speciesDescriptionCMMN: "Blue-winged Teal",
@@ -394,6 +445,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   BWWA: {
     code: "BWWA",
+    currentCode: "BWWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Blue-winged Warbler",
     speciesDescriptionCMMN: "Blue-winged Warbler",
@@ -402,6 +454,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CACG: {
     code: "CACG",
+    currentCode: "CACG",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Cackling Goose",
     speciesDescriptionCMMN: "Cackling Goose",
@@ -410,6 +463,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CANG: {
     code: "CANG",
+    currentCode: "CANG",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Canada Goose",
     speciesDescriptionCMMN: "Canada Goose",
@@ -418,6 +472,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CARW: {
     code: "CARW",
+    currentCode: "CARW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Carolina Wren",
     speciesDescriptionCMMN: "Carolina Wren",
@@ -426,6 +481,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CATE: {
     code: "CATE",
+    currentCode: "CATE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Caspian Tern",
     speciesDescriptionCMMN: "Caspian Tern",
@@ -434,6 +490,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CAWA: {
     code: "CAWA",
+    currentCode: "CAWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Canada Warbler",
     speciesDescriptionCMMN: "Canada Warbler",
@@ -442,6 +499,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CCSP: {
     code: "CCSP",
+    currentCode: "CCSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Clay-colored Sparrow",
     speciesDescriptionCMMN: "Clay-colored Sparrow",
@@ -450,6 +508,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CEDW: {
     code: "CEDW",
+    currentCode: "CEDW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Cedar Waxwing",
     speciesDescriptionCMMN: "Cedar Waxwing",
@@ -458,6 +517,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CHSP: {
     code: "CHSP",
+    currentCode: "CHSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Chipping Sparrow",
     speciesDescriptionCMMN: "Chipping Sparrow",
@@ -466,6 +526,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CHSW: {
     code: "CHSW",
+    currentCode: "CHSW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Chimney Swift",
     speciesDescriptionCMMN: "Chimney Swift",
@@ -474,6 +535,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CLSW: {
     code: "CLSW",
+    currentCode: "CLSW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Cliff Swallow",
     speciesDescriptionCMMN: "Cliff Swallow",
@@ -482,6 +544,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CMWA: {
     code: "CMWA",
+    currentCode: "CMWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Cape May Warbler",
     speciesDescriptionCMMN: "Cape May Warbler",
@@ -490,6 +553,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   COGA: {
     code: "COGA",
+    currentCode: "COGA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Gallinule",
     speciesDescriptionCMMN: "Common Gallinule",
@@ -498,6 +562,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   COGO: {
     code: "COGO",
+    currentCode: "COGO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Goldeneye",
     speciesDescriptionCMMN: "Common Goldeneye",
@@ -506,6 +571,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   COGR: {
     code: "COGR",
+    currentCode: "COGR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Grackle",
     speciesDescriptionCMMN: "Common Grackle",
@@ -514,6 +580,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   COHA: {
     code: "COHA",
+    currentCode: "COHA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Cooper's Hawk",
     speciesDescriptionCMMN: "Cooper's Hawk",
@@ -522,6 +589,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   COLO: {
     code: "COLO",
+    currentCode: "COLO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Loon",
     speciesDescriptionCMMN: "Common Loon",
@@ -530,6 +598,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   COME: {
     code: "COME",
+    currentCode: "COME",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Merganser",
     speciesDescriptionCMMN: "Common Merganser",
@@ -538,6 +607,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CONI: {
     code: "CONI",
+    currentCode: "CONI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Nighthawk",
     speciesDescriptionCMMN: "Common Nighthawk",
@@ -546,6 +616,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CONW: {
     code: "CONW",
+    currentCode: "CONW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Connecticut Warbler",
     speciesDescriptionCMMN: "Connecticut Warbler",
@@ -554,6 +625,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CORA: {
     code: "CORA",
+    currentCode: "CORA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Raven",
     speciesDescriptionCMMN: "Common Raven",
@@ -562,6 +634,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CORE: {
     code: "CORE",
+    currentCode: "CORE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Redpoll",
     speciesDescriptionCMMN: "Common Redpoll",
@@ -570,6 +643,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   COTE: {
     code: "COTE",
+    currentCode: "COTE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Tern",
     speciesDescriptionCMMN: "Common Tern",
@@ -578,6 +652,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   COYE: {
     code: "COYE",
+    currentCode: "COYE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Common Yellowthroat",
     speciesDescriptionCMMN: "Common Yellowthroat",
@@ -586,6 +661,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   CSWA: {
     code: "CSWA",
+    currentCode: "CSWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Chestnut-sided Warbler",
     speciesDescriptionCMMN: "Chestnut-sided Warbler",
@@ -594,6 +670,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   DCCO: {
     code: "DCCO",
+    currentCode: "DCCO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Double-crested Cormorant",
     speciesDescriptionCMMN: "Double-crested Cormorant",
@@ -602,6 +679,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   DOWO: {
     code: "DOWO",
+    currentCode: "DOWO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Downy Woodpecker",
     speciesDescriptionCMMN: "Downy Woodpecker",
@@ -610,6 +688,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   DUNL: {
     code: "DUNL",
+    currentCode: "DUNL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Dunlin",
     speciesDescriptionCMMN: "Dunlin",
@@ -618,6 +697,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EABL: {
     code: "EABL",
+    currentCode: "EABL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Eastern Bluebird",
     speciesDescriptionCMMN: "Eastern Bluebird",
@@ -626,6 +706,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EAKI: {
     code: "EAKI",
+    currentCode: "EAKI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Eastern Kingbird",
     speciesDescriptionCMMN: "Eastern Kingbird",
@@ -634,6 +715,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EAME: {
     code: "EAME",
+    currentCode: "EAME",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Eastern Meadowlark",
     speciesDescriptionCMMN: "Eastern Meadowlark",
@@ -642,6 +724,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EAPH: {
     code: "EAPH",
+    currentCode: "EAPH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Eastern Phoebe",
     speciesDescriptionCMMN: "Eastern Phoebe",
@@ -650,6 +733,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EASO: {
     code: "EASO",
+    currentCode: "EASO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Eastern Screech-Owl",
     speciesDescriptionCMMN: "Eastern Screech-Owl",
@@ -658,6 +742,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EATO: {
     code: "EATO",
+    currentCode: "EATO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Eastern Towhee",
     speciesDescriptionCMMN: "Eastern Towhee",
@@ -666,6 +751,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EAWP: {
     code: "EAWP",
+    currentCode: "EAWP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Eastern Wood-Pewee",
     speciesDescriptionCMMN: "Eastern Wood-Pewee",
@@ -674,6 +760,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EUST: {
     code: "EUST",
+    currentCode: "EUST",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "European Starling",
     speciesDescriptionCMMN: "European Starling",
@@ -682,6 +769,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EVGR: {
     code: "EVGR",
+    currentCode: "EVGR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Evening Grosbeak",
     speciesDescriptionCMMN: "Evening Grosbeak",
@@ -690,6 +778,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EWCS: {
     code: "EWCS",
+    currentCode: "EWCS",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "(Eastern) White-crowned Sparrow",
     speciesDescriptionCMMN: "White-crowned Sparrow (Eastern)",
@@ -698,6 +787,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   EWPW: {
     code: "EWPW",
+    currentCode: "EWPW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Eastern Whip-poor-will",
     speciesDescriptionCMMN: "Eastern Whip-poor-will",
@@ -706,6 +796,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   FICR: {
     code: "FICR",
+    currentCode: "FICR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Fish Crow",
     speciesDescriptionCMMN: "Fish Crow",
@@ -714,6 +805,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   FISP: {
     code: "FISP",
+    currentCode: "FISP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Field Sparrow",
     speciesDescriptionCMMN: "Field Sparrow",
@@ -722,6 +814,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   FOSP: {
     code: "FOSP",
+    currentCode: "FOSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Fox Sparrow",
     speciesDescriptionCMMN: "Fox Sparrow",
@@ -730,6 +823,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GADW: {
     code: "GADW",
+    currentCode: "GADW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Gadwall",
     speciesDescriptionCMMN: "Gadwall",
@@ -738,6 +832,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GBBG: {
     code: "GBBG",
+    currentCode: "GBBG",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Great Black-backed Gull",
     speciesDescriptionCMMN: "Great Black-backed Gull",
@@ -746,6 +841,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GBHE: {
     code: "GBHE",
+    currentCode: "GBHE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Great Blue Heron",
     speciesDescriptionCMMN: "Great Blue Heron",
@@ -754,6 +850,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GCFL: {
     code: "GCFL",
+    currentCode: "GCFL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Great Crested Flycatcher",
     speciesDescriptionCMMN: "Great Crested Flycatcher",
@@ -762,6 +859,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GCKI: {
     code: "GCKI",
+    currentCode: "GCKI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Golden-crowned Kinglet",
     speciesDescriptionCMMN: "Golden-crowned Kinglet",
@@ -770,6 +868,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GCTH: {
     code: "GCTH",
+    currentCode: "GCTH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Gray-cheeked Thrush",
     speciesDescriptionCMMN: "Gray-cheeked Thrush",
@@ -778,6 +877,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GGOW: {
     code: "GGOW",
+    currentCode: "GGOW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Great Gray Owl",
     speciesDescriptionCMMN: "Great Gray Owl",
@@ -786,6 +886,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GHOW: {
     code: "GHOW",
+    currentCode: "GHOW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Great Horned Owl",
     speciesDescriptionCMMN: "Great Horned Owl",
@@ -794,6 +895,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GLGU: {
     code: "GLGU",
+    currentCode: "GLGU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Glaucous Gull",
     speciesDescriptionCMMN: "Glaucous Gull",
@@ -802,6 +904,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GOEA: {
     code: "GOEA",
+    currentCode: "GOEA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Golden Eagle",
     speciesDescriptionCMMN: "Golden Eagle",
@@ -810,6 +913,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GRCA: {
     code: "GRCA",
+    currentCode: "GRCA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Gray Catbird",
     speciesDescriptionCMMN: "Gray Catbird",
@@ -818,6 +922,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GREG: {
     code: "GREG",
+    currentCode: "GREG",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Great Egret",
     speciesDescriptionCMMN: "Great Egret",
@@ -826,6 +931,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GRHE: {
     code: "GRHE",
+    currentCode: "GRHE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Green Heron",
     speciesDescriptionCMMN: "Green Heron",
@@ -834,6 +940,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GRSC: {
     code: "GRSC",
+    currentCode: "GRSC",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Greater Scaup",
     speciesDescriptionCMMN: "Greater Scaup",
@@ -842,6 +949,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GRSP: {
     code: "GRSP",
+    currentCode: "GRSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Grasshopper Sparrow",
     speciesDescriptionCMMN: "Grasshopper Sparrow",
@@ -850,6 +958,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GRYE: {
     code: "GRYE",
+    currentCode: "GRYE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Greater Yellowlegs",
     speciesDescriptionCMMN: "Greater Yellowlegs",
@@ -858,6 +967,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GSGO: {
     code: "GSGO",
+    currentCode: "GSGO",
     pseudoSpeciesType: "Subspecies",
     speciesDescriptionMBO: "Greater Snow Goose",
     speciesDescriptionCMMN: "Greater Snow Goose",
@@ -866,6 +976,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GWFG: {
     code: "GWFG",
+    currentCode: "GWFG",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Greater White-fronted Goose",
     speciesDescriptionCMMN: "Greater White-fronted Goose",
@@ -874,6 +985,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   GWWA: {
     code: "GWWA",
+    currentCode: "GWWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Golden-winged Warbler",
     speciesDescriptionCMMN: "Golden-winged Warbler",
@@ -882,6 +994,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HAWO: {
     code: "HAWO",
+    currentCode: "HAWO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Hairy Woodpecker",
     speciesDescriptionCMMN: "Hairy Woodpecker",
@@ -890,6 +1003,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HERG: {
     code: "HERG",
+    currentCode: "HERG",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Herring Gull",
     speciesDescriptionCMMN: "Herring Gull",
@@ -898,6 +1012,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HETH: {
     code: "HETH",
+    currentCode: "HETH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Hermit Thrush",
     speciesDescriptionCMMN: "Hermit Thrush",
@@ -906,6 +1021,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HOFI: {
     code: "HOFI",
+    currentCode: "HOFI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "House Finch",
     speciesDescriptionCMMN: "House Finch",
@@ -914,6 +1030,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HOLA: {
     code: "HOLA",
+    currentCode: "HOLA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Horned Lark",
     speciesDescriptionCMMN: "Horned Lark",
@@ -922,6 +1039,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HOME: {
     code: "HOME",
+    currentCode: "HOME",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Hooded Merganser",
     speciesDescriptionCMMN: "Hooded Merganser",
@@ -930,6 +1048,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HORE: {
     code: "HORE",
+    currentCode: "HORE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Hoary Redpoll",
     speciesDescriptionCMMN: "Hoary Redpoll",
@@ -938,6 +1057,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HOSP: {
     code: "HOSP",
+    currentCode: "HOSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "House Sparrow",
     speciesDescriptionCMMN: "House Sparrow",
@@ -946,6 +1066,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HOWA: {
     code: "HOWA",
+    currentCode: "HOWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Hooded Warbler",
     speciesDescriptionCMMN: "Hooded Warbler",
@@ -954,6 +1075,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HOWR: {
     code: "HOWR",
+    currentCode: "HOWR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "House Wren",
     speciesDescriptionCMMN: "House Wren",
@@ -962,6 +1084,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HUWH: {
     code: "HUWH",
+    currentCode: "HUWH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Hudsonian Whimbrel",
     speciesDescriptionCMMN: "Hudsonian Whimbrel",
@@ -970,6 +1093,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   HYWA: {
     code: "HYWA",
+    currentCode: "HYWA",
     pseudoSpeciesType: "Hybrid",
     speciesDescriptionMBO: "Hybrid Warbler",
     speciesDescriptionCMMN: "",
@@ -978,6 +1102,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   ICGU: {
     code: "ICGU",
+    currentCode: "ICGU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Iceland Gull",
     speciesDescriptionCMMN: "Iceland Gull",
@@ -986,6 +1111,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   INBU: {
     code: "INBU",
+    currentCode: "INBU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Indigo Bunting",
     speciesDescriptionCMMN: "Indigo Bunting",
@@ -994,6 +1120,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   KILL: {
     code: "KILL",
+    currentCode: "KILL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Killdeer",
     speciesDescriptionCMMN: "Killdeer",
@@ -1002,6 +1129,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LALO: {
     code: "LALO",
+    currentCode: "LALO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Lapland Longspur",
     speciesDescriptionCMMN: "",
@@ -1010,6 +1138,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LAWA: {
     code: "LAWA",
+    currentCode: "LAWA",
     pseudoSpeciesType: "Hybrid",
     speciesDescriptionMBO: "Lawrence's Warbler",
     speciesDescriptionCMMN: "Lawrence's Warbler",
@@ -1018,6 +1147,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LEBI: {
     code: "LEBI",
+    currentCode: "LEBI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Least Bittern",
     speciesDescriptionCMMN: "Least Bittern",
@@ -1026,6 +1156,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LEFL: {
     code: "LEFL",
+    currentCode: "LEFL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Least Flycatcher",
     speciesDescriptionCMMN: "Least Flycatcher",
@@ -1034,6 +1165,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LEOW: {
     code: "LEOW",
+    currentCode: "LEOW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Long-eared Owl",
     speciesDescriptionCMMN: "Long-eared Owl",
@@ -1042,6 +1174,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LESA: {
     code: "LESA",
+    currentCode: "LESA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Least Sandpiper",
     speciesDescriptionCMMN: "Least Sandpiper",
@@ -1050,6 +1183,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LESC: {
     code: "LESC",
+    currentCode: "LESC",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Lesser Scaup",
     speciesDescriptionCMMN: "Lesser Scaup",
@@ -1058,6 +1192,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LEYE: {
     code: "LEYE",
+    currentCode: "LEYE",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Lesser Yellowlegs",
     speciesDescriptionCMMN: "Lesser Yellowlegs",
@@ -1066,6 +1201,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LISP: {
     code: "LISP",
+    currentCode: "LISP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Lincoln's Sparrow",
     speciesDescriptionCMMN: "Lincoln's Sparrow",
@@ -1074,6 +1210,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   LSGO: {
     code: "LSGO",
+    currentCode: "LSGO",
     pseudoSpeciesType: "Subspecies",
     speciesDescriptionMBO: "Lesser Snow Goose",
     speciesDescriptionCMMN: "Lesser Snow Goose",
@@ -1082,6 +1219,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   MALL: {
     code: "MALL",
+    currentCode: "MALL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Mallard",
     speciesDescriptionCMMN: "Mallard",
@@ -1090,6 +1228,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   MAWA: {
     code: "MAWA",
+    currentCode: "MAWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Magnolia Warbler",
     speciesDescriptionCMMN: "Magnolia Warbler",
@@ -1098,6 +1237,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   MAWR: {
     code: "MAWR",
+    currentCode: "MAWR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Marsh Wren",
     speciesDescriptionCMMN: "Marsh Wren",
@@ -1106,6 +1246,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   MERL: {
     code: "MERL",
+    currentCode: "MERL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Merlin",
     speciesDescriptionCMMN: "Merlin",
@@ -1114,6 +1255,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   MODO: {
     code: "MODO",
+    currentCode: "MODO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Mourning Dove",
     speciesDescriptionCMMN: "Mourning Dove",
@@ -1122,6 +1264,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   MOWA: {
     code: "MOWA",
+    currentCode: "MOWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Mourning Warbler",
     speciesDescriptionCMMN: "Mourning Warbler",
@@ -1130,6 +1273,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   MYWA: {
     code: "MYWA",
+    currentCode: "MYWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Yellow-rumped (Myrtle) Warbler",
     speciesDescriptionCMMN: "Myrtle Warbler",
@@ -1138,6 +1282,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NAWA: {
     code: "NAWA",
+    currentCode: "NAWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Nashville Warbler",
     speciesDescriptionCMMN: "Nashville Warbler",
@@ -1146,6 +1291,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NHOW: {
     code: "NHOW",
+    currentCode: "NHOW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Hawk Owl",
     speciesDescriptionCMMN: "",
@@ -1154,6 +1300,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NOCA: {
     code: "NOCA",
+    currentCode: "NOCA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Cardinal",
     speciesDescriptionCMMN: "Northern Cardinal",
@@ -1162,6 +1309,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NOGA: {
     code: "NOGA",
+    currentCode: "NOGA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Gannet",
     speciesDescriptionCMMN: "Northern Gannet",
@@ -1170,6 +1318,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NOGO: {
     code: "NOGO",
+    currentCode: "NOGO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Goshawk",
     speciesDescriptionCMMN: "Northern Goshawk",
@@ -1178,6 +1327,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NOHA: {
     code: "NOHA",
+    currentCode: "NOHA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Harrier",
     speciesDescriptionCMMN: "Northern Harrier",
@@ -1186,6 +1336,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NOMO: {
     code: "NOMO",
+    currentCode: "NOMO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Mockingbird",
     speciesDescriptionCMMN: "Northern Mockingbird",
@@ -1194,6 +1345,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NOPA: {
     code: "NOPA",
+    currentCode: "NOPA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Parula",
     speciesDescriptionCMMN: "Northern Parula",
@@ -1202,6 +1354,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NOPI: {
     code: "NOPI",
+    currentCode: "NOPI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Pintail",
     speciesDescriptionCMMN: "Northern Pintail",
@@ -1210,6 +1363,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NOWA: {
     code: "NOWA",
+    currentCode: "NOWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Waterthrush",
     speciesDescriptionCMMN: "Northern Waterthrush",
@@ -1218,6 +1372,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NRWS: {
     code: "NRWS",
+    currentCode: "NRWS",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Rough-winged Swallow",
     speciesDescriptionCMMN: "Northern Rough-winged Swallow",
@@ -1226,6 +1381,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NSHO: {
     code: "NSHO",
+    currentCode: "NSHO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Shoveler",
     speciesDescriptionCMMN: "Northern Shoveler",
@@ -1234,6 +1390,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NSHR: {
     code: "NSHR",
+    currentCode: "NSHR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Shrike",
     speciesDescriptionCMMN: "Northern Shrike",
@@ -1242,6 +1399,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   NSWO: {
     code: "NSWO",
+    currentCode: "NSWO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Northern Saw-whet Owl",
     speciesDescriptionCMMN: "Northern Saw-whet Owl",
@@ -1250,6 +1408,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   OCWA: {
     code: "OCWA",
+    currentCode: "OCWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Orange-crowned Warbler",
     speciesDescriptionCMMN: "Orange-crowned Warbler",
@@ -1258,6 +1417,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   OROR: {
     code: "OROR",
+    currentCode: "OROR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Orchard Oriole",
     speciesDescriptionCMMN: "Orchard Oriole",
@@ -1266,6 +1426,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   OSFL: {
     code: "OSFL",
+    currentCode: "OSFL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Olive-sided Flycatcher",
     speciesDescriptionCMMN: "Olive-sided Flycatcher",
@@ -1274,6 +1435,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   OSPR: {
     code: "OSPR",
+    currentCode: "OSPR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Osprey",
     speciesDescriptionCMMN: "Osprey",
@@ -1282,6 +1444,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   OVEN: {
     code: "OVEN",
+    currentCode: "OVEN",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Ovenbird",
     speciesDescriptionCMMN: "Ovenbird",
@@ -1290,6 +1453,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PAWA: {
     code: "PAWA",
+    currentCode: "PAWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Palm Warbler",
     speciesDescriptionCMMN: "Palm Warbler",
@@ -1298,6 +1462,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PBGR: {
     code: "PBGR",
+    currentCode: "PBGR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Pied-billed Grebe",
     speciesDescriptionCMMN: "Pied-billed Grebe",
@@ -1306,6 +1471,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PEFA: {
     code: "PEFA",
+    currentCode: "PEFA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Peregrine Falcon",
     speciesDescriptionCMMN: "Peregrine Falcon",
@@ -1314,6 +1480,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PHVI: {
     code: "PHVI",
+    currentCode: "PHVI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Philadelphia Vireo",
     speciesDescriptionCMMN: "Philadelphia Vireo",
@@ -1322,6 +1489,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PIGR: {
     code: "PIGR",
+    currentCode: "PIGR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Pine Grosbeak",
     speciesDescriptionCMMN: "Pine Grosbeak",
@@ -1330,6 +1498,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PISI: {
     code: "PISI",
+    currentCode: "PISI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Pine Siskin",
     speciesDescriptionCMMN: "Pine Siskin",
@@ -1338,6 +1507,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PIWA: {
     code: "PIWA",
+    currentCode: "PIWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Pine Warbler",
     speciesDescriptionCMMN: "Pine Warbler",
@@ -1346,6 +1516,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PIWO: {
     code: "PIWO",
+    currentCode: "PIWO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Pileated Woodpecker",
     speciesDescriptionCMMN: "Pileated Woodpecker",
@@ -1354,6 +1525,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PUFI: {
     code: "PUFI",
+    currentCode: "PUFI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Purple Finch",
     speciesDescriptionCMMN: "Purple Finch",
@@ -1362,6 +1534,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   PUMA: {
     code: "PUMA",
+    currentCode: "PUMA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Purple Martin",
     speciesDescriptionCMMN: "Purple Martin",
@@ -1370,6 +1543,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RBGR: {
     code: "RBGR",
+    currentCode: "RBGR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Rose-breasted Grosbeak",
     speciesDescriptionCMMN: "Rose-breasted Grosbeak",
@@ -1378,6 +1552,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RBGU: {
     code: "RBGU",
+    currentCode: "RBGU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Ring-billed Gull",
     speciesDescriptionCMMN: "Ring-billed Gull",
@@ -1386,6 +1561,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RBME: {
     code: "RBME",
+    currentCode: "RBME",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Red-breasted Merganser",
     speciesDescriptionCMMN: "Red-breasted Merganser",
@@ -1394,6 +1570,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RBNU: {
     code: "RBNU",
+    currentCode: "RBNU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Red-breasted Nuthatch",
     speciesDescriptionCMMN: "Red-breasted Nuthatch",
@@ -1402,6 +1579,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RBWO: {
     code: "RBWO",
+    currentCode: "RBWO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Red-bellied Woodpecker",
     speciesDescriptionCMMN: "Red-bellied Woodpecker",
@@ -1410,6 +1588,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RCKI: {
     code: "RCKI",
+    currentCode: "RCKI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Ruby-crowned Kinglet",
     speciesDescriptionCMMN: "Ruby-crowned Kinglet",
@@ -1418,6 +1597,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RECR: {
     code: "RECR",
+    currentCode: "RECR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Red Crossbill",
     speciesDescriptionCMMN: "Red Crossbill",
@@ -1426,6 +1606,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   REDH: {
     code: "REDH",
+    currentCode: "REDH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Redhead",
     speciesDescriptionCMMN: "Redhead",
@@ -1434,6 +1615,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   REVI: {
     code: "REVI",
+    currentCode: "REVI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Red-eyed Vireo",
     speciesDescriptionCMMN: "Red-eyed Vireo",
@@ -1442,6 +1624,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RLHA: {
     code: "RLHA",
+    currentCode: "RLHA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Rough-legged Hawk",
     speciesDescriptionCMMN: "Rough-legged Hawk",
@@ -1450,6 +1633,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RNDU: {
     code: "RNDU",
+    currentCode: "RNDU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Ring-necked Duck",
     speciesDescriptionCMMN: "Ring-necked Duck",
@@ -1458,6 +1642,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   ROGO: {
     code: "ROGO",
+    currentCode: "ROGO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Ross's Goose",
     speciesDescriptionCMMN: "Ross's Goose",
@@ -1466,6 +1651,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   ROPI: {
     code: "ROPI",
+    currentCode: "ROPI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Rock Pigeon",
     speciesDescriptionCMMN: "Rock Pigeon",
@@ -1474,6 +1660,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RSHA: {
     code: "RSHA",
+    currentCode: "RSHA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Red-shouldered Hawk",
     speciesDescriptionCMMN: "Red-shouldered Hawk",
@@ -1482,6 +1669,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RTHA: {
     code: "RTHA",
+    currentCode: "RTHA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Red-tailed Hawk",
     speciesDescriptionCMMN: "Red-tailed Hawk",
@@ -1490,6 +1678,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RTHU: {
     code: "RTHU",
+    currentCode: "RTHU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Ruby-throated Hummingbird",
     speciesDescriptionCMMN: "Ruby-throated Hummingbird",
@@ -1498,6 +1687,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RUBL: {
     code: "RUBL",
+    currentCode: "RUBL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Rusty Blackbird",
     speciesDescriptionCMMN: "Rusty Blackbird",
@@ -1506,6 +1696,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RUGR: {
     code: "RUGR",
+    currentCode: "RUGR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Ruffed Grouse",
     speciesDescriptionCMMN: "Ruffed Grouse",
@@ -1514,6 +1705,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   RWBL: {
     code: "RWBL",
+    currentCode: "RWBL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Red-winged Blackbird",
     speciesDescriptionCMMN: "Red-winged Blackbird",
@@ -1522,6 +1714,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SACR: {
     code: "SACR",
+    currentCode: "SACR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Sandhill Crane",
     speciesDescriptionCMMN: "Sandhill Crane",
@@ -1530,6 +1723,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SAVS: {
     code: "SAVS",
+    currentCode: "SAVS",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Savannah Sparrow",
     speciesDescriptionCMMN: "Savannah Sparrow",
@@ -1538,6 +1732,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SBDO: {
     code: "SBDO",
+    currentCode: "SBDO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Short-billed Dowhitcher",
     speciesDescriptionCMMN: "Short-billed Dowhitcher",
@@ -1546,6 +1741,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SCJU: {
     code: "SCJU",
+    currentCode: "SCJU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Dark-eyed (Slate-colored) Junco",
     speciesDescriptionCMMN: "Slate-colored Junco",
@@ -1554,6 +1750,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SCTA: {
     code: "SCTA",
+    currentCode: "SCTA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Scarlet Tanager",
     speciesDescriptionCMMN: "Scarlet Tanager",
@@ -1562,6 +1759,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SEOW: {
     code: "SEOW",
+    currentCode: "SEOW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Short-eared Owl",
     speciesDescriptionCMMN: "Short-eared Owl",
@@ -1570,6 +1768,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SEPL: {
     code: "SEPL",
+    currentCode: "SEPL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Semipalmated Plover",
     speciesDescriptionCMMN: "Semipalmated Plover",
@@ -1578,6 +1777,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SESA: {
     code: "SESA",
+    currentCode: "SESA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Semipalmated Sandpiper",
     speciesDescriptionCMMN: "Semipalmated Sandpiper",
@@ -1586,6 +1786,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SEWR: {
     code: "SEWR",
+    currentCode: "SEWR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Sedge Wren",
     speciesDescriptionCMMN: "Sedge Wren",
@@ -1594,6 +1795,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SNBU: {
     code: "SNBU",
+    currentCode: "SNBU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Snow Bunting",
     speciesDescriptionCMMN: "Snow Bunting",
@@ -1602,6 +1804,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SNGO: {
     code: "SNGO",
+    currentCode: "SNGO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Snow Goose",
     speciesDescriptionCMMN: "Snow Goose",
@@ -1610,6 +1813,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SNOW: {
     code: "SNOW",
+    currentCode: "SNOW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Snowy Owl",
     speciesDescriptionCMMN: "",
@@ -1618,6 +1822,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SORA: {
     code: "SORA",
+    currentCode: "SORA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Sora",
     speciesDescriptionCMMN: "Sora",
@@ -1626,6 +1831,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SOSA: {
     code: "SOSA",
+    currentCode: "SOSA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Solitary Sandpiper",
     speciesDescriptionCMMN: "Solitary Sandpiper",
@@ -1634,6 +1840,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SOSP: {
     code: "SOSP",
+    currentCode: "SOSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Song Sparrow",
     speciesDescriptionCMMN: "Song Sparrow",
@@ -1642,6 +1849,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SPSA: {
     code: "SPSA",
+    currentCode: "SPSA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Spotted Sandpiper",
     speciesDescriptionCMMN: "Spotted Sandpiper",
@@ -1650,6 +1858,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SSHA: {
     code: "SSHA",
+    currentCode: "SSHA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Sharp-shinned Hawk",
     speciesDescriptionCMMN: "Sharp-shinned Hawk",
@@ -1658,6 +1867,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SWSP: {
     code: "SWSP",
+    currentCode: "SWSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Swamp Sparrow",
     speciesDescriptionCMMN: "Swamp Sparrow",
@@ -1666,6 +1876,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   SWTH: {
     code: "SWTH",
+    currentCode: "SWTH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Swainson's Thrush",
     speciesDescriptionCMMN: "Swainson's Thrush",
@@ -1674,6 +1885,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   TEWA: {
     code: "TEWA",
+    currentCode: "TEWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Tennessee Warbler",
     speciesDescriptionCMMN: "Tennessee Warbler",
@@ -1682,6 +1894,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   TOSO: {
     code: "TOSO",
+    currentCode: "TOSO",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Townsend's Solitaire",
     speciesDescriptionCMMN: "Townsend's Solitaire",
@@ -1690,6 +1903,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   TRES: {
     code: "TRES",
+    currentCode: "TRES",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Tree Swallow",
     speciesDescriptionCMMN: "Tree Swallow",
@@ -1698,6 +1912,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   TRFL: {
     code: "TRFL",
+    currentCode: "TRFL",
     pseudoSpeciesType: "Superspecies",
     speciesDescriptionMBO: "Traill's Flycatcher",
     speciesDescriptionCMMN: "Traill's Flycatcher (Willow or Alder)",
@@ -1706,6 +1921,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   TUSW: {
     code: "TUSW",
+    currentCode: "TUSW",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Tundra Swan",
     speciesDescriptionCMMN: "Tundra Swan",
@@ -1714,6 +1930,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   TUTI: {
     code: "TUTI",
+    currentCode: "TUTI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Tufted Titmouse",
     speciesDescriptionCMMN: "Tufted Titmouse",
@@ -1722,6 +1939,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   TUVU: {
     code: "TUVU",
+    currentCode: "TUVU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Turkey Vulture",
     speciesDescriptionCMMN: "Turkey Vulture",
@@ -1730,6 +1948,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   USCA: {
     code: "USCA",
+    currentCode: "USCA",
     pseudoSpeciesType: "Superspecies",
     speciesDescriptionMBO: "Unidentified Scaup sp.",
     speciesDescriptionCMMN: "Unidentified Scaup",
@@ -1738,6 +1957,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   VEER: {
     code: "VEER",
+    currentCode: "VEER",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Veery",
     speciesDescriptionCMMN: "Veery",
@@ -1746,6 +1966,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   VESP: {
     code: "VESP",
+    currentCode: "VESP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Vesper Sparrow",
     speciesDescriptionCMMN: "Vesper Sparrow",
@@ -1754,6 +1975,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   VIRA: {
     code: "VIRA",
+    currentCode: "VIRA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Virginia Rail",
     speciesDescriptionCMMN: "Virginia Rail",
@@ -1762,6 +1984,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WAVI: {
     code: "WAVI",
+    currentCode: "WAVI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Warbling Vireo",
     speciesDescriptionCMMN: "Warbling Vireo",
@@ -1770,6 +1993,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WBNU: {
     code: "WBNU",
+    currentCode: "WBNU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "White-breasted Nuthatch",
     speciesDescriptionCMMN: "White-breasted Nuthatch",
@@ -1778,6 +2002,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WEVI: {
     code: "WEVI",
+    currentCode: "WEVI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "White-eyed Vireo",
     speciesDescriptionCMMN: "White-eyed Vireo",
@@ -1786,6 +2011,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WEWA: {
     code: "WEWA",
+    currentCode: "WEWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Worm-eating Warbler",
     speciesDescriptionCMMN: "Worm-eating Warbler",
@@ -1794,6 +2020,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WIFL: {
     code: "WIFL",
+    currentCode: "WIFL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Willow Flycatcher",
     speciesDescriptionCMMN: "Willow Flycatcher",
@@ -1802,6 +2029,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WISN: {
     code: "WISN",
+    currentCode: "WISN",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Wilson's Snipe",
     speciesDescriptionCMMN: "Wilson's Snipe",
@@ -1810,6 +2038,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WITU: {
     code: "WITU",
+    currentCode: "WITU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Wild Turkey",
     speciesDescriptionCMMN: "Wild Turkey",
@@ -1818,6 +2047,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WIWA: {
     code: "WIWA",
+    currentCode: "WIWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Wilson's Warbler",
     speciesDescriptionCMMN: "Wilson's Warbler",
@@ -1826,6 +2056,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WIWR: {
     code: "WIWR",
+    currentCode: "WIWR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Winter Wren",
     speciesDescriptionCMMN: "Winter Wren",
@@ -1834,6 +2065,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WODU: {
     code: "WODU",
+    currentCode: "WODU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Wood Duck",
     speciesDescriptionCMMN: "Wood Duck",
@@ -1842,6 +2074,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WOTH: {
     code: "WOTH",
+    currentCode: "WOTH",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Wood Thrush",
     speciesDescriptionCMMN: "Wood Thrush",
@@ -1850,6 +2083,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WPWA: {
     code: "WPWA",
+    currentCode: "WPWA",
     pseudoSpeciesType: "Subspecies",
     speciesDescriptionMBO: "Western Palm Warbler",
     speciesDescriptionCMMN: "Western Palm Warbler",
@@ -1858,6 +2092,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WTSP: {
     code: "WTSP",
+    currentCode: "WTSP",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "White-throated Sparrow",
     speciesDescriptionCMMN: "White-throated Sparrow",
@@ -1866,6 +2101,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WWCR: {
     code: "WWCR",
+    currentCode: "WWCR",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "White-winged Crossbill",
     speciesDescriptionCMMN: "White-winged Crossbill",
@@ -1874,6 +2110,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   WWSC: {
     code: "WWSC",
+    currentCode: "WWSC",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "White-winged Scoter",
     speciesDescriptionCMMN: "White-winged Scoter",
@@ -1882,6 +2119,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   YBCU: {
     code: "YBCU",
+    currentCode: "YBCU",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Yellow-billed Cuckoo",
     speciesDescriptionCMMN: "Yellow-billed Cuckoo",
@@ -1890,6 +2128,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   YBFL: {
     code: "YBFL",
+    currentCode: "YBFL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Yellow-bellied Flycatcher",
     speciesDescriptionCMMN: "Yellow-bellied Flycatcher",
@@ -1898,6 +2137,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   YBSA: {
     code: "YBSA",
+    currentCode: "YBSA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Yellow-bellied Sapsucker",
     speciesDescriptionCMMN: "Yellow-bellied Sapsucker",
@@ -1906,6 +2146,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   YEWA: {
     code: "YEWA",
+    currentCode: "YEWA",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Yellow Warbler",
     speciesDescriptionCMMN: "Yellow Warbler",
@@ -1914,6 +2155,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   YPWA: {
     code: "YPWA",
+    currentCode: "YPWA",
     pseudoSpeciesType: "Subspecies",
     speciesDescriptionMBO: "Yellow Palm Warbler",
     speciesDescriptionCMMN: "Yellow Palm Warbler",
@@ -1922,6 +2164,7 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   YSFL: {
     code: "YSFL",
+    currentCode: "YSFL",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Yellow-shafted Flicker",
     speciesDescriptionCMMN: "Yellow-shafted Flicker",
@@ -1930,10 +2173,28 @@ export const SPECIES_MAP: Record<string, Species> = {
   },
   YTVI: {
     code: "YTVI",
+    currentCode: "YTVI",
     pseudoSpeciesType: "Species",
     speciesDescriptionMBO: "Yellow-throated Vireo",
     speciesDescriptionCMMN: "Yellow-throated Vireo",
     speciesFrench: "Viréo à gorge jaune",
     speciesScientific: "Vireo flavifrons",
-  }
+  },
 };
+
+export const SPECIES_CURRENT_CODE_BY_KEY: Record<string, string> = Object.fromEntries(
+  Object.entries(SPECIES_MAP).map(([key, species]) => [key, SPECIES_CURRENT_CODE_OVERRIDES[key] ?? species.currentCode])
+);
+
+export const SPECIES_KEY_BY_CURRENT_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(SPECIES_CURRENT_CODE_BY_KEY).map(([key, currentCode]) => [currentCode.toUpperCase(), key])
+);
+
+export function getSpeciesDisplayCode(speciesKey: string): string {
+  return SPECIES_CURRENT_CODE_BY_KEY[speciesKey] ?? speciesKey;
+}
+
+export function resolveSpeciesKey(speciesCode: string, aliases: Record<string, string> = {}): string {
+  const normalizedCode = speciesCode.toUpperCase();
+  return SPECIES_KEY_BY_CURRENT_CODE[normalizedCode] ?? aliases[normalizedCode] ?? normalizedCode;
+}

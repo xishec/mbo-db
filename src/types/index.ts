@@ -14,10 +14,17 @@ export type BandSizeToBandIdMap = Record<BandSize, string>;
 export type DismissedConflictsMap = Record<string, boolean>;
 export type DETsMap = Record<string, DET>;
 export type VolunteersMap = Record<string, Volunteer>;
+export type VolunteerStatsMap = Record<string, VolunteerStats>;
+export type SpeciesAliasesMap = Record<string, string>;
+export type ObserverClass = 1 | 2 | 3;
 
 export interface Volunteer {
-  code: string;
   fullName: string;
+  observerClass: ObserverClass;
+}
+
+export interface VolunteerStats extends Volunteer {
+  code: string;
   totalBanded: number;
   totalScribed: number;
 }
@@ -191,8 +198,12 @@ export interface DatabaseData {
   DETsMap?: DETsMap;
   volunteersMap?: VolunteersMap;
   magicTable?: MagicTable;
-  volunteersFullNameMap?: Record<string, string>;
   bandGroupNotesMap?: Record<string, string>;
+  speciesAliasesMap?: SpeciesAliasesMap;
+  // Legacy volunteer metadata maps. Kept only so older IndexedDB caches can
+  // be upgraded into volunteersMap on load.
+  volunteersFullNameMap?: Record<string, string>;
+  volunteersObserverClassMap?: Record<string, ObserverClass>;
 }
 
 // Form types

@@ -80,6 +80,7 @@ for (let i = 1; i < lines.length; i++) {
 
   const entry = `  ${escapeForTS(code)}: {
     code: "${escapeForTS(code)}",
+    currentCode: "${escapeForTS(code)}",
     pseudoSpeciesType: "${escapeForTS(pseudoSpeciesType)}",
     speciesDescriptionMBO: "${escapeForTS(speciesDescriptionMBO)}",
     speciesDescriptionCMMN: "${escapeForTS(speciesDescriptionCMMN)}",
@@ -91,8 +92,11 @@ for (let i = 1; i < lines.length; i++) {
 }
 
 // Generate the TypeScript file content
-const outputContent = `export interface Species {
-  code: string; // Species code (e.g., "ABDU", "AMGO")
+const outputContent = `import { SPECIES_CURRENT_CODE_OVERRIDES } from "./speciesCodeOverrides";
+
+export interface Species {
+  code: string; // Stable internal species key (e.g., "ABDU", "AMGO")
+  currentCode: string; // Current display/input species code
   pseudoSpeciesType: string; // Type (e.g., "Species", "Hybrid")
   speciesDescriptionMBO: string; // MBO description
   speciesDescriptionCMMN: string; // CMMN description
@@ -103,6 +107,26 @@ const outputContent = `export interface Species {
 export const SPECIES_MAP: Record<string, Species> = {
 ${speciesEntries.join(",\n")}
 };
+
+export const SPECIES_CURRENT_CODE_BY_KEY: Record<string, string> = Object.fromEntries(
+  Object.entries(SPECIES_MAP).map(([key, species]) => [
+    key,
+    SPECIES_CURRENT_CODE_OVERRIDES[key] ?? species.currentCode,
+  ])
+);
+
+export const SPECIES_KEY_BY_CURRENT_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(SPECIES_CURRENT_CODE_BY_KEY).map(([key, currentCode]) => [currentCode.toUpperCase(), key])
+);
+
+export function getSpeciesDisplayCode(speciesKey: string): string {
+  return SPECIES_CURRENT_CODE_BY_KEY[speciesKey] ?? speciesKey;
+}
+
+export function resolveSpeciesKey(speciesCode: string, aliases: Record<string, string> = {}): string {
+  const normalizedCode = speciesCode.toUpperCase();
+  return SPECIES_KEY_BY_CURRENT_CODE[normalizedCode] ?? aliases[normalizedCode] ?? normalizedCode;
+}
 `;
 
 // Write to species.ts

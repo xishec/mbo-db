@@ -29,7 +29,7 @@ function generateParticles(): Particle[] {
 
 export default function MilestoneCelebration() {
   const milestone = useAppStore((s) => s.milestone);
-  const volunteersMap = useAppStore((s) => s.volunteersMap);
+  const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
   const { clearMilestone } = useActions();
   const [particles] = useState(generateParticles);
   const [visible, setVisible] = useState(false);
@@ -42,7 +42,7 @@ export default function MilestoneCelebration() {
 
   if (!milestone) return null;
 
-  const bander = volunteersMap[milestone.banderCode];
+  const bander = volunteerStatsMap[milestone.banderCode];
   const displayName = bander?.fullName || milestone.banderCode;
   const milestoneNumber = milestone.count;
 
