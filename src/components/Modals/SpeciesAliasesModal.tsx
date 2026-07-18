@@ -37,6 +37,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
   const [aliasCode, setAliasCode] = useState("");
   const [speciesKey, setSpeciesKey] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const canEdit = !!user && isOnline;
 
   const rows = useMemo<AliasRow[]>(
@@ -92,7 +93,8 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
   };
 
   const handleDelete = async (key: string) => {
-    setIsSaving(true);
+    if (deletingKey) return;
+    setDeletingKey(key);
     try {
       await updateSpeciesAlias(key, null);
     } catch (err) {
@@ -102,7 +104,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
         color: "danger",
       });
     } finally {
-      setIsSaving(false);
+      setDeletingKey(null);
     }
   };
 
@@ -130,7 +132,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
                   size="sm"
                   selectedKeys={speciesKey ? [speciesKey] : []}
                   onSelectionChange={(keys) => setSpeciesKey(String(Array.from(keys)[0] ?? ""))}
-                  isDisabled={isSaving || !canEdit}
+                  isDisabled={isSaving || !!deletingKey || !canEdit}
                   classNames={{ trigger: "h-10 min-h-10" }}
                 >
                   {speciesOptions.map((option) => (
@@ -152,7 +154,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
                         .slice(0, 4)
                     )
                   }
-                  isDisabled={isSaving || !canEdit}
+                  isDisabled={isSaving || !!deletingKey || !canEdit}
                   classNames={{ inputWrapper: "h-10 min-h-10" }}
                 />
                 <Button
@@ -188,7 +190,8 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
                           color="danger"
                           aria-label={`Delete alias ${row.aliasCode}`}
                           onPress={() => handleDelete(row.speciesKey)}
-                          isDisabled={isSaving || !canEdit}
+                          isDisabled={(deletingKey !== null && deletingKey !== row.speciesKey) || isSaving || !canEdit}
+                          isLoading={deletingKey === row.speciesKey}
                         >
                           <TrashIcon className="h-4 w-4" />
                         </Button>

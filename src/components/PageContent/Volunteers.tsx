@@ -20,7 +20,7 @@ import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import ExportButton from "../Helper/ExportButton";
 import { BirdEventType, type BirdEvent, type ObserverClass } from "../../types";
-import { resolveSpeciesKey } from "../../types/species";
+import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 import PageHeader from "./PageHeader";
 
 type Row = {
@@ -99,7 +99,13 @@ export default function Volunteers() {
     }
     return [...counts.entries()]
       .map(([species, count]) => ({ species, count }))
-      .sort((a, b) => b.count - a.count || a.species.localeCompare(b.species));
+      .sort(
+        (a, b) =>
+          b.count - a.count ||
+          getSpeciesDisplayCode(a.species, speciesAliasesMap).localeCompare(
+            getSpeciesDisplayCode(b.species, speciesAliasesMap)
+          )
+      );
   }, [breakdownEvents, speciesAliasesMap]);
 
   const rows = useMemo<Row[]>(() => {

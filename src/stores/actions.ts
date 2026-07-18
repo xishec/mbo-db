@@ -734,12 +734,16 @@ export const actions = {
     const aliasOwner = Object.entries(speciesAliasesMap).find(([, value]) => value === alias)?.[0];
     if (alias && aliasOwner && aliasOwner !== key) throw new Error(`"${alias}" is already used as an alias`);
 
-    const cleanOverride: SpeciesOverride = {
-      speciesDescriptionMBO: override.speciesDescriptionMBO?.trim() || undefined,
-      speciesDescriptionCMMN: override.speciesDescriptionCMMN?.trim() || undefined,
-      speciesFrench: override.speciesFrench?.trim() || undefined,
-      speciesScientific: override.speciesScientific?.trim() || undefined,
-    };
+    const cleanOverride: SpeciesOverride = {};
+    const speciesDescriptionMBO = override.speciesDescriptionMBO?.trim();
+    const speciesDescriptionCMMN = override.speciesDescriptionCMMN?.trim();
+    const speciesFrench = override.speciesFrench?.trim();
+    const speciesScientific = override.speciesScientific?.trim();
+
+    if (speciesDescriptionMBO) cleanOverride.speciesDescriptionMBO = speciesDescriptionMBO;
+    if (speciesDescriptionCMMN) cleanOverride.speciesDescriptionCMMN = speciesDescriptionCMMN;
+    if (speciesFrench) cleanOverride.speciesFrench = speciesFrench;
+    if (speciesScientific) cleanOverride.speciesScientific = speciesScientific;
 
     try {
       const nextAliases = { ...speciesAliasesMap };

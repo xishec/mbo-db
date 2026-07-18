@@ -18,6 +18,7 @@ import ExportButton from "../Helper/ExportButton";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
+import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 
 interface ErrorsModalProps {
   isOpen: boolean;
@@ -117,9 +118,15 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
           comparison = aBand.localeCompare(bBand);
           break;
         }
-        case "species":
-          comparison = a.birdEvent.species.localeCompare(b.birdEvent.species);
+        case "species": {
+          const aSpecies = getSpeciesDisplayCode(resolveSpeciesKey(a.birdEvent.species, speciesAliasesMap), speciesAliasesMap);
+          const bSpecies = getSpeciesDisplayCode(
+            resolveSpeciesKey(b.birdEvent.species, speciesAliasesMap),
+            speciesAliasesMap
+          );
+          comparison = aSpecies.localeCompare(bSpecies);
           break;
+        }
         case "errorType":
           comparison = typeLabels[a.errorType].label.localeCompare(typeLabels[b.errorType].label);
           break;
@@ -143,7 +150,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
       const bTime = parseInt(b.birdEvent.updatedAt || "0", 10);
       return bTime - aTime;
     });
-  }, [errors, sortDescriptor]);
+  }, [errors, sortDescriptor, speciesAliasesMap]);
 
   const exportBirdEvents = useMemo(() => sortedErrors.map((error) => error.birdEvent), [sortedErrors]);
   const exportComments = useMemo(

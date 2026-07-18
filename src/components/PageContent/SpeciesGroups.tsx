@@ -31,6 +31,7 @@ type SpeciesGroup = {
 };
 
 type DetRow = {
+  speciesKey: string;
   groupName: string;
   code: string;
   englishName: string;
@@ -41,6 +42,7 @@ type DetRow = {
 };
 
 type PyleRow = {
+  speciesKey: string;
   code: string;
   englishName: string;
   frenchName: string;
@@ -143,8 +145,9 @@ export default function SpeciesGroups() {
       for (const code of group.speciesCodes) {
         const species = getSpeciesWithOverrides(code, speciesOverridesMap);
         allRows.push({
+          speciesKey: code,
           groupName: group.name,
-          code,
+          code: getSpeciesDisplayCode(code, speciesAliasesMap),
           englishName: species?.speciesDescriptionMBO ?? species?.speciesDescriptionCMMN ?? "Unknown",
           frenchName: species?.speciesFrench ?? "Unknown",
           totalCaptures: speciesInfoMap[code]?.totalCaptures ?? 0,
@@ -154,7 +157,7 @@ export default function SpeciesGroups() {
       }
     }
     return allRows;
-  }, [groupedSpecies, speciesInfoMap, speciesOverridesMap]);
+  }, [groupedSpecies, speciesAliasesMap, speciesInfoMap, speciesOverridesMap]);
 
   const pyleRows = useMemo<PyleRow[]>(() => {
     const rows: PyleRow[] = [];
@@ -163,7 +166,8 @@ export default function SpeciesGroups() {
       const englishName = overriddenSpecies.speciesDescriptionMBO || overriddenSpecies.speciesDescriptionCMMN;
       if (!englishName) continue;
       rows.push({
-        code,
+        speciesKey: code,
+        code: getSpeciesDisplayCode(code, speciesAliasesMap),
         englishName,
         frenchName: overriddenSpecies.speciesFrench || "Unknown",
         totalCaptures: speciesInfoMap[code]?.totalCaptures ?? 0,
@@ -172,7 +176,7 @@ export default function SpeciesGroups() {
       });
     }
     return rows;
-  }, [speciesInfoMap, speciesOverridesMap]);
+  }, [speciesAliasesMap, speciesInfoMap, speciesOverridesMap]);
 
   const renderEditButton = (code: string) => (
     <Button
@@ -260,12 +264,12 @@ export default function SpeciesGroups() {
                 emptyContent="No species found"
               >
                 {(item) => (
-                  <TableRow key={item.code} className="cursor-pointer">
+                  <TableRow key={item.speciesKey} className="cursor-pointer">
                     {(columnKey) => {
                       if (columnKey === "actions") {
                         return (
                           <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
-                            {renderEditButton(item.code)}
+                            {renderEditButton(item.speciesKey)}
                           </TableCell>
                         );
                       }
@@ -273,9 +277,7 @@ export default function SpeciesGroups() {
                       if (columnKey === "code") {
                         return (
                           <TableCell className="font-mono text-default-900">
-                            <SpeciesTooltip speciesCode={String(value)}>
-                              {getSpeciesDisplayCode(String(value), speciesAliasesMap)}
-                            </SpeciesTooltip>
+                            <SpeciesTooltip speciesCode={item.speciesKey}>{String(value)}</SpeciesTooltip>
                           </TableCell>
                         );
                       }
@@ -336,12 +338,12 @@ export default function SpeciesGroups() {
                 emptyContent="No Pyle reference data"
               >
                 {(item) => (
-                  <TableRow key={item.code} className="cursor-pointer">
+                  <TableRow key={item.speciesKey} className="cursor-pointer">
                     {(columnKey) => {
                       if (columnKey === "actions") {
                         return (
                           <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
-                            {renderEditButton(item.code)}
+                            {renderEditButton(item.speciesKey)}
                           </TableCell>
                         );
                       }
@@ -349,9 +351,7 @@ export default function SpeciesGroups() {
                       if (columnKey === "code") {
                         return (
                           <TableCell height={50} className="font-mono text-default-900">
-                            <SpeciesTooltip speciesCode={String(value)}>
-                              {getSpeciesDisplayCode(String(value), speciesAliasesMap)}
-                            </SpeciesTooltip>
+                            <SpeciesTooltip speciesCode={item.speciesKey}>{String(value)}</SpeciesTooltip>
                           </TableCell>
                         );
                       }

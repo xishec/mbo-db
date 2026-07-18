@@ -12,6 +12,7 @@ import SpeciesTooltip from "../../../Helper/Info/SpeciesTooltip";
 import AgeTooltip from "../../../Helper/Info/AgeTooltip";
 import VolunteerTooltip from "../../../Helper/Info/VolunteerTooltip";
 import { useCascadingSort, cascadingSort } from "../../../../hooks/useCascadingSort";
+import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../../types/species";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
@@ -82,6 +83,7 @@ export default function BirdEventsTable({
   const isOnline = useAppStore((s) => s.isOnline);
   const queuedEventIds = useAppStore((s) => s.queuedEventIds);
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
+  const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const isLoggedIn = useIsLoggedIn();
   const { sortDescriptors, handleSortChange } = useCascadingSort(
     initialSortDescriptors ?? [
@@ -140,11 +142,19 @@ export default function BirdEventsTable({
             const secondVal = parseFloat(String(b[column])) || 100;
             return firstVal - secondVal;
           }
+          if (column === "species") {
+            const firstSpecies = getSpeciesDisplayCode(resolveSpeciesKey(a.species, speciesAliasesMap), speciesAliasesMap);
+            const secondSpecies = getSpeciesDisplayCode(
+              resolveSpeciesKey(b.species, speciesAliasesMap),
+              speciesAliasesMap
+            );
+            return firstSpecies.localeCompare(secondSpecies);
+          }
           return undefined;
         });
         return maxRows ? sorted.slice(0, maxRows) : sorted;
       })(),
-    [rows, sortDescriptors, numericColumns, maxRows]
+    [rows, sortDescriptors, numericColumns, maxRows, speciesAliasesMap]
   );
 
   // Scroll the last <tr> into view whenever the row set changes, so the
