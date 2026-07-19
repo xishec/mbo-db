@@ -16,7 +16,6 @@ import { BIRD_EVENT_ERROR_TYPE_CONFIG, type BirdEventError, findBirdEventErrors 
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ExportButton from "../Helper/ExportButton";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
-import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 
@@ -336,7 +335,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
             </Button>
           )}
           <ExportButton birdEvents={exportBirdEvents} filename="errors.csv" additionalComments={exportComments} />
-          <Button {...modalPrimaryButtonProps} onPress={onClose}>
+          <Button color="primary" variant="bordered" onPress={onClose}>
             Close
           </Button>
         </ModalFooterShell>

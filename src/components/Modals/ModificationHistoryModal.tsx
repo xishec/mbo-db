@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import type { BirdEvent } from "../../types";
-import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
 interface ModificationHistoryModalProps {
@@ -69,7 +68,7 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
               )}
             </ModalBodyShell>
             <ModalFooterShell>
-              <Button {...modalPrimaryButtonProps} onPress={onClose}>
+              <Button color="primary" variant="bordered" onPress={onClose}>
                 Close
               </Button>
             </ModalFooterShell>

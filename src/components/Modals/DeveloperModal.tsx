@@ -5,7 +5,6 @@ import { useActions } from "../../stores/useAppStore";
 import { clearAllIndexedDB, clearEnvironmentCache } from "../../services/indexedDB";
 import { logger, type LogEntry, LogLevel } from "../../services/logger";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
-import { modalPrimaryButtonProps } from "./modalDefaults";
 
 function getLogLevelColor(level: LogLevel): "default" | "success" | "warning" | "danger" | "primary" {
   switch (level) {
@@ -114,7 +113,7 @@ export function DeveloperModal({ isOpen, onClose }: DeveloperModalProps) {
       </ModalBodyShell>
 
       <ModalFooterShell>
-        <Button {...modalPrimaryButtonProps} onPress={onClose}>
+        <Button color="primary" variant="bordered" onPress={onClose}>
           Close
         </Button>
       </ModalFooterShell>

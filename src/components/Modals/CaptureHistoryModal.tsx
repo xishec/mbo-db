@@ -10,7 +10,6 @@ import ValidationMessages from "../Helper/ValidationMessages";
 import BirdInfoCard from "../Helper/Info/BirdInfoCard";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import { resolveSpeciesKey } from "../../types/species";
-import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
 interface CaptureHistoryModalProps {
@@ -153,7 +152,7 @@ export default function CaptureHistoryModal({
             )}
           </ModalBodyShell>
           <ModalFooterShell>
-            <Button {...modalPrimaryButtonProps} onPress={onClose}>
+            <Button color="primary" variant="bordered" onPress={onClose}>
               Close
             </Button>
           </ModalFooterShell>

@@ -16,7 +16,7 @@ import { useMemo, useState } from "react";
 import { useAppStore, useActions } from "../../stores/useAppStore";
 import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP } from "../../types/species";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
-import { modalCancelButtonProps, modalInputProps, modalPrimaryButtonProps } from "./modalDefaults";
+import { modalInputProps, modalPrimaryButtonProps } from "./modalDefaults";
 
 type AliasRow = {
   aliasCode: string;
@@ -203,7 +203,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
             </div>
           </ModalBodyShell>
           <ModalFooterShell>
-            <Button {...modalCancelButtonProps} onPress={onClose}>
+            <Button color="primary" variant="bordered" onPress={onClose}>
               Close
             </Button>
           </ModalFooterShell>

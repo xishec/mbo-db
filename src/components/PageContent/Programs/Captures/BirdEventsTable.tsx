@@ -60,6 +60,8 @@ interface BirdEventsTableProps {
   allowInspectHistory?: boolean;
   showHistory?: boolean;
   hiddenColumns?: string[];
+  showSummary?: boolean;
+  removeWrapperShadow?: boolean;
   birdEventIdToHighlight?: string;
   maxRows?: number;
   scrollToEnd?: boolean;
@@ -75,6 +77,8 @@ export default function BirdEventsTable({
   allowInspectHistory = false,
   showHistory = false,
   hiddenColumns = [],
+  showSummary = true,
+  removeWrapperShadow = false,
   birdEventIdToHighlight,
   maxRows,
   scrollToEnd = false,
@@ -329,9 +333,11 @@ export default function BirdEventsTable({
   return (
     <>
       <div className="w-full flex flex-col gap-4" ref={containerRef}>
-        <div className="text-sm">
-          showing {rows.length} of {birdEvents.length} {rows.length === 1 ? "entry" : "entries"}
-        </div>
+        {showSummary && (
+          <div className="text-sm">
+            showing {rows.length} of {birdEvents.length} {rows.length === 1 ? "entry" : "entries"}
+          </div>
+        )}
         <Table
           isHeaderSticky
           aria-label="birdEvents table"
@@ -342,6 +348,7 @@ export default function BirdEventsTable({
           classNames={{
             base: "table-fixed",
             table: "table-fixed",
+            wrapper: removeWrapperShadow ? "h-[185px] shadow-none border border-default-200" : undefined,
             td: "data-[selected=true]:!text-black",
           }}
           selectionMode="single"

@@ -6,7 +6,6 @@ import { getQueuedEvents, clearQueue } from "../../services/indexedDB";
 import type { PendingEvent, BirdEvent } from "../../types";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
-import { modalPrimaryButtonProps } from "./modalDefaults";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 
 interface ActivityModalProps {
@@ -152,7 +151,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
       </ModalBodyShell>
 
       <ModalFooterShell>
-        <Button {...modalPrimaryButtonProps} onPress={onClose}>
+        <Button color="primary" variant="bordered" onPress={onClose}>
           Close
         </Button>
       </ModalFooterShell>

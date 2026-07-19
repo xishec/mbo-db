@@ -1,42 +1,9 @@
-import { Button, Spinner, useDisclosure, Tab, Tabs, Select, SelectItem } from "@heroui/react";
+import { Spinner, Tab, Tabs, Select, SelectItem } from "@heroui/react";
 import { memo, useState, useMemo, useCallback } from "react";
-import { useAppStore, useIsLoggedIn } from "../../../../stores/useAppStore";
+import { useAppStore } from "../../../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../../../services/birdEventsStore";
-import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import { Band, BandSize, getBandGroupMapKey, type BirdEvent } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
-import { PlusIcon } from "@heroicons/react/24/outline";
-
-// Memoized wrappers for HeroUI Select. HeroUI Select itself isn't memoized
-// and re-renders (~25ms each) whenever its parent commits, even with stable
-// props — adds up to ~2.5s of render work across a post-save cascade. These
-// thin wrappers short-circuit the render when the actual props haven't
-// changed (reference equality on items/selectedKeys/onChange).
-type PageSelectItem = { key: string; label: string };
-const MemoPageSelect = memo(function MemoPageSelect(props: {
-  items: PageSelectItem[];
-  selectedKeys: string[];
-  onChange: (selected: string | undefined) => void;
-}) {
-  return (
-    <Select
-      placeholder="Select page"
-      variant="bordered"
-      items={props.items}
-      selectedKeys={props.selectedKeys}
-      onSelectionChange={(keys) => props.onChange(Array.from(keys)[0] as string | undefined)}
-      size="md"
-      className="max-w-[200px]"
-      maxListboxHeight={9999}
-      classNames={{
-        trigger: "min-h-unit-10 h-unit-10",
-        value: "text-sm",
-      }}
-    >
-      {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-    </Select>
-  );
-});
 
 type OtherBandsItem = { key: string; label: string; count: number };
 const MemoOtherBandsSelect = memo(function MemoOtherBandsSelect(props: {
@@ -55,7 +22,7 @@ const MemoOtherBandsSelect = memo(function MemoOtherBandsSelect(props: {
         if (selected) props.onChange(selected);
       }}
       size="md"
-      className="max-w-[250px]"
+      className="w-[320px]"
       classNames={{
         trigger: "min-h-unit-10 h-unit-10",
         value: "text-sm",
@@ -70,44 +37,18 @@ const MemoOtherBandsSelect = memo(function MemoOtherBandsSelect(props: {
   );
 });
 
-const NETS = [
-  "A1",
-  "A2",
-  "B2",
-  "B3",
-  "C1",
-  "C2",
-  "D1",
-  "D2",
-  "D3",
-  "D4",
-  "E1",
-  "E2",
-  "H1",
-  "H2",
-  "N1",
-  "N3",
-  "other",
-] as const;
-
 export default function BirdEvents() {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const selectedProgram = useAppStore((s) => s.selectedProgram);
   const isLoading = useAppStore((s) => s.isLoading);
-  const isSyncing = useAppStore((s) => s.isSyncing);
-  const isSaving = useAppStore((s) => s.isSaving);
   const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
-  const isLoggedIn = useIsLoggedIn();
   const birdEventsVersion = useBirdEventsVersion();
-  const [selectedNet, setSelectedNet] = useState<string>("");
   // Three-state logic: undefined = auto-select default, null = show empty table, string = show this band group
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null | undefined>(undefined);
   // Track the size the user picked so the selection survives a strip rollover
   // (when finishing a strip advances bandSizeToBandGroup to a new band group id,
   // the user still wants to be viewing the same size).
   const [selectedBandSize, setSelectedBandSize] = useState<BandSize | null>(null);
-  const [modalBandSize, setModalBandSize] = useState<BandSize>(BandSize.Size0a);
   const [showRecaptures, setShowRecaptures] = useState(false);
 
   // Map band group ID to its band size label
@@ -210,11 +151,6 @@ export default function BirdEvents() {
     return other;
   }, [bandGroupIds, bandGroupToBandSize, bandGroupInfo]);
 
-  // Build page select items as a unified array to avoid React Aria collection issues.
-  // Label shows the PHYSICAL next band id from bandSizeToBandIdMap (the value the
-  // Add modal will prefill) — not `${groupKey}-${nextDigit}`, which is misleading
-  // when the next band is -00: strip "3060423" ends with physical band "3060424-00",
-  // so the label must say "3060424-00", not "3060423-00".
   const pageSelectItems = useMemo(() => {
     const items: { key: string; label: string }[] = [];
     Object.values(BandSize)
@@ -222,17 +158,12 @@ export default function BirdEvents() {
       .filter((size) => bandSizeToBandGroup[size])
       .forEach((size) => {
         const bandGroupId = bandSizeToBandGroup[size]!;
-        const nextFullId = bandSizeToBandIdMap[size as BandSize];
-        const labelBand =
-          nextFullId && nextFullId.length === 9
-            ? `${nextFullId.slice(0, 7)}-${nextFullId.slice(7, 9)}`
-            : `${bandGroupId}-${(bandGroupInfo[bandGroupId]?.nextDigits ?? "01")}`;
-        items.push({ key: bandGroupId, label: `${size} - ${labelBand}` });
+        items.push({ key: bandGroupId, label: size });
       });
     items.push({ key: "other", label: "Other Size" });
     items.push({ key: "recaptures", label: "Recaptures" });
     return items;
-  }, [bandSizeToBandGroup, bandGroupInfo, bandSizeToBandIdMap]);
+  }, [bandSizeToBandGroup]);
 
   // Determine which band group to display.
   //
@@ -288,15 +219,6 @@ export default function BirdEvents() {
       .filter((ev): ev is BirdEvent => !!ev);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProgram, birdEventsVersion]);
-
-  const handleNetTabChange = useCallback((key: React.Key) => {
-    const netValue = key as string;
-    if (netValue === "other") {
-      setSelectedNet("");
-    } else {
-      setSelectedNet(netValue);
-    }
-  }, []);
 
   // Sort descriptors for captures (by band digits) and recaptures (by date/time)
   const captureSortDescriptors = useMemo(
@@ -367,20 +289,6 @@ export default function BirdEvents() {
     [otherBandGroups, displayBandGroupId]
   );
 
-  const handleBandGroupAdd = useCallback(
-    (bandGroupId: string) => {
-      const bandSize = bandGroupToBandSize[bandGroupId];
-      if (bandSize) {
-        setSelectedBandGroupId(bandGroupId);
-        setSelectedBandSize(bandSize);
-        setShowRecaptures(false);
-        setModalBandSize(bandSize);
-        onOpen();
-      }
-    },
-    [bandGroupToBandSize, onOpen]
-  );
-
   if (!selectedProgram) {
     return null;
   }
@@ -395,79 +303,33 @@ export default function BirdEvents() {
 
   return (
     <div className="w-full flex flex-col items-center gap-8">
-      <AddBirdEventModal
-        isOpen={isOpen}
-        onOpenChange={onOpenChange}
-        bandSize={modalBandSize}
-        isNewCapture={true}
-        defaultNet={selectedNet}
-      />
-
       <div className="w-full flex flex-col gap-4">
-        {isLoggedIn && (
-          <div className="flex items-center gap-3">
-            <span>Net:</span>
+        <div className="flex w-full items-center justify-start gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Tabs
               color="secondary"
               size="md"
-              selectedKey={selectedNet || undefined}
-              onSelectionChange={handleNetTabChange}
+              selectedKey={pageSelectedKeys[0]}
+              onSelectionChange={(key) => handlePageSelectChange(key as string)}
               classNames={{
+                base: "min-w-0",
+                tabList: "justify-start",
                 tabContent: "!text-foreground group-data-[selected=true]:!text-secondary-foreground",
               }}
             >
-              {NETS.map((net) => (
-                <Tab key={net} title={net} />
+              {pageSelectItems.map((item) => (
+                <Tab key={item.key} title={item.label} />
               ))}
             </Tabs>
           </div>
-        )}
-
-        <div className="flex items-center gap-3 flex-wrap">
-          <span>Active pages:</span>
-          <MemoPageSelect
-            items={pageSelectItems}
-            selectedKeys={pageSelectedKeys}
-            onChange={handlePageSelectChange}
-          />
-          {(() => {
-            // Disabled when nothing is actionable:
-            //  - no page selected (displayBandGroupId === undefined)
-            //  - selected band group has no known size (handleBandGroupAdd would no-op)
-            //  - app is loading or syncing
-            const isSizedGroup =
-              displayBandGroupId != null && !!bandGroupToBandSize[displayBandGroupId];
-            const addEnabled =
-              !isLoading && !isSyncing && !isSaving &&
-              (showRecaptures || displayBandGroupId === null || isSizedGroup);
-            return (
-              <Button
-                color="secondary"
-                variant="solid"
-                isDisabled={!addEnabled}
-                onPress={() => {
-                  if (showRecaptures || displayBandGroupId === null) {
-                    setModalBandSize(BandSize.Other);
-                    onOpen();
-                  } else if (displayBandGroupId) {
-                    handleBandGroupAdd(displayBandGroupId);
-                  }
-                }}
-                className="min-w-[60px] mr-[110px]"
-              >
-                <PlusIcon className="w-5 h-5" />
-              </Button>
-            );
-          })()}
           {otherBandGroups.length > 0 && (
-            <>
-              <span>Other pages:</span>
+            <div className="flex shrink-0 items-center gap-3">
               <MemoOtherBandsSelect
                 items={otherBandsItems}
                 selectedKeys={otherBandsSelectedKeys}
                 onChange={handleOtherBandsSelectChange}
               />
-            </>
+            </div>
           )}
         </div>
       </div>

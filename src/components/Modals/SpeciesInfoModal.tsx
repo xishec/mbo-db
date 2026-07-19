@@ -4,7 +4,6 @@ import PyleAndFunFacts from "../Helper/Info/PyleAndFunFacts";
 import { useAppStore } from "../../stores/useAppStore";
 import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../types/species";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
-import { modalPrimaryButtonProps } from "./modalDefaults";
 
 interface SpeciesInfoModalProps {
   isOpen: boolean;
@@ -65,7 +64,7 @@ export default function SpeciesInfoModal({ isOpen, onOpenChange, speciesCode }: 
             )}
           </ModalBodyShell>
           <ModalFooterShell>
-            <Button {...modalPrimaryButtonProps} onPress={onClose}>
+            <Button color="primary" variant="bordered" onPress={onClose}>
               Close
             </Button>
           </ModalFooterShell>

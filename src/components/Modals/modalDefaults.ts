@@ -5,7 +5,7 @@ export const modalInputProps = {
 };
 
 export const modalCancelButtonProps = {
-  color: "default" as const,
+  color: "primary" as const,
   variant: "bordered" as const,
   size: "md" as const,
 };

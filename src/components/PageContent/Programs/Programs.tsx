@@ -14,6 +14,7 @@ import BirdEvents from "./Captures/BirdEvents";
 import { useMemo, useState } from "react";
 import { useAppStore, useActions, useIsLoggedIn } from "../../../stores/useAppStore";
 import AddProgramModal from "../../Modals/AddProgramModal";
+import StartBandingModal from "../../Modals/StartBandingModal";
 import type { Program } from "../../../types";
 import PageHeader from "../PageHeader";
 
@@ -25,6 +26,7 @@ export default function Programs() {
   const isLoggedIn = useIsLoggedIn();
   const { selectProgram } = useActions();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
+  const [isStartBandingModalOpen, setIsStartBandingModalOpen] = useState(false);
 
   // Year rows for the table (sorted descending)
   const yearRows = useMemo(() => {
@@ -104,6 +106,11 @@ export default function Programs() {
             )}
           </Breadcrumbs>
         </div>
+        {selectedProgram && (
+          <Button color="secondary" onPress={() => setIsStartBandingModalOpen(true)}>
+            Start Banding
+          </Button>
+        )}
       </div>
 
       {!selectedProgram && (
@@ -169,6 +176,7 @@ export default function Programs() {
       {selectedProgram && <BirdEvents />}
 
       <AddProgramModal isOpen={isAddProgramModalOpen} onOpenChange={setIsAddProgramModalOpen} />
+      <StartBandingModal isOpen={isStartBandingModalOpen} onOpenChange={setIsStartBandingModalOpen} />
     </div>
   );
 }
