@@ -29,8 +29,8 @@ export default function StartBandingModal({ isOpen, onOpenChange }: StartBanding
         <>
           <ModalBody className="items-center justify-center gap-4 px-10 pb-10 pt-10">
             <div className="flex w-full max-w-[2400px] flex-col gap-5">
-              <StartBandingEntry entryId="primary" />
-              {isDoubleBanding && <StartBandingEntry entryId="secondary" />}
+              <StartBandingEntry entryId="primary" isDoubleBanding={isDoubleBanding} />
+              {isDoubleBanding && <StartBandingEntry entryId="secondary" isDoubleBanding={isDoubleBanding} />}
             </div>
           </ModalBody>
           <ModalFooter className="justify-between gap-4 p-8 pt-0">
