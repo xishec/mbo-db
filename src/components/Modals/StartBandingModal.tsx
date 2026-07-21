@@ -1,5 +1,6 @@
 import { Button, ModalBody, ModalFooter, Switch } from "@heroui/react";
 import { useState } from "react";
+import { useAppStore } from "../../stores/useAppStore";
 import ModalShell from "./ModalShell";
 import StartBandingEntry from "./StartBandingEntry";
 
@@ -10,6 +11,7 @@ interface StartBandingModalProps {
 
 export default function StartBandingModal({ isOpen, onOpenChange }: StartBandingModalProps) {
   const [isDoubleBanding, setIsDoubleBanding] = useState(false);
+  const isSaving = useAppStore((s) => s.isSaving);
 
   return (
     <ModalShell
@@ -34,10 +36,10 @@ export default function StartBandingModal({ isOpen, onOpenChange }: StartBanding
             </div>
           </ModalBody>
           <ModalFooter className="justify-between gap-4 p-8 pt-0">
-            <Switch isSelected={isDoubleBanding} onValueChange={setIsDoubleBanding}>
+            <Switch isSelected={isDoubleBanding} onValueChange={setIsDoubleBanding} isDisabled={isSaving}>
               Double banding
             </Switch>
-            <Button color="primary" variant="bordered" onPress={onClose}>
+            <Button color="primary" variant="bordered" onPress={onClose} isDisabled={isSaving}>
               Close
             </Button>
           </ModalFooter>
