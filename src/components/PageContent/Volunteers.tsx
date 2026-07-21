@@ -21,6 +21,7 @@ import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import ExportButton from "../Helper/ExportButton";
 import { BirdEventType, type BirdEvent, type ObserverClass } from "../../types";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
+import { getLocalDateString } from "../../utils/dateUtils";
 import PageHeader from "./PageHeader";
 
 type Row = {
@@ -29,6 +30,8 @@ type Row = {
   observerClass: ObserverClass;
   totalBanded: number;
   totalScribed: number;
+  totalDays: number;
+  daysPast12Months: number;
 };
 
 const COLUMNS = [
@@ -43,6 +46,14 @@ const COLUMNS = [
   },
   { key: "totalBanded" as const, label: "Banded", type: "number" as const, align: "end" as const, width: 150 },
   { key: "totalScribed" as const, label: "Scribed", type: "number" as const, align: "end" as const, width: 150 },
+  { key: "totalDays" as const, label: "Total Days", type: "number" as const, align: "end" as const, width: 130 },
+  {
+    key: "daysPast12Months" as const,
+    label: "Past 12 Months",
+    type: "number" as const,
+    align: "end" as const,
+    width: 160,
+  },
   { key: "actions" as const, label: "Actions", type: "actions" as const, align: "end" as const, width: 110 },
 ];
 
@@ -108,6 +119,36 @@ export default function Volunteers() {
       );
   }, [breakdownEvents, speciesAliasesMap]);
 
+  const volunteerDays = useMemo(() => {
+    const today = new Date();
+    const todayString = getLocalDateString(today);
+    const twelveMonthsAgo = new Date(today);
+    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+    const twelveMonthsAgoString = getLocalDateString(twelveMonthsAgo);
+    const allDates = new Map<string, Set<string>>();
+    const recentDates = new Map<string, Set<string>>();
+
+    for (const ev of birdEventsStore.getAll().values()) {
+      if (!ev || ev.modifiedEventId || !ev.date || ev.date > todayString) continue;
+
+      // A volunteer may band and scribe on the same day; that day should
+      // still only be counted once.
+      const volunteerCodes = new Set([ev.bander, ev.scribe].filter(Boolean));
+      for (const code of volunteerCodes) {
+        if (!allDates.has(code)) allDates.set(code, new Set());
+        allDates.get(code)!.add(ev.date);
+
+        if (ev.date >= twelveMonthsAgoString) {
+          if (!recentDates.has(code)) recentDates.set(code, new Set());
+          recentDates.get(code)!.add(ev.date);
+        }
+      }
+    }
+
+    return { allDates, recentDates };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [birdEventsVersion]);
+
   const rows = useMemo<Row[]>(() => {
     const allRows = Object.values(volunteerStatsMap).map((b) => ({
       code: b.code,
@@ -115,6 +156,8 @@ export default function Volunteers() {
       observerClass: b.observerClass ?? 3,
       totalBanded: b.totalBanded,
       totalScribed: b.totalScribed,
+      totalDays: volunteerDays.allDates.get(b.code)?.size ?? 0,
+      daysPast12Months: volunteerDays.recentDates.get(b.code)?.size ?? 0,
     }));
 
     if (search) {
@@ -123,7 +166,7 @@ export default function Volunteers() {
     }
 
     return allRows;
-  }, [volunteerStatsMap, search]);
+  }, [volunteerStatsMap, volunteerDays, search]);
 
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
   const handleOpenEditModal = (row: Row) => {
