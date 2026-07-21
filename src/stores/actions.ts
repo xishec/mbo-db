@@ -525,9 +525,9 @@ export const actions = {
         ...(milestoneSet ? { milestone: milestoneSet } : {}),
       });
 
-      // Persist to IndexedDB (non-blocking). The hot path — one per-event
-      // put instead of a 700K-entry blob rewrite. Per-event is O(1) (~2ms);
-      // the old full-blob write was O(N) structured-clone serialization.
+      // Persist only the changed event rows. The derived index maps are
+      // rebuilt from these rows on every load, so writing them here would
+      // needlessly serialize the large bandId index after every save.
       const eventWrites: BirdEvent[] = [newBirdEvent];
       if (!replacingPendingId && previousEventId) {
         const prev = birdEventsStore.get(previousEventId);
@@ -540,12 +540,6 @@ export const actions = {
           Promise.all([
             putBirdEvents(CURRENT_ENVIRONMENT, eventWrites),
             droppedEventId ? deleteBirdEvent(CURRENT_ENVIRONMENT, droppedEventId) : Promise.resolve(),
-            saveMapsToIndexedDB({
-              bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
-              bandGroupsMap: newBandGroupsMap,
-              programsMap: newProgramsMap,
-              yearsToProgramMap: newYearsToProgramMap,
-            }),
             refreshQueueState(),
           ])
         )
