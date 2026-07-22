@@ -150,9 +150,8 @@ export function rebuildMapsFromEvents(
     };
   }
 
-  const entries = allEvents instanceof Map ? allEvents.entries() : Object.entries(allEvents);
-  for (const [id, ev] of entries) {
-    if (!ev || !ev.date) continue;
+  const processEvent = (id: string, ev: BirdEvent): void => {
+    if (!ev || !ev.date) return;
     const band =
       ev.band?.bandPrefix && ev.band?.bandSuffix
         ? new Band(ev.band.bandPrefix, ev.band.bandSuffix)
@@ -161,7 +160,7 @@ export function rebuildMapsFromEvents(
       if (!bandIdMap[band.id]) bandIdMap[band.id] = [];
       bandIdMap[band.id].push(id);
     }
-    if (!isActiveBirdEvent(ev, bandResetsMap)) continue;
+    if (!isActiveBirdEvent(ev, bandResetsMap)) return;
 
     const isNewCapture =
       ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
@@ -215,6 +214,14 @@ export function rebuildMapsFromEvents(
         };
       volunteerStats[ev.scribe].totalScribed++;
     }
+  };
+
+  if (allEvents instanceof Map) {
+    for (const [id, ev] of allEvents) processEvent(id, ev);
+  } else {
+    // Avoid Object.entries(allEvents): at 700K rows it creates a second
+    // large array of [id, event] pairs during the memory-heavy load path.
+    for (const id in allEvents) processEvent(id, allEvents[id]);
   }
 
   return { bandIdMap, bandGroups, programs, years, volunteerStats };

@@ -16,6 +16,7 @@ import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { findErrorsInEvents, getRangesForSex, validateBirdEventForm } from "../../types/birdEventErrors";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 import { getLocalDateString } from "../../utils/dateUtils";
+import { showPersistentErrorToast } from "../../utils/toast";
 import PyleTable from "../Helper/Info/PyleTable";
 import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import { TABLE_COLUMNS, formatFieldValue, getDefaultFormData } from "../PageContent/Programs/Captures/helpers";
@@ -552,7 +553,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
         birdEventType: formData.birdEventType,
       },
       pastBirdEvents,
-      magicTable
+      magicTable,
+      speciesAliasesMap
     );
 
     const existingSpeciesValues = [
@@ -971,41 +973,50 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const hasExistingData = pastBirdEvents.length > 0;
   const existingDataTitle = `${hasExistingData ? "Existing data" : "No data"} for band ${bandId || ""}`.trim();
   const canSave = Boolean(formData.bandGroup && formData.bandLastTwoDigits && formData.species && selectedProgram);
-  const orderedValidationMessages = useMemo(
-    () => [
-      ...validationMessages.filter((message) => message.severity === "danger"),
-      ...validationMessages.filter((message) => message.severity === "warning"),
-    ],
-    [validationMessages]
-  );
-  const validationMessageCount = orderedValidationMessages.length;
-  const activeValidationMessageIndex = Math.min(
+  const orderedMessages = useMemo<EntryMessage[]>(() => {
+    const messages = [
+      ...validationMessages
+        .filter((message) => message.severity === "danger")
+        .map((message): EntryMessage => ({ tone: "danger", text: message.text })),
+      ...validationMessages
+        .filter((message) => message.severity === "warning")
+        .map((message): EntryMessage => ({ tone: "warning", text: message.text })),
+    ];
+
+    const allMessages = !entryMessage
+      ? messages
+      : entryMessage.tone === "danger"
+        ? [entryMessage, ...messages]
+        : [...messages, entryMessage];
+    const seen = new Set<string>();
+    return allMessages.filter((message) => {
+      if (seen.has(message.text)) return false;
+      seen.add(message.text);
+      return true;
+    });
+  }, [entryMessage, validationMessages]);
+  const messageCount = orderedMessages.length;
+  const activeMessageIndex = Math.min(
     validationMessageIndex,
-    Math.max(0, validationMessageCount - 1)
+    Math.max(0, messageCount - 1)
   );
-  const validationMessage = orderedValidationMessages[activeValidationMessageIndex];
+  const activeMessage = orderedMessages[activeMessageIndex];
 
   useEffect(() => {
     setValidationMessageIndex(0);
-  }, [orderedValidationMessages]);
+  }, [orderedMessages]);
 
   const moveValidationMessage = useCallback(
     (direction: -1 | 1) => {
-      if (validationMessageCount < 2) return;
+      if (messageCount < 2) return;
       setValidationMessageIndex(
-        (current) => (current + direction + validationMessageCount) % validationMessageCount
+        (current) => (current + direction + messageCount) % messageCount
       );
     },
-    [validationMessageCount]
+    [messageCount]
   );
   const displayedMessage =
-    (validationMessage
-      ? {
-          tone: validationMessage.severity === "danger" ? "danger" : "warning",
-          text: validationMessage.text,
-        }
-      : null) ??
-    entryMessage ??
+    activeMessage ??
     ({
       tone: "default",
       text: canSave ? "Ready to save" : "Enter fields to save",
@@ -1077,10 +1088,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     } catch (err) {
       if (savedReminderBandRef.current === suppressedReminderBand) savedReminderBandRef.current = "";
       pendingSavedBandSizeRef.current = null;
-      setEntryMessage({
-        tone: "danger",
-        text: err instanceof Error ? err.message : "Save failed. Please try again.",
-      });
+      setEntryMessage(null);
+      showPersistentErrorToast("Save failed", err, "Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -1111,7 +1120,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
               <PyleTable title="Pyle" speciesCode={resolvedSpecies} speciesRange={pyleSpeciesRange} withCard />
             </section>
 
-            <section className="flex min-w-0 flex-col gap-4">
+            <section className="flex min-w-0 flex-col gap-2">
               <h3 className="text-sm font-medium text-default-900">{existingDataTitle}</h3>
               <div className={hasExistingData ? "" : "[&_th]:text-default-400"}>
                 <BirdEventsTable
@@ -1138,7 +1147,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
           <div className="flex items-center justify-between gap-4">
             <div
               className={`flex h-[40px] min-h-[40px] max-h-[40px] flex-1 items-center gap-2 overflow-hidden rounded-medium border bg-transparent px-3 text-sm font-medium ${messageClassName}`}
-              tabIndex={validationMessageCount > 1 ? 0 : undefined}
+              tabIndex={messageCount > 1 ? 0 : undefined}
               onKeyDown={(event) => {
                 if (event.key === "ArrowLeft") {
                   event.preventDefault();
@@ -1152,10 +1161,10 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
               <span className="min-w-0 flex-1 truncate" title={displayedMessage.text}>
                 {displayedMessage.text}
               </span>
-              {validationMessageCount > 1 && (
+              {messageCount > 1 && (
                 <div className="flex shrink-0 items-center gap-1">
                   <span className="text-xs tabular-nums opacity-70">
-                    {activeValidationMessageIndex + 1}/{validationMessageCount}
+                    {activeMessageIndex + 1}/{messageCount}
                   </span>
                   <Button
                     isIconOnly

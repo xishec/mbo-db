@@ -50,11 +50,12 @@ class BirdEventsStore {
 
   /**
    * Replace the entire store (used on load/reload). Accepts either a
-   * plain Record (for backward compat with IndexedDB reads) or a Map.
+   * plain Record (for backward compat with IndexedDB reads) or a Map. Map
+   * callers hand ownership to the store, avoiding another full-size copy.
    */
   replace(source: Map<string, BirdEvent> | Record<string, BirdEvent>): void {
     if (source instanceof Map) {
-      this.map = new Map(source);
+      this.map = source;
     } else {
       this.map = new Map(Object.entries(source));
     }

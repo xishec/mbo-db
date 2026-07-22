@@ -4,6 +4,7 @@ import { useAppStore } from "../../stores/useAppStore";
 import { birdEventsStore } from "../../services/birdEventsStore";
 import { getQueuedEvents, clearQueue } from "../../services/indexedDB";
 import type { PendingEvent, BirdEvent } from "../../types";
+import { CURRENT_ENVIRONMENT } from "../../firebase";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -24,7 +25,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
 
   useEffect(() => {
     if (!isOpen) return;
-    getQueuedEvents().then(setQueuedEvents).catch(console.error);
+    getQueuedEvents(CURRENT_ENVIRONMENT).then(setQueuedEvents).catch(console.error);
   }, [isOpen, pendingCount]);
 
   // Only walk the full birdEventsMap when the modal is open. Sorting 700K+
@@ -117,7 +118,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
                     isLoading={clearing}
                     onPress={async () => {
                       setClearing(true);
-                      await clearQueue();
+                      await clearQueue(CURRENT_ENVIRONMENT);
                       window.location.reload();
                     }}
                   >

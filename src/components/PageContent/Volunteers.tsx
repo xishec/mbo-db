@@ -23,6 +23,7 @@ import { isActiveBirdEvent } from "../../stores/derive";
 import { BirdEventType, type BirdEvent, type ObserverClass } from "../../types";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 import { getLocalDateString } from "../../utils/dateUtils";
+import { showPersistentErrorToast } from "../../utils/toast";
 import PageHeader from "./PageHeader";
 
 type Row = {
@@ -78,6 +79,7 @@ export default function Volunteers() {
   const [editingName, setEditingName] = useState("");
   const [editingObserverClass, setEditingObserverClass] = useState<ObserverClass>(3);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSavingVolunteer, setIsSavingVolunteer] = useState(false);
   const [breakdown, setBreakdown] = useState<{ code: string; role: BreakdownRole } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
@@ -177,9 +179,17 @@ export default function Volunteers() {
     setEditingObserverClass(row.observerClass);
     setIsEditModalOpen(true);
   };
-  const handleSaveVolunteer = () => {
-    if (editingCode) updateVolunteer(editingCode, editingName, editingObserverClass);
-    setIsEditModalOpen(false);
+  const handleSaveVolunteer = async () => {
+    if (!editingCode || isSavingVolunteer) return;
+    setIsSavingVolunteer(true);
+    try {
+      await updateVolunteer(editingCode, editingName, editingObserverClass);
+      setIsEditModalOpen(false);
+    } catch (err) {
+      showPersistentErrorToast("Volunteer save failed", err, "Please try again.");
+    } finally {
+      setIsSavingVolunteer(false);
+    }
   };
 
   return (
@@ -345,10 +355,10 @@ export default function Volunteers() {
           </Select>
         </ModalBodyShell>
         <ModalFooterShell>
-          <Button {...modalCancelButtonProps} onPress={() => setIsEditModalOpen(false)}>
+          <Button {...modalCancelButtonProps} onPress={() => setIsEditModalOpen(false)} isDisabled={isSavingVolunteer}>
             Cancel
           </Button>
-          <Button {...modalPrimaryButtonProps} onPress={handleSaveVolunteer}>
+          <Button {...modalPrimaryButtonProps} onPress={handleSaveVolunteer} isLoading={isSavingVolunteer}>
             Save
           </Button>
         </ModalFooterShell>

@@ -674,7 +674,8 @@ export function validateBirdEventForm(
     birdEventType: string;
   },
   pastBirdEvents: BirdEvent[],
-  magicTable?: MagicTable
+  magicTable?: MagicTable,
+  speciesAliasesMap: Record<string, string> = {}
 ): { text: string; severity: ErrorSeverity }[] {
   const messages: { text: string; severity: ErrorSeverity }[] = [];
   const sexLabel = getSexLabel(formData.sex);
@@ -707,7 +708,21 @@ export function validateBirdEventForm(
   }
 
   // Get species ranges
-  const pyleRange = magicTable?.pyle?.[formData.species];
+  const speciesKey = resolveSpeciesKey(formData.species, speciesAliasesMap);
+  const pyleRange = magicTable?.pyle?.[speciesKey];
+
+  if (
+    formData.species.length === 4 &&
+    speciesKey !== "BADE" &&
+    speciesKey !== "BALO" &&
+    magicTable?.pyle &&
+    !pyleRange
+  ) {
+    messages.push({
+      text: `Species "${getSpeciesDisplayCode(speciesKey, speciesAliasesMap)}" not found in Pyle reference`,
+      severity: "danger",
+    });
+  }
 
   // Get sex-specific ranges
   const pyleRanges = getRangesForSex(pyleRange, formData.sex);

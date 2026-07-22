@@ -24,14 +24,21 @@ import {
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import LoginModal from "./Modals/LoginModal";
-import { DeveloperModal } from "./Modals/DeveloperModal";
-import { ErrorsModal } from "./Modals/ErrorsModal";
-import { ActivityModal } from "./Modals/ActivityModal";
 import { useAppStore, useActions, useIsLoggedIn, useUserEmail } from "../stores/useAppStore";
 import { CURRENT_ENVIRONMENT } from "../firebase";
 import mboLogo from "../assets/mbo-logo.svg";
+
+const DeveloperModal = lazy(() =>
+  import("./Modals/DeveloperModal").then(({ DeveloperModal }) => ({ default: DeveloperModal }))
+);
+const ErrorsModal = lazy(() =>
+  import("./Modals/ErrorsModal").then(({ ErrorsModal }) => ({ default: ErrorsModal }))
+);
+const ActivityModal = lazy(() =>
+  import("./Modals/ActivityModal").then(({ ActivityModal }) => ({ default: ActivityModal }))
+);
 
 interface NavigationProps {
   activePage: string;
@@ -45,6 +52,9 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
   const { isOpen: isActivityOpen, onOpen: onActivityOpen, onClose: onActivityClose } = useDisclosure();
+  const [hasLogsOpened, setHasLogsOpened] = useState(false);
+  const [hasErrorsOpened, setHasErrorsOpened] = useState(false);
+  const [hasActivityOpened, setHasActivityOpened] = useState(false);
   const pendingCount = useAppStore((s) => s.pendingCount);
   const lastSyncedAt = useAppStore((s) => s.lastSyncedAt);
   const isOnline = useAppStore((s) => s.isOnline);
@@ -55,9 +65,21 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
   const userEmail = useUserEmail();
   const { clearSyncResult, selectProgram, signOut: handleSignOut } = useActions();
 
-  const handleLogsOpen = () => !isLoading && onLogsOpen();
-  const handleErrorsOpen = () => !isLoading && onErrorsOpen();
-  const handleActivityOpen = () => !isLoading && onActivityOpen();
+  const handleLogsOpen = () => {
+    if (isLoading) return;
+    setHasLogsOpened(true);
+    onLogsOpen();
+  };
+  const handleErrorsOpen = () => {
+    if (isLoading) return;
+    setHasErrorsOpened(true);
+    onErrorsOpen();
+  };
+  const handleActivityOpen = () => {
+    if (isLoading) return;
+    setHasActivityOpened(true);
+    onActivityOpen();
+  };
   const handleLoginOpen = () => !isLoading && onOpen();
 
   // Conflict scan is expensive (iterates all bands). We no longer compute it
@@ -480,9 +502,11 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
         )}
       </Navbar>
       <LoginModal isOpen={isOpen} onOpenChange={onOpenChange} />
-      <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />
-      <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />
-      <ActivityModal isOpen={isActivityOpen} onClose={onActivityClose} />
+      <Suspense fallback={null}>
+        {hasErrorsOpened && <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />}
+        {hasLogsOpened && <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />}
+        {hasActivityOpened && <ActivityModal isOpen={isActivityOpen} onClose={onActivityClose} />}
+      </Suspense>
       <Modal
         isOpen={isSyncing || syncResult !== null}
         isDismissable={false}

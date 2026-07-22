@@ -10,6 +10,7 @@ import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import PageHeader from "./PageHeader";
 import type { BirdEvent } from "../../types";
 import { isActiveBirdEvent } from "../../stores/derive";
+import { showPersistentErrorToast } from "../../utils/toast";
 
 type Row = {
   bandGroupId: string;
@@ -76,9 +77,23 @@ export default function Bands() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSavingNote, setIsSavingNote] = useState(false);
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
+
+  const handleSaveNote = async () => {
+    if (!editingId || isSavingNote) return;
+    setIsSavingNote(true);
+    try {
+      await updateBandGroupNote(editingId, editingNote);
+      setIsEditModalOpen(false);
+    } catch (err) {
+      showPersistentErrorToast("Note save failed", err, "Please try again.");
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
 
   const selectedBandGroupEvents = useMemo<BirdEvent[]>(() => {
     if (!selectedBandGroupId) return [];
@@ -254,23 +269,16 @@ export default function Bands() {
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                if (editingId) updateBandGroupNote(editingId, editingNote);
-                setIsEditModalOpen(false);
+                handleSaveNote();
               }
             }}
           />
         </ModalBodyShell>
         <ModalFooterShell>
-          <Button {...modalCancelButtonProps} onPress={() => setIsEditModalOpen(false)}>
+          <Button {...modalCancelButtonProps} onPress={() => setIsEditModalOpen(false)} isDisabled={isSavingNote}>
             Cancel
           </Button>
-          <Button
-            {...modalPrimaryButtonProps}
-            onPress={() => {
-              if (editingId) updateBandGroupNote(editingId, editingNote);
-              setIsEditModalOpen(false);
-            }}
-          >
+          <Button {...modalPrimaryButtonProps} onPress={handleSaveNote} isLoading={isSavingNote}>
             Save
           </Button>
         </ModalFooterShell>

@@ -1,13 +1,12 @@
-import { ref, set, update } from "firebase/database";
+import { get, ref, set, update } from "firebase/database";
 import { signOut as firebaseSignOut } from "firebase/auth";
 import { auth, CURRENT_ENVIRONMENT, db } from "../firebase";
 import {
   addToQueue,
   deleteBirdEvent,
-  getQueueCount,
   getQueuedEvents,
   putBirdEvents,
-  removeFromQueue,
+  removeManyFromQueue,
   replaceInQueue,
   saveDatabaseMetadataOnly,
   saveMetadata,
@@ -32,6 +31,7 @@ import {
 } from "../types";
 import { type IndependentMapName } from "../types/mapNames";
 import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
+import { stripUndefined } from "../utils/firebaseValue";
 import {
   advanceBandId,
   computeBandSizeToBandIdMap,
@@ -41,6 +41,7 @@ import {
   rebuildMapsFromEvents,
 } from "./derive";
 import { useAppStore } from "./useAppStore";
+import { buildSyncBatches } from "./syncPlan";
 
 // Mutex for serializing IndexedDB writes. Prevents concurrent
 // read-modify-write cycles from overwriting each other.
@@ -66,7 +67,7 @@ async function updateMapTimestamp(mapName: IndependentMapName): Promise<void> {
 }
 
 export async function refreshQueueState(): Promise<void> {
-  const queued = await getQueuedEvents();
+  const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
   useAppStore.setState({
     pendingCount: queued.length,
     queuedEventIds: new Set(
@@ -79,58 +80,63 @@ export async function syncQueue(): Promise<void> {
   if (!useAppStore.getState().isOnline) return;
 
   try {
-    const pendingEvents = await getQueuedEvents();
+    const pendingEvents = await getQueuedEvents(CURRENT_ENVIRONMENT);
     logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
     const now = Date.now();
-
-    // Multi-path update: new event + predecessor's modifiedEventId land atomically.
     let successCount = 0;
-    const syncedBirdEvents: BirdEvent[] = [];
-    for (const pending of pendingEvents) {
-      try {
-        if (pending.type === "bird-event") {
-          const birdEvent = pending.pendingEvent as BirdEvent;
-          const updates: Record<string, unknown> = {
-            [`${pending.environment}/birdEventsMap/${birdEvent.id}`]: { ...birdEvent, syncedAt: now },
-          };
-          if (birdEvent.previousEventId) {
-            updates[`${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/modifiedEventId`] = birdEvent.id;
-            updates[`${pending.environment}/birdEventsMap/${birdEvent.previousEventId}/syncedAt`] = now;
-          }
-          await update(ref(db), updates);
-          syncedBirdEvents.push(birdEvent);
-        }
-        await removeFromQueue(pending.id);
-        successCount++;
-      } catch (err) {
-        logger.error("SyncQueue", `Failed to sync event ${pending.id}`, err);
-      }
-    }
 
-    // Mirror RTDB state back into the store so UI reflects syncedAt without
-    // waiting for full reload. syncedAt / modifiedEventId changes don't
-    // affect rebuildMapsFromEvents — no rebuild needed.
-    if (syncedBirdEvents.length > 0) {
-      const updates: BirdEvent[] = [];
-      for (const ev of syncedBirdEvents) {
-        const existing = birdEventsStore.get(ev.id) ?? ev;
-        updates.push({ ...existing, syncedAt: now });
-        if (ev.previousEventId) {
-          const prev = birdEventsStore.get(ev.previousEventId);
-          if (prev) {
-            updates.push({ ...prev, modifiedEventId: ev.id, syncedAt: now });
-          }
-        }
+    const batches = buildSyncBatches(
+      pendingEvents,
+      now,
+      (environment, eventId) =>
+        environment === CURRENT_ENVIRONMENT ? birdEventsStore.get(eventId) : undefined,
+    );
+
+    for (const batch of batches) {
+      if (batch.missingPredecessorIds.length > 0) {
+        logger.error(
+          "SyncQueue",
+          `Batch kept pending because predecessor events are missing: ${batch.missingPredecessorIds.join(", ")}`,
+        );
+        continue;
       }
-      birdEventsStore.setMany(updates);
-      // Per-event batch write — no 700K-entry blob to re-serialize.
-      putBirdEvents(CURRENT_ENVIRONMENT, updates).catch((err) =>
-        logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err)
-      );
+
+      try {
+        // Each batch is one atomic, multi-location Firebase update. The sync
+        // plan writes whole event records, so queue order cannot create
+        // conflicting parent/child paths for modification chains.
+        await update(ref(db), batch.updates);
+
+        if (batch.birdEvents.length > 0) {
+          birdEventsStore.setMany(batch.birdEvents);
+          putBirdEvents(CURRENT_ENVIRONMENT, batch.birdEvents).catch((err) =>
+            logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err)
+          );
+        }
+
+        if (batch.dets.length > 0) {
+          useAppStore.setState((state) => {
+            const DETsMap = { ...state.DETsMap };
+            for (const det of batch.dets) DETsMap[det.date] = det;
+            return { DETsMap };
+          });
+          Promise.all([
+            ...batch.dets.map((det) => updateDETInCache(CURRENT_ENVIRONMENT, det)),
+            saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, now),
+          ]).catch((err) => logger.warn("SyncQueue", "Failed to cache synced DET state", err));
+        }
+
+        // Queue rows are deleted only after Firebase accepts the full batch.
+        // If deletion fails, retrying is safe because all writes are idempotent.
+        await removeManyFromQueue(batch.queueIds);
+        successCount += batch.queueIds.length;
+      } catch (err) {
+        logger.error("SyncQueue", `Failed to sync batch of ${batch.queueIds.length} event(s)`, err);
+      }
     }
 
     await refreshQueueState();
-    const remainingCount = await getQueueCount();
+    const remainingCount = (await getQueuedEvents(CURRENT_ENVIRONMENT)).length;
     logger.sync("SyncQueue", `Sync completed`, {
       succeeded: successCount,
       total: pendingEvents.length,
@@ -253,7 +259,7 @@ export const actions = {
       // creating a modification chain — the target never reached RTDB.
       let replacingPendingId: string | undefined;
       if (previousEventId) {
-        const queuedEntries = await getQueuedEvents();
+        const queuedEntries = await getQueuedEvents(CURRENT_ENVIRONMENT);
         const match = queuedEntries.find(
           (p) => p.type === "bird-event" && (p as PendingBirdEvent).pendingEvent.id === previousEventId
         );
@@ -589,7 +595,7 @@ export const actions = {
 
       const syncTail = isOnline
         ? queuePromise
-            .then(() => syncQueue())
+            .then(() => runSync(false))
             .catch((err) => logger.warn("AddBirdEvent", "Online sync failed — will retry on next sync", err))
         : Promise.resolve();
 
@@ -722,18 +728,36 @@ export const actions = {
     }
   },
 
-  saveDET: async (det: DET): Promise<void> => {
+  saveDET: async (det: DET, { overwrite = false }: { overwrite?: boolean } = {}): Promise<void> => {
     const { user, isOnline, DETsMap } = useAppStore.getState();
     if (!user) throw new Error("Must be logged in to save DET");
     if (!isOnline) throw new Error("Cannot save DETs while offline");
+    if (!overwrite && DETsMap[det.date]) {
+      throw new Error(`A DET already exists for ${det.date}. Open it and use Edit instead.`);
+    }
 
     try {
-      useAppStore.setState({ DETsMap: { ...DETsMap, [det.date]: det } });
-      await updateDETInCache(CURRENT_ENVIRONMENT, det);
-      logger.info("SaveDET", `DET for ${det.date} saved to IndexedDB`);
-      await set(ref(db, `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`), det);
-      await updateMapTimestamp("DETsMap");
+      const detPath = `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`;
+      if (!overwrite && (await get(ref(db, detPath))).exists()) {
+        throw new Error(`A DET already exists for ${det.date}. Open it and use Edit instead.`);
+      }
+
+      const savedDET = stripUndefined(det);
+      const lastModified = Date.now();
+      await update(ref(db), {
+        [detPath]: savedDET,
+        [`${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsMap`]: lastModified,
+      });
       logger.info("SaveDET", `DET for ${det.date} synced to RTDB`);
+
+      useAppStore.setState((state) => ({ DETsMap: { ...state.DETsMap, [savedDET.date]: savedDET } }));
+      try {
+        await updateDETInCache(CURRENT_ENVIRONMENT, savedDET);
+        await saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, lastModified);
+        logger.info("SaveDET", `DET for ${det.date} saved to IndexedDB`);
+      } catch (cacheError) {
+        logger.warn("SaveDET", `DET for ${det.date} was saved remotely but could not be cached`, cacheError);
+      }
     } catch (err) {
       logger.error("SaveDET", `Error saving DET for ${det.date}`, err);
       throw err;
