@@ -106,7 +106,7 @@ export default function Programs() {
             )}
           </Breadcrumbs>
         </div>
-        {selectedProgram && (
+        {selectedProgram && isLoggedIn && (
           <Button color="secondary" onPress={() => setIsStartBandingModalOpen(true)}>
             Start Banding
           </Button>

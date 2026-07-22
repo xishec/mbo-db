@@ -319,6 +319,11 @@ export const actions = {
         ? replaceInQueue(replacingPendingId, newQueueEntry)
         : addToQueue(newQueueEntry);
 
+      // The queue is the durable source of truth until Firebase syncs. Do
+      // not report a successful save (or clear the entry form) until this
+      // write completes, especially while offline.
+      await queuePromise;
+
       // Snapshot the predecessor BEFORE mutating the store, so downstream
       // dedup/decrement logic can see its pre-modification state regardless
       // of whether we're doing a queued-swap or a modification chain.
