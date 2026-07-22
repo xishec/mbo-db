@@ -382,15 +382,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setError("Location is required");
       return;
     }
-    if (!start) {
-      setError("Start Time is required");
-      return;
-    }
-    if (!end) {
-      setError("End Time is required");
-      return;
-    }
-    if (end <= start) {
+    if (start && end && end <= start) {
       setError("End Time must be after Start Time");
       return;
     }
@@ -398,11 +390,15 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setError("Wait for weather data to finish loading");
       return;
     }
+    if (mode === "create" && DETsMap[date]) {
+      setError(`A DET already exists for ${date}. Close this form and use Edit instead.`);
+      return;
+    }
 
     try {
       setIsSaving(true);
 
-      // Clean up weather object - set to undefined if all fields are undefined
+      // Empty optional values are removed by the persistence layer before the Firebase write.
       const cleanedWeather = weather && Object.values(weather).some((val) => val !== undefined) ? weather : undefined;
 
       // Build complete DET object with all fields
@@ -522,7 +518,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         {...modalInputProps}
                         value={start}
                         onValueChange={setStart}
-                        isRequired
                         placeholder="06:30"
                       />
                       <Input
@@ -530,7 +525,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                         {...modalInputProps}
                         value={end}
                         onValueChange={setEnd}
-                        isRequired
                         placeholder="11:11"
                       />
                     </div>

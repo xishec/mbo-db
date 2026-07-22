@@ -77,7 +77,7 @@ function SpeciesFunFactsInner({
           <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> records - {speciesInfo.totalCaptures}{" "}
           captures
         </h4>
-        <Card className="flex-1 flex flex-col" shadow="sm">
+        <Card className="flex-1 flex flex-col border border-default-200" shadow="none">
           <CardBody className="gap-2 p-4 flex-1">
             <div className="grid grid-cols-2 gap-4">
               <div

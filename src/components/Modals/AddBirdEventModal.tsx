@@ -536,7 +536,8 @@ export default function AddBirdEventModal({
         birdEventType: formData.birdEventType,
       },
       pastBirdEvents,
-      magicTable
+      magicTable,
+      speciesAliasesMap
     );
 
     // Add incomplete field warnings to messages

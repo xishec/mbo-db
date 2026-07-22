@@ -1,4 +1,4 @@
-import { ref, set, update } from "firebase/database";
+import { get, ref, set, update } from "firebase/database";
 import { signOut as firebaseSignOut } from "firebase/auth";
 import { auth, CURRENT_ENVIRONMENT, db } from "../firebase";
 import {
@@ -32,6 +32,7 @@ import {
 } from "../types";
 import { type IndependentMapName } from "../types/mapNames";
 import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
+import { stripUndefined } from "../utils/firebaseValue";
 import {
   advanceBandId,
   computeBandSizeToBandIdMap,
@@ -722,18 +723,36 @@ export const actions = {
     }
   },
 
-  saveDET: async (det: DET): Promise<void> => {
+  saveDET: async (det: DET, { overwrite = false }: { overwrite?: boolean } = {}): Promise<void> => {
     const { user, isOnline, DETsMap } = useAppStore.getState();
     if (!user) throw new Error("Must be logged in to save DET");
     if (!isOnline) throw new Error("Cannot save DETs while offline");
+    if (!overwrite && DETsMap[det.date]) {
+      throw new Error(`A DET already exists for ${det.date}. Open it and use Edit instead.`);
+    }
 
     try {
-      useAppStore.setState({ DETsMap: { ...DETsMap, [det.date]: det } });
-      await updateDETInCache(CURRENT_ENVIRONMENT, det);
-      logger.info("SaveDET", `DET for ${det.date} saved to IndexedDB`);
-      await set(ref(db, `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`), det);
-      await updateMapTimestamp("DETsMap");
+      const detPath = `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`;
+      if (!overwrite && (await get(ref(db, detPath))).exists()) {
+        throw new Error(`A DET already exists for ${det.date}. Open it and use Edit instead.`);
+      }
+
+      const savedDET = stripUndefined(det);
+      const lastModified = Date.now();
+      await update(ref(db), {
+        [detPath]: savedDET,
+        [`${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsMap`]: lastModified,
+      });
       logger.info("SaveDET", `DET for ${det.date} synced to RTDB`);
+
+      useAppStore.setState((state) => ({ DETsMap: { ...state.DETsMap, [savedDET.date]: savedDET } }));
+      try {
+        await updateDETInCache(CURRENT_ENVIRONMENT, savedDET);
+        await saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, lastModified);
+        logger.info("SaveDET", `DET for ${det.date} saved to IndexedDB`);
+      } catch (cacheError) {
+        logger.warn("SaveDET", `DET for ${det.date} was saved remotely but could not be cached`, cacheError);
+      }
     } catch (err) {
       logger.error("SaveDET", `Error saving DET for ${det.date}`, err);
       throw err;

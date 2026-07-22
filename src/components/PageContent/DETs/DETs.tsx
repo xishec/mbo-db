@@ -34,7 +34,8 @@ function toDateString(year: number, month: number, day: number): string {
 
 export default function DETs() {
   const DETsMap = useAppStore((s) => s.DETsMap);
-  const isAdmin = useAppStore((s) => s.isAdmin);
+  const user = useAppStore((s) => s.user);
+  const isOnline = useAppStore((s) => s.isOnline);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const { saveDET } = useActions();
   const [selectedDET, setSelectedDET] = useState<DET | null>(null);
@@ -48,6 +49,7 @@ export default function DETs() {
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const canSaveDET = !!user && isOnline;
 
   // Get available dates as a Set for quick lookup
   const availableDatesSet = new Set(Object.keys(DETsMap));
@@ -110,16 +112,22 @@ export default function DETs() {
   };
 
   const handleAddNew = () => {
+    if (selectedDate && DETsMap[selectedDate]) {
+      setEditedDET({ ...DETsMap[selectedDate] });
+      setModalMode("edit");
+      setIsModalOpen(true);
+      return;
+    }
+
     setEditedDET(null);
     setModalMode("create");
     setIsModalOpen(true);
   };
 
   const handleModalSave = async (det: DET) => {
-    await saveDET(det);
-    if (modalMode === "edit") {
-      setSelectedDET(det);
-    }
+    await saveDET(det, { overwrite: modalMode === "edit" });
+    setSelectedDate(det.date);
+    setSelectedDET(det);
   };
 
   // Helper function to get species count summary
@@ -175,7 +183,7 @@ export default function DETs() {
           <div className="flex flex-col flex-1">
             <p className="text-2xl font-semibold">DET for {selectedDET.date}</p>
           </div>
-          {isAdmin && (
+          {canSaveDET && (
             <Button isIconOnly size="sm" variant="light" onPress={handleEdit}>
               <PencilIcon className="h-5 w-5" />
             </Button>
@@ -336,7 +344,7 @@ export default function DETs() {
             <p className="text-small font-semibold mb-2">Injuries</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                {textFieldToString(selectedDET.injuries) || "No injuries recorded"}
+                {textFieldToString(selectedDET.injuries) || "—"}
               </p>
             </div>
           </div>
@@ -346,7 +354,7 @@ export default function DETs() {
             <p className="text-small font-semibold mb-2">Released</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                {textFieldToString(selectedDET.released) || "No birds released"}
+                {textFieldToString(selectedDET.released) || "—"}
               </p>
             </div>
           </div>
@@ -361,9 +369,9 @@ export default function DETs() {
         title="Daily Effort Tables"
         subtitle={`${availableDatesSet.size} DET entries available`}
         actions={
-          isAdmin ? (
+          canSaveDET ? (
             <Button color="secondary" onPress={handleAddNew}>
-              Add DET
+              {selectedDate && DETsMap[selectedDate] ? "Edit DET" : "Add DET"}
             </Button>
           ) : null
         }

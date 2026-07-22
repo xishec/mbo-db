@@ -77,7 +77,7 @@ function PyleTableInner({
 
   return (
     <div className={containerClassName}>
-      <h4 className="text-sm font-medium text-default-900 mb-4">
+      <h4 className="text-sm font-medium text-default-900 mb-2">
         {speciesCode.length === 4 ? (
           <>
             <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> info - {title}
