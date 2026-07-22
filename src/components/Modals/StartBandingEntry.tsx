@@ -1,5 +1,6 @@
 import { Button, Card, CardBody, Checkbox, Input, Modal, ModalContent, Select, SelectItem } from "@heroui/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { BellAlertIcon } from "@heroicons/react/24/outline";
 import { useActions, useAppStore } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import {
@@ -19,7 +20,9 @@ import PyleTable from "../Helper/Info/PyleTable";
 import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import { TABLE_COLUMNS, formatFieldValue, getDefaultFormData } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
+import { computeBandReminder, isActiveBirdEvent } from "../../stores/derive";
 import BirdStatusModal from "./BirdStatusModal";
+import BirdReminderModal from "./BirdReminderModal";
 import { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalCancelButtonProps, modalInputProps, modalPrimaryButtonProps } from "./modalDefaults";
 
@@ -58,7 +61,7 @@ const SECOND_ROW_KEYS = [
 const FIELD_WIDTHS: Record<string, string> = {
   net: "50px",
   page: "150px",
-  birdEventType: "100px",
+  birdEventType: "125px",
   bandGroup: "125px",
   bandLastTwoDigits: "50px",
   species: "100px",
@@ -236,6 +239,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const volunteersMap = useAppStore((s) => s.volunteersMap);
   const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const { addBirdEvent } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
@@ -247,6 +251,12 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const [entryMessage, setEntryMessage] = useState<EntryMessage | null>(null);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [reminderNotice, setReminderNotice] = useState<{
+    bandId: string;
+    notes: string[];
+  } | null>(null);
+  const shownReminderBandRef = useRef("");
+  const savedReminderBandRef = useRef("");
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingSavedBandSizeRef = useRef<BandSize | null>(null);
@@ -335,8 +345,40 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     return birdEventIds
       .map((id) => birdEventsStore.get(id))
       .filter((event): event is BirdEvent => !!event)
-      .filter((event) => event.modifiedEventId == null);
-  }, [bandId, bandIdToBirdEventIdsMap, birdEventsVersion]);
+      .filter((event) => isActiveBirdEvent(event, bandResetsMap));
+  }, [bandId, bandIdToBirdEventIdsMap, birdEventsVersion, bandResetsMap]);
+
+  const mustBandAfterReset = useMemo(
+    () =>
+      Boolean(bandId && bandResetsMap[bandId]) &&
+      !pastBirdEvents.some((event) => isNewCaptureType(event.birdEventType)),
+    [bandId, bandResetsMap, pastBirdEvents]
+  );
+  const requiredResetEventType =
+    formData.species === "BADE" || formData.species === "BALO" ? BirdEventType.None : BirdEventType.Banded;
+  const bandReminder = useMemo(() => computeBandReminder(pastBirdEvents), [pastBirdEvents]);
+  const effectiveReminder = formData.reminder ?? bandReminder.enabled;
+
+  useEffect(() => {
+    if (savedReminderBandRef.current && savedReminderBandRef.current !== bandId) {
+      savedReminderBandRef.current = "";
+    }
+    if (shownReminderBandRef.current && shownReminderBandRef.current !== bandId) {
+      shownReminderBandRef.current = "";
+    }
+    if (!bandId) {
+      return;
+    }
+    if (savedReminderBandRef.current === bandId) return;
+    if (shownReminderBandRef.current === bandId) return;
+    if (!bandReminder.enabled) return;
+
+    shownReminderBandRef.current = bandId;
+    setReminderNotice({
+      bandId,
+      notes: bandReminder.notes,
+    });
+  }, [bandId, bandReminder]);
 
   const matchedPageForBandGroup = useMemo(
     () => getPageForBandGroup(formData.bandGroup, bandSizeToBandIdMap),
@@ -347,6 +389,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     if (selectedPage === PAGE_RECAPTURE && !bandId) return BirdEventType.Repeat;
     if (!bandId) return BirdEventType.None;
     if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
+    if (mustBandAfterReset) return requiredResetEventType;
     if (pastBirdEvents.length === 0) {
       const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
       const hasBandingPageIntent =
@@ -363,7 +406,17 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
       return daysDiff <= 90;
     });
     return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
-  }, [bandId, bandGroupsMap, formData.date, formData.species, matchedPageForBandGroup, pastBirdEvents, selectedPage]);
+  }, [
+    bandId,
+    bandGroupsMap,
+    formData.date,
+    formData.species,
+    matchedPageForBandGroup,
+    mustBandAfterReset,
+    pastBirdEvents,
+    requiredResetEventType,
+    selectedPage,
+  ]);
 
   useEffect(() => {
     if (setPageBandGroup && isSettablePage(selectedPage)) {
@@ -523,7 +576,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
 
     for (const column of TABLE_COLUMNS) {
       const value = formData[column.key as keyof CaptureFormData];
-      if (column.minLength && value.length > 0 && value.length < column.minLength) {
+      if (column.minLength && typeof value === "string" && value.length > 0 && value.length < column.minLength) {
         messages.push({ text: `${column.label} is incomplete`, severity: "warning" });
       }
     }
@@ -556,7 +609,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     const fields = new Set<string>();
     for (const column of TABLE_COLUMNS) {
       const value = formData[column.key as keyof CaptureFormData];
-      if (column.minLength && value.length > 0 && value.length < column.minLength) {
+      if (column.minLength && typeof value === "string" && value.length > 0 && value.length < column.minLength) {
         fields.add(column.key);
       }
     }
@@ -797,7 +850,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
           variant="bordered"
           aria-label="Type"
           selectedKeys={[formData.birdEventType]}
-          isDisabled={setPageBandGroup && isSettablePage(selectedPage)}
+          isDisabled={mustBandAfterReset || (setPageBandGroup && isSettablePage(selectedPage))}
           tabIndex={getTabIndex(fieldKey)}
           classNames={{ trigger: "min-h-unit-10 h-unit-10", value: "text-sm" }}
           onSelectionChange={(keys) => {
@@ -837,6 +890,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
           onPress={() => setIsNotesModalOpen(true)}
           className="border-medium border-default-200 w-full min-w-0 justify-start overflow-hidden"
         >
+          {effectiveReminder && <BellAlertIcon className="h-4 w-4 shrink-0 text-warning" />}
           <span className="truncate">{formData.notes || ""}</span>
         </Button>
       );
@@ -859,7 +913,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
         value={
           columnKey === "species" && formData.species.length === 4
             ? getSpeciesDisplayCode(formData.species, speciesAliasesMap)
-            : formData[columnKey]
+            : String(formData[columnKey] ?? "")
         }
         tabIndex={getTabIndex(columnKey)}
         onChange={(event) => handleInputChange(columnKey, event.target.value, column.maxLength)}
@@ -943,16 +997,25 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const handleSave = useCallback(async () => {
     if (isSaving || isAppSaving || !canSave) return;
     setIsSaving(true);
+    let suppressedReminderBand = "";
 
     try {
       const shouldSetPageBandGroup = setPageBandGroup && isSettablePage(selectedPage);
-      const birdEventTypeToSave = shouldSetPageBandGroup ? BirdEventType.Banded : formData.birdEventType;
+      const birdEventTypeToSave = mustBandAfterReset
+        ? requiredResetEventType
+        : shouldSetPageBandGroup
+          ? BirdEventType.Banded
+          : formData.birdEventType;
       const formDataToSave = { ...formData, birdEventType: birdEventTypeToSave };
       const bandSizeToSend = getBandSizeForSave(selectedPage, formDataToSave, bandSizeToBandIdMap, setPageBandGroup);
       const trackedBandSize =
         isNewCaptureType(birdEventTypeToSave) && bandSizeToSend !== BandSize.Other ? bandSizeToSend : null;
       pendingSavedBandSizeRef.current = trackedBandSize;
 
+      if (formDataToSave.reminder) {
+        suppressedReminderBand = bandId;
+        savedReminderBandRef.current = bandId;
+      }
       await addBirdEvent(formDataToSave, bandSizeToSend, undefined);
 
       if (formData.bander) localStorage.setItem("lastBander", formData.bander);
@@ -981,11 +1044,13 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
         time: nextTime,
         birdStatus: DEFAULT_BIRD_STATUS,
         notes: "",
+        reminder: undefined,
       }));
       setLastBandId("");
       setEntryMessage({ tone: "success", text: "Saved. Ready for next bird." });
       inputRefs.current.get("net")?.focus();
     } catch (err) {
+      if (savedReminderBandRef.current === suppressedReminderBand) savedReminderBandRef.current = "";
       pendingSavedBandSizeRef.current = null;
       setEntryMessage({
         tone: "danger",
@@ -996,11 +1061,14 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     }
   }, [
     addBirdEvent,
+    bandId,
     bandSizeToBandIdMap,
     canSave,
     formData,
     isAppSaving,
     isSaving,
+    mustBandAfterReset,
+    requiredResetEventType,
     selectedPage,
     setPageBandGroup,
   ]);
@@ -1088,6 +1156,12 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
                   }}
                   placeholder="Add notes..."
                 />
+                <Checkbox
+                  isSelected={effectiveReminder}
+                  onValueChange={(reminder) => setFormData((prev) => ({ ...prev, reminder }))}
+                >
+                  Reminder on next capture
+                </Checkbox>
               </ModalBodyShell>
               <ModalFooterShell>
                 <Button {...modalCancelButtonProps} onPress={onClose}>
@@ -1101,6 +1175,14 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
           )}
         </ModalContent>
       </Modal>
+      <BirdReminderModal
+        isOpen={reminderNotice !== null}
+        onOpenChange={(open) => {
+          if (!open) setReminderNotice(null);
+        }}
+        bandId={reminderNotice?.bandId ?? ""}
+        notes={reminderNotice?.notes ?? []}
+      />
     </>
   );
 }

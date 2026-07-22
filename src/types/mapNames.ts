@@ -6,6 +6,7 @@ export const INDEPENDENT_MAP_NAMES = [
   "bandGroupNotesMap",
   "speciesAliasesMap",
   "speciesOverridesMap",
+  "bandResetsMap",
 ] as const;
 
 export type IndependentMapName = (typeof INDEPENDENT_MAP_NAMES)[number];

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { get, ref } from "firebase/database";
+import { get, onValue, ref } from "firebase/database";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, CURRENT_ENVIRONMENT, db } from "../firebase";
 import { birdEventsStore } from "./birdEventsStore";
@@ -14,6 +14,7 @@ import {
 import {
   Band,
   BandSize,
+  type BandResetsMap,
   type BirdEvent,
   type DatabaseData,
   type DETsMap,
@@ -31,6 +32,7 @@ import {
   getMetadata,
   getQueuedEvents,
   saveDataToIndexedDB,
+  saveDatabaseMetadataOnly,
   saveLastUpdated,
   saveMetadata,
 } from "./indexedDB";
@@ -133,6 +135,18 @@ function normalizeSpeciesOverridesMap(overrides: SpeciesOverridesMap | undefined
   return normalized;
 }
 
+function hydrateBirdEvents(events: Record<string, BirdEvent>): Map<string, BirdEvent> {
+  const hydrated = new Map<string, BirdEvent>();
+  for (const id in events) {
+    const event = events[id];
+    hydrated.set(id, {
+      ...event,
+      band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null),
+    });
+  }
+  return hydrated;
+}
+
 /**
  * Hydrate a DatabaseData record into the store. Rebuilds derived maps,
  * reconstructs Band class instances from serialized data, and replaces
@@ -143,16 +157,14 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
   const detsMap = normalizeDETObserverClasses(data.DETsMap, volunteersMap);
   const speciesAliasesMap = normalizeSpeciesAliasesMap(data.speciesAliasesMap ?? {});
   const speciesOverridesMap = normalizeSpeciesOverridesMap(data.speciesOverridesMap);
+  const bandResetsMap = data.bandResetsMap ?? {};
   const mergedEvents = overlayQueuedEvents(data.birdEventsMap ?? {}, queued);
-  const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(mergedEvents, volunteersMap);
-  const hydratedEntries: Array<[string, BirdEvent]> = Object.entries(mergedEvents).map(([id, event]) => [
-    id,
-    {
-      ...event,
-      band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null),
-    },
-  ]);
-  const hydratedEvents = new Map<string, BirdEvent>(hydratedEntries);
+  const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(
+    mergedEvents,
+    volunteersMap,
+    bandResetsMap
+  );
+  const hydratedEvents = hydrateBirdEvents(mergedEvents);
   birdEventsStore.replace(hydratedEvents);
 
   useAppStore.setState({
@@ -160,13 +172,14 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
     volunteersMap,
     speciesAliasesMap,
     speciesOverridesMap,
+    bandResetsMap,
     bandIdToBirdEventIdsMap: bandIdMap,
     bandGroupsMap: bandGroups,
     programsMap: programs,
     yearsToProgramMap: years,
     volunteerStatsMap: volunteerStats,
-    bandSizeToBandIdMap: computeBandSizeToBandIdMap(hydratedEvents, bandGroups),
-    speciesInfoMap: computeSpeciesInfoMap(hydratedEvents, speciesAliasesMap),
+    bandSizeToBandIdMap: computeBandSizeToBandIdMap(hydratedEvents, bandGroups, bandResetsMap),
+    speciesInfoMap: computeSpeciesInfoMap(hydratedEvents, speciesAliasesMap, bandResetsMap),
     DETsMap: detsMap,
     dismissedConflictsMap: data.dismissedConflictsMap ?? {},
     bandGroupNotesMap: data.bandGroupNotesMap ?? {},
@@ -221,18 +234,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const setStatus = (loadingStatus: string) => useAppStore.setState({ loadingStatus });
 
     const loadData = async () => {
-      const downloads: { path: string; bytes: number }[] = [];
-      const recordDownload = (path: string, val: unknown) => {
-        const bytes = val == null ? 0 : new Blob([JSON.stringify(val)]).size;
-        downloads.push({ path, bytes });
-      };
-      const logDownloadSummary = () => {
-        const total = downloads.reduce((sum, d) => sum + d.bytes, 0);
-        const formatSize = (b: number) =>
-          b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1024 / 1024).toFixed(2)} MB`;
-        const breakdown = downloads.map((d) => `${d.path}: ${formatSize(d.bytes)}`).join(" · ");
-        logger.info("DataLoad", `Downloaded ${formatSize(total)} — ${breakdown || "nothing"}`);
-      };
       try {
         logger.info("DataLoad", `Loading ${CURRENT_ENVIRONMENT}/ data...`);
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
@@ -268,7 +269,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             ...INDEPENDENT_MAP_NAMES.map((m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>),
           ]);
           rtdbMetadata = snap.exists() ? snap.val() : null;
-          recordDownload(`${env}/metadata`, rtdbMetadata);
           cachedTimestamps = cached;
         } catch {
           if (cachedData) {
@@ -314,7 +314,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             const deltaEvents: Record<string, BirdEvent> = deltaSnap.exists()
               ? (deltaSnap.val() as Record<string, BirdEvent>)
               : {};
-            recordDownload(`${env}/birdEventsMap (delta)`, deltaEvents);
             const deltaCount = Object.keys(deltaEvents).length;
 
             if (deltaCount === 0 && mapsToFetch.size === 0) {
@@ -334,7 +333,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setStatus("Downloading all events...");
             const fullSnap = await get(ref(db, `${env}/birdEventsMap`));
             allEvents = fullSnap.exists() ? fullSnap.val() : {};
-            recordDownload(`${env}/birdEventsMap (fallback full)`, allEvents);
           }
         } else {
           setStatus("Downloading all events...");
@@ -346,7 +344,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           allEvents = fullSnap.val();
-          recordDownload(`${env}/birdEventsMap (full)`, allEvents);
         }
 
         if (cancelled) return;
@@ -358,6 +355,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
         let speciesAliasesMap: Record<string, string> = normalizeSpeciesAliasesMap(cachedData?.speciesAliasesMap ?? {});
         let speciesOverridesMap: SpeciesOverridesMap = normalizeSpeciesOverridesMap(cachedData?.speciesOverridesMap);
+        let bandResetsMap: BandResetsMap = cachedData?.bandResetsMap ?? {};
         if (mapsToFetch.size > 0) {
           const fetching = [...mapsToFetch];
           logger.info("DataLoad", `Fetching changed maps: ${fetching.join(", ")}`);
@@ -366,7 +364,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           for (let i = 0; i < fetching.length; i++) {
             const snap = snapshots[i];
             const val = snap.exists() ? snap.val() : null;
-            recordDownload(`${env}/${fetching[i]}`, val);
             switch (fetching[i]) {
               case "dismissedConflictsMap":
                 dismissedMap = val ?? {};
@@ -389,6 +386,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               case "speciesOverridesMap":
                 speciesOverridesMap = normalizeSpeciesOverridesMap(val ?? {});
                 break;
+              case "bandResetsMap":
+                bandResetsMap = val ?? {};
+                break;
             }
           }
         }
@@ -403,17 +403,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setStatus("Rebuilding maps...");
         const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(
           mergedEvents,
-          volunteersMap
+          volunteersMap,
+          bandResetsMap
         );
 
-        const reconstructedEntries: Array<[string, BirdEvent]> = Object.entries(mergedEvents).map(([id, event]) => [
-          id,
-          {
-            ...event,
-            band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null),
-          },
-        ]);
-        const reconstructed = new Map<string, BirdEvent>(reconstructedEntries);
+        const reconstructed = hydrateBirdEvents(mergedEvents);
 
         const data: DatabaseData = {
           birdEventsMap: mergedEvents,
@@ -429,6 +423,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupNotesMap: notesMap,
           speciesAliasesMap,
           speciesOverridesMap,
+          bandResetsMap,
         };
 
         setStatus("Saving to cache...");
@@ -437,7 +432,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // ahead of the client that wrote the next event, `startAt(cursor + 1)`
         // would skip that event forever.
         let maxSyncedAt = lastEventSync ?? 0;
-        for (const ev of Object.values(allEvents)) {
+        let allEventCount = 0;
+        for (const id in allEvents) {
+          allEventCount++;
+          const ev = allEvents[id];
           if (typeof ev.syncedAt === "number" && ev.syncedAt > maxSyncedAt) {
             maxSyncedAt = ev.syncedAt;
           }
@@ -459,20 +457,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandGroupNotesMap: notesMap,
           speciesAliasesMap,
           speciesOverridesMap,
+          bandResetsMap,
           bandIdToBirdEventIdsMap: bandIdMap,
           bandGroupsMap: bandGroups,
           programsMap: programs,
           yearsToProgramMap: years,
           volunteerStatsMap: volunteerStats,
-          bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups),
-          speciesInfoMap: computeSpeciesInfoMap(reconstructed, speciesAliasesMap),
+          bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups, bandResetsMap),
+          speciesInfoMap: computeSpeciesInfoMap(reconstructed, speciesAliasesMap, bandResetsMap),
           dismissedConflictsMap: dismissedMap,
           DETsMap: data.DETsMap ?? {},
           lastSyncedAt: cacheTimestamp,
           loadingStatus: "Ready",
         });
 
-        logger.info("DataLoad", "Load complete", { events: Object.keys(allEvents).length });
+        logger.info("DataLoad", "Load complete", { events: allEventCount });
       } catch (err) {
         logger.error("DataLoad", "Error loading data", err);
         if (!cancelled) {
@@ -493,7 +492,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } finally {
-        if (downloads.length > 0) logDownloadSummary();
         if (!cancelled) useAppStore.setState({ isLoading: false });
       }
     };
@@ -506,6 +504,70 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // transition. Reconnect-sync is handled by the auto-sync effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
+
+  // Band resets are rare but operationally important: keep this small map
+  // live so another open banding station cannot continue using stale band
+  // history after an administrator resets a band.
+  useEffect(() => {
+    if (!isLoggedIn || !isOnline) return;
+    return onValue(ref(db, `${CURRENT_ENVIRONMENT}/bandResetsMap`), (snapshot) => {
+      const next = (snapshot.exists() ? snapshot.val() : {}) as BandResetsMap;
+      const state = useAppStore.getState();
+      const current = state.bandResetsMap;
+      const keys = Object.keys(next);
+      if (
+        keys.length === Object.keys(current).length &&
+        keys.every(
+          (key) =>
+            current[key]?.generationId === next[key]?.generationId && current[key]?.resetAt === next[key]?.resetAt
+        )
+      ) {
+        return;
+      }
+
+      if (birdEventsStore.size() === 0) {
+        useAppStore.setState({ bandResetsMap: next });
+        return;
+      }
+
+      const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(
+        birdEventsStore.getAll(),
+        state.volunteersMap,
+        next
+      );
+      for (const [programId, existingProgram] of Object.entries(state.programsMap)) {
+        if (programs[programId]) {
+          programs[programId] = { ...existingProgram, ...programs[programId] };
+        } else {
+          programs[programId] = {
+            id: existingProgram.id,
+            displayName: existingProgram.displayName,
+            bandGroupIds: [],
+            recaptureIds: [],
+          };
+        }
+      }
+      const selectedProgram = state.selectedProgram ? programs[state.selectedProgram.id] ?? null : null;
+      useAppStore.setState({
+        bandResetsMap: next,
+        bandIdToBirdEventIdsMap: bandIdMap,
+        bandGroupsMap: bandGroups,
+        programsMap: programs,
+        yearsToProgramMap: years,
+        volunteerStatsMap: volunteerStats,
+        bandSizeToBandIdMap: computeBandSizeToBandIdMap(birdEventsStore.getAll(), bandGroups, next),
+        speciesInfoMap: computeSpeciesInfoMap(birdEventsStore.getAll(), state.speciesAliasesMap, next),
+        selectedProgram,
+      });
+      saveDatabaseMetadataOnly(CURRENT_ENVIRONMENT, {
+        bandResetsMap: next,
+        bandIdToBirdEventIdsMap: bandIdMap,
+        bandGroupsMap: bandGroups,
+        programsMap: programs,
+        yearsToProgramMap: years,
+      }).catch((err) => logger.error("BandReset", "Failed to cache remote band reset", err));
+    });
+  }, [isLoggedIn, isOnline]);
 
   // Initial queue state
   useEffect(() => {

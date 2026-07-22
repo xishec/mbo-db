@@ -32,7 +32,14 @@ import {
 } from "../types";
 import { type IndependentMapName } from "../types/mapNames";
 import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
-import { advanceBandId, computeSpeciesInfoMap } from "./derive";
+import {
+  advanceBandId,
+  computeBandSizeToBandIdMap,
+  computeSpeciesInfoMap,
+  isActiveBirdEvent,
+  isBirdEventInCurrentBandGeneration,
+  rebuildMapsFromEvents,
+} from "./derive";
 import { useAppStore } from "./useAppStore";
 
 // Mutex for serializing IndexedDB writes. Prevents concurrent
@@ -43,8 +50,8 @@ function idbMutex(fn: () => Promise<void>): Promise<void> {
   return idbQueue;
 }
 
-// Persist only the small index maps. Bird events are written separately
-// via putBirdEvent — they don't need to be re-serialized on every save.
+// Persist independent metadata. Bird events are written separately, and
+// event-derived indexes are rebuilt rather than cached.
 async function saveMapsToIndexedDB(overrides: Partial<Omit<DatabaseData, "birdEventsMap">>): Promise<void> {
   await idbMutex(() => saveDatabaseMetadataOnly(CURRENT_ENVIRONMENT, overrides));
 }
@@ -201,6 +208,7 @@ export const actions = {
       volunteersMap,
       volunteerStatsMap,
       speciesAliasesMap,
+      bandResetsMap,
     } = state;
 
     if (!user && isOnline) throw new Error("Must be logged in to add bird events");
@@ -219,6 +227,23 @@ export const actions = {
       const bandSuffix = bandGroup.substring(4) + bandLastTwoDigits;
       const band = new Band(bandPrefix, bandSuffix, bandSize !== BandSize.Other ? bandSize : null);
       const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
+      const previousEvent = previousEventId ? birdEventsStore.get(previousEventId) : undefined;
+      if (previousEvent && !isBirdEventInCurrentBandGeneration(previousEvent, bandResetsMap)) {
+        throw new Error("This event belongs to history that was hidden by a band reset and can no longer be edited");
+      }
+      if (bandResetsMap[band.id]) {
+        const hasCurrentGenerationBanding = (bandIdToBirdEventIdsMap[band.id] ?? []).some((id) => {
+          const event = birdEventsStore.get(id);
+          return (
+            !!event &&
+            isActiveBirdEvent(event, bandResetsMap) &&
+            (event.birdEventType === BirdEventType.Banded || event.birdEventType === BirdEventType.None)
+          );
+        });
+        if (!hasCurrentGenerationBanding && !isNewCapture) {
+          throw new Error("A reset band must begin with a new banding event");
+        }
+      }
       // Normalize codes to uppercase so new events don't create case-variant duplicates.
       const normalizedSpeciesKey = resolveSpeciesKey(captureData.species, speciesAliasesMap);
       const normalizedBander = (captureData.bander ?? "").toUpperCase();
@@ -235,15 +260,25 @@ export const actions = {
         if (match) replacingPendingId = match.id;
       }
 
+      const bandGenerationId = bandResetsMap[band.id]?.generationId;
+      let newEventId = generateBirdEventId(
+        band.id,
+        captureData.date,
+        captureData.net,
+        captureData.wing,
+        captureData.weight,
+        previousEventId !== undefined && !replacingPendingId
+      );
+      // A reset band can legitimately be entered with the exact values of
+      // its hidden predecessor. Never overwrite that preserved event.
+      if (!previousEventId && birdEventsStore.has(newEventId)) {
+        const suffix = bandGenerationId ? `Reset${bandGenerationId}` : `At${Date.now()}`;
+        newEventId = `${newEventId}${suffix}`;
+        while (birdEventsStore.has(newEventId)) newEventId = `${newEventId}-${crypto.randomUUID()}`;
+      }
+
       const newBirdEvent: BirdEvent = {
-        id: generateBirdEventId(
-          band.id,
-          captureData.date,
-          captureData.net,
-          captureData.wing,
-          captureData.weight,
-          previousEventId !== undefined && !replacingPendingId
-        ),
+        id: newEventId,
         programId: captureData.programId,
         band,
         species: normalizedSpeciesKey,
@@ -261,6 +296,8 @@ export const actions = {
         net: captureData.net,
         birdStatus: captureData.birdStatus,
         notes: captureData.notes,
+        reminder: captureData.reminder,
+        bandGenerationId,
         previousEventId: replacingPendingId ? null : previousEventId || null,
         modifiedEventId: null,
         birdEventType,
@@ -569,6 +606,78 @@ export const actions = {
 
   syncQueue: () => runSync(true),
 
+  resetBand: async (bandId: string): Promise<void> => {
+    const state = useAppStore.getState();
+    if (!state.user) throw new Error("Must be logged in to reset a band");
+    if (!state.isAdmin) throw new Error("Only administrators can reset a band");
+    if (!state.isOnline) throw new Error("Cannot reset a band while offline");
+    if (!/^\d{9}$/.test(bandId)) throw new Error("Band ID must contain exactly 9 digits");
+
+    const resetAt = Date.now();
+    const nextBandResetsMap = {
+      ...state.bandResetsMap,
+      [bandId]: { generationId: crypto.randomUUID(), resetAt },
+    };
+
+    await update(ref(db), {
+      [`${CURRENT_ENVIRONMENT}/bandResetsMap/${bandId}`]: nextBandResetsMap[bandId],
+      [`${CURRENT_ENVIRONMENT}/metadata/lastModified_bandResetsMap`]: resetAt,
+    });
+
+    const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(
+      birdEventsStore.getAll(),
+      state.volunteersMap,
+      nextBandResetsMap
+    );
+    for (const [programId, existingProgram] of Object.entries(state.programsMap)) {
+      if (programs[programId]) {
+        programs[programId] = { ...existingProgram, ...programs[programId] };
+      } else {
+        programs[programId] = {
+          id: existingProgram.id,
+          displayName: existingProgram.displayName,
+          bandGroupIds: [],
+          recaptureIds: [],
+        };
+      }
+    }
+    const selectedProgram = state.selectedProgram ? programs[state.selectedProgram.id] ?? null : null;
+    const bandSizeToBandIdMap = computeBandSizeToBandIdMap(
+      birdEventsStore.getAll(),
+      bandGroups,
+      nextBandResetsMap
+    );
+    const speciesInfoMap = computeSpeciesInfoMap(
+      birdEventsStore.getAll(),
+      state.speciesAliasesMap,
+      nextBandResetsMap
+    );
+
+    useAppStore.setState({
+      bandResetsMap: nextBandResetsMap,
+      bandIdToBirdEventIdsMap: bandIdMap,
+      bandGroupsMap: bandGroups,
+      programsMap: programs,
+      yearsToProgramMap: years,
+      volunteerStatsMap: volunteerStats,
+      bandSizeToBandIdMap,
+      speciesInfoMap,
+      selectedProgram,
+    });
+    await Promise.all([
+      saveMetadata(`lastModified_bandResetsMap_${CURRENT_ENVIRONMENT}`, resetAt),
+      saveMapsToIndexedDB({
+        bandResetsMap: nextBandResetsMap,
+        bandIdToBirdEventIdsMap: bandIdMap,
+        bandGroupsMap: bandGroups,
+        programsMap: programs,
+        yearsToProgramMap: years,
+        bandSizeToBandIdMap,
+      }),
+    ]);
+    logger.info("BandReset", "Band reset", { bandId, generationId: nextBandResetsMap[bandId].generationId });
+  },
+
   clearSyncResult: (): void => {
     useAppStore.setState({ syncResult: null });
   },
@@ -697,7 +806,7 @@ export const actions = {
 
       useAppStore.setState({
         speciesAliasesMap: next,
-        speciesInfoMap: computeSpeciesInfoMap(birdEventsStore.getAll(), next),
+        speciesInfoMap: computeSpeciesInfoMap(birdEventsStore.getAll(), next, useAppStore.getState().bandResetsMap),
       });
       await set(ref(db, `${CURRENT_ENVIRONMENT}/speciesAliasesMap/${speciesKey}`), alias || null);
       await updateMapTimestamp("speciesAliasesMap");
@@ -751,7 +860,11 @@ export const actions = {
       useAppStore.setState({
         speciesAliasesMap: nextAliases,
         speciesOverridesMap: nextOverrides,
-        speciesInfoMap: computeSpeciesInfoMap(birdEventsStore.getAll(), nextAliases),
+        speciesInfoMap: computeSpeciesInfoMap(
+          birdEventsStore.getAll(),
+          nextAliases,
+          useAppStore.getState().bandResetsMap
+        ),
       });
       await update(ref(db), {
         [`${CURRENT_ENVIRONMENT}/speciesAliasesMap/${key}`]: alias || null,

@@ -9,6 +9,7 @@ const SMALL_KEYS = [
   "DETsMap",
   "volunteersMap",
   "speciesAliasesMap",
+  "bandResetsMap",
   "metadata",
 ];
 
@@ -54,7 +55,9 @@ async function main() {
   console.log("Writing small keys to alpha...");
   await Promise.all(
     SMALL_KEYS.map((key, i) => {
-      if (!snaps[i].exists()) return Promise.resolve();
+      if (!snaps[i].exists()) {
+        return key === "bandResetsMap" ? db.ref(`alpha/${key}`).set(null) : Promise.resolve();
+      }
       console.log(`  ${key}`);
       return db.ref(`alpha/${key}`).set(snaps[i].val());
     })

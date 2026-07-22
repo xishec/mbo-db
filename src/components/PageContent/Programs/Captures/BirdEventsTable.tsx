@@ -3,7 +3,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { BirdEvent, CaptureFormData } from "../../../../types";
 import { TABLE_COLUMNS, formatUpdatedAt } from "./helpers";
 import CaptureHistoryModal from "../../../Modals/CaptureHistoryModal";
-import { PencilSquareIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { BellAlertIcon, PencilSquareIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import AddBirdEventModal from "../../../Modals/AddBirdEventModal";
 import ModificationHistoryModal from "../../../Modals/ModificationHistoryModal";
 import { useAppStore, useIsLoggedIn } from "../../../../stores/useAppStore";
@@ -13,6 +13,7 @@ import AgeTooltip from "../../../Helper/Info/AgeTooltip";
 import VolunteerTooltip from "../../../Helper/Info/VolunteerTooltip";
 import { useCascadingSort, cascadingSort } from "../../../../hooks/useCascadingSort";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../../types/species";
+import { isActiveBirdEvent, isBirdEventInCurrentBandGeneration } from "../../../../stores/derive";
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
@@ -37,6 +38,7 @@ function birdEventToRow(event: BirdEvent): TableRow {
     birdEventType: event.birdEventType,
     birdStatus: event.birdStatus,
     notes: event.notes,
+    reminder: event.reminder ?? false,
     modifiedEventId: event.modifiedEventId,
     previousEventId: event.previousEventId,
     updatedAt: event.updatedAt,
@@ -88,6 +90,7 @@ export default function BirdEventsTable({
   const queuedEventIds = useAppStore((s) => s.queuedEventIds);
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const isLoggedIn = useIsLoggedIn();
   const { sortDescriptors, handleSortChange } = useCascadingSort(
     initialSortDescriptors ?? [
@@ -108,6 +111,7 @@ export default function BirdEventsTable({
     const tableRows: TableRow[] = [];
 
     for (const event of birdEvents) {
+      if (!isBirdEventInCurrentBandGeneration(event, bandResetsMap)) continue;
       // Skip duplicates
       if (eventsMap.has(event.id)) continue;
 
@@ -129,7 +133,7 @@ export default function BirdEventsTable({
     }
 
     return { birdEventsMap: eventsMap, rows: tableRows };
-  }, [birdEvents, showHistory, programId, showOtherPrograms]);
+  }, [birdEvents, showHistory, programId, showOtherPrograms, bandResetsMap]);
 
   const numericColumns = useMemo(
     () => new Set<string>(TABLE_COLUMNS.filter((col) => col.type === "number").map((col) => col.key)),
@@ -254,7 +258,7 @@ export default function BirdEventsTable({
         let eventCount = 0;
         for (const id of ids) {
           const ev = birdEventsStore.get(id);
-          if (ev && ev.modifiedEventId == null) eventCount++;
+          if (ev && isActiveBirdEvent(ev, bandResetsMap)) eventCount++;
         }
 
         return (
@@ -305,6 +309,15 @@ export default function BirdEventsTable({
         return <VolunteerTooltip volunteerCode={item.scribe} />;
       }
 
+      if (columnKey === "notes") {
+        return (
+          <span className="flex items-center gap-1">
+            {item.reminder && <BellAlertIcon className="h-4 w-4 shrink-0 text-warning" />}
+            <span>{item.notes}</span>
+          </span>
+        );
+      }
+
       const cellValue = item[columnKey as keyof TableRow];
       return cellValue;
     },
@@ -319,6 +332,7 @@ export default function BirdEventsTable({
       isOnline,
       queuedEventIds,
       bandIdToBirdEventIdsMap,
+      bandResetsMap,
     ]
   );
 

@@ -12,7 +12,7 @@ const QUEUE_STORE = "queue";
 // Bird events are stored per-env, per-row keyed by event id. Writing ONE
 // event no longer requires re-serializing the entire 700K-event blob —
 // that's the 10+ second save lag we saw on slow laptops. The `data` store
-// keeps the small index maps (programs, bandGroups, etc.).
+// keeps only independent metadata; event-derived indexes are rebuilt.
 //
 // One store per env (birdEvents_alpha, birdEvents_prod) so switching
 // environments doesn't force a re-download — each env's rows live in
@@ -23,6 +23,30 @@ const ALL_BIRD_EVENTS_STORES = ["birdEvents_alpha", "birdEvents_prod"] as const;
 // Legacy single-env store + its marker, dropped in v20260504.
 const LEGACY_EVENTS_STORE = "birdEvents";
 const LEGACY_EVENTS_ENV_KEY = "birdEventsEnvironment";
+
+function createCachedMetadata(data: Partial<DatabaseData>): DatabaseData {
+  const independentData = { ...data };
+  delete independentData.birdEventsMap;
+  delete independentData.yearsToProgramMap;
+  delete independentData.programsMap;
+  delete independentData.bandIdToBirdEventIdsMap;
+  delete independentData.bandGroupsMap;
+  delete independentData.bandSizeToBandIdMap;
+
+  // These maps are rebuilt from the event rows on every load. Empty stubs
+  // preserve DatabaseData's serialized shape without caching large,
+  // immediately-discarded copies.
+  return {
+    ...independentData,
+    birdEventsMap: {},
+    yearsToProgramMap: {},
+    programsMap: {},
+    bandIdToBirdEventIdsMap: {},
+    bandGroupsMap: {},
+    bandSizeToBandIdMap: {} as DatabaseData["bandSizeToBandIdMap"],
+    dismissedConflictsMap: independentData.dismissedConflictsMap ?? {},
+  };
+}
 
 interface MetadataEntry {
   key: string;
@@ -151,17 +175,15 @@ export async function saveDataToIndexedDB(environment: Environment, data: Databa
     const dataStore = transaction.objectStore(DATA_STORE);
     const eventsStore = transaction.objectStore(eventsStoreName);
 
-    const { birdEventsMap, ...rest } = data;
-    // Cache a minimal stub so getDataFromIndexedDB can detect "cached
-    // data exists" without reading the whole events table.
-    dataStore.put({ ...rest, birdEventsMap: {} }, environment);
+    const { birdEventsMap } = data;
+    dataStore.put(createCachedMetadata(data), environment);
 
     if (birdEventsMap) {
       // Whole-dataset replace (initial load / full refresh) — clear first
       // so the store reflects exactly this env's events.
       eventsStore.clear();
-      for (const [id, ev] of Object.entries(birdEventsMap)) {
-        eventsStore.put(ev, id);
+      for (const id in birdEventsMap) {
+        eventsStore.put(birdEventsMap[id], id);
       }
     }
   });
@@ -188,9 +210,7 @@ export async function saveDatabaseMetadataOnly(
     req.onerror = () => reject(req.error);
   });
 
-  const { birdEventsMap: _drop, ...rest } = current ?? ({} as DatabaseData);
-  void _drop;
-  const merged = { ...rest, ...partial, birdEventsMap: {} } as DatabaseData;
+  const merged = createCachedMetadata({ ...(current ?? {}), ...partial });
 
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction([DATA_STORE], "readwrite");
@@ -211,9 +231,8 @@ export async function getDataFromIndexedDB(environment: Environment): Promise<Da
   const eventsStoreName = birdEventsStoreName(environment);
   const captured: {
     data: DatabaseData | null;
-    keys: string[];
     vals: BirdEvent[];
-  } = { data: null, keys: [], vals: [] };
+  } = { data: null, vals: [] };
 
   // Register oncomplete/onerror BEFORE awaiting — otherwise the tx can
   // commit inside the await and the handlers attach to a dead tx.
@@ -230,14 +249,10 @@ export async function getDataFromIndexedDB(environment: Environment): Promise<Da
     const eventsStore = transaction.objectStore(eventsStoreName);
 
     const dataReq = dataStore.get(environment);
-    const keysReq = eventsStore.getAllKeys();
     const valsReq = eventsStore.getAll();
 
     dataReq.onsuccess = () => {
       captured.data = (dataReq.result as DatabaseData | undefined) ?? null;
-    };
-    keysReq.onsuccess = () => {
-      captured.keys = keysReq.result as string[];
     };
     valsReq.onsuccess = () => {
       captured.vals = valsReq.result as BirdEvent[];
@@ -252,8 +267,8 @@ export async function getDataFromIndexedDB(environment: Environment): Promise<Da
 
   if (!captured.data) return null;
   const eventsForEnv: Record<string, BirdEvent> = {};
-  for (let i = 0; i < captured.keys.length; i++) {
-    eventsForEnv[captured.keys[i]] = captured.vals[i];
+  for (const event of captured.vals) {
+    eventsForEnv[event.id] = event;
   }
   return { ...captured.data, birdEventsMap: eventsForEnv };
 }

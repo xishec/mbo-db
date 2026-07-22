@@ -19,6 +19,7 @@ import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import ExportButton from "../Helper/ExportButton";
+import { isActiveBirdEvent } from "../../stores/derive";
 import { BirdEventType, type BirdEvent, type ObserverClass } from "../../types";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 import { getLocalDateString } from "../../utils/dateUtils";
@@ -64,6 +65,7 @@ type BreakdownRole = "banded" | "scribed";
 export default function Volunteers() {
   const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const isOnline = useAppStore((s) => s.isOnline);
   const isLoggedIn = useIsLoggedIn();
   const { updateVolunteer } = useActions();
@@ -89,7 +91,7 @@ export default function Volunteers() {
     if (!breakdown) return [];
     const events: BirdEvent[] = [];
     for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.modifiedEventId || !ev.species) continue;
+      if (!ev || !isActiveBirdEvent(ev, bandResetsMap) || !ev.species) continue;
       if (breakdown.role === "banded") {
         const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
         if (!isNewCapture || ev.bander !== breakdown.code) continue;
@@ -100,7 +102,7 @@ export default function Volunteers() {
     }
     return events;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [breakdown, birdEventsVersion]);
+  }, [breakdown, birdEventsVersion, bandResetsMap]);
 
   const breakdownRows = useMemo(() => {
     const counts = new Map<string, number>();
@@ -129,7 +131,7 @@ export default function Volunteers() {
     const recentDates = new Map<string, Set<string>>();
 
     for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.modifiedEventId || !ev.date || ev.date > todayString) continue;
+      if (!ev || !isActiveBirdEvent(ev, bandResetsMap) || !ev.date || ev.date > todayString) continue;
 
       // A volunteer may band and scribe on the same day; that day should
       // still only be counted once.
@@ -147,7 +149,7 @@ export default function Volunteers() {
 
     return { allDates, recentDates };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion]);
+  }, [birdEventsVersion, bandResetsMap]);
 
   const rows = useMemo<Row[]>(() => {
     const allRows = Object.values(volunteerStatsMap).map((b) => ({

@@ -4,6 +4,7 @@ import { useAppStore } from "../../../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../../../services/birdEventsStore";
 import { Band, BandSize, getBandGroupMapKey, type BirdEvent } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
+import { isActiveBirdEvent } from "../../../../stores/derive";
 
 type OtherBandsItem = { key: string; label: string; count: number };
 const MemoOtherBandsSelect = memo(function MemoOtherBandsSelect(props: {
@@ -43,6 +44,7 @@ export default function BirdEvents() {
   const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const birdEventsVersion = useBirdEventsVersion();
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   // Three-state logic: undefined = auto-select default, null = show empty table, string = show this band group
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null | undefined>(undefined);
   // Track the size the user picked so the selection survives a strip rollover
@@ -95,7 +97,7 @@ export default function BirdEvents() {
       if (bandGroup) {
         const validEvents = bandGroup.newCaptureIds
           .map((id) => birdEventsStore.get(id))
-          .filter((event): event is BirdEvent => !!event && event.modifiedEventId == null);
+          .filter((event): event is BirdEvent => !!event && isActiveBirdEvent(event, bandResetsMap));
 
         const count = validEvents.length;
 
@@ -136,7 +138,7 @@ export default function BirdEvents() {
 
     return info;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bandGroupIds, bandGroupsMap, birdEventsVersion, bandSizeToBandGroup, bandSizeToBandIdMap]);
+  }, [bandGroupIds, bandGroupsMap, birdEventsVersion, bandSizeToBandGroup, bandSizeToBandIdMap, bandResetsMap]);
 
   // Get other band groups (have captures but no band size assigned in settings)
   const otherBandGroups = useMemo(() => {
@@ -206,19 +208,19 @@ export default function BirdEvents() {
     return (
       bandGroup?.newCaptureIds
         .map((id) => birdEventsStore.get(id))
-        .filter((ev): ev is BirdEvent => !!ev) ?? []
+        .filter((ev): ev is BirdEvent => !!ev && isActiveBirdEvent(ev, bandResetsMap)) ?? []
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayBandGroupId, bandGroupsMap, birdEventsVersion]);
+  }, [displayBandGroupId, bandGroupsMap, birdEventsVersion, bandResetsMap]);
 
   // Get recaptures for the current program
   const recaptures = useMemo(() => {
     if (!selectedProgram?.recaptureIds) return [];
     return selectedProgram.recaptureIds
       .map((id) => birdEventsStore.get(id))
-      .filter((ev): ev is BirdEvent => !!ev);
+      .filter((ev): ev is BirdEvent => !!ev && isActiveBirdEvent(ev, bandResetsMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProgram, birdEventsVersion]);
+  }, [selectedProgram, birdEventsVersion, bandResetsMap]);
 
   // Sort descriptors for captures (by band digits) and recaptures (by date/time)
   const captureSortDescriptors = useMemo(

@@ -14,6 +14,7 @@ import DETSpeciesDataSection from "./DETSpeciesDataSection";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
 import { resolveSpeciesKey } from "../../../types/species";
+import { isActiveBirdEvent } from "../../../stores/derive";
 
 interface AddDETModalProps {
   isOpen: boolean;
@@ -136,13 +137,14 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const [DETSpeciesCount, setDETSpeciesCount] = useState<Record<string, number>>({});
   const [weather, setWeather] = useState<Weather | undefined>(undefined);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
 
   const getSpeciesCountsFromEvents = useCallback((eventDate: string): EventSpeciesCounts => {
     const banded: Record<string, number> = {};
     const repeat: Record<string, number> = {};
     const return_: Record<string, number> = {};
     for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.date !== eventDate || ev.modifiedEventId || !ev.species) continue;
+      if (!ev || ev.date !== eventDate || !isActiveBirdEvent(ev, bandResetsMap) || !ev.species) continue;
       const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
       if (ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None) {
         banded[speciesKey] = (banded[speciesKey] ?? 0) + 1;
@@ -153,16 +155,16 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       }
     }
     return { banded, repeat, return_ };
-  }, [speciesAliasesMap]);
+  }, [speciesAliasesMap, bandResetsMap]);
 
   const getProgramIdsForDate = useCallback((eventDate: string): string[] => {
     const programIds = new Set<string>();
     for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.date !== eventDate || ev.modifiedEventId || !ev.programId) continue;
+      if (!ev || ev.date !== eventDate || !isActiveBirdEvent(ev, bandResetsMap) || !ev.programId) continue;
       programIds.add(ev.programId);
     }
     return Array.from(programIds).sort((a, b) => a.localeCompare(b));
-  }, []);
+  }, [bandResetsMap]);
 
   const programIdsForDate = useMemo(() => {
     if (!date) return [];

@@ -4,6 +4,7 @@ import type {
   BandGroupsMap,
   BandIdToBirdEventIdsMap,
   BandSizeToBandIdMap,
+  BandResetsMap,
   DETsMap,
   DismissedConflictsMap,
   MagicTable,
@@ -60,6 +61,7 @@ export interface AppState {
   speciesAliasesMap: SpeciesAliasesMap;
   speciesOverridesMap: SpeciesOverridesMap;
   speciesInfoMap: SpeciesInfoMap;
+  bandResetsMap: BandResetsMap;
 
   // Queue / sync
   pendingCount: number;
@@ -104,6 +106,7 @@ export const initialAppState: AppState = {
   speciesAliasesMap: {},
   speciesOverridesMap: {},
   speciesInfoMap: {},
+  bandResetsMap: {},
 
   pendingCount: 0,
   queuedEventIds: new Set(),

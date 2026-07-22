@@ -22,6 +22,7 @@ import {
 import { BirdEventType, type Program } from "../../../types";
 import { SPECIES_GROUPS } from "../../../types/DET";
 import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
+import { isActiveBirdEvent } from "../../../stores/derive";
 
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -646,6 +647,7 @@ export default function Reports() {
   const yearsToProgramMap = useAppStore((s) => s.yearsToProgramMap);
   const isLoading = useAppStore((s) => s.isLoading);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const birdEventsVersion = useBirdEventsVersion();
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -664,16 +666,16 @@ export default function Reports() {
   const captures = useMemo<ReportCapture[]>(() => {
     const arr: ReportCapture[] = [];
     for (const event of birdEventsStore.getAll().values()) {
-      if (event && !event.modifiedEventId) arr.push(toReportCapture(event, speciesAliasesMap));
+      if (event && isActiveBirdEvent(event, bandResetsMap)) arr.push(toReportCapture(event, speciesAliasesMap));
     }
     return arr;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion, speciesAliasesMap]);
+  }, [birdEventsVersion, speciesAliasesMap, bandResetsMap]);
 
   const bandingByBandId = useMemo(() => {
     const map = new Map<string, { date: string; age: string; sex: string }>();
     for (const event of birdEventsStore.getAll().values()) {
-      if (!event || event.modifiedEventId || event.birdEventType !== BirdEventType.Banded) continue;
+      if (!event || !isActiveBirdEvent(event, bandResetsMap) || event.birdEventType !== BirdEventType.Banded) continue;
       const bandId = event.band?.id;
       if (!bandId || !event.date) continue;
       const existing = map.get(bandId);
@@ -687,12 +689,12 @@ export default function Reports() {
     }
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion]);
+  }, [birdEventsVersion, bandResetsMap]);
 
   const captureHistoryByBandId = useMemo(() => {
     const history = new Map<string, Array<{ date: string; age: string; sex: string }>>();
     for (const event of birdEventsStore.getAll().values()) {
-      if (!event || event.modifiedEventId || !event.date) continue;
+      if (!event || !isActiveBirdEvent(event, bandResetsMap) || !event.date) continue;
       const bandId = event.band?.id;
       if (!bandId) continue;
       if (!history.has(bandId)) {
@@ -710,7 +712,7 @@ export default function Reports() {
     });
     return history;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion]);
+  }, [birdEventsVersion, bandResetsMap]);
 
   const prioritySpeciesMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -756,12 +758,19 @@ export default function Reports() {
       if (det && selectedProgramIds.includes(det.programId) && det.date) dates.push(det.date);
     }
     for (const event of birdEventsStore.getAll().values()) {
-      if (event && selectedProgramIds.includes(event.programId) && event.date) dates.push(event.date);
+      if (
+        event &&
+        isActiveBirdEvent(event, bandResetsMap) &&
+        selectedProgramIds.includes(event.programId) &&
+        event.date
+      ) {
+        dates.push(event.date);
+      }
     }
     if (!dates.length) return { min: "", max: "" };
     return { min: dates.reduce((a, b) => (a < b ? a : b)), max: dates.reduce((a, b) => (a > b ? a : b)) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProgramIds, DETsMap, birdEventsVersion]);
+  }, [selectedProgramIds, DETsMap, birdEventsVersion, bandResetsMap]);
 
   useEffect(() => {
     if (selectedProgramIds.length) {

@@ -8,6 +8,7 @@ import CaptureHistoryModal from "../Modals/CaptureHistoryModal";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import PageHeader from "./PageHeader";
 import { resolveSpeciesKey } from "../../types/species";
+import { isActiveBirdEvent } from "../../stores/derive";
 
 function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(b) - Date.parse(a)) / (1000 * 60 * 60 * 24));
@@ -68,15 +69,16 @@ export default function FunStats() {
   const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const birdEventsVersion = useBirdEventsVersion();
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
 
   const eventDatesSet = useMemo(() => {
     const dates = new Set<string>();
     for (const ev of birdEventsStore.getAll().values()) {
-      if (ev?.date && !ev.modifiedEventId) dates.add(ev.date);
+      if (ev?.date && isActiveBirdEvent(ev, bandResetsMap)) dates.add(ev.date);
     }
     return dates;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion]);
+  }, [birdEventsVersion, bandResetsMap]);
 
   const defaultEndDate = useMemo(() => {
     if (eventDatesSet.size === 0) return new Date().toISOString().split("T")[0];
@@ -100,7 +102,7 @@ export default function FunStats() {
   const stats = useMemo(() => {
     const events: BirdEvent[] = [];
     for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.modifiedEventId || !ev.date) continue;
+      if (!ev || !isActiveBirdEvent(ev, bandResetsMap) || !ev.date) continue;
       if (ev.date >= startDate && ev.date <= endDate) events.push(ev);
     }
 
@@ -123,7 +125,7 @@ export default function FunStats() {
     // For oldest recap/return: need original banding date
     const bandIdFirstSeen = new Map<string, string>(); // bandId → earliest date across ALL events
     for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.modifiedEventId || !ev.band?.bandPrefix) continue;
+      if (!ev || !isActiveBirdEvent(ev, bandResetsMap) || !ev.band?.bandPrefix) continue;
       const bandId = `${ev.band.bandPrefix}${ev.band.bandSuffix}`;
       const existing = bandIdFirstSeen.get(bandId);
       if (!existing || ev.date < existing) bandIdFirstSeen.set(bandId, ev.date);
@@ -132,7 +134,7 @@ export default function FunStats() {
     // For rare birds: last capture of each species BEFORE the period
     const speciesLastSeenBefore = new Map<string, string>();
     for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.modifiedEventId || !ev.species || !ev.date) continue;
+      if (!ev || !isActiveBirdEvent(ev, bandResetsMap) || !ev.species || !ev.date) continue;
       const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
       if (ev.date < startDate) {
         const existing = speciesLastSeenBefore.get(speciesKey);
@@ -301,7 +303,7 @@ export default function FunStats() {
       dummest,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion, volunteerStatsMap, speciesAliasesMap, startDate, endDate]);
+  }, [birdEventsVersion, volunteerStatsMap, speciesAliasesMap, startDate, endDate, bandResetsMap]);
 
   return (
     <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4">

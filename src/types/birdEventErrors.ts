@@ -1,4 +1,4 @@
-import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap, MagicTable, SpeciesRange } from ".";
+import type { BirdEvent, BirdEventsMap, BandIdToBirdEventIdsMap, BandResetsMap, MagicTable, SpeciesRange } from ".";
 import { BirdEventType } from ".";
 import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "./species";
 
@@ -632,7 +632,8 @@ export function findBirdEventErrors(
   bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap,
   birdEventsMap: BirdEventsMap,
   magicTable?: MagicTable,
-  speciesAliasesMap: Record<string, string> = {}
+  speciesAliasesMap: Record<string, string> = {},
+  bandResetsMap: BandResetsMap = {}
 ): BirdEventError[] {
   const errors: BirdEventError[] = [];
 
@@ -644,7 +645,11 @@ export function findBirdEventErrors(
     // Filter out modified events (events that have been superseded by newer versions)
     const events = eventIds
       .map((id) => birdEventsMap.get(id))
-      .filter((event): event is BirdEvent => !!event && !event.modifiedEventId);
+      .filter((event): event is BirdEvent => {
+        if (!event || event.modifiedEventId) return false;
+        const reset = bandResetsMap[event.band?.id];
+        return !reset || event.bandGenerationId === reset.generationId;
+      });
 
     errors.push(...findErrorsInEvents(events, magicTable, speciesAliasesMap));
   }

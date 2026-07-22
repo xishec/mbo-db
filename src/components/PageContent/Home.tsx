@@ -4,16 +4,18 @@ import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import { useAppStore } from "../../stores/useAppStore";
 import { resolveSpeciesKey } from "../../types/species";
+import { isActiveBirdEvent } from "../../stores/derive";
 
 export default function Home() {
   const version = useBirdEventsVersion();
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
 
   const latestDaySummary = useMemo(() => {
     // Filter out modified/superseded events
     const activeEvents: Array<{ date: string; bander: string; scribe: string; species: string }> = [];
     for (const event of birdEventsStore.getAll().values()) {
-      if (event && !event.modifiedEventId) activeEvents.push(event);
+      if (event && isActiveBirdEvent(event, bandResetsMap)) activeEvents.push(event);
     }
 
     // Find the latest date in a single pass
@@ -66,7 +68,7 @@ export default function Home() {
       totalCaptures: latestDayEvents.length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, speciesAliasesMap]);
+  }, [version, speciesAliasesMap, bandResetsMap]);
 
   if (!latestDaySummary) {
     return (

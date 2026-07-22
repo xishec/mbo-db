@@ -37,6 +37,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
   const dismissedConflictsMap = useAppStore((s) => s.dismissedConflictsMap);
   const isOnline = useAppStore((s) => s.isOnline);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const isLoggedIn = useIsLoggedIn();
   const { dismissConflict, resetDismissedConflicts } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
@@ -69,7 +70,8 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
         bandIdToBirdEventIdsMap,
         birdEventsStore.getAll(),
         magicTable,
-        speciesAliasesMap
+        speciesAliasesMap,
+        bandResetsMap
       );
       const activeErrors: BirdEventError[] = [];
       let dismissedCount = 0;
@@ -101,6 +103,7 @@ export function ErrorsModal({ isOpen, onClose }: ErrorsModalProps) {
     magicTable,
     dismissedConflictsMap,
     speciesAliasesMap,
+    bandResetsMap,
   ]);
 
   const { errors, dismissedCount } = errorsState;

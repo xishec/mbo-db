@@ -4,6 +4,7 @@ import {
   BirdEventType,
   getBandGroupMapKey,
   type BandGroupsMap,
+  type BandResetsMap,
   type BandIdToBirdEventIdsMap,
   type BirdEvent,
   type BirdEventsMap,
@@ -28,6 +29,43 @@ type BandStats = {
 
 const getEventTimestamp = (event: BirdEvent): number =>
   Date.parse(`${event.date}T${event.time}`);
+
+export function isBirdEventInCurrentBandGeneration(
+  event: BirdEvent,
+  bandResetsMap: BandResetsMap = {}
+): boolean {
+  const reset = bandResetsMap[event.band?.id];
+  return !reset || event.bandGenerationId === reset.generationId;
+}
+
+export function isActiveBirdEvent(event: BirdEvent, bandResetsMap: BandResetsMap = {}): boolean {
+  return !event.modifiedEventId && isBirdEventInCurrentBandGeneration(event, bandResetsMap);
+}
+
+export function computeBandReminder(events: BirdEvent[]): { enabled: boolean; notes: string[] } {
+  const directives = events
+    .filter((event) => typeof event.reminder === "boolean")
+    .sort((a, b) => {
+      const aUpdatedAt = Number(a.updatedAt);
+      const bUpdatedAt = Number(b.updatedAt);
+      const aTimestamp = Number.isFinite(aUpdatedAt) ? aUpdatedAt : getEventTimestamp(a);
+      const bTimestamp = Number.isFinite(bUpdatedAt) ? bUpdatedAt : getEventTimestamp(b);
+      return aTimestamp - bTimestamp || a.id.localeCompare(b.id);
+    });
+
+  let enabled = false;
+  let notes: string[] = [];
+  for (const event of directives) {
+    if (event.reminder) {
+      enabled = true;
+      notes.push(event.notes);
+    } else {
+      enabled = false;
+      notes = [];
+    }
+  }
+  return { enabled, notes };
+}
 
 const computeFavoriteRate = (
   events: BirdEvent[],
@@ -86,8 +124,9 @@ export function overlayQueuedEvents(
  * Single source of truth for the app's shape on load / reload.
  */
 export function rebuildMapsFromEvents(
-  allEvents: Record<string, BirdEvent>,
+  allEvents: Record<string, BirdEvent> | BirdEventsMap,
   volunteersMap: VolunteersMap,
+  bandResetsMap: BandResetsMap = {},
 ): {
   bandIdMap: BandIdToBirdEventIdsMap;
   bandGroups: BandGroupsMap;
@@ -111,34 +150,28 @@ export function rebuildMapsFromEvents(
     };
   }
 
-  for (const [id, ev] of Object.entries(allEvents)) {
+  const entries = allEvents instanceof Map ? allEvents.entries() : Object.entries(allEvents);
+  for (const [id, ev] of entries) {
     if (!ev || !ev.date) continue;
-    const bandId =
+    const band =
       ev.band?.bandPrefix && ev.band?.bandSuffix
-        ? new Band(ev.band.bandPrefix, ev.band.bandSuffix).id
-        : "";
-    if (bandId) {
-      if (!bandIdMap[bandId]) bandIdMap[bandId] = [];
-      if (!bandIdMap[bandId].includes(id)) bandIdMap[bandId].push(id);
+        ? new Band(ev.band.bandPrefix, ev.band.bandSuffix)
+        : null;
+    if (band) {
+      if (!bandIdMap[band.id]) bandIdMap[band.id] = [];
+      bandIdMap[band.id].push(id);
     }
-  }
-
-  for (const [id, ev] of Object.entries(allEvents)) {
-    if (!ev || !ev.date || ev.modifiedEventId) continue;
+    if (!isActiveBirdEvent(ev, bandResetsMap)) continue;
 
     const isNewCapture =
       ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
-    const bgKey =
-      ev.band?.bandPrefix && ev.band?.bandSuffix
-        ? getBandGroupMapKey(new Band(ev.band.bandPrefix, ev.band.bandSuffix))
-        : "";
+    const bgKey = band ? getBandGroupMapKey(band) : "";
     const pid = ev.programId || "NONE";
     const year = ev.date.slice(0, 4);
 
     if (bgKey && isNewCapture) {
       if (!bandGroups[bgKey]) bandGroups[bgKey] = { id: bgKey, newCaptureIds: [] };
-      if (!bandGroups[bgKey].newCaptureIds.includes(id))
-        bandGroups[bgKey].newCaptureIds.push(id);
+      bandGroups[bgKey].newCaptureIds.push(id);
     }
 
     if (!programs[pid]) {
@@ -151,8 +184,7 @@ export function rebuildMapsFromEvents(
     }
     if (isNewCapture && bgKey && !programs[pid].bandGroupIds.includes(bgKey))
       programs[pid].bandGroupIds.push(bgKey);
-    if (!isNewCapture && !programs[pid].recaptureIds.includes(id))
-      programs[pid].recaptureIds.push(id);
+    if (!isNewCapture) programs[pid].recaptureIds.push(id);
     if (!programs[pid].firstCaptureDate || ev.date < programs[pid].firstCaptureDate)
       programs[pid].firstCaptureDate = ev.date;
     if (!programs[pid].lastCaptureDate || ev.date > programs[pid].lastCaptureDate)
@@ -227,6 +259,7 @@ export function advanceBandId(bandId: string): string | null {
 export function computeBandSizeToBandIdMap(
   events: BirdEventsMap,
   groups: BandGroupsMap,
+  bandResetsMap: BandResetsMap = {},
 ): Record<BandSize, string> {
   // Per size, track which group holds the most recently banded event.
   // Recency wins over numeric-max: banders don't always issue strips in
@@ -236,7 +269,7 @@ export function computeBandSizeToBandIdMap(
   for (const ev of events.values()) {
     if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
     if (ev.previousEventId) continue;
-    if (ev.modifiedEventId) continue;
+    if (!isActiveBirdEvent(ev, bandResetsMap)) continue;
     // Recaptures can carry a bandSize on the Band (same band = same size),
     // but they don't advance the strip. Including them would let a recap
     // typed into a size's strip silently overwrite that size's active group.
@@ -292,13 +325,15 @@ export function computeBandSizeToBandIdMap(
  * bander / favourite net). Computed on load — too expensive per-save,
  * and stats barely shift with one more capture.
  */
-export function computeSpeciesInfoMap(source: BirdEventsMap, speciesAliasesMap: Record<string, string> = {}): SpeciesInfoMap {
+export function computeSpeciesInfoMap(
+  source: BirdEventsMap,
+  speciesAliasesMap: Record<string, string> = {},
+  bandResetsMap: BandResetsMap = {}
+): SpeciesInfoMap {
   const infoMap: SpeciesInfoMap = {};
-  const validEvents = [...source.values()].filter((event) => event && !event.modifiedEventId);
-  if (validEvents.length === 0) return infoMap;
-
   const eventsBySpecies = new Map<string, BirdEvent[]>();
-  for (const event of validEvents) {
+  for (const event of source.values()) {
+    if (!event || !isActiveBirdEvent(event, bandResetsMap)) continue;
     if (!event.species || event.species.length !== 4) continue;
     const speciesKey = resolveSpeciesKey(event.species, speciesAliasesMap);
     const speciesEvents = eventsBySpecies.get(speciesKey);

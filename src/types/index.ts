@@ -23,6 +23,11 @@ export type SpeciesOverride = {
   speciesScientific?: string;
 };
 export type SpeciesOverridesMap = Record<string, SpeciesOverride>;
+export interface BandReset {
+  generationId: string;
+  resetAt: number;
+}
+export type BandResetsMap = Record<string, BandReset>;
 export type ObserverClass = 1 | 2 | 3;
 
 export interface Volunteer {
@@ -107,6 +112,10 @@ export interface BirdEvent {
   net: string;
   birdStatus: string;
   notes: string;
+  reminder?: boolean;
+  // Present on events created after a band reset. Only events matching the
+  // band's current generation remain active.
+  bandGenerationId?: string;
   updatedAt: string;
 
   previousEventId: string | null;
@@ -208,6 +217,7 @@ export interface DatabaseData {
   bandGroupNotesMap?: Record<string, string>;
   speciesAliasesMap?: SpeciesAliasesMap;
   speciesOverridesMap?: SpeciesOverridesMap;
+  bandResetsMap?: BandResetsMap;
   // Legacy volunteer metadata maps. Kept only so older IndexedDB caches can
   // be upgraded into volunteersMap on load.
   volunteersFullNameMap?: Record<string, string>;
@@ -235,6 +245,7 @@ export interface CaptureFormData {
   birdEventType: string;
   birdStatus: string;
   notes: string;
+  reminder?: boolean;
 }
 
 export interface CaptureColumn {

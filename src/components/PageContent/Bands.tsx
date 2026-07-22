@@ -9,6 +9,7 @@ import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import PageHeader from "./PageHeader";
 import type { BirdEvent } from "../../types";
+import { isActiveBirdEvent } from "../../stores/derive";
 
 type Row = {
   bandGroupId: string;
@@ -67,6 +68,7 @@ export default function Bands() {
   const isLoggedIn = useIsLoggedIn();
   const { updateBandGroupNote } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
     { column: "lastUsedDate", direction: "descending" },
   ]);
@@ -84,9 +86,9 @@ export default function Bands() {
     if (!bg) return [];
     return bg.newCaptureIds
       .map((id) => birdEventsStore.get(id))
-      .filter((ev): ev is BirdEvent => !!ev);
+      .filter((ev): ev is BirdEvent => !!ev && isActiveBirdEvent(ev, bandResetsMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBandGroupId, bandGroupsMap, birdEventsVersion]);
+  }, [selectedBandGroupId, bandGroupsMap, birdEventsVersion, bandResetsMap]);
 
   const rows = useMemo<Row[]>(() => {
     const result: Row[] = [];
@@ -97,7 +99,7 @@ export default function Bands() {
 
       for (const eventId of bg.newCaptureIds) {
         const ev = birdEventsStore.get(eventId);
-        if (!ev) continue;
+        if (!ev || !isActiveBirdEvent(ev, bandResetsMap)) continue;
         usedDigits.add(ev.band.last2digits);
         if (ev.date > lastDate) lastDate = ev.date;
       }
@@ -124,7 +126,7 @@ export default function Bands() {
 
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bandGroupsMap, birdEventsVersion, bandGroupNotesMap, search]);
+  }, [bandGroupsMap, birdEventsVersion, bandGroupNotesMap, search, bandResetsMap]);
 
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
 

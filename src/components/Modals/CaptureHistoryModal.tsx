@@ -1,6 +1,6 @@
-import { Button } from "@heroui/react";
-import { useMemo } from "react";
-import { useAppStore } from "../../stores/useAppStore";
+import { addToast, Button } from "@heroui/react";
+import { useEffect, useMemo, useState } from "react";
+import { useActions, useAppStore } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import type { BirdEvent } from "../../types";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
@@ -11,6 +11,7 @@ import BirdInfoCard from "../Helper/Info/BirdInfoCard";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import { resolveSpeciesKey } from "../../types/species";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
+import { isActiveBirdEvent } from "../../stores/derive";
 
 interface CaptureHistoryModalProps {
   isOpen: boolean;
@@ -29,7 +30,17 @@ export default function CaptureHistoryModal({
   const magicTable = useAppStore((s) => s.magicTable);
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
+  const isAdmin = useAppStore((s) => s.isAdmin);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const { resetBand } = useActions();
+  const [isConfirmingReset, setIsConfirmingReset] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const birdEventsVersion = useBirdEventsVersion();
+
+  useEffect(() => {
+    if (!isOpen) setIsConfirmingReset(false);
+  }, [isOpen]);
 
   const birdEvents = useMemo(() => {
     if (!bandId) return [];
@@ -37,9 +48,28 @@ export default function CaptureHistoryModal({
     return eventIds
       .map((id) => birdEventsStore.get(id))
       .filter((event): event is BirdEvent => !!event)
-      .filter((event) => event.modifiedEventId == null);
+      .filter((event) => isActiveBirdEvent(event, bandResetsMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bandId, bandIdToBirdEventIdsMap, birdEventsVersion]);
+  }, [bandId, bandIdToBirdEventIdsMap, birdEventsVersion, bandResetsMap]);
+
+  const handleResetBand = async () => {
+    if (!bandId || isResetting) return;
+    setIsResetting(true);
+    try {
+      await resetBand(bandId);
+      setIsConfirmingReset(false);
+      addToast({ title: `Band ${bandId} was reset`, color: "success" });
+      onOpenChange(false);
+    } catch (err) {
+      addToast({
+        title: "Band reset failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        color: "danger",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const birdInfo = useMemo(() => {
     if (birdEvents.length === 0) return null;
@@ -152,6 +182,29 @@ export default function CaptureHistoryModal({
             )}
           </ModalBodyShell>
           <ModalFooterShell>
+            {isConfirmingReset ? (
+              <div className="mr-auto flex items-center gap-2">
+                <span className="max-w-xl text-sm text-danger">
+                  Reset this band across every program and year? Its complete history will be hidden and the next
+                  event must be a new banding.
+                </span>
+                <Button color="danger" onPress={handleResetBand} isLoading={isResetting}>
+                  Confirm reset
+                </Button>
+                <Button variant="light" onPress={() => setIsConfirmingReset(false)} isDisabled={isResetting}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              isAdmin &&
+              isOnline &&
+              bandId &&
+              birdEvents.length > 0 && (
+                <Button color="danger" variant="flat" className="mr-auto" onPress={() => setIsConfirmingReset(true)}>
+                  Reset band
+                </Button>
+              )
+            )}
             <Button color="primary" variant="bordered" onPress={onClose}>
               Close
             </Button>

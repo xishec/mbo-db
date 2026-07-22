@@ -7,6 +7,7 @@ import type { PendingEvent, BirdEvent } from "../../types";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
+import { isActiveBirdEvent } from "../../stores/derive";
 
 interface ActivityModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface ActivityModalProps {
 export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
   const pendingCount = useAppStore((s) => s.pendingCount);
   const isOnline = useAppStore((s) => s.isOnline);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const [queuedEvents, setQueuedEvents] = useState<PendingEvent[]>([]);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -36,10 +38,10 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
     if (!isOpen) return [];
     const arr: BirdEvent[] = [];
     for (const event of birdEventsStore.getAll().values()) {
-      if (event && !event.modifiedEventId) arr.push(event);
+      if (event && isActiveBirdEvent(event, bandResetsMap)) arr.push(event);
     }
     return arr.sort((a, b) => parseInt(b.updatedAt) - parseInt(a.updatedAt)).slice(0, 100);
-  }, [isOpen]);
+  }, [isOpen, bandResetsMap]);
 
   return (
     <ModalShell

@@ -3,6 +3,7 @@ import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import { useAppStore } from "../../stores/useAppStore";
 import type { BirdEvent } from "../../types";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
+import { isActiveBirdEvent } from "../../stores/derive";
 
 interface ExportButtonProps {
   birdEvents: BirdEvent[];
@@ -32,8 +33,10 @@ export default function ExportButton({
   additionalComments = {},
 }: ExportButtonProps) {
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
+  const activeBirdEvents = birdEvents.filter((event) => isActiveBirdEvent(event, bandResetsMap));
   const handleExport = () => {
-    if (birdEvents.length === 0) {
+    if (activeBirdEvents.length === 0) {
       return;
     }
 
@@ -59,11 +62,12 @@ export default function ExportButton({
       "Bird Status",
       "Updated At",
       "Notes",
+      "Reminder",
       "Additional Comments",
     ];
 
     // Convert bird events to CSV rows
-    const rows = birdEvents.map((event) => [
+    const rows = activeBirdEvents.map((event) => [
       event.programId,
       event.band?.bandGroupId || "",
       event.band?.last2digits || "",
@@ -84,6 +88,7 @@ export default function ExportButton({
       event.birdStatus,
       formatTimestampForExport(event.updatedAt),
       event.notes,
+      event.reminder ? "Yes" : "No",
       additionalComments[event.id] || "",
     ]);
 
@@ -126,7 +131,7 @@ export default function ExportButton({
       variant="flat"
       startContent={<ArrowDownTrayIcon className="w-4 h-4" />}
       onPress={handleExport}
-      isDisabled={birdEvents.length === 0}
+      isDisabled={activeBirdEvents.length === 0}
     >
       Export CSV
     </Button>

@@ -176,6 +176,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     birdEventType: BirdEventType.None,
     birdStatus: DEFAULT_BIRD_STATUS,
     notes: "",
+    reminder: undefined,
   };
 }
 

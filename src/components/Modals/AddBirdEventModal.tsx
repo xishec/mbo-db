@@ -10,7 +10,9 @@ import {
   Card,
   CardBody,
   addToast,
+  Checkbox,
 } from "@heroui/react";
+import { BellAlertIcon } from "@heroicons/react/24/outline";
 import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppStore, useActions } from "../../stores/useAppStore";
@@ -35,6 +37,8 @@ import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "./modalDefaults";
 import SpeciesInfoPanel from "./AddBirdEventParts/SpeciesInfoPanel";
+import BirdReminderModal from "./BirdReminderModal";
+import { computeBandReminder, isActiveBirdEvent } from "../../stores/derive";
 
 const AUTO_ADVANCE_FIELDS = new Set<keyof CaptureFormData>([
   "bandGroup",
@@ -104,6 +108,7 @@ export default function AddBirdEventModal({
   const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const { addBirdEvent } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
@@ -113,6 +118,12 @@ export default function AddBirdEventModal({
   const [wasOpen, setWasOpen] = useState(false);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [reminderNotice, setReminderNotice] = useState<{
+    bandId: string;
+    notes: string[];
+  } | null>(null);
+  const shownReminderBandRef = useRef("");
+  const savedReminderBandRef = useRef("");
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [selectedBandSize, setSelectedBandSize] = useState<BandSize>(bandSize);
 
@@ -183,6 +194,7 @@ export default function AddBirdEventModal({
       defaultData.net = birdEventToModify.net;
       defaultData.birdStatus = birdEventToModify.birdStatus;
       defaultData.notes = birdEventToModify.notes;
+      defaultData.reminder = birdEventToModify.reminder;
 
       setFormData(defaultData);
       setLastBandId("");
@@ -362,16 +374,51 @@ export default function AddBirdEventModal({
     return birdEventIds
       .map((id) => birdEventsStore.get(id))
       .filter((event): event is BirdEvent => !!event)
-      .filter((event) => event.modifiedEventId == null)
+      .filter((event) => isActiveBirdEvent(event, bandResetsMap))
       .filter((event) => !birdEventToModify || event.id !== birdEventToModify.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bandId, bandIdToBirdEventIdsMap, birdEventsVersion, birdEventToModify]);
+  }, [bandId, bandIdToBirdEventIdsMap, birdEventsVersion, birdEventToModify, bandResetsMap]);
+
+  const mustBandAfterReset = useMemo(
+    () =>
+      Boolean(bandId && bandResetsMap[bandId]) &&
+      !pastBirdEvents.some(
+        (event) => event.birdEventType === BirdEventType.Banded || event.birdEventType === BirdEventType.None
+      ),
+    [bandId, bandResetsMap, pastBirdEvents]
+  );
+  const requiredResetEventType =
+    formData.species === "BADE" || formData.species === "BALO" ? BirdEventType.None : BirdEventType.Banded;
+  const bandReminder = useMemo(() => computeBandReminder(pastBirdEvents), [pastBirdEvents]);
+  const effectiveReminder = formData.reminder ?? bandReminder.enabled;
+
+  useEffect(() => {
+    if (savedReminderBandRef.current && savedReminderBandRef.current !== bandId) {
+      savedReminderBandRef.current = "";
+    }
+    if (shownReminderBandRef.current && shownReminderBandRef.current !== bandId) {
+      shownReminderBandRef.current = "";
+    }
+    if (!bandId || birdEventToModify) {
+      return;
+    }
+    if (savedReminderBandRef.current === bandId) return;
+    if (shownReminderBandRef.current === bandId) return;
+    if (!bandReminder.enabled) return;
+
+    shownReminderBandRef.current = bandId;
+    setReminderNotice({
+      bandId,
+      notes: bandReminder.notes,
+    });
+  }, [bandId, bandReminder, birdEventToModify]);
 
   // Compute suggested capture type (doesn't auto-update formData)
   const suggestedBirdEventType = useMemo(() => {
     if (!bandId) return BirdEventType.None;
     if (birdEventToModify) return birdEventToModify.birdEventType;
     if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
+    if (mustBandAfterReset) return requiredResetEventType;
     if (pastBirdEvents.length === 0) {
       // For -00 bands, check the previous band group (business rule)
       // Band class expects: bandPrefix (4 chars) + bandSuffix (5 chars = 3 middle + 2 last)
@@ -388,7 +435,17 @@ export default function AddBirdEventModal({
       });
       return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
     }
-  }, [bandId, bandGroupsMap, birdEventToModify, formData.date, formData.species, pastBirdEvents, isNewCapture]);
+  }, [
+    bandId,
+    bandGroupsMap,
+    birdEventToModify,
+    formData.date,
+    formData.species,
+    pastBirdEvents,
+    isNewCapture,
+    mustBandAfterReset,
+    requiredResetEventType,
+  ]);
 
   // Set birdEventType to suggested value only when modal opens or key dependencies change
   useEffect(() => {
@@ -407,7 +464,7 @@ export default function AddBirdEventModal({
       const events = birdEventIds
         .map((id) => birdEventsStore.get(id))
         .filter((event): event is BirdEvent => !!event)
-        .filter((event) => event.modifiedEventId == null);
+        .filter((event) => isActiveBirdEvent(event, bandResetsMap));
       existingSpecies = events[0]?.species;
     }
 
@@ -457,7 +514,7 @@ export default function AddBirdEventModal({
     const incompleteFields = new Set<string>();
     for (const column of TABLE_COLUMNS) {
       const value = formData[column.key as keyof CaptureFormData];
-      if (column.minLength && value.length > 0 && value.length < column.minLength) {
+      if (column.minLength && typeof value === "string" && value.length > 0 && value.length < column.minLength) {
         incompleteFields.add(column.key);
       }
     }
@@ -592,16 +649,23 @@ export default function AddBirdEventModal({
     async (shouldContinue: boolean = false) => {
       if (isSaving) return;
       setIsSaving(true);
+      let suppressedReminderBand = "";
 
       try {
         // Use the user's current size selection (selectedBandSize) — not the
         // initial prop — so changing the band group mid-edit is reflected
         // back into bandSizeToBandIdMap after save.
+        const birdEventTypeToSave = mustBandAfterReset ? requiredResetEventType : formData.birdEventType;
+        const formDataToSave = { ...formData, birdEventType: birdEventTypeToSave };
         const bandSizeToSend =
-          formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None
+          birdEventTypeToSave === BirdEventType.Banded || birdEventTypeToSave === BirdEventType.None
             ? selectedBandSize
             : BandSize.Other;
-        await addBirdEvent(formData, bandSizeToSend, birdEventToModify?.id);
+        if (formDataToSave.reminder) {
+          suppressedReminderBand = bandId;
+          savedReminderBandRef.current = bandId;
+        }
+        await addBirdEvent(formDataToSave, bandSizeToSend, birdEventToModify?.id);
 
         // Save bander and scribe to localStorage
         if (formData.bander) localStorage.setItem("lastBander", formData.bander);
@@ -613,7 +677,7 @@ export default function AddBirdEventModal({
           // the user actually entered. A Size-1 modal where the user typed
           // a Repeat should behave like a recapture on save-and-next.
           const savedAsNewCapture =
-            formData.birdEventType === BirdEventType.Banded || formData.birdEventType === BirdEventType.None;
+            birdEventTypeToSave === BirdEventType.Banded || birdEventTypeToSave === BirdEventType.None;
 
           // New capture: band fields auto-repopulate via the reset
           // useLayoutEffect when bandSizeToBandIdMap advances. Recapture:
@@ -631,6 +695,7 @@ export default function AddBirdEventModal({
             weight: "",
             birdStatus: DEFAULT_BIRD_STATUS,
             notes: "",
+            reminder: undefined,
             ...(savedAsNewCapture ? {} : { bandGroup: "", bandLastTwoDigits: "" }),
           }));
           setLastBandId("");
@@ -641,6 +706,7 @@ export default function AddBirdEventModal({
           onOpenChange(false);
         }
       } catch (err) {
+        if (savedReminderBandRef.current === suppressedReminderBand) savedReminderBandRef.current = "";
         console.error("Failed to save capture:", err);
         addToast({
           title: "Save failed",
@@ -655,7 +721,19 @@ export default function AddBirdEventModal({
         setIsSaving(false);
       }
     },
-    [formData, selectedBandSize, isNewCapture, focusTo, addBirdEvent, birdEventToModify?.id, isSaving, onOpenChange]
+    [
+      formData,
+      selectedBandSize,
+      isNewCapture,
+      focusTo,
+      addBirdEvent,
+      birdEventToModify?.id,
+      bandId,
+      isSaving,
+      onOpenChange,
+      mustBandAfterReset,
+      requiredResetEventType,
+    ]
   );
 
   const handleSaveAndClose = useCallback(() => handleSave(false), [handleSave]);
@@ -888,6 +966,7 @@ export default function AddBirdEventModal({
             isDisabled={isSaving}
             className="border-medium border-default-200 w-full min-w-0 justify-start overflow-hidden"
           >
+            {effectiveReminder && <BellAlertIcon className="h-4 w-4 shrink-0 text-warning" />}
             <span className="truncate">{formData.notes || ""}</span>
           </Button>
         );
@@ -904,7 +983,7 @@ export default function AddBirdEventModal({
               const value = Array.from(keys)[0] as string;
               setFormData((prev) => ({ ...prev, birdEventType: value }));
             }}
-            isDisabled={isSaving}
+            isDisabled={isSaving || mustBandAfterReset}
             classNames={{
               trigger: "min-h-unit-10 h-unit-10",
               value: "text-sm",
@@ -931,7 +1010,7 @@ export default function AddBirdEventModal({
           value={
             columnKey === "species" && formData.species.length === 4
               ? getSpeciesDisplayCode(formData.species, speciesAliasesMap)
-              : formData[columnKey]
+              : String(formData[columnKey] ?? "")
           }
           tabIndex={getTabIndex(columnKey)}
           onChange={(e) => handleInputChange(columnKey, e.target.value, column.maxLength)}
@@ -960,6 +1039,8 @@ export default function AddBirdEventModal({
       focusNext,
       setFormData,
       speciesAliasesMap,
+      mustBandAfterReset,
+      effectiveReminder,
     ]
   );
 
@@ -1165,6 +1246,12 @@ export default function AddBirdEventModal({
                   onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                   placeholder="Add notes..."
                 />
+                <Checkbox
+                  isSelected={effectiveReminder}
+                  onValueChange={(reminder) => setFormData((prev) => ({ ...prev, reminder }))}
+                >
+                  Reminder on next capture
+                </Checkbox>
               </ModalBodyShell>
               <ModalFooterShell>
                 <Button {...modalCancelButtonProps} onPress={onClose}>
@@ -1178,6 +1265,14 @@ export default function AddBirdEventModal({
           )}
         </ModalContent>
       </Modal>
+      <BirdReminderModal
+        isOpen={reminderNotice !== null}
+        onOpenChange={(open) => {
+          if (!open) setReminderNotice(null);
+        }}
+        bandId={reminderNotice?.bandId ?? ""}
+        notes={reminderNotice?.notes ?? []}
+      />
     </>
   );
 }

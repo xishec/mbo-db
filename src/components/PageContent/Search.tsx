@@ -6,6 +6,7 @@ import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import type { BirdEvent } from "../../types";
 import { TABLE_COLUMNS } from "./Programs/Captures/helpers";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
+import { isActiveBirdEvent } from "../../stores/derive";
 import ExportButton from "../Helper/ExportButton";
 import PageHeader from "./PageHeader";
 
@@ -50,6 +51,7 @@ const SEARCH_COLUMNS = [
 export default function Search() {
   const isLoading = useAppStore((s) => s.isLoading);
   const version = useBirdEventsVersion();
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
 
@@ -57,11 +59,11 @@ export default function Search() {
   const allBirdEvents = useMemo(() => {
     const arr: BirdEvent[] = [];
     for (const ev of birdEventsStore.getAll().values()) {
-      if (ev.modifiedEventId == null) arr.push(ev);
+      if (isActiveBirdEvent(ev, bandResetsMap)) arr.push(ev);
     }
     return arr.sort((a, b) => (a.date < b.date ? 1 : -1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version]);
+  }, [version, bandResetsMap]);
 
   // Filter state
   const [filters, setFilters] = useState<Filter[]>([]);
