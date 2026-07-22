@@ -1,6 +1,6 @@
 import { Button, Card, CardBody, Checkbox, Input, Modal, ModalContent, Select, SelectItem } from "@heroui/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { BellAlertIcon } from "@heroicons/react/24/outline";
+import { BellAlertIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useActions, useAppStore } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import {
@@ -249,6 +249,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const [lastBandId, setLastBandId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [entryMessage, setEntryMessage] = useState<EntryMessage | null>(null);
+  const [validationMessageIndex, setValidationMessageIndex] = useState(0);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [reminderNotice, setReminderNotice] = useState<{
@@ -970,9 +971,33 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const hasExistingData = pastBirdEvents.length > 0;
   const existingDataTitle = `${hasExistingData ? "Existing data" : "No data"} for band ${bandId || ""}`.trim();
   const canSave = Boolean(formData.bandGroup && formData.bandLastTwoDigits && formData.species && selectedProgram);
-  const validationMessage =
-    validationMessages.find((message) => message.severity === "danger") ??
-    validationMessages.find((message) => message.severity === "warning");
+  const orderedValidationMessages = useMemo(
+    () => [
+      ...validationMessages.filter((message) => message.severity === "danger"),
+      ...validationMessages.filter((message) => message.severity === "warning"),
+    ],
+    [validationMessages]
+  );
+  const validationMessageCount = orderedValidationMessages.length;
+  const activeValidationMessageIndex = Math.min(
+    validationMessageIndex,
+    Math.max(0, validationMessageCount - 1)
+  );
+  const validationMessage = orderedValidationMessages[activeValidationMessageIndex];
+
+  useEffect(() => {
+    setValidationMessageIndex(0);
+  }, [orderedValidationMessages]);
+
+  const moveValidationMessage = useCallback(
+    (direction: -1 | 1) => {
+      if (validationMessageCount < 2) return;
+      setValidationMessageIndex(
+        (current) => (current + direction + validationMessageCount) % validationMessageCount
+      );
+    },
+    [validationMessageCount]
+  );
   const displayedMessage =
     (validationMessage
       ? {
@@ -1112,9 +1137,46 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
 
           <div className="flex items-center justify-between gap-4">
             <div
-              className={`flex h-10 flex-1 items-center rounded-medium border bg-transparent px-3 text-sm font-medium ${messageClassName}`}
+              className={`flex h-[40px] min-h-[40px] max-h-[40px] flex-1 items-center gap-2 overflow-hidden rounded-medium border bg-transparent px-3 text-sm font-medium ${messageClassName}`}
+              tabIndex={validationMessageCount > 1 ? 0 : undefined}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowLeft") {
+                  event.preventDefault();
+                  moveValidationMessage(-1);
+                } else if (event.key === "ArrowRight") {
+                  event.preventDefault();
+                  moveValidationMessage(1);
+                }
+              }}
             >
-              {displayedMessage.text}
+              <span className="min-w-0 flex-1 truncate" title={displayedMessage.text}>
+                {displayedMessage.text}
+              </span>
+              {validationMessageCount > 1 && (
+                <div className="flex shrink-0 items-center gap-1">
+                  <span className="text-xs tabular-nums opacity-70">
+                    {activeValidationMessageIndex + 1}/{validationMessageCount}
+                  </span>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    aria-label="Previous validation message"
+                    onPress={() => moveValidationMessage(-1)}
+                  >
+                    <ChevronLeftIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    aria-label="Next validation message"
+                    onPress={() => moveValidationMessage(1)}
+                  >
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             <Button
               color="secondary"
