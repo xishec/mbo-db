@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 import Home from "./Home";
-import Trends from "./Trends";
 
 const Programs = lazy(() => import("./Programs/Programs"));
 const Search = lazy(() => import("./Search"));
@@ -10,6 +9,7 @@ const Volunteers = lazy(() => import("./Volunteers"));
 const Bands = lazy(() => import("./Bands"));
 const FunStats = lazy(() => import("./FunStats"));
 const Reports = lazy(() => import("./Reports/Reports"));
+const Trends = lazy(() => import("./Trends"));
 
 interface PageContentProps {
   activePage: string;

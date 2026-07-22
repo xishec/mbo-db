@@ -9,11 +9,11 @@ import {
   TableRow,
   Tab,
   Tabs,
-  addToast,
 } from "@heroui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import { SPECIES_GROUPS } from "../../types/DET";
+import { showPersistentErrorToast } from "../../utils/toast";
 import { getSpeciesDisplayCode, getSpeciesWithOverrides, SPECIES_MAP } from "../../types/species";
 import { useActions, useAppStore } from "../../stores/useAppStore";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
@@ -442,11 +442,7 @@ function SpeciesMetadataModal({
       });
       onOpenChange(false);
     } catch (err) {
-      addToast({
-        title: "Could not save species",
-        description: err instanceof Error ? err.message : "Unknown error",
-        color: "danger",
-      });
+      showPersistentErrorToast("Could not save species", err, "Unknown error");
     } finally {
       setIsSaving(false);
     }

@@ -98,10 +98,20 @@ async function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function clearQueue(): Promise<void> {
+export async function clearQueue(environment?: Environment): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction([QUEUE_STORE], "readwrite");
-  transaction.objectStore(QUEUE_STORE).clear();
+  const store = transaction.objectStore(QUEUE_STORE);
+  if (environment) {
+    const request = store.getAll();
+    request.onsuccess = () => {
+      for (const pending of request.result as PendingEvent[]) {
+        if (pending.environment === environment) store.delete(pending.id);
+      }
+    };
+  } else {
+    store.clear();
+  }
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => { db.close(); resolve(); };
     transaction.onerror = () => { db.close(); reject(transaction.error); };
@@ -185,6 +195,32 @@ export async function saveDataToIndexedDB(environment: Environment, data: Databa
       for (const id in birdEventsMap) {
         eventsStore.put(birdEventsMap[id], id);
       }
+    }
+  });
+}
+
+/**
+ * Persist an incremental server refresh without clearing the per-event store.
+ * Metadata and changed event rows share one transaction, so a failed write
+ * cannot leave the cache metadata ahead of the cached events.
+ */
+export async function saveDataDeltaToIndexedDB(
+  environment: Environment,
+  data: DatabaseData,
+  changedEvents: Record<string, BirdEvent>,
+): Promise<void> {
+  const db = await openDB();
+  const eventsStoreName = birdEventsStoreName(environment);
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction([DATA_STORE, eventsStoreName], "readwrite");
+    transaction.oncomplete = () => { db.close(); resolve(); };
+    transaction.onerror = () => { db.close(); reject(transaction.error); };
+    transaction.onabort = () => { db.close(); reject(transaction.error); };
+
+    transaction.objectStore(DATA_STORE).put(createCachedMetadata(data), environment);
+    const eventsStore = transaction.objectStore(eventsStoreName);
+    for (const id in changedEvents) {
+      eventsStore.put(changedEvents[id], id);
     }
   });
 }
@@ -363,7 +399,7 @@ export async function addToQueue(pendingEvent: PendingEvent): Promise<void> {
   });
 }
 
-export async function getQueuedEvents(): Promise<PendingEvent[]> {
+export async function getQueuedEvents(environment?: Environment): Promise<PendingEvent[]> {
   const db = await openDB();
   const transaction = db.transaction([QUEUE_STORE], "readonly");
   const store = transaction.objectStore(QUEUE_STORE);
@@ -372,7 +408,8 @@ export async function getQueuedEvents(): Promise<PendingEvent[]> {
     const request = store.getAll();
     request.onsuccess = () => {
       db.close();
-      resolve(request.result as PendingEvent[]);
+      const queued = request.result as PendingEvent[];
+      resolve(environment ? queued.filter((pending) => pending.environment === environment) : queued);
     };
     request.onerror = () => { db.close(); reject(request.error); };
   });
@@ -382,6 +419,21 @@ export async function removeFromQueue(eventId: string): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction([QUEUE_STORE], "readwrite");
   transaction.objectStore(QUEUE_STORE).delete(eventId);
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => { db.close(); resolve(); };
+    transaction.onerror = () => { db.close(); reject(transaction.error); };
+  });
+}
+
+/** Delete several successfully-synced queue rows in one transaction. */
+export async function removeManyFromQueue(eventIds: Iterable<string>): Promise<void> {
+  const ids = [...eventIds];
+  if (ids.length === 0) return;
+
+  const db = await openDB();
+  const transaction = db.transaction([QUEUE_STORE], "readwrite");
+  const store = transaction.objectStore(QUEUE_STORE);
+  for (const id of ids) store.delete(id);
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => { db.close(); resolve(); };
     transaction.onerror = () => { db.close(); reject(transaction.error); };

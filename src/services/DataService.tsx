@@ -31,6 +31,7 @@ import {
   getLastUpdated,
   getMetadata,
   getQueuedEvents,
+  saveDataDeltaToIndexedDB,
   saveDataToIndexedDB,
   saveDatabaseMetadataOnly,
   saveLastUpdated,
@@ -242,7 +243,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!isOnline) {
           if (cachedData) {
             setStatus("Loading cached data...");
-            const queued = await getQueuedEvents();
+            const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
             populateStateFromData(cachedData, queued);
             useAppStore.setState({
               lastSyncedAt: lastEventSync ?? Date.now(),
@@ -273,7 +274,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         } catch {
           if (cachedData) {
             setStatus("Using cached data (Firebase unreachable)");
-            const queued = await getQueuedEvents();
+            const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
             populateStateFromData(cachedData, queued);
             useAppStore.setState({
               lastSyncedAt: lastEventSync ?? Date.now(),
@@ -298,6 +299,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Bird events use syncedAt-based delta sync independent of map metadata.
         let allEvents: Record<string, BirdEvent>;
+        let deltaEvents: Record<string, BirdEvent> = {};
+        let addedDeltaEventCount = 0;
+        let isFullEventSnapshot = true;
         logger.info(
           "DataLoad",
           `Cache: ${cachedData ? "yes" : "no"}, lastEventSync: ${lastEventSync}, mapsToFetch: ${mapsToFetch.size}`
@@ -311,7 +315,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             const deltaSnap = await get(
               fbQuery(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(lastEventSync + 1))
             );
-            const deltaEvents: Record<string, BirdEvent> = deltaSnap.exists()
+            deltaEvents = deltaSnap.exists()
               ? (deltaSnap.val() as Record<string, BirdEvent>)
               : {};
             const deltaCount = Object.keys(deltaEvents).length;
@@ -319,7 +323,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (deltaCount === 0 && mapsToFetch.size === 0) {
               setStatus("Cache is up to date");
               logger.info("DataLoad", "No new events, maps unchanged — using cache");
-              const queuedForCache = await getQueuedEvents();
+              const queuedForCache = await getQueuedEvents(CURRENT_ENVIRONMENT);
               populateStateFromData(cachedData, queuedForCache);
               useAppStore.setState({ lastSyncedAt: lastEventSync, isLoading: false });
               return;
@@ -327,7 +331,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
             logger.info("DataLoad", `Incremental: ${deltaCount} new events`);
             setStatus(`Merging ${deltaCount} new events...`);
-            allEvents = { ...cachedData.birdEventsMap, ...deltaEvents };
+            // This cache object is local to this load. Updating it in place
+            // avoids allocating a second 700K-entry object for a tiny delta.
+            allEvents = cachedData.birdEventsMap;
+            for (const id in deltaEvents) {
+              if (!allEvents[id]) addedDeltaEventCount++;
+              allEvents[id] = deltaEvents[id];
+            }
+            isFullEventSnapshot = false;
           } catch (err) {
             logger.warn("DataLoad", "Incremental load failed, falling back to full load", err);
             setStatus("Downloading all events...");
@@ -397,7 +408,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Overlay pending (not-yet-synced) events so derived maps, prefill
         // suggestions, and capture lists include offline work.
-        const queued = await getQueuedEvents();
+        const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
         const mergedEvents = overlayQueuedEvents(allEvents, queued);
 
         setStatus("Rebuilding maps...");
@@ -432,16 +443,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // ahead of the client that wrote the next event, `startAt(cursor + 1)`
         // would skip that event forever.
         let maxSyncedAt = lastEventSync ?? 0;
-        let allEventCount = 0;
-        for (const id in allEvents) {
-          allEventCount++;
-          const ev = allEvents[id];
+        let allEventCount = isFullEventSnapshot ? 0 : cachedEventCount + addedDeltaEventCount;
+        const cursorSource = isFullEventSnapshot ? allEvents : deltaEvents;
+        for (const id in cursorSource) {
+          if (isFullEventSnapshot) {
+            allEventCount++;
+          }
+          const ev = cursorSource[id];
           if (typeof ev.syncedAt === "number" && ev.syncedAt > maxSyncedAt) {
             maxSyncedAt = ev.syncedAt;
           }
         }
         const cacheTimestamp = maxSyncedAt > 0 ? maxSyncedAt : Date.now();
-        await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
+        if (isFullEventSnapshot) {
+          await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
+        } else {
+          await saveDataDeltaToIndexedDB(CURRENT_ENVIRONMENT, data, deltaEvents);
+        }
         await saveLastUpdated(CURRENT_ENVIRONMENT, cacheTimestamp);
         if (rtdbMetadata) {
           await Promise.all(
@@ -478,7 +496,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           try {
             const fallbackData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
             if (fallbackData) {
-              const queued = await getQueuedEvents().catch(() => [] as PendingEvent[]);
+              const queued = await getQueuedEvents(CURRENT_ENVIRONMENT).catch(() => [] as PendingEvent[]);
               populateStateFromData(fallbackData, queued);
               const fallbackLastSync = await getLastUpdated(CURRENT_ENVIRONMENT).catch(() => null);
               useAppStore.setState({ lastSyncedAt: fallbackLastSync });

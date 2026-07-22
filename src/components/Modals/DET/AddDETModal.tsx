@@ -8,6 +8,7 @@ import { fetchWeatherForDateTimeRange } from "../../../services/weatherService";
 import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
 import { getLocalDateString } from "../../../utils/dateUtils";
+import { showPersistentErrorToast } from "../../../utils/toast";
 import DETObserverHoursSection from "./DETObserverHoursSection";
 import DETNetHoursSection from "./DETNetHoursSection";
 import DETSpeciesDataSection from "./DETSpeciesDataSection";
@@ -433,7 +434,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       await onSave(det);
       onOpenChange(); // Close modal on success
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save DET");
+      showPersistentErrorToast("DET save failed", err, "Please try again.");
     } finally {
       setIsSaving(false);
     }

@@ -1,14 +1,15 @@
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { Button, Spinner, useDisclosure } from "@heroui/react";
 import Navigation from "./components/Navigation";
 import LoginModal from "./components/Modals/LoginModal";
 import PageContent from "./components/PageContent/PageContent";
-import Trends from "./components/PageContent/Trends";
 import LoadingProgressBar from "./components/Helper/LoadingProgressBar";
 import MilestoneCelebration from "./components/Helper/MilestoneCelebration";
 import { DataProvider } from "./services/DataService";
 import { useAppStore, useIsLoggedIn } from "./stores/useAppStore";
 import mboLogo from "./assets/mbo-logo.svg";
+
+const Trends = lazy(() => import("./components/PageContent/Trends"));
 
 function BeforeUnloadGuard() {
   const isSyncing = useAppStore((s) => s.isSyncing);
@@ -38,6 +39,7 @@ function getPageFromHash(): string {
 function AppContent() {
   const [activePage, setActivePage] = useState(getPageFromHash);
   const isLoading = useAppStore((s) => s.isLoading);
+  const error = useAppStore((s) => s.error);
   const isOnline = useAppStore((s) => s.isOnline);
   const authReady = useAppStore((s) => s.authReady);
   const isLoggedIn = useIsLoggedIn();
@@ -62,7 +64,15 @@ function AppContent() {
     return (
       <>
         <Navigation activePage={activePage} onPageChange={handlePageChange} isLoading={false} />
-        <Trends />
+        <Suspense
+          fallback={
+            <div className="flex min-h-screen items-center justify-center">
+              <Spinner size="lg" />
+            </div>
+          }
+        >
+          <Trends />
+        </Suspense>
         <p className="fixed bottom-4 left-4 text-xs text-default-400 z-50">Build: {__BUILD_TIME__}</p>
       </>
     );
@@ -91,6 +101,23 @@ function AppContent() {
         </div>
         <LoginModal isOpen={isLoginOpen} onOpenChange={onLoginOpenChange} />
       </>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="mx-4 max-w-sm text-center">
+          <img src={mboLogo} alt="MBO Logo" className="mx-auto mb-6 h-16 w-16" />
+          <h1 className="mb-2 text-2xl font-bold">{isOnline ? "Unable to load database" : "Internet required"}</h1>
+          <p className="mb-6 text-default-700">{error}</p>
+          {isOnline && (
+            <Button color="primary" onPress={() => window.location.reload()}>
+              Reload
+            </Button>
+          )}
+        </div>
+      </div>
     );
   }
 

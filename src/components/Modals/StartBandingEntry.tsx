@@ -16,6 +16,7 @@ import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { findErrorsInEvents, getRangesForSex, validateBirdEventForm } from "../../types/birdEventErrors";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
 import { getLocalDateString } from "../../utils/dateUtils";
+import { showPersistentErrorToast } from "../../utils/toast";
 import PyleTable from "../Helper/Info/PyleTable";
 import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import { TABLE_COLUMNS, formatFieldValue, getDefaultFormData } from "../PageContent/Programs/Captures/helpers";
@@ -1087,10 +1088,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     } catch (err) {
       if (savedReminderBandRef.current === suppressedReminderBand) savedReminderBandRef.current = "";
       pendingSavedBandSizeRef.current = null;
-      setEntryMessage({
-        tone: "danger",
-        text: err instanceof Error ? err.message : "Save failed. Please try again.",
-      });
+      setEntryMessage(null);
+      showPersistentErrorToast("Save failed", err, "Please try again.");
     } finally {
       setIsSaving(false);
     }

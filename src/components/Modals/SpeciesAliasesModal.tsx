@@ -15,6 +15,7 @@ import { TrashIcon } from "@heroicons/react/24/outline";
 import { useMemo, useState } from "react";
 import { useAppStore, useActions } from "../../stores/useAppStore";
 import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP } from "../../types/species";
+import { showPersistentErrorToast } from "../../utils/toast";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
 import { modalInputProps, modalPrimaryButtonProps } from "./modalDefaults";
 
@@ -82,11 +83,7 @@ export default function SpeciesAliasesModal({ isOpen, onOpenChange }: SpeciesAli
       setAliasCode("");
       setSpeciesKey("");
     } catch (err) {
-      addToast({
-        title: "Could not save code",
-        description: err instanceof Error ? err.message : "Unknown error",
-        color: "danger",
-      });
+      showPersistentErrorToast("Could not save code", err, "Unknown error");
     } finally {
       setIsSaving(false);
     }

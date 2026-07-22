@@ -9,7 +9,6 @@ import {
   ModalBody,
   Card,
   CardBody,
-  addToast,
   Checkbox,
 } from "@heroui/react";
 import { BellAlertIcon } from "@heroicons/react/24/outline";
@@ -29,6 +28,7 @@ import {
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { validateBirdEventForm, findErrorsInEvents } from "../../types/birdEventErrors";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
+import { showPersistentErrorToast } from "../../utils/toast";
 import BirdStatusModal from "./BirdStatusModal";
 import ValidationMessages from "../Helper/ValidationMessages";
 import { TABLE_COLUMNS } from "../PageContent/Programs/Captures/helpers";
@@ -709,11 +709,7 @@ export default function AddBirdEventModal({
       } catch (err) {
         if (savedReminderBandRef.current === suppressedReminderBand) savedReminderBandRef.current = "";
         console.error("Failed to save capture:", err);
-        addToast({
-          title: "Save failed",
-          description: "Failed to save capture. Please try again.",
-          color: "danger",
-        });
+        showPersistentErrorToast("Save failed", err, "Failed to save capture. Please try again.");
       } finally {
         // Always clear so the "Saving..." spinner modal can't stick if
         // anything between addBirdEvent resolving and the post-save reset
