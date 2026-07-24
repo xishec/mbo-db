@@ -641,6 +641,15 @@ export const SPECIES_MAP: Record<string, Species> = {
     speciesFrench: "Sizerin flammé",
     speciesScientific: "Acanthis flammea",
   },
+  REDP: {
+    code: "REDP",
+    currentCode: "REDP",
+    pseudoSpeciesType: "Species",
+    speciesDescriptionMBO: "Redpoll",
+    speciesDescriptionCMMN: "Redpoll",
+    speciesFrench: "Sizerin",
+    speciesScientific: "Acanthis",
+  },
   COTE: {
     code: "COTE",
     currentCode: "COTE",
