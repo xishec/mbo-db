@@ -20,7 +20,6 @@ import {
   type DETsMap,
   type MagicTable,
   type PendingEvent,
-  type SpeciesOverridesMap,
   type Volunteer,
   type VolunteersMap,
 } from "../types";
@@ -120,22 +119,6 @@ function normalizeDETObserverClasses(detsMap: DETsMap | undefined, volunteersMap
   return normalized;
 }
 
-function normalizeSpeciesOverridesMap(overrides: SpeciesOverridesMap | undefined): SpeciesOverridesMap {
-  const normalized: SpeciesOverridesMap = {};
-  for (const [key, override] of Object.entries(overrides ?? {})) {
-    const speciesKey = key.trim().toUpperCase();
-    if (!speciesKey) continue;
-    const clean = {
-      speciesDescriptionMBO: override.speciesDescriptionMBO?.trim(),
-      speciesDescriptionCMMN: override.speciesDescriptionCMMN?.trim(),
-      speciesFrench: override.speciesFrench?.trim(),
-      speciesScientific: override.speciesScientific?.trim(),
-    };
-    if (Object.values(clean).some(Boolean)) normalized[speciesKey] = clean;
-  }
-  return normalized;
-}
-
 function hydrateBirdEvents(events: Record<string, BirdEvent>): Map<string, BirdEvent> {
   const hydrated = new Map<string, BirdEvent>();
   for (const id in events) {
@@ -158,7 +141,6 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
   const detsMap = normalizeDETObserverClasses(data.DETsMap, volunteersMap);
   setSpeciesMap(data.magicTable?.species ?? {});
   const speciesAliasesMap = normalizeSpeciesAliasesMap(data.speciesAliasesMap ?? {});
-  const speciesOverridesMap = normalizeSpeciesOverridesMap(data.speciesOverridesMap);
   const bandResetsMap = data.bandResetsMap ?? {};
   const mergedEvents = overlayQueuedEvents(data.birdEventsMap ?? {}, queued);
   const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(
@@ -173,7 +155,6 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
     magicTable: data.magicTable ?? { pyle: {}, species: {} },
     volunteersMap,
     speciesAliasesMap,
-    speciesOverridesMap,
     bandResetsMap,
     bandIdToBirdEventIdsMap: bandIdMap,
     bandGroupsMap: bandGroups,
@@ -366,7 +347,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         let volunteersMap = getVolunteerMetadata(cachedData);
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
         let speciesAliasesData: Record<string, string> = cachedData?.speciesAliasesMap ?? {};
-        let speciesOverridesMap: SpeciesOverridesMap = normalizeSpeciesOverridesMap(cachedData?.speciesOverridesMap);
         let bandResetsMap: BandResetsMap = cachedData?.bandResetsMap ?? {};
         if (mapsToFetch.size > 0) {
           const fetching = [...mapsToFetch];
@@ -394,9 +374,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 break;
               case "speciesAliasesMap":
                 speciesAliasesData = val ?? {};
-                break;
-              case "speciesOverridesMap":
-                speciesOverridesMap = normalizeSpeciesOverridesMap(val ?? {});
                 break;
               case "bandResetsMap":
                 bandResetsMap = val ?? {};
@@ -437,7 +414,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           magicTable: magicTableData,
           bandGroupNotesMap: notesMap,
           speciesAliasesMap,
-          speciesOverridesMap,
           bandResetsMap,
         };
 
@@ -478,7 +454,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           volunteersMap,
           bandGroupNotesMap: notesMap,
           speciesAliasesMap,
-          speciesOverridesMap,
           bandResetsMap,
           bandIdToBirdEventIdsMap: bandIdMap,
           bandGroupsMap: bandGroups,

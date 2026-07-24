@@ -5,7 +5,6 @@ export const INDEPENDENT_MAP_NAMES = [
   "volunteersMap",
   "bandGroupNotesMap",
   "speciesAliasesMap",
-  "speciesOverridesMap",
   "bandResetsMap",
 ] as const;
 

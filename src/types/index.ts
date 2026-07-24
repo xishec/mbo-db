@@ -18,13 +18,6 @@ export type DETsMap = Record<string, DET>;
 export type VolunteersMap = Record<string, Volunteer>;
 export type VolunteerStatsMap = Record<string, VolunteerStats>;
 export type SpeciesAliasesMap = Record<string, string>;
-export type SpeciesOverride = {
-  speciesDescriptionMBO?: string;
-  speciesDescriptionCMMN?: string;
-  speciesFrench?: string;
-  speciesScientific?: string;
-};
-export type SpeciesOverridesMap = Record<string, SpeciesOverride>;
 export interface BandReset {
   generationId: string;
   resetAt: number;
@@ -219,7 +212,6 @@ export interface DatabaseData {
   magicTable?: MagicTable;
   bandGroupNotesMap?: Record<string, string>;
   speciesAliasesMap?: SpeciesAliasesMap;
-  speciesOverridesMap?: SpeciesOverridesMap;
   bandResetsMap?: BandResetsMap;
   // Legacy volunteer metadata maps. Kept only so older IndexedDB caches can
   // be upgraded into volunteersMap on load.

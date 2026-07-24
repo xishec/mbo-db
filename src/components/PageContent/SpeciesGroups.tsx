@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
 import { SPECIES_GROUPS } from "../../types/DET";
 import { showPersistentErrorToast } from "../../utils/toast";
-import { getSpeciesDisplayCode, getSpeciesWithOverrides, SPECIES_MAP } from "../../types/species";
+import { getSpeciesDisplayCode, SPECIES_MAP } from "../../types/species";
 import { useActions, useAppStore } from "../../stores/useAppStore";
 import { formatSpanDays } from "../Helper/Info/formatSpanDays";
 import SpeciesInfoModal from "../Modals/SpeciesInfoModal";
@@ -81,7 +81,6 @@ const PYLE_COLUMNS: ColumnType<PyleRow>[] = [
 export default function SpeciesGroups() {
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
-  const speciesOverridesMap = useAppStore((s) => s.speciesOverridesMap);
   const user = useAppStore((s) => s.user);
   const isOnline = useAppStore((s) => s.isOnline);
   const [selectedSpeciesCode, setSelectedSpeciesCode] = useState<string | null>(null);
@@ -143,7 +142,7 @@ export default function SpeciesGroups() {
     const allRows: DetRow[] = [];
     for (const group of groupedSpecies) {
       for (const code of group.speciesCodes) {
-        const species = getSpeciesWithOverrides(code, speciesOverridesMap);
+        const species = SPECIES_MAP[code];
         allRows.push({
           speciesKey: code,
           groupName: group.name,
@@ -157,26 +156,25 @@ export default function SpeciesGroups() {
       }
     }
     return allRows;
-  }, [groupedSpecies, speciesAliasesMap, speciesInfoMap, speciesOverridesMap]);
+  }, [groupedSpecies, speciesAliasesMap, speciesInfoMap]);
 
   const pyleRows = useMemo<PyleRow[]>(() => {
     const rows: PyleRow[] = [];
     for (const [code, species] of Object.entries(SPECIES_MAP)) {
-      const overriddenSpecies = getSpeciesWithOverrides(code, speciesOverridesMap) ?? species;
-      const englishName = overriddenSpecies.speciesDescriptionMBO || overriddenSpecies.speciesDescriptionCMMN;
+      const englishName = species.speciesDescriptionMBO || species.speciesDescriptionCMMN;
       if (!englishName) continue;
       rows.push({
         speciesKey: code,
         code: getSpeciesDisplayCode(code, speciesAliasesMap),
         englishName,
-        frenchName: overriddenSpecies.speciesFrench || "Unknown",
+        frenchName: species.speciesFrench || "Unknown",
         totalCaptures: speciesInfoMap[code]?.totalCaptures ?? 0,
         dummiestCount: speciesInfoMap[code]?.dummiestCount ?? 0,
         oldestSpanDays: speciesInfoMap[code]?.oldestSpanDays ?? -1,
       });
     }
     return rows;
-  }, [speciesAliasesMap, speciesInfoMap, speciesOverridesMap]);
+  }, [speciesAliasesMap, speciesInfoMap]);
 
   const renderEditButton = (code: string) => (
     <Button
@@ -403,16 +401,22 @@ function SpeciesMetadataModal({
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const user = useAppStore((s) => s.user);
   const isOnline = useAppStore((s) => s.isOnline);
-  const { updateSpeciesAlias } = useActions();
+  const { updateSpeciesMetadata } = useActions();
   const species = speciesCode ? SPECIES_MAP[speciesCode] : null;
   const currentAlias = speciesCode ? speciesAliasesMap[speciesCode] : undefined;
   const [aliasCode, setAliasCode] = useState("");
+  const [englishName, setEnglishName] = useState("");
+  const [frenchName, setFrenchName] = useState("");
+  const [scientificName, setScientificName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const canEdit = !!user && isOnline;
 
   useEffect(() => {
     if (!speciesCode || !species) return;
     setAliasCode("");
+    setEnglishName(species.speciesDescriptionMBO || species.speciesDescriptionCMMN);
+    setFrenchName(species.speciesFrench);
+    setScientificName(species.speciesScientific);
   }, [species, speciesCode]);
 
   if (!speciesCode || !species) return null;
@@ -423,7 +427,12 @@ function SpeciesMetadataModal({
     if (!canEdit || isSaving) return;
     setIsSaving(true);
     try {
-      await updateSpeciesAlias(speciesCode, normalizedAlias || currentAlias || null);
+      await updateSpeciesMetadata(speciesCode, normalizedAlias || currentAlias || null, {
+        speciesDescriptionMBO: englishName,
+        speciesDescriptionCMMN: englishName,
+        speciesFrench: frenchName,
+        speciesScientific: scientificName,
+      });
       onOpenChange(false);
     } catch (err) {
       showPersistentErrorToast("Could not save species", err, "Unknown error");
@@ -465,6 +474,27 @@ function SpeciesMetadataModal({
                       .slice(0, 4)
                   )
                 }
+                isDisabled={!canEdit || isSaving}
+              />
+              <Input
+                {...modalInputProps}
+                label="English Name"
+                value={englishName}
+                onValueChange={setEnglishName}
+                isDisabled={!canEdit || isSaving}
+              />
+              <Input
+                {...modalInputProps}
+                label="French Name"
+                value={frenchName}
+                onValueChange={setFrenchName}
+                isDisabled={!canEdit || isSaving}
+              />
+              <Input
+                {...modalInputProps}
+                label="Scientific Name"
+                value={scientificName}
+                onValueChange={setScientificName}
                 isDisabled={!canEdit || isSaving}
               />
             </div>

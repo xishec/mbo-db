@@ -27,10 +27,10 @@ import {
   type ObserverClass,
   type PendingBirdEvent,
   type Program,
-  type SpeciesOverride,
+  type Species,
 } from "../types";
 import { type IndependentMapName } from "../types/mapNames";
-import { SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
+import { setSpeciesMap, SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
 import { stripUndefined } from "../utils/firebaseValue";
 import {
   advanceBandId,
@@ -849,14 +849,18 @@ export const actions = {
   updateSpeciesMetadata: async (
     speciesKey: string,
     aliasCode: string | null,
-    override: SpeciesOverride
+    names: Pick<
+      Species,
+      "speciesDescriptionMBO" | "speciesDescriptionCMMN" | "speciesFrench" | "speciesScientific"
+    >
   ): Promise<void> => {
-    const { user, isOnline, speciesAliasesMap, speciesOverridesMap } = useAppStore.getState();
+    const { user, isOnline, speciesAliasesMap, magicTable } = useAppStore.getState();
     if (!user) throw new Error("Must be logged in to update species metadata");
     if (!isOnline) throw new Error("Cannot update species metadata while offline");
 
     const key = speciesKey.trim().toUpperCase();
-    if (!SPECIES_MAP[key]) throw new Error(`Species "${speciesKey}" not found`);
+    const species = magicTable.species[key] ?? SPECIES_MAP[key];
+    if (!species) throw new Error(`Species "${speciesKey}" not found`);
 
     const alias = aliasCode?.trim().toUpperCase() ?? "";
     if (alias && !/^[A-Z]{4}$/.test(alias)) throw new Error("Alias must be a 4-letter code");
@@ -866,29 +870,31 @@ export const actions = {
     const aliasOwner = Object.entries(speciesAliasesMap).find(([, value]) => value === alias)?.[0];
     if (alias && aliasOwner && aliasOwner !== key) throw new Error(`"${alias}" is already used as an alias`);
 
-    const cleanOverride: SpeciesOverride = {};
-    const speciesDescriptionMBO = override.speciesDescriptionMBO?.trim();
-    const speciesDescriptionCMMN = override.speciesDescriptionCMMN?.trim();
-    const speciesFrench = override.speciesFrench?.trim();
-    const speciesScientific = override.speciesScientific?.trim();
-
-    if (speciesDescriptionMBO) cleanOverride.speciesDescriptionMBO = speciesDescriptionMBO;
-    if (speciesDescriptionCMMN) cleanOverride.speciesDescriptionCMMN = speciesDescriptionCMMN;
-    if (speciesFrench) cleanOverride.speciesFrench = speciesFrench;
-    if (speciesScientific) cleanOverride.speciesScientific = speciesScientific;
+    const updatedSpecies: Species = {
+      ...species,
+      speciesDescriptionMBO: names.speciesDescriptionMBO.trim(),
+      speciesDescriptionCMMN: names.speciesDescriptionCMMN.trim(),
+      speciesFrench: names.speciesFrench.trim(),
+      speciesScientific: names.speciesScientific.trim(),
+    };
 
     try {
       const nextAliases = { ...speciesAliasesMap };
       if (alias) nextAliases[key] = alias;
       else delete nextAliases[key];
 
-      const nextOverrides = { ...speciesOverridesMap };
-      if (Object.values(cleanOverride).some(Boolean)) nextOverrides[key] = cleanOverride;
-      else delete nextOverrides[key];
+      const nextMagicTable = {
+        ...magicTable,
+        species: {
+          ...magicTable.species,
+          [key]: updatedSpecies,
+        },
+      };
+      setSpeciesMap(nextMagicTable.species);
 
       useAppStore.setState({
+        magicTable: nextMagicTable,
         speciesAliasesMap: nextAliases,
-        speciesOverridesMap: nextOverrides,
         speciesInfoMap: computeSpeciesInfoMap(
           birdEventsStore.getAll(),
           nextAliases,
@@ -897,10 +903,10 @@ export const actions = {
       });
       await update(ref(db), {
         [`${CURRENT_ENVIRONMENT}/speciesAliasesMap/${key}`]: alias || null,
-        [`${CURRENT_ENVIRONMENT}/speciesOverridesMap/${key}`]: nextOverrides[key] ?? null,
+        [`${CURRENT_ENVIRONMENT}/magicTable/species/${key}`]: updatedSpecies,
       });
-      await Promise.all([updateMapTimestamp("speciesAliasesMap"), updateMapTimestamp("speciesOverridesMap")]);
-      await saveMapsToIndexedDB({ speciesAliasesMap: nextAliases, speciesOverridesMap: nextOverrides });
+      await Promise.all([updateMapTimestamp("speciesAliasesMap"), updateMapTimestamp("magicTable")]);
+      await saveMapsToIndexedDB({ speciesAliasesMap: nextAliases, magicTable: nextMagicTable });
     } catch (err) {
       logger.error("UpdateSpeciesMetadata", `Error updating species metadata ${key}`, err);
       throw err;

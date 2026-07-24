@@ -15,7 +15,6 @@ import type {
   YearToProgramMap,
   Program,
   SpeciesAliasesMap,
-  SpeciesOverridesMap,
 } from "../types";
 
 export type SyncResult = "success" | "error" | null;
@@ -59,7 +58,6 @@ export interface AppState {
   volunteerStatsMap: VolunteerStatsMap;
   bandGroupNotesMap: Record<string, string>;
   speciesAliasesMap: SpeciesAliasesMap;
-  speciesOverridesMap: SpeciesOverridesMap;
   speciesInfoMap: SpeciesInfoMap;
   bandResetsMap: BandResetsMap;
 
@@ -104,7 +102,6 @@ export const initialAppState: AppState = {
   volunteerStatsMap: {},
   bandGroupNotesMap: {},
   speciesAliasesMap: {},
-  speciesOverridesMap: {},
   speciesInfoMap: {},
   bandResetsMap: {},
 
