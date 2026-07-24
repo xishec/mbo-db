@@ -25,7 +25,7 @@ import {
   type VolunteersMap,
 } from "../types";
 import { INDEPENDENT_MAP_NAMES, type IndependentMapName } from "../types/mapNames";
-import { normalizeSpeciesAliasesMap } from "../types/species";
+import { normalizeSpeciesAliasesMap, setSpeciesMap } from "../types/species";
 import {
   getDataFromIndexedDB,
   getLastUpdated,
@@ -156,6 +156,7 @@ function hydrateBirdEvents(events: Record<string, BirdEvent>): Map<string, BirdE
 function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void {
   const volunteersMap = getVolunteerMetadata(data);
   const detsMap = normalizeDETObserverClasses(data.DETsMap, volunteersMap);
+  setSpeciesMap(data.magicTable?.species ?? {});
   const speciesAliasesMap = normalizeSpeciesAliasesMap(data.speciesAliasesMap ?? {});
   const speciesOverridesMap = normalizeSpeciesOverridesMap(data.speciesOverridesMap);
   const bandResetsMap = data.bandResetsMap ?? {};
@@ -169,7 +170,7 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
   birdEventsStore.replace(hydratedEvents);
 
   useAppStore.setState({
-    magicTable: data.magicTable ?? { pyle: {} },
+    magicTable: data.magicTable ?? { pyle: {}, species: {} },
     volunteersMap,
     speciesAliasesMap,
     speciesOverridesMap,
@@ -361,10 +362,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
         let detsMap = cachedData?.DETsMap ?? {};
-        let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {} };
+        let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {}, species: {} };
         let volunteersMap = getVolunteerMetadata(cachedData);
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
-        let speciesAliasesMap: Record<string, string> = normalizeSpeciesAliasesMap(cachedData?.speciesAliasesMap ?? {});
+        let speciesAliasesData: Record<string, string> = cachedData?.speciesAliasesMap ?? {};
         let speciesOverridesMap: SpeciesOverridesMap = normalizeSpeciesOverridesMap(cachedData?.speciesOverridesMap);
         let bandResetsMap: BandResetsMap = cachedData?.bandResetsMap ?? {};
         if (mapsToFetch.size > 0) {
@@ -383,7 +384,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 detsMap = val ?? {};
                 break;
               case "magicTable":
-                magicTableData = val ?? { pyle: {} };
+                magicTableData = val ?? { pyle: {}, species: {} };
                 break;
               case "volunteersMap":
                 volunteersMap = getVolunteerMetadata({ ...(cachedData ?? {}), volunteersMap: val ?? {} } as DatabaseData);
@@ -392,7 +393,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 notesMap = val ?? {};
                 break;
               case "speciesAliasesMap":
-                speciesAliasesMap = normalizeSpeciesAliasesMap(val ?? {});
+                speciesAliasesData = val ?? {};
                 break;
               case "speciesOverridesMap":
                 speciesOverridesMap = normalizeSpeciesOverridesMap(val ?? {});
@@ -405,6 +406,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (cancelled) return;
+
+        setSpeciesMap(magicTableData.species);
+        const speciesAliasesMap = normalizeSpeciesAliasesMap(speciesAliasesData);
 
         // Overlay pending (not-yet-synced) events so derived maps, prefill
         // suggestions, and capture lists include offline work.

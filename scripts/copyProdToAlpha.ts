@@ -7,6 +7,7 @@ const SMALL_KEYS = [
   "bandSizeToBandIdMap",
   "dismissedConflictsMap",
   "DETsMap",
+  "magicTable",
   "volunteersMap",
   "speciesAliasesMap",
   "bandResetsMap",

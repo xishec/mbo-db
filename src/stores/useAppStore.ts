@@ -96,7 +96,7 @@ export const initialAppState: AppState = {
   programsMap: {},
   bandIdToBirdEventIdsMap: {},
   bandGroupsMap: {},
-  magicTable: { pyle: {} },
+  magicTable: { pyle: {}, species: {} },
   bandSizeToBandIdMap: {} as BandSizeToBandIdMap,
   dismissedConflictsMap: {},
   DETsMap: {},

@@ -1,5 +1,7 @@
 import type { DET } from "./DET";
+import type { SpeciesMap } from "./species";
 export type { DET } from "./DET";
+export type { Species, SpeciesMap } from "./species";
 
 // Database structure types
 export type YearToProgramMap = Record<string, string[]>;
@@ -198,6 +200,7 @@ export interface SpeciesRange {
 
 export interface MagicTable {
   pyle: Record<string, SpeciesRange>;
+  species: SpeciesMap;
 }
 
 // Database root type. IndexedDB keeps birdEventsMap as a plain record for

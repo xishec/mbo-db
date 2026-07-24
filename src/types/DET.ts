@@ -294,6 +294,7 @@ export const SPECIES_GROUPS: SpeciesListItem[] = [
   { type: "species", code: "HOFI" }, // House Finch
   { type: "species", code: "PUFI", priority: "D" }, // Purple Finch
   { type: "species", code: "CORE" }, // Common Redpoll
+  { type: "species", code: "REDP" }, // Redpoll
   { type: "species", code: "WWCR" }, // White-winged Crossbill
   { type: "species", code: "PISI" }, // Pine Siskin
   { type: "species", code: "AMGO" }, // American Goldfinch

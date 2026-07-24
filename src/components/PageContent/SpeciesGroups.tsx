@@ -401,30 +401,19 @@ function SpeciesMetadataModal({
   onOpenChange: (open: boolean) => void;
 }) {
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
-  const speciesOverridesMap = useAppStore((s) => s.speciesOverridesMap);
   const user = useAppStore((s) => s.user);
   const isOnline = useAppStore((s) => s.isOnline);
-  const { updateSpeciesMetadata } = useActions();
+  const { updateSpeciesAlias } = useActions();
   const species = speciesCode ? SPECIES_MAP[speciesCode] : null;
-  const override = speciesCode ? speciesOverridesMap[speciesCode] : undefined;
   const currentAlias = speciesCode ? speciesAliasesMap[speciesCode] : undefined;
-  const baseEnglishName = species?.speciesDescriptionMBO || species?.speciesDescriptionCMMN || "";
-  const baseFrenchName = species?.speciesFrench || "";
-  const baseScientificName = species?.speciesScientific || "";
   const [aliasCode, setAliasCode] = useState("");
-  const [englishName, setEnglishName] = useState("");
-  const [frenchName, setFrenchName] = useState("");
-  const [scientificName, setScientificName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const canEdit = !!user && isOnline;
 
   useEffect(() => {
     if (!speciesCode || !species) return;
     setAliasCode("");
-    setEnglishName(override?.speciesDescriptionMBO ?? baseEnglishName);
-    setFrenchName(override?.speciesFrench ?? baseFrenchName);
-    setScientificName(override?.speciesScientific ?? baseScientificName);
-  }, [baseEnglishName, baseFrenchName, baseScientificName, override, species, speciesCode]);
+  }, [species, speciesCode]);
 
   if (!speciesCode || !species) return null;
 
@@ -434,12 +423,7 @@ function SpeciesMetadataModal({
     if (!canEdit || isSaving) return;
     setIsSaving(true);
     try {
-      await updateSpeciesMetadata(speciesCode, normalizedAlias || currentAlias || null, {
-        speciesDescriptionMBO: englishName.trim() === baseEnglishName ? undefined : englishName,
-        speciesDescriptionCMMN: englishName.trim() === baseEnglishName ? undefined : englishName,
-        speciesFrench: frenchName.trim() === baseFrenchName ? undefined : frenchName,
-        speciesScientific: scientificName.trim() === baseScientificName ? undefined : scientificName,
-      });
+      await updateSpeciesAlias(speciesCode, normalizedAlias || currentAlias || null);
       onOpenChange(false);
     } catch (err) {
       showPersistentErrorToast("Could not save species", err, "Unknown error");
@@ -481,27 +465,6 @@ function SpeciesMetadataModal({
                       .slice(0, 4)
                   )
                 }
-                isDisabled={!canEdit || isSaving}
-              />
-              <Input
-                {...modalInputProps}
-                label="English Name"
-                value={englishName}
-                onValueChange={setEnglishName}
-                isDisabled={!canEdit || isSaving}
-              />
-              <Input
-                {...modalInputProps}
-                label="French Name"
-                value={frenchName}
-                onValueChange={setFrenchName}
-                isDisabled={!canEdit || isSaving}
-              />
-              <Input
-                {...modalInputProps}
-                label="Scientific Name"
-                value={scientificName}
-                onValueChange={setScientificName}
                 isDisabled={!canEdit || isSaving}
               />
             </div>
