@@ -7,14 +7,14 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 /**
- * Script to set a user as admin using Firebase Realtime Database
+ * Script to set every Firebase Authentication user as an admin
  *
  * This stores admin status in the database at users/{uid}/role
  * Run with: npx tsx scripts/setAdmin.ts
  */
 
 // Initialize Firebase Admin SDK once
-const serviceAccountPath = join(process.cwd(), "mbo-db-firebase-adminsdk-fbsvc-5fcd6de6b9.json");
+const serviceAccountPath = join(process.cwd(), "mbodatabase-firebase-adminsdk-fbsvc-7647ed8475.json");
 const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, "utf-8"));
 
 if (!admin.apps.length) {
@@ -24,41 +24,38 @@ if (!admin.apps.length) {
   });
 }
 
-async function setAdminRole(email: string): Promise<void> {
+async function setAdminRole(user: admin.auth.UserRecord): Promise<void> {
+  const identifier = user.email ?? user.uid;
+
   try {
-    console.log(`Looking up user: ${email}`);
-
-    // Get user by email
-    const user = await admin.auth().getUserByEmail(email);
-    console.log(`Found user: ${user.email} (UID: ${user.uid})`);
-
-    // Set admin role in database with email identifier
-    await admin.database().ref(`users/${user.uid}`).set({
-      email: user.email,
-      role: "admin"
-    });
-    console.log(`✅ Successfully set admin role for ${email}`);
+    await admin.database().ref(`users/${user.uid}`).update({ role: "admin" });
+    console.log(`✅ Successfully set admin role for ${identifier}`);
   } catch (error) {
-    console.error(`❌ Error setting admin role for ${email}:`, error);
+    console.error(`❌ Error setting admin role for ${identifier}:`, error);
     throw error;
   }
 }
 
-// The emails to set as admin
-const adminEmails = ["xiiicheen@gmail.com"];
-
 (async () => {
   const results = { success: [] as string[], failed: [] as string[] };
+  let pageToken: string | undefined;
 
-  for (const email of adminEmails) {
-    try {
-      await setAdminRole(email);
-      results.success.push(email);
-    } catch (error) {
-      results.failed.push(email);
-      console.log(error);
+  do {
+    const page = await admin.auth().listUsers(1000, pageToken);
+
+    for (const user of page.users) {
+      const identifier = user.email ?? user.uid;
+
+      try {
+        await setAdminRole(user);
+        results.success.push(identifier);
+      } catch {
+        results.failed.push(identifier);
+      }
     }
-  }
+
+    pageToken = page.pageToken;
+  } while (pageToken);
 
   console.log("\n" + "=".repeat(50));
   console.log(`✅ Successfully set admin: ${results.success.length}`);
