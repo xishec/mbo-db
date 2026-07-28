@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { parseCsv, stringifyCsv } from "../../utils/csv";
 
 export interface CsvEditorProps {
@@ -56,6 +56,72 @@ export default function CsvEditor({
     },
     [onChange]
   );
+  const handleArrowNavigation = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>, rowIndex: number, columnIndex: number) => {
+      if (
+        !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key) ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+
+      const editableColumns = headers
+        .map((_, index) => index)
+        .filter((index) => !readOnlyColumnIndexes.has(index));
+      const currentEditableIndex = editableColumns.indexOf(columnIndex);
+      if (currentEditableIndex < 0) return;
+
+      let nextRowIndex = rowIndex;
+      let nextColumnIndex = columnIndex;
+
+      if (event.key === "ArrowUp") nextRowIndex -= 1;
+      if (event.key === "ArrowDown") nextRowIndex += 1;
+      if (event.key === "ArrowLeft") {
+        nextColumnIndex = editableColumns[currentEditableIndex - 1] ?? columnIndex;
+      }
+      if (event.key === "ArrowRight") {
+        nextColumnIndex = editableColumns[currentEditableIndex + 1] ?? columnIndex;
+      }
+
+      const table = event.currentTarget.closest("table");
+      if (!table || (nextRowIndex === rowIndex && nextColumnIndex === columnIndex)) return;
+
+      let nextInput: HTMLInputElement | null | undefined;
+      if (nextRowIndex >= 0 && nextRowIndex < dataRows.length) {
+        nextInput = table.querySelector<HTMLInputElement>(
+          `input[data-csv-row="${nextRowIndex}"][data-csv-column="${nextColumnIndex}"]`
+        );
+      } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        const scope = table.closest("[data-csv-navigation-scope]");
+        const tables = scope ? Array.from(scope.querySelectorAll<HTMLTableElement>("table[data-csv-editor]")) : [];
+        const tableIndex = tables.indexOf(table);
+        const nextTable = tables[tableIndex + (event.key === "ArrowUp" ? -1 : 1)];
+        const candidates = nextTable
+          ? Array.from(nextTable.querySelectorAll<HTMLInputElement>("input:not([readonly])"))
+          : [];
+        const rowIndexes = candidates.map((input) => Number(input.dataset.csvRow));
+        const targetRowIndex =
+          event.key === "ArrowUp" ? Math.max(...rowIndexes) : Math.min(...rowIndexes);
+        const targetRowInputs = candidates
+          .filter((input) => Number(input.dataset.csvRow) === targetRowIndex)
+          .sort(
+            (a, b) =>
+              Math.abs(Number(a.dataset.csvColumn) - nextColumnIndex) -
+              Math.abs(Number(b.dataset.csvColumn) - nextColumnIndex)
+          );
+        nextInput = targetRowInputs[0];
+      }
+      if (!nextInput) return;
+
+      event.preventDefault();
+      nextInput.focus();
+      nextInput.select();
+    },
+    [dataRows.length, headers, readOnlyColumnIndexes]
+  );
 
   if (headers.length === 0) {
     return (
@@ -70,7 +136,11 @@ export default function CsvEditor({
       className={`w-full overflow-auto rounded-medium border border-default-200 bg-content1 ${className}`}
       style={maxHeight === undefined ? undefined : { maxHeight }}
     >
-      <table className="min-w-full border-separate border-spacing-0 text-sm" aria-label={ariaLabel}>
+      <table
+        className="min-w-full border-separate border-spacing-0 text-sm"
+        aria-label={ariaLabel}
+        data-csv-editor
+      >
         <thead className="sticky top-0 z-10 bg-default-100">
           <tr>
             {headers.map((header, columnIndex) => (
@@ -102,6 +172,9 @@ export default function CsvEditor({
                       readOnly={readOnlyColumnIndexes.has(columnIndex)}
                       value={row[columnIndex] ?? ""}
                       onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)}
+                      onKeyDown={(event) => handleArrowNavigation(event, rowIndex, columnIndex)}
+                      data-csv-row={rowIndex}
+                      data-csv-column={columnIndex}
                     />
                   </td>
                 ))}

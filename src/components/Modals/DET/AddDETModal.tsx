@@ -239,6 +239,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   // Prefill form when editing
   useEffect(() => {
     if (mode === "edit" && existingDET) {
+      const eventCounts = getSpeciesCountsFromEvents(existingDET.date);
       setDate(existingDET.date);
       setProgramId(existingDET.programId);
       setLocation(existingDET.location);
@@ -267,9 +268,9 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setCensusStart(existingDET.censusStart || "");
       setCensusEnd(existingDET.censusEnd || "");
       setCensusSpeciesCount(existingDET.censusSpeciesCount || {});
-      setBandedSpeciesCount(existingDET.bandedSpeciesCount || {});
-      setRepeatSpeciesCount(existingDET.repeatSpeciesCount || {});
-      setReturnSpeciesCount(existingDET.returnSpeciesCount || {});
+      setBandedSpeciesCount(eventCounts.banded);
+      setRepeatSpeciesCount(eventCounts.repeat);
+      setReturnSpeciesCount(eventCounts.return_);
       setDETSpeciesCount(existingDET.DETSpeciesCount || {});
       setWeather(existingDET.weather);
     } else if (mode === "create") {
@@ -459,7 +460,7 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
           <>
             <ModalHeaderShell>{mode === "create" ? "Add New DET" : "Edit DET"}</ModalHeaderShell>
             <ModalBodyShell>
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4" data-csv-navigation-scope>
                 {error && <div className="bg-danger-50 text-danger-500 p-3 rounded-lg text-sm">{error}</div>}
 
                 {/* Basic Information */}
