@@ -3,15 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { BellAlertIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useActions, useAppStore } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
-import {
-  Band,
-  BandSize,
-  BirdEventType,
-  getBandGroupMapKey,
-  type BirdEvent,
-  type CaptureFormData,
-  type SpeciesRange,
-} from "../../types";
+import { Band, BandSize, BirdEventType, type BirdEvent, type CaptureFormData, type SpeciesRange } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { findErrorsInEvents, getRangesForSex, validateBirdEventForm } from "../../types/birdEventErrors";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
@@ -152,16 +144,6 @@ function isNewCaptureType(birdEventType: string): boolean {
   return birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
 }
 
-function getPageAfterSave(
-  selectedPage: SelectedPage,
-  birdEventType: string,
-  trackedBandSize: BandSize | null
-): SelectedPage {
-  if (trackedBandSize) return trackedBandSize;
-  if (!isNewCaptureType(birdEventType)) return PAGE_RECAPTURE;
-  return selectedPage === BandSize.Other ? BandSize.Other : null;
-}
-
 function getPageForBandGroup(
   bandGroup: string,
   bandSizeToBandIdMap: Record<BandSize, string>
@@ -185,22 +167,9 @@ function getDigitOrder(digit: string): number | null {
   return value === 0 ? 100 : value;
 }
 
-function getBandSizeForSave(
-  selectedPage: SelectedPage,
-  formData: CaptureFormData,
-  bandSizeToBandIdMap: Record<BandSize, string>,
-  setPageBandGroup: boolean
-): BandSize {
+function getBandSizeForSave(selectedPage: SelectedPage, formData: CaptureFormData): BandSize {
   if (!isNewCaptureType(formData.birdEventType)) return BandSize.Other;
-
-  for (const [size, bandId] of Object.entries(bandSizeToBandIdMap)) {
-    const band = getBandFromNextId(bandId);
-    if (band?.bandGroupId === formData.bandGroup) {
-      return size as BandSize;
-    }
-  }
-
-  return setPageBandGroup && isSettablePage(selectedPage) ? selectedPage : BandSize.Other;
+  return isSettablePage(selectedPage) ? selectedPage : BandSize.Other;
 }
 
 function shouldAutoAdvanceWing(value: string, range: ReturnType<typeof getRangesForSex>): boolean {
@@ -233,7 +202,6 @@ function getWingAutoAdvanceRange(speciesRange: SpeciesRange | undefined): Return
 export default function StartBandingEntry({ entryId, isDoubleBanding = false }: StartBandingEntryProps) {
   const selectedProgram = useAppStore((s) => s.selectedProgram);
   const isAppSaving = useAppStore((s) => s.isSaving);
-  const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
   const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
   const magicTable = useAppStore((s) => s.magicTable);
@@ -245,10 +213,9 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const birdEventsVersion = useBirdEventsVersion();
   const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
   const [selectedPage, setSelectedPage] = useState<SelectedPage>(null);
-  const [setPageBandGroup, setSetPageBandGroup] = useState(false);
-  const [isBirdEventTypeOverridden, setIsBirdEventTypeOverridden] = useState(false);
   const [lastBandId, setLastBandId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaveConfirmationOpen, setIsSaveConfirmationOpen] = useState(false);
   const [entryMessage, setEntryMessage] = useState<EntryMessage | null>(null);
   const [validationMessageIndex, setValidationMessageIndex] = useState(0);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
@@ -290,8 +257,6 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const applyPage = useCallback(
     (page: StartBandingPage) => {
       setSelectedPage(page);
-      setSetPageBandGroup(false);
-      setIsBirdEventTypeOverridden(false);
       if (page === PAGE_RECAPTURE || page === BandSize.Other) {
         setFormData((prev) => ({
           ...prev,
@@ -313,12 +278,6 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     [bandSizeToBandIdMap]
   );
 
-  const handleSetPageBandGroupChange = useCallback((isSelected: boolean) => {
-    setEntryMessage(null);
-    setSetPageBandGroup(isSelected);
-    setIsBirdEventTypeOverridden(false);
-  }, []);
-
   useEffect(() => {
     const defaultData = getDefaultFormData(selectedProgram?.id || "");
     const savedBander = localStorage.getItem("lastBander");
@@ -329,8 +288,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     setFormData(defaultData);
     setLastBandId("");
     setSelectedPage(null);
-    setSetPageBandGroup(false);
-    setIsBirdEventTypeOverridden(false);
+    setIsSaveConfirmationOpen(false);
   }, [selectedProgram?.id]);
 
   const bandId = useMemo(() => {
@@ -388,18 +346,16 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   );
 
   const suggestedBirdEventType = useMemo(() => {
-    if (selectedPage === PAGE_RECAPTURE && !bandId) return BirdEventType.Repeat;
-    if (!bandId) return BirdEventType.None;
-    if (formData.species === "BADE" || formData.species === "BALO") return BirdEventType.None;
     if (mustBandAfterReset) return requiredResetEventType;
-    if (pastBirdEvents.length === 0) {
-      const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
-      const hasBandingPageIntent =
-        selectedPage === BandSize.Other || (isSettablePage(selectedPage) && matchedPageForBandGroup !== null);
-      return hasBandingPageIntent || bandGroupsMap[getBandGroupMapKey(band)]
-        ? BirdEventType.Banded
-        : BirdEventType.Alien;
+    if (selectedPage !== PAGE_RECAPTURE) {
+      return formData.species === "BADE" || formData.species === "BALO"
+        ? BirdEventType.None
+        : selectedPage
+          ? BirdEventType.Banded
+          : BirdEventType.None;
     }
+    if (!bandId) return BirdEventType.Repeat;
+    if (pastBirdEvents.length === 0) return BirdEventType.Alien;
 
     const currentDate = new Date(formData.date);
     const hasRecentCapture = pastBirdEvents.some((capture) => {
@@ -410,10 +366,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     return hasRecentCapture ? BirdEventType.Repeat : BirdEventType.Return;
   }, [
     bandId,
-    bandGroupsMap,
     formData.date,
     formData.species,
-    matchedPageForBandGroup,
     mustBandAfterReset,
     pastBirdEvents,
     requiredResetEventType,
@@ -421,37 +375,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   ]);
 
   useEffect(() => {
-    if (setPageBandGroup && isSettablePage(selectedPage)) {
-      setFormData((prev) => ({ ...prev, birdEventType: BirdEventType.Banded }));
-      return;
-    }
-    if (isBirdEventTypeOverridden) return;
     setFormData((prev) => ({ ...prev, birdEventType: suggestedBirdEventType }));
-  }, [isBirdEventTypeOverridden, selectedPage, setPageBandGroup, suggestedBirdEventType]);
-
-  useEffect(() => {
-    if (!pendingSavedBandSizeRef.current && bandId && !setPageBandGroup && !isBirdEventTypeOverridden) {
-      if (
-        (suggestedBirdEventType === BirdEventType.Alien ||
-          suggestedBirdEventType === BirdEventType.Repeat ||
-          suggestedBirdEventType === BirdEventType.Return) &&
-        selectedPage !== PAGE_RECAPTURE
-      ) {
-        setSelectedPage(PAGE_RECAPTURE);
-        setSetPageBandGroup(false);
-      } else if (suggestedBirdEventType === BirdEventType.Banded && matchedPageForBandGroup) {
-        setSelectedPage(matchedPageForBandGroup.page);
-        setSetPageBandGroup(false);
-      }
-    }
-  }, [
-    bandId,
-    isBirdEventTypeOverridden,
-    matchedPageForBandGroup,
-    selectedPage,
-    setPageBandGroup,
-    suggestedBirdEventType,
-  ]);
+  }, [suggestedBirdEventType]);
 
   useLayoutEffect(() => {
     const savedBandSize = pendingSavedBandSizeRef.current;
@@ -461,8 +386,6 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     if (!nextBand) return;
 
     pendingSavedBandSizeRef.current = null;
-    setSelectedPage(savedBandSize);
-    setSetPageBandGroup(false);
     setFormData((prev) =>
       prev.bandGroup === nextBand.bandGroupId && prev.bandLastTwoDigits === nextBand.last2digits
         ? prev
@@ -637,8 +560,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
 
   const priorBandingConflict = useMemo(() => {
     return (
-      isNewCaptureType(formData.birdEventType) &&
-      pastBirdEvents.some((event) => isNewCaptureType(event.birdEventType))
+      isNewCaptureType(formData.birdEventType) && pastBirdEvents.some((event) => isNewCaptureType(event.birdEventType))
     );
   }, [formData.birdEventType, pastBirdEvents]);
 
@@ -849,25 +771,16 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
 
     if (fieldKey === "birdEventType") {
       return (
-        <Select
-          variant="bordered"
+        <Input
+          {...modalInputProps}
           aria-label="Type"
-          selectedKeys={[formData.birdEventType]}
-          isDisabled={mustBandAfterReset || (setPageBandGroup && isSettablePage(selectedPage))}
+          value={formData.birdEventType}
+          isReadOnly
           tabIndex={getTabIndex(fieldKey)}
-          classNames={{ trigger: "min-h-unit-10 h-unit-10", value: "text-sm" }}
-          onSelectionChange={(keys) => {
-            const value = Array.from(keys)[0] as BirdEventType | undefined;
-            if (!value) return;
-            setEntryMessage(null);
-            setIsBirdEventTypeOverridden(true);
-            setFormData((prev) => ({ ...prev, birdEventType: value }));
+          classNames={{
+            input: "text-sm",
           }}
-        >
-          {Object.values(BirdEventType).map((type) => (
-            <SelectItem key={type}>{type}</SelectItem>
-          ))}
-        </Select>
+        />
       );
     }
 
@@ -932,7 +845,6 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
 
   const renderFieldGroup = (fieldKey: string) => {
     const isNotes = fieldKey === "notes";
-    const canSetPageBandGroup = isSettablePage(selectedPage);
     const volunteerCode =
       (fieldKey === "bander" || fieldKey === "scribe") && formData[fieldKey] ? formData[fieldKey] : null;
 
@@ -942,23 +854,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
         className={`flex flex-col gap-1 ${isNotes ? "flex-1 min-w-0" : "shrink-0"}`}
         style={isNotes ? undefined : { width: FIELD_WIDTHS[fieldKey] }}
       >
-        {fieldKey === "page" ? (
-          <span className="flex items-center justify-between gap-2 px-1">
-            <span className="text-sm text-default-900 font-medium truncate">{FIELD_LABELS[fieldKey]}</span>
-            <Checkbox
-              size="sm"
-              classNames={{
-                base: "flex-row-reverse gap-1",
-                label: "text-sm text-default-900 font-medium opacity-100",
-              }}
-              isSelected={setPageBandGroup}
-              isDisabled={!canSetPageBandGroup}
-              onValueChange={handleSetPageBandGroupChange}
-            >
-              set
-            </Checkbox>
-          </span>
-        ) : volunteerCode ? (
+        {volunteerCode ? (
           <span className="text-sm text-default-900 font-medium px-1 truncate underline">
             <VolunteerTooltip volunteerCode={volunteerCode}>{FIELD_LABELS[fieldKey]}</VolunteerTooltip>
           </span>
@@ -972,7 +868,37 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
 
   const hasExistingData = pastBirdEvents.length > 0;
   const existingDataTitle = `${hasExistingData ? "Existing data" : "No data"} for band ${bandId || ""}`.trim();
-  const canSave = Boolean(formData.bandGroup && formData.bandLastTwoDigits && formData.species && selectedProgram);
+  const canSave = Boolean(
+    selectedPage && formData.bandGroup && formData.bandLastTwoDigits && formData.species && selectedProgram
+  );
+  const saveWarnings = useMemo(() => {
+    const warnings: string[] = [];
+
+    if (selectedPage !== null && selectedPage !== PAGE_RECAPTURE && pastBirdEvents.length > 0) {
+      warnings.push(
+        `Band ${bandId} has capture history, but page ${getPageLabel(selectedPage)} is a new-banding page. This entry will be saved as ${suggestedBirdEventType}.`
+      );
+    }
+
+    if (suggestedBirdEventType === BirdEventType.Alien) {
+      warnings.push(
+        `Band ${bandId} has no capture history. It will be saved as Alien. Make sure this is not the first band from a new band group.`
+      );
+    }
+
+    if (isSettablePage(selectedPage) && formData.bandGroup.length === 7) {
+      const currentBand = getBandFromNextId(bandSizeToBandIdMap[selectedPage]);
+      if (currentBand?.bandGroupId !== formData.bandGroup) {
+        warnings.push(
+          currentBand
+            ? `Page ${getPageLabel(selectedPage)} currently uses band group ${currentBand.bandGroupId}. Saving will change it to ${formData.bandGroup}.`
+            : `Page ${getPageLabel(selectedPage)} has no band group yet. Saving will set it to ${formData.bandGroup}.`
+        );
+      }
+    }
+
+    return warnings;
+  }, [bandId, bandSizeToBandIdMap, formData.bandGroup, pastBirdEvents.length, selectedPage, suggestedBirdEventType]);
   const orderedMessages = useMemo<EntryMessage[]>(() => {
     const messages = [
       ...validationMessages
@@ -996,10 +922,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     });
   }, [entryMessage, validationMessages]);
   const messageCount = orderedMessages.length;
-  const activeMessageIndex = Math.min(
-    validationMessageIndex,
-    Math.max(0, messageCount - 1)
-  );
+  const activeMessageIndex = Math.min(validationMessageIndex, Math.max(0, messageCount - 1));
   const activeMessage = orderedMessages[activeMessageIndex];
 
   useEffect(() => {
@@ -1009,9 +932,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const moveValidationMessage = useCallback(
     (direction: -1 | 1) => {
       if (messageCount < 2) return;
-      setValidationMessageIndex(
-        (current) => (current + direction + messageCount) % messageCount
-      );
+      setValidationMessageIndex((current) => (current + direction + messageCount) % messageCount);
     },
     [messageCount]
   );
@@ -1030,20 +951,15 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
           ? "border-warning-200 text-warning-700"
           : "border-default-200 text-default-900";
 
-  const handleSave = useCallback(async () => {
+  const saveEntry = useCallback(async () => {
     if (isSaving || isAppSaving || !canSave) return;
     setIsSaving(true);
     let suppressedReminderBand = "";
 
     try {
-      const shouldSetPageBandGroup = setPageBandGroup && isSettablePage(selectedPage);
-      const birdEventTypeToSave = mustBandAfterReset
-        ? requiredResetEventType
-        : shouldSetPageBandGroup
-          ? BirdEventType.Banded
-          : formData.birdEventType;
+      const birdEventTypeToSave = mustBandAfterReset ? requiredResetEventType : suggestedBirdEventType;
       const formDataToSave = { ...formData, birdEventType: birdEventTypeToSave };
-      const bandSizeToSend = getBandSizeForSave(selectedPage, formDataToSave, bandSizeToBandIdMap, setPageBandGroup);
+      const bandSizeToSend = getBandSizeForSave(selectedPage, formDataToSave);
       const trackedBandSize =
         isNewCaptureType(birdEventTypeToSave) && bandSizeToSend !== BandSize.Other ? bandSizeToSend : null;
       pendingSavedBandSizeRef.current = trackedBandSize;
@@ -1061,9 +977,6 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
       const nextDate = getLocalDateString(now);
       const nextTime = now.toTimeString().slice(0, 5);
 
-      setSelectedPage(getPageAfterSave(selectedPage, birdEventTypeToSave, trackedBandSize));
-      setSetPageBandGroup(false);
-      setIsBirdEventTypeOverridden(false);
       setFormData((prev) => ({
         ...prev,
         net: "",
@@ -1096,7 +1009,6 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   }, [
     addBirdEvent,
     bandId,
-    bandSizeToBandIdMap,
     canSave,
     formData,
     isAppSaving,
@@ -1104,8 +1016,17 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     mustBandAfterReset,
     requiredResetEventType,
     selectedPage,
-    setPageBandGroup,
+    suggestedBirdEventType,
   ]);
+
+  const handleSave = useCallback(() => {
+    if (isSaving || isAppSaving || !canSave) return;
+    if (saveWarnings.length > 0) {
+      setIsSaveConfirmationOpen(true);
+      return;
+    }
+    void saveEntry();
+  }, [canSave, isAppSaving, isSaving, saveEntry, saveWarnings.length]);
 
   return (
     <>
@@ -1187,17 +1108,53 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
                 </div>
               )}
             </div>
-            <Button
-              color="secondary"
-              onPress={handleSave}
-              isDisabled={!canSave || isAppSaving}
-              isLoading={isSaving}
-            >
+            <Button color="secondary" onPress={handleSave} isDisabled={!canSave || isAppSaving} isLoading={isSaving}>
               Save
             </Button>
           </div>
         </CardBody>
       </Card>
+
+      <Modal
+        isOpen={isSaveConfirmationOpen}
+        onOpenChange={setIsSaveConfirmationOpen}
+        isDismissable={false}
+        isKeyboardDismissDisabled
+        size="2xl"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeaderShell>
+                <h2 className="text-xl font-semibold">Check band entry</h2>
+              </ModalHeaderShell>
+              <ModalBodyShell>
+                <p>Please confirm before saving:</p>
+                <ul className="flex list-disc flex-col gap-3 pl-5">
+                  {saveWarnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </ModalBodyShell>
+              <ModalFooterShell>
+                <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
+                  Go back
+                </Button>
+                <Button
+                  color="warning"
+                  onPress={() => {
+                    onClose();
+                    void saveEntry();
+                  }}
+                  isLoading={isSaving}
+                >
+                  Save anyway
+                </Button>
+              </ModalFooterShell>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
       <BirdStatusModal
         isOpen={isBirdStatusModalOpen}
