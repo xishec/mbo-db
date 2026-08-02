@@ -215,7 +215,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const [selectedPage, setSelectedPage] = useState<SelectedPage>(null);
   const [lastBandId, setLastBandId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaveConfirmationOpen, setIsSaveConfirmationOpen] = useState(false);
+  const [isEntryWarningOpen, setIsEntryWarningOpen] = useState(false);
   const [entryMessage, setEntryMessage] = useState<EntryMessage | null>(null);
   const [validationMessageIndex, setValidationMessageIndex] = useState(0);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
@@ -229,6 +229,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingSavedBandSizeRef = useRef<BandSize | null>(null);
+  const shownEntryWarningKeyRef = useRef("");
 
   const focusOrder = useMemo(() => [...FIRST_ROW_KEYS, ...SECOND_ROW_KEYS], []);
 
@@ -288,7 +289,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     setFormData(defaultData);
     setLastBandId("");
     setSelectedPage(null);
-    setIsSaveConfirmationOpen(false);
+    setIsEntryWarningOpen(false);
+    shownEntryWarningKeyRef.current = "";
   }, [selectedProgram?.id]);
 
   const bandId = useMemo(() => {
@@ -871,8 +873,10 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const canSave = Boolean(
     selectedPage && formData.bandGroup && formData.bandLastTwoDigits && formData.species && selectedProgram
   );
-  const saveWarnings = useMemo(() => {
+  const entryWarnings = useMemo(() => {
     const warnings: string[] = [];
+
+    if (!bandId) return warnings;
 
     if (selectedPage !== null && selectedPage !== PAGE_RECAPTURE && pastBirdEvents.length > 0) {
       warnings.push(
@@ -886,7 +890,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
       );
     }
 
-    if (isSettablePage(selectedPage) && formData.bandGroup.length === 7) {
+    if (isSettablePage(selectedPage)) {
       const currentBand = getBandFromNextId(bandSizeToBandIdMap[selectedPage]);
       if (currentBand?.bandGroupId !== formData.bandGroup) {
         warnings.push(
@@ -899,6 +903,23 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
 
     return warnings;
   }, [bandId, bandSizeToBandIdMap, formData.bandGroup, pastBirdEvents.length, selectedPage, suggestedBirdEventType]);
+  const entryWarningKey = useMemo(
+    () => (entryWarnings.length > 0 ? JSON.stringify([selectedPage, bandId, entryWarnings]) : ""),
+    [bandId, entryWarnings, selectedPage]
+  );
+
+  useEffect(() => {
+    if (!entryWarningKey) {
+      shownEntryWarningKeyRef.current = "";
+      setIsEntryWarningOpen(false);
+      return;
+    }
+    if (shownEntryWarningKeyRef.current === entryWarningKey) return;
+
+    shownEntryWarningKeyRef.current = entryWarningKey;
+    setIsEntryWarningOpen(true);
+  }, [entryWarningKey]);
+
   const orderedMessages = useMemo<EntryMessage[]>(() => {
     const messages = [
       ...validationMessages
@@ -1019,15 +1040,6 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     suggestedBirdEventType,
   ]);
 
-  const handleSave = useCallback(() => {
-    if (isSaving || isAppSaving || !canSave) return;
-    if (saveWarnings.length > 0) {
-      setIsSaveConfirmationOpen(true);
-      return;
-    }
-    void saveEntry();
-  }, [canSave, isAppSaving, isSaving, saveEntry, saveWarnings.length]);
-
   return (
     <>
       <Card shadow="none" className="w-full border border-default-200">
@@ -1108,7 +1120,12 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
                 </div>
               )}
             </div>
-            <Button color="secondary" onPress={handleSave} isDisabled={!canSave || isAppSaving} isLoading={isSaving}>
+            <Button
+              color="secondary"
+              onPress={() => void saveEntry()}
+              isDisabled={!canSave || isAppSaving}
+              isLoading={isSaving}
+            >
               Save
             </Button>
           </div>
@@ -1116,8 +1133,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
       </Card>
 
       <Modal
-        isOpen={isSaveConfirmationOpen}
-        onOpenChange={setIsSaveConfirmationOpen}
+        isOpen={isEntryWarningOpen}
+        onOpenChange={setIsEntryWarningOpen}
         isDismissable={false}
         isKeyboardDismissDisabled
         size="2xl"
@@ -1129,26 +1146,16 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
                 <h2 className="text-xl font-semibold">Check band entry</h2>
               </ModalHeaderShell>
               <ModalBodyShell>
-                <p>Please confirm before saving:</p>
+                <p>Please review this band before continuing:</p>
                 <ul className="flex list-disc flex-col gap-3 pl-5">
-                  {saveWarnings.map((warning) => (
+                  {entryWarnings.map((warning) => (
                     <li key={warning}>{warning}</li>
                   ))}
                 </ul>
               </ModalBodyShell>
               <ModalFooterShell>
-                <Button {...modalCancelButtonProps} onPress={onClose} isDisabled={isSaving}>
-                  Go back
-                </Button>
-                <Button
-                  color="warning"
-                  onPress={() => {
-                    onClose();
-                    void saveEntry();
-                  }}
-                  isLoading={isSaving}
-                >
-                  Save anyway
+                <Button {...modalPrimaryButtonProps} onPress={onClose}>
+                  Review entry
                 </Button>
               </ModalFooterShell>
             </>
