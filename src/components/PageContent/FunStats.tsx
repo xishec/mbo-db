@@ -14,6 +14,23 @@ function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(b) - Date.parse(a)) / (1000 * 60 * 60 * 24));
 }
 
+function formatSpan(spanDays: number): string {
+  return `${spanDays} ${spanDays === 1 ? "day" : "days"}`;
+}
+
+function topUniqueBirds(
+  events: BirdEvent[],
+  compare: (a: BirdEvent, b: BirdEvent) => number
+): BirdEvent[] {
+  const bestByBand = new Map<string, BirdEvent>();
+  for (const event of events) {
+    const key = event.band?.id || `event:${event.id}`;
+    const existing = bestByBand.get(key);
+    if (!existing || compare(event, existing) < 0) bestByBand.set(key, event);
+  }
+  return [...bestByBand.values()].sort(compare).slice(0, 3);
+}
+
 interface StatCardProps {
   title: string;
   children: React.ReactNode;
@@ -21,7 +38,7 @@ interface StatCardProps {
 
 function StatCard({ title, children }: StatCardProps) {
   return (
-    <Card shadow="sm">
+    <Card shadow="sm" className="h-full">
       <CardBody>
         <p className="text-sm font-bold mb-2">{title}</p>
         {children}
@@ -59,6 +76,38 @@ function RankedList({ items, unit, isSpecies, onDetailClick }: {
             )
           )}
           <span className="text-default-600">{item.value} {unit}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+interface BirdRecordItem {
+  event: BirdEvent;
+  headline: string;
+  detail: string;
+}
+
+function BirdRecordList({ items, onBandClick, emptyMessage }: {
+  items: BirdRecordItem[];
+  onBandClick: (bandId: string) => void;
+  emptyMessage: string;
+}) {
+  if (items.length === 0) return <p className="text-sm text-default-600">{emptyMessage}</p>;
+  return (
+    <ol className="space-y-3">
+      {items.map(({ event, headline, detail }, index) => (
+        <li key={event.id} className="flex flex-wrap items-baseline gap-2 text-sm">
+          <span className="font-bold text-primary">{index + 1}.</span>
+          <SpeciesTooltip speciesCode={event.species} />
+          <span
+            className="font-bold cursor-pointer hover:underline"
+            onClick={() => onBandClick(event.band.id)}
+          >
+            {event.band.id}
+          </span>
+          <span className="text-default-600">{headline}</span>
+          <span className="text-default-600">{detail}</span>
         </li>
       ))}
     </ol>
@@ -119,8 +168,8 @@ export default function FunStats() {
     const speciesCounts = new Map<string, number>();
     const bandedSpeciesCounts = new Map<string, number>();
     const recaptureSpeciesCounts = new Map<string, number>();
-    let heaviest: BirdEvent | null = null;
-    let fattest: BirdEvent | null = null;
+    const weightedBirds: BirdEvent[] = [];
+    const fatBirds: BirdEvent[] = [];
 
     // For oldest recap/return: need original banding date
     const bandIdFirstSeen = new Map<string, string>(); // bandId → earliest date across ALL events
@@ -146,14 +195,14 @@ export default function FunStats() {
     const bandIdRecapCount = new Map<string, { count: number; species: string; latest: BirdEvent }>();
 
     // For oldest: track recap/return events with their band's first seen date
-    let oldestEvent: BirdEvent | null = null;
-    let oldestSpanDays = 0;
+    const oldestByBand = new Map<string, { event: BirdEvent; spanDays: number }>();
 
     for (const ev of events) {
       const speciesKey = ev.species ? resolveSpeciesKey(ev.species, speciesAliasesMap) : "";
       if (speciesKey) species.add(speciesKey);
 
       const isNewCapture = ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None;
+      const isRecapture = ev.birdEventType === BirdEventType.Repeat || ev.birdEventType === BirdEventType.Return;
       if (isNewCapture) {
         banded++;
         if (speciesKey) {
@@ -185,15 +234,15 @@ export default function FunStats() {
       if (ev.scribe) scribeCounts.set(ev.scribe, (scribeCounts.get(ev.scribe) ?? 0) + 1);
 
       // Heaviest
-      if (ev.weight > 0 && (!heaviest || ev.weight > heaviest.weight)) heaviest = ev;
+      if (ev.weight > 0) weightedBirds.push(ev);
 
       // Fattest
       if (ev.fat > 0) {
-        if (!fattest || ev.fat > fattest.fat || (ev.fat === fattest.fat && ev.weight > fattest.weight)) fattest = ev;
+        fatBirds.push(ev);
       }
 
       // Dummest bird (most recaptured individual)
-      if (!isNewCapture && ev.band?.bandPrefix) {
+      if (isRecapture && ev.band?.bandPrefix) {
         const bandId = `${ev.band.bandPrefix}${ev.band.bandSuffix}`;
         const existing = bandIdRecapCount.get(bandId);
         if (existing) {
@@ -205,15 +254,13 @@ export default function FunStats() {
       }
 
       // Oldest recap/return
-      if (!isNewCapture && ev.band?.bandPrefix) {
+      if (isRecapture && ev.band?.bandPrefix) {
         const bandId = `${ev.band.bandPrefix}${ev.band.bandSuffix}`;
         const firstDate = bandIdFirstSeen.get(bandId);
         if (firstDate && firstDate < ev.date) {
           const span = daysBetween(firstDate, ev.date);
-          if (span > oldestSpanDays) {
-            oldestSpanDays = span;
-            oldestEvent = ev;
-          }
+          const existing = oldestByBand.get(bandId);
+          if (!existing || span > existing.spanDays) oldestByBand.set(bandId, { event: ev, spanDays: span });
         }
       }
     }
@@ -273,6 +320,7 @@ export default function FunStats() {
 
     // Dummest bird (most recaptured individual)
     const dummest = [...bandIdRecapCount.entries()]
+      .filter(([, data]) => data.count > 1)
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 3)
       .map(([bandId, data]) => ({
@@ -280,6 +328,12 @@ export default function FunStats() {
         value: data.count,
         detail: bandId,
       }));
+
+    const heaviestBirds = topUniqueBirds(weightedBirds, (a, b) => b.weight - a.weight);
+    const fattestBirds = topUniqueBirds(fatBirds, (a, b) => b.fat - a.fat || b.weight - a.weight);
+    const oldestBirds = [...oldestByBand.values()]
+      .sort((a, b) => b.spanDays - a.spanDays)
+      .slice(0, 3);
 
     return {
       events,
@@ -295,10 +349,9 @@ export default function FunStats() {
       topNets,
       topBanders,
       topScribes,
-      heaviest,
-      fattest,
-      oldestEvent,
-      oldestSpanDays,
+      heaviestBirds,
+      fattestBirds,
+      oldestBirds,
       rareBirds,
       dummest,
     };
@@ -365,7 +418,7 @@ export default function FunStats() {
               </div>
 
               {/* Overview */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <StatCard title="Species (Banded)">
                   <p className="text-3xl font-bold">{stats.bandedSpeciesCount}</p>
                 </StatCard>
@@ -375,9 +428,6 @@ export default function FunStats() {
                 <StatCard title="Total Species">
                   <p className="text-3xl font-bold">{stats.speciesCount}</p>
                 </StatCard>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatCard title="Banded">
                   <p className="text-3xl font-bold">{stats.banded}</p>
                 </StatCard>
@@ -390,7 +440,7 @@ export default function FunStats() {
               </div>
 
               {/* Rankings */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <StatCard title="Most Banded Species">
                   <RankedList items={stats.topBandedSpecies} unit="banded" isSpecies />
                 </StatCard>
@@ -406,62 +456,51 @@ export default function FunStats() {
                 <StatCard title="Busiest Scribes">
                   <RankedList items={stats.topScribes} unit="scribed" />
                 </StatCard>
-              </div>
-
-              {/* Records */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatCard title="Heaviest Bird">
-                  {stats.heaviest ? (
-                    <div>
-                      <p className="text-2xl font-bold">{stats.heaviest.weight}g</p>
-                      <div className="text-sm flex items-baseline gap-1">
-                        <SpeciesTooltip speciesCode={stats.heaviest.species} />
-                        <span className="font-bold cursor-pointer hover:underline" onClick={() => setSelectedBandId(stats.heaviest!.band.id)}>{stats.heaviest.band.id}</span>
-                      </div>
-                      <p className="text-sm text-default-600">{stats.heaviest.date}</p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-default-600">No weight data</p>
-                  )}
-                </StatCard>
-                <StatCard title="Fattest Bird">
-                  {stats.fattest ? (
-                    <div>
-                      <p className="text-2xl font-bold">Fat {stats.fattest.fat} &middot; {stats.fattest.weight}g</p>
-                      <div className="text-sm flex items-baseline gap-1">
-                        <SpeciesTooltip speciesCode={stats.fattest.species} />
-                        <span className="font-bold cursor-pointer hover:underline" onClick={() => setSelectedBandId(stats.fattest!.band.id)}>{stats.fattest.band.id}</span>
-                      </div>
-                      <p className="text-sm text-default-600">{stats.fattest.date}</p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-default-600">No fat data</p>
-                  )}
-                </StatCard>
-                <StatCard title="Oldest Recap/Return">
-                  {stats.oldestEvent ? (
-                    <div>
-                      <p className="text-2xl font-bold">{Math.round(stats.oldestSpanDays / 365 * 10) / 10} years</p>
-                      <div className="text-sm flex items-baseline gap-1">
-                        <SpeciesTooltip speciesCode={stats.oldestEvent.species} />
-                        <span className="font-bold cursor-pointer hover:underline" onClick={() => setSelectedBandId(stats.oldestEvent!.band.id)}>{stats.oldestEvent.band.id}</span>
-                      </div>
-                      <p className="text-sm text-default-600">{stats.oldestSpanDays} days &middot; {stats.oldestEvent.date}</p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-default-600">No recaptures</p>
-                  )}
-                </StatCard>
-              </div>
-
-              {/* Fun */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <StatCard title="Rarest Birds (longest gap since last captured)">
                   <RankedList items={stats.rareBirds} unit="days" isSpecies />
                 </StatCard>
-                <StatCard title="Dummest Birds (most recaptured)">
-                  <RankedList items={stats.dummest} unit="recaptures" isSpecies onDetailClick={setSelectedBandId} />
+              </div>
+
+              {/* Records */}
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard title="Heaviest Bird">
+                  <BirdRecordList
+                    items={stats.heaviestBirds.map((event) => ({
+                      event,
+                      headline: `${event.weight}g`,
+                      detail: event.date,
+                    }))}
+                    onBandClick={setSelectedBandId}
+                    emptyMessage="No weight data"
+                  />
                 </StatCard>
+                <StatCard title="Fattest Bird">
+                  <BirdRecordList
+                    items={stats.fattestBirds.map((event) => ({
+                      event,
+                      headline: `Fat ${event.fat} · ${event.weight}g`,
+                      detail: event.date,
+                    }))}
+                    onBandClick={setSelectedBandId}
+                    emptyMessage="No fat data"
+                  />
+                </StatCard>
+                <StatCard title="Oldest Recap/Return">
+                  <BirdRecordList
+                    items={stats.oldestBirds.map(({ event, spanDays }) => ({
+                      event,
+                      headline: formatSpan(spanDays),
+                      detail: event.date,
+                    }))}
+                    onBandClick={setSelectedBandId}
+                    emptyMessage="No recaptures"
+                  />
+                </StatCard>
+                {stats.dummest.length > 0 && (
+                  <StatCard title="Dummest Birds (most recaptured)">
+                    <RankedList items={stats.dummest} unit="recaptures" isSpecies onDetailClick={setSelectedBandId} />
+                  </StatCard>
+                )}
               </div>
 
             </>
