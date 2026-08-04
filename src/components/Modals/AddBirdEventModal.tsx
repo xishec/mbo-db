@@ -926,7 +926,7 @@ export default function AddBirdEventModal({
 
       // Determine readonly value
       const readonlyValue = (() => {
-        if (column.key === "birdEventType") return formData[columnKey];
+        if (column.key === "birdEventType" && !birdEventToModify) return formData[columnKey];
         if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
           return formData[columnKey];
         return null;

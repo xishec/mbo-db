@@ -77,8 +77,8 @@ const FIELD_WIDTHS: Record<string, string> = {
 
 const FIELD_LABELS: Record<string, string> = {
   net: "Net",
-  page: "Page",
-  birdEventType: "Type",
+  page: "Size / Recapture",
+  birdEventType: "",
   bandGroup: "Band Group",
   bandLastTwoDigits: "Digit",
   species: "Species",
@@ -735,7 +735,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
       return (
         <Select
           variant="bordered"
-          aria-label="Page"
+          aria-label="Size / Recapture"
           selectedKeys={selectedPage ? [selectedPage] : []}
           placeholder=""
           itemHeight={52}
@@ -752,7 +752,11 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
             if (!page) return;
             setEntryMessage(null);
             applyPage(page);
-            focusNext(fieldKey);
+            const hasPrefilledBand =
+              page !== PAGE_RECAPTURE &&
+              page !== BandSize.Other &&
+              Boolean(getBandFromNextId(bandSizeToBandIdMap[page]));
+            setTimeout(() => inputRefs.current.get(hasPrefilledBand ? "species" : "bandGroup")?.focus(), 0);
           }}
         >
           {PAGE_OPTIONS.map((page) => {
@@ -777,8 +781,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
           {...modalInputProps}
           aria-label="Type"
           value={formData.birdEventType}
-          isReadOnly
-          tabIndex={getTabIndex(fieldKey)}
+          isDisabled
           classNames={{
             input: "text-sm",
           }}
@@ -857,11 +860,11 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
         style={isNotes ? undefined : { width: FIELD_WIDTHS[fieldKey] }}
       >
         {volunteerCode ? (
-          <span className="text-sm text-default-900 font-medium px-1 truncate underline">
+          <span className="min-h-5 text-sm text-default-900 font-medium px-1 truncate underline">
             <VolunteerTooltip volunteerCode={volunteerCode}>{FIELD_LABELS[fieldKey]}</VolunteerTooltip>
           </span>
         ) : (
-          <span className="text-sm text-default-900 font-medium px-1 truncate">{FIELD_LABELS[fieldKey]}</span>
+          <span className="min-h-5 text-sm text-default-900 font-medium px-1 truncate">{FIELD_LABELS[fieldKey]}</span>
         )}
         {renderField(fieldKey)}
       </div>
