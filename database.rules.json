@@ -4,14 +4,14 @@
       ".read": true,
       ".write": "auth != null",
       "birdEventsMap": {
-        ".indexOn": ["syncedAt"]
+        ".indexOn": ["syncedAt", "date"]
       }
     },
     "prod": {
       ".read": true,
       ".write": "auth != null",
       "birdEventsMap": {
-        ".indexOn": ["syncedAt"]
+        ".indexOn": ["syncedAt", "date"]
       }
     },
     "constants": {
