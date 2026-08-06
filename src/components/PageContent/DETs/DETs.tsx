@@ -290,21 +290,6 @@ export default function DETs() {
             </div>
           </div>
 
-          {/* Species Data */}
-          <div>
-            <p className="text-small font-semibold mb-2">Species Data</p>
-            <div className="rounded-medium border border-default-100 py-2 px-3">
-              <div className="space-y-3">
-                {renderSpeciesCategory("Observed", selectedDET.observedSpeciesCount, "primary", "No observed species")}
-                {renderSpeciesCategory("Census", selectedDET.censusSpeciesCount || {}, "primary", "No census species")}
-                {renderSpeciesCategory("Banded", selectedDET.bandedSpeciesCount || {}, "primary", "No banded species")}
-                {renderSpeciesCategory("Repeats", selectedDET.repeatSpeciesCount, "primary", "No repeat species")}
-                {renderSpeciesCategory("Return", selectedDET.returnSpeciesCount, "primary", "No return species")}
-                {renderSpeciesCategory("DET", selectedDET.DETSpeciesCount, "primary", "No DET species")}
-              </div>
-            </div>
-          </div>
-
           {/* Narrative */}
           <div>
             <p className="text-small font-semibold mb-2">Narrative</p>
@@ -356,6 +341,21 @@ export default function DETs() {
               <p className="text-sm text-gray-600 whitespace-pre-wrap">
                 {textFieldToString(selectedDET.released) || "—"}
               </p>
+            </div>
+          </div>
+
+          {/* Species Data */}
+          <div>
+            <p className="text-small font-semibold mb-2">Species Data</p>
+            <div className="rounded-medium border border-default-100 py-2 px-3">
+              <div className="space-y-3">
+                {renderSpeciesCategory("Observed", selectedDET.observedSpeciesCount, "primary", "No observed species")}
+                {renderSpeciesCategory("Census", selectedDET.censusSpeciesCount || {}, "primary", "No census species")}
+                {renderSpeciesCategory("Banded", selectedDET.bandedSpeciesCount || {}, "primary", "No banded species")}
+                {renderSpeciesCategory("Repeats", selectedDET.repeatSpeciesCount, "primary", "No repeat species")}
+                {renderSpeciesCategory("Return", selectedDET.returnSpeciesCount, "primary", "No return species")}
+                {renderSpeciesCategory("DET", selectedDET.DETSpeciesCount, "primary", "No DET species")}
+              </div>
             </div>
           </div>
         </CardBody>

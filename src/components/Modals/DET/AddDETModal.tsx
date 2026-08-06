@@ -579,18 +579,6 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
 
                 <DETNetHoursSection netHours={netHours} onChange={setNetHours} />
 
-                <DETSpeciesDataSection
-                  observedSpeciesCount={observedSpeciesCount}
-                  censusSpeciesCount={censusSpeciesCount}
-                  bandedSpeciesCount={bandedSpeciesCount}
-                  repeatSpeciesCount={repeatSpeciesCount}
-                  returnSpeciesCount={returnSpeciesCount}
-                  DETSpeciesCount={DETSpeciesCount}
-                  onObservedChange={setObservedSpeciesCount}
-                  onCensusChange={setCensusSpeciesCount}
-                  onDETChange={setDETSpeciesCount}
-                />
-
                 <Textarea
                   label="Narrative"
                   labelPlacement="outside"
@@ -649,6 +637,18 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   variant="bordered"
                   minRows={3}
                   placeholder="Released bird notes..."
+                />
+
+                <DETSpeciesDataSection
+                  observedSpeciesCount={observedSpeciesCount}
+                  censusSpeciesCount={censusSpeciesCount}
+                  bandedSpeciesCount={bandedSpeciesCount}
+                  repeatSpeciesCount={repeatSpeciesCount}
+                  returnSpeciesCount={returnSpeciesCount}
+                  DETSpeciesCount={DETSpeciesCount}
+                  onObservedChange={setObservedSpeciesCount}
+                  onCensusChange={setCensusSpeciesCount}
+                  onDETChange={setDETSpeciesCount}
                 />
               </div>
             </ModalBodyShell>
