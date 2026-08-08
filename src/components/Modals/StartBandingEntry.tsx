@@ -40,13 +40,13 @@ const FIRST_ROW_KEYS = [
 ] as const;
 
 const SECOND_ROW_KEYS = [
+  "bander",
+  "scribe",
   "date",
   "date-month",
   "date-day",
   "time",
   "time-minute",
-  "bander",
-  "scribe",
   "birdStatus",
   "notes",
 ] as const;
