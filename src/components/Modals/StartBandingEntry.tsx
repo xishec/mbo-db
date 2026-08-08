@@ -23,13 +23,15 @@ const PAGE_RECAPTURE = "recapture";
 type StartBandingPage = BandSize | typeof PAGE_RECAPTURE;
 const PAGE_OPTIONS: StartBandingPage[] = [...Object.values(BandSize), PAGE_RECAPTURE];
 
-const FIRST_ROW_KEYS = [
+const FIELD_ORDER = [
   "net",
   "page",
   "birdEventType",
   "bandGroup",
   "bandLastTwoDigits",
   "species",
+  "bander",
+  "scribe",
   "wing",
   "age",
   "howAged",
@@ -37,11 +39,6 @@ const FIRST_ROW_KEYS = [
   "howSexed",
   "fat",
   "weight",
-] as const;
-
-const SECOND_ROW_KEYS = [
-  "bander",
-  "scribe",
   "date",
   "date-month",
   "date-day",
@@ -231,7 +228,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const pendingSavedBandSizeRef = useRef<BandSize | null>(null);
   const shownEntryWarningKeyRef = useRef("");
 
-  const focusOrder = useMemo(() => [...FIRST_ROW_KEYS, ...SECOND_ROW_KEYS], []);
+  const focusOrder = useMemo(() => [...FIELD_ORDER], []);
 
   const focusNext = useCallback(
     (currentKey: string) => {
@@ -1048,7 +1045,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
       <Card shadow="none" className="w-full border border-default-200">
         <CardBody className="flex flex-col gap-4 p-4">
           <section className="flex flex-col gap-4">
-            <div className="flex gap-1">{[...FIRST_ROW_KEYS, ...SECOND_ROW_KEYS].map(renderFieldGroup)}</div>
+            <div className="flex gap-1">{FIELD_ORDER.map(renderFieldGroup)}</div>
           </section>
 
           <div className="grid min-h-[220px] grid-cols-[420px_minmax(0,1fr)] items-stretch gap-4">
