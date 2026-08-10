@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { get, onValue, ref } from "firebase/database";
+import { useEffect, useRef, useState } from "react";
+import { get, onValue, orderByChild, query, ref, startAt } from "firebase/database";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, CURRENT_ENVIRONMENT, db } from "../firebase";
 import { birdEventsStore } from "./birdEventsStore";
@@ -38,6 +38,8 @@ import {
 } from "./indexedDB";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
+import { refreshBirdEventDelta } from "./birdEventSync";
+import { rebuildBirdEventState } from "../stores/rebuildAppState";
 
 function normalizeObserverClass(value: unknown): Volunteer["observerClass"] {
   const parsed = Number(value);
@@ -170,12 +172,44 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const isOnline = useOnlineStatus();
+  const { isOnline, reconnectToken } = useOnlineStatus();
+  const [reloadToken, setReloadToken] = useState(0);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const lastFocusRefreshRef = useRef(Number.NEGATIVE_INFINITY);
 
-  // Mirror online status into the store so actions can read it.
+  // Laptops commonly resume with a stale in-memory view. Check the RTDB
+  // delta whenever the user returns to the app, with a small debounce because
+  // browsers often emit both visibilitychange and focus for the same action.
+  useEffect(() => {
+    const refreshWhenActive = () => {
+      if (document.visibilityState !== "visible" || !isOnline) return;
+      const now = performance.now();
+      if (now - lastFocusRefreshRef.current < 1000) return;
+      lastFocusRefreshRef.current = now;
+      setRefreshToken((value) => value + 1);
+    };
+
+    window.addEventListener("focus", refreshWhenActive);
+    document.addEventListener("visibilitychange", refreshWhenActive);
+    return () => {
+      window.removeEventListener("focus", refreshWhenActive);
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+    };
+  }, [isOnline]);
+
+  // Mirror effective Firebase connectivity into the store so the existing
+  // online/offline UI and sync actions use the same source of truth.
   useEffect(() => {
     useAppStore.setState({ isOnline });
   }, [isOnline]);
+
+  // Reconnect with a lightweight delta when data is already loaded. A cold
+  // start that briefly took the offline path needs the full loader instead.
+  useEffect(() => {
+    if (reconnectToken === 0) return;
+    if (birdEventsStore.size() === 0) setReloadToken((value) => value + 1);
+    else setRefreshToken((value) => value + 1);
+  }, [reconnectToken]);
 
   // Auth state
   useEffect(() => {
@@ -192,6 +226,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // doesn't re-fire onAuthStateChanged on connectivity changes, so an
   // offline→online transition would otherwise leave isAdmin=false forever.
   const user = useAppStore((s) => s.user);
+  const isLoading = useAppStore((s) => s.isLoading);
   useEffect(() => {
     if (!user || !isOnline) return;
     let cancelled = false;
@@ -218,14 +253,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const loadData = async () => {
       try {
+        useAppStore.setState({ isLoading: true, error: null });
         logger.info("DataLoad", `Loading ${CURRENT_ENVIRONMENT}/ data...`);
         const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
         const lastEventSync = await getLastUpdated(CURRENT_ENVIRONMENT);
+        if (cancelled) return;
 
         if (!isOnline) {
           if (cachedData) {
             setStatus("Loading cached data...");
             const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
+            if (cancelled) return;
             populateStateFromData(cachedData, queued);
             useAppStore.setState({
               lastSyncedAt: lastEventSync ?? Date.now(),
@@ -233,12 +271,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             });
             return;
           }
-          useAppStore.setState({
-            error: "No cached data available. Connect to the internet and reload.",
-            isLoading: false,
-          });
+          if (!cancelled) {
+            useAppStore.setState({
+              error: "No cached data available. Connect to the internet and reload.",
+              isLoading: false,
+            });
+          }
           return;
         }
+
+        // Finish any local upload before calculating the remote delta. The
+        // queue remains overlaid locally if a batch fails and stays pending.
+        if (user) await runSync(false);
+        if (cancelled) return;
 
         const env = CURRENT_ENVIRONMENT;
         setStatus("Checking for updates...");
@@ -257,6 +302,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           if (cachedData) {
             setStatus("Using cached data (Firebase unreachable)");
             const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
+            if (cancelled) return;
             populateStateFromData(cachedData, queued);
             useAppStore.setState({
               lastSyncedAt: lastEventSync ?? Date.now(),
@@ -293,9 +339,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (cachedData && cachedEventCount > 0 && lastEventSync) {
           setStatus("Checking for new events...");
           try {
-            const { query: fbQuery, orderByChild, startAt } = await import("firebase/database");
             const deltaSnap = await get(
-              fbQuery(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(lastEventSync + 1))
+              query(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(lastEventSync + 1))
             );
             deltaEvents = deltaSnap.exists()
               ? (deltaSnap.val() as Record<string, BirdEvent>)
@@ -306,6 +351,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               setStatus("Cache is up to date");
               logger.info("DataLoad", "No new events, maps unchanged — using cache");
               const queuedForCache = await getQueuedEvents(CURRENT_ENVIRONMENT);
+              if (cancelled) return;
               populateStateFromData(cachedData, queuedForCache);
               useAppStore.setState({ lastSyncedAt: lastEventSync, isLoading: false });
               return;
@@ -331,9 +377,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setStatus("Downloading all events...");
           const fullSnap = await get(ref(db, `${env}/birdEventsMap`));
           if (!fullSnap.exists()) {
-            useAppStore.setState({
-              error: `Error: ${CURRENT_ENVIRONMENT}/ is missing from the database.`,
-            });
+            if (!cancelled) {
+              useAppStore.setState({
+                error: `Error: ${CURRENT_ENVIRONMENT}/ is missing from the database.`,
+              });
+            }
             return;
           }
           allEvents = fullSnap.val();
@@ -497,10 +545,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-    // Intentionally omit isOnline — we only want to load once per login
-    // transition. Reconnect-sync is handled by the auto-sync effect below.
+    // Reconnect/focus use the lightweight delta unless a cold start explicitly
+    // increments reloadToken.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn]);
+  }, [isLoggedIn, reloadToken]);
+
+  // Refresh only the event delta after focus/reconnect. Uploads are awaited
+  // first so a stale cached snapshot cannot race a successful queue flush.
+  useEffect(() => {
+    if (refreshToken === 0 || !isOnline || !user || isLoading || birdEventsStore.size() === 0) return;
+    let cancelled = false;
+
+    refreshBirdEventDelta(() => cancelled)
+      .then((count) => {
+        if (count > 0) logger.info("DataLoad", `Focus refresh merged ${count} event(s)`);
+      })
+      .catch((err) => logger.warn("DataLoad", "Focus refresh failed; keeping cached data", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshToken, isOnline, user, isLoading]);
 
   // Band resets are rare but operationally important: keep this small map
   // live so another open banding station cannot continue using stale band
@@ -527,41 +592,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(
-        birdEventsStore.getAll(),
-        state.volunteersMap,
-        next
-      );
-      for (const [programId, existingProgram] of Object.entries(state.programsMap)) {
-        if (programs[programId]) {
-          programs[programId] = { ...existingProgram, ...programs[programId] };
-        } else {
-          programs[programId] = {
-            id: existingProgram.id,
-            displayName: existingProgram.displayName,
-            bandGroupIds: [],
-            recaptureIds: [],
-          };
-        }
-      }
-      const selectedProgram = state.selectedProgram ? programs[state.selectedProgram.id] ?? null : null;
+      const rebuilt = rebuildBirdEventState(birdEventsStore.getAll(), state, next);
       useAppStore.setState({
         bandResetsMap: next,
-        bandIdToBirdEventIdsMap: bandIdMap,
-        bandGroupsMap: bandGroups,
-        programsMap: programs,
-        yearsToProgramMap: years,
-        volunteerStatsMap: volunteerStats,
-        bandSizeToBandIdMap: computeBandSizeToBandIdMap(birdEventsStore.getAll(), bandGroups, next),
-        speciesInfoMap: computeSpeciesInfoMap(birdEventsStore.getAll(), state.speciesAliasesMap, next),
-        selectedProgram,
+        ...rebuilt,
       });
       saveDatabaseMetadataOnly(CURRENT_ENVIRONMENT, {
         bandResetsMap: next,
-        bandIdToBirdEventIdsMap: bandIdMap,
-        bandGroupsMap: bandGroups,
-        programsMap: programs,
-        yearsToProgramMap: years,
+        bandIdToBirdEventIdsMap: rebuilt.bandIdToBirdEventIdsMap,
+        bandGroupsMap: rebuilt.bandGroupsMap,
+        programsMap: rebuilt.programsMap,
+        yearsToProgramMap: rebuilt.yearsToProgramMap,
       }).catch((err) => logger.error("BandReset", "Failed to cache remote band reset", err));
     });
   }, [isLoggedIn, isOnline]);
@@ -573,7 +614,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // Auto-sync when we have pending events AND we're online AND authenticated.
   // RTDB rules require auth only, not admin.
-  const isLoading = useAppStore((s) => s.isLoading);
   const pendingCount = useAppStore((s) => s.pendingCount);
   useEffect(() => {
     if (!isLoading && isOnline && user && pendingCount > 0) {

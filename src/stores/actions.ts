@@ -34,14 +34,13 @@ import { setSpeciesMap, SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpecies
 import { stripUndefined } from "../utils/firebaseValue";
 import {
   advanceBandId,
-  computeBandSizeToBandIdMap,
   computeSpeciesInfoMap,
   isActiveBirdEvent,
   isBirdEventInCurrentBandGeneration,
-  rebuildMapsFromEvents,
 } from "./derive";
 import { useAppStore } from "./useAppStore";
 import { buildSyncBatches } from "./syncPlan";
+import { rebuildBirdEventState } from "./rebuildAppState";
 
 // Mutex for serializing IndexedDB writes. Prevents concurrent
 // read-modify-write cycles from overwriting each other.
@@ -76,92 +75,114 @@ export async function refreshQueueState(): Promise<void> {
   });
 }
 
-export async function syncQueue(): Promise<void> {
-  if (!useAppStore.getState().isOnline) return;
+async function getFirebaseNow(): Promise<number> {
+  const offsetSnapshot = await get(ref(db, ".info/serverTimeOffset"));
+  const offset = Number(offsetSnapshot.val());
+  return Math.round(Date.now() + (Number.isFinite(offset) ? offset : 0));
+}
+
+export async function syncQueue(): Promise<boolean> {
+  if (!useAppStore.getState().isOnline) return false;
 
   try {
-    const pendingEvents = await getQueuedEvents(CURRENT_ENVIRONMENT);
-    logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
-    const now = Date.now();
-    let successCount = 0;
+    while (useAppStore.getState().isOnline) {
+      const pendingEvents = await getQueuedEvents(CURRENT_ENVIRONMENT);
+      logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
+      if (pendingEvents.length === 0) return true;
 
-    const batches = buildSyncBatches(
-      pendingEvents,
-      now,
-      (environment, eventId) =>
-        environment === CURRENT_ENVIRONMENT ? birdEventsStore.get(eventId) : undefined,
-    );
+      // syncedAt is a shared cursor, so correct the laptop clock with RTDB.
+      const now = await getFirebaseNow();
+      let successCount = 0;
+      const batches = buildSyncBatches(
+        pendingEvents,
+        now,
+        (environment, eventId) =>
+          environment === CURRENT_ENVIRONMENT ? birdEventsStore.get(eventId) : undefined,
+      );
 
-    for (const batch of batches) {
-      if (batch.missingPredecessorIds.length > 0) {
-        logger.error(
-          "SyncQueue",
-          `Batch kept pending because predecessor events are missing: ${batch.missingPredecessorIds.join(", ")}`,
-        );
-        continue;
-      }
-
-      try {
-        // Each batch is one atomic, multi-location Firebase update. The sync
-        // plan writes whole event records, so queue order cannot create
-        // conflicting parent/child paths for modification chains.
-        await update(ref(db), batch.updates);
-
-        if (batch.birdEvents.length > 0) {
-          birdEventsStore.setMany(batch.birdEvents);
-          putBirdEvents(CURRENT_ENVIRONMENT, batch.birdEvents).catch((err) =>
-            logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err)
+      for (const batch of batches) {
+        if (batch.missingPredecessorIds.length > 0) {
+          logger.error(
+            "SyncQueue",
+            `Batch kept pending because predecessor events are missing: ${batch.missingPredecessorIds.join(", ")}`,
           );
+          continue;
         }
 
-        if (batch.dets.length > 0) {
-          useAppStore.setState((state) => {
-            const DETsMap = { ...state.DETsMap };
-            for (const det of batch.dets) DETsMap[det.date] = det;
-            return { DETsMap };
-          });
-          Promise.all([
-            ...batch.dets.map((det) => updateDETInCache(CURRENT_ENVIRONMENT, det)),
-            saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, now),
-          ]).catch((err) => logger.warn("SyncQueue", "Failed to cache synced DET state", err));
-        }
+        try {
+          await update(ref(db), batch.updates);
 
-        // Queue rows are deleted only after Firebase accepts the full batch.
-        // If deletion fails, retrying is safe because all writes are idempotent.
-        await removeManyFromQueue(batch.queueIds);
-        successCount += batch.queueIds.length;
-      } catch (err) {
-        logger.error("SyncQueue", `Failed to sync batch of ${batch.queueIds.length} event(s)`, err);
+          if (batch.birdEvents.length > 0) {
+            birdEventsStore.setMany(batch.birdEvents);
+            putBirdEvents(CURRENT_ENVIRONMENT, batch.birdEvents).catch((err) =>
+              logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err)
+            );
+          }
+
+          if (batch.dets.length > 0) {
+            useAppStore.setState((state) => {
+              const DETsMap = { ...state.DETsMap };
+              for (const det of batch.dets) DETsMap[det.date] = det;
+              return { DETsMap };
+            });
+            Promise.all([
+              ...batch.dets.map((det) => updateDETInCache(CURRENT_ENVIRONMENT, det)),
+              saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, now),
+            ]).catch((err) => logger.warn("SyncQueue", "Failed to cache synced DET state", err));
+          }
+
+          // Remove queue rows only after Firebase accepts the atomic batch.
+          await removeManyFromQueue(batch.queueIds);
+          successCount += batch.queueIds.length;
+        } catch (err) {
+          logger.error("SyncQueue", `Failed to sync batch of ${batch.queueIds.length} event(s)`, err);
+        }
       }
-    }
 
-    await refreshQueueState();
-    const remainingCount = (await getQueuedEvents(CURRENT_ENVIRONMENT)).length;
-    logger.sync("SyncQueue", `Sync completed`, {
-      succeeded: successCount,
-      total: pendingEvents.length,
-      remaining: remainingCount,
-    });
+      await refreshQueueState();
+      const remainingCount = (await getQueuedEvents(CURRENT_ENVIRONMENT)).length;
+      logger.sync("SyncQueue", "Sync completed", {
+        succeeded: successCount,
+        total: pendingEvents.length,
+        remaining: remainingCount,
+      });
+
+      if (remainingCount === 0) return true;
+      // All attempted entries succeeded, so the remainder arrived mid-sync.
+      // Loop once more to drain it. Actual failures wait for reconnect/focus.
+      if (successCount !== pendingEvents.length) return false;
+    }
+    return false;
   } catch (err) {
     logger.error("SyncQueue", "Error syncing queue", err);
+    return false;
   }
 }
 
-let syncInFlight = false;
+let syncInFlight: Promise<boolean> | null = null;
+
+function getOrStartSync(): Promise<boolean> {
+  if (!syncInFlight) {
+    syncInFlight = syncQueue().finally(() => {
+      syncInFlight = null;
+    });
+  }
+  return syncInFlight;
+}
+
 // showUi=false: silent sync used by auto-effect. showUi=true: explicit sync UI.
-export async function runSync(showUi: boolean): Promise<void> {
-  if (!useAppStore.getState().user) return;
-  if (syncInFlight) return;
-  syncInFlight = true;
+export async function runSync(showUi: boolean): Promise<boolean> {
+  if (!useAppStore.getState().user) return false;
   if (showUi) useAppStore.setState({ isSyncing: true, syncResult: null });
   try {
-    await syncQueue();
-    if (showUi) useAppStore.setState({ syncResult: "success" });
+    const completed = await getOrStartSync();
+    if (showUi) useAppStore.setState({ syncResult: completed ? "success" : "error" });
+    return completed;
   } catch {
     if (showUi) useAppStore.setState({ syncResult: "error" });
+    return false;
   } finally {
     if (showUi) useAppStore.setState({ isSyncing: false });
-    syncInFlight = false;
   }
 }
 
@@ -635,55 +656,21 @@ export const actions = {
       [`${CURRENT_ENVIRONMENT}/metadata/lastModified_bandResetsMap`]: resetAt,
     });
 
-    const { bandIdMap, bandGroups, programs, years, volunteerStats } = rebuildMapsFromEvents(
-      birdEventsStore.getAll(),
-      state.volunteersMap,
-      nextBandResetsMap
-    );
-    for (const [programId, existingProgram] of Object.entries(state.programsMap)) {
-      if (programs[programId]) {
-        programs[programId] = { ...existingProgram, ...programs[programId] };
-      } else {
-        programs[programId] = {
-          id: existingProgram.id,
-          displayName: existingProgram.displayName,
-          bandGroupIds: [],
-          recaptureIds: [],
-        };
-      }
-    }
-    const selectedProgram = state.selectedProgram ? programs[state.selectedProgram.id] ?? null : null;
-    const bandSizeToBandIdMap = computeBandSizeToBandIdMap(
-      birdEventsStore.getAll(),
-      bandGroups,
-      nextBandResetsMap
-    );
-    const speciesInfoMap = computeSpeciesInfoMap(
-      birdEventsStore.getAll(),
-      state.speciesAliasesMap,
-      nextBandResetsMap
-    );
+    const rebuilt = rebuildBirdEventState(birdEventsStore.getAll(), state, nextBandResetsMap);
 
     useAppStore.setState({
       bandResetsMap: nextBandResetsMap,
-      bandIdToBirdEventIdsMap: bandIdMap,
-      bandGroupsMap: bandGroups,
-      programsMap: programs,
-      yearsToProgramMap: years,
-      volunteerStatsMap: volunteerStats,
-      bandSizeToBandIdMap,
-      speciesInfoMap,
-      selectedProgram,
+      ...rebuilt,
     });
     await Promise.all([
       saveMetadata(`lastModified_bandResetsMap_${CURRENT_ENVIRONMENT}`, resetAt),
       saveMapsToIndexedDB({
         bandResetsMap: nextBandResetsMap,
-        bandIdToBirdEventIdsMap: bandIdMap,
-        bandGroupsMap: bandGroups,
-        programsMap: programs,
-        yearsToProgramMap: years,
-        bandSizeToBandIdMap,
+        bandIdToBirdEventIdsMap: rebuilt.bandIdToBirdEventIdsMap,
+        bandGroupsMap: rebuilt.bandGroupsMap,
+        programsMap: rebuilt.programsMap,
+        yearsToProgramMap: rebuilt.yearsToProgramMap,
+        bandSizeToBandIdMap: rebuilt.bandSizeToBandIdMap,
       }),
     ]);
     logger.info("BandReset", "Band reset", { bandId, generationId: nextBandResetsMap[bandId].generationId });

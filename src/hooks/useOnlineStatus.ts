@@ -1,22 +1,29 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { onValue, ref } from "firebase/database";
+import { db } from "../firebase";
 import { logger } from "../services/logger";
 
 /**
- * Hook to track online/offline status
- * Returns true if online, false if offline
+ * Tracks effective RTDB reachability and increments reconnectToken whenever
+ * a confirmed Firebase connection returns. A null state means connecting.
  */
-export function useOnlineStatus(): boolean {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+export function useOnlineStatus(): { isOnline: boolean; reconnectToken: number } {
+  const [networkOnline, setNetworkOnline] = useState(navigator.onLine);
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
+  const [reconnectToken, setReconnectToken] = useState(0);
+  const previousFirebaseConnected = useRef<boolean | null>(null);
 
   useEffect(() => {
     const handleOnline = () => {
       logger.info("Network", "Back online");
-      setIsOnline(true);
+      setNetworkOnline(true);
     };
 
     const handleOffline = () => {
       logger.warn("Network", "Gone offline");
-      setIsOnline(false);
+      setNetworkOnline(false);
+      setFirebaseConnected(false);
+      previousFirebaseConnected.current = false;
     };
 
     window.addEventListener("online", handleOnline);
@@ -28,5 +35,27 @@ export function useOnlineStatus(): boolean {
     };
   }, []);
 
-  return isOnline;
+  useEffect(() => {
+    return onValue(
+      ref(db, ".info/connected"),
+      (snapshot) => {
+        const connected = networkOnline && snapshot.val() === true;
+        if (connected && previousFirebaseConnected.current === false) {
+          setReconnectToken((value) => value + 1);
+        }
+        previousFirebaseConnected.current = connected;
+        setFirebaseConnected(connected);
+      },
+      (err) => {
+        previousFirebaseConnected.current = false;
+        setFirebaseConnected(false);
+        logger.warn("Network", "Firebase connection check failed", err);
+      }
+    );
+  }, [networkOnline]);
+
+  return {
+    isOnline: networkOnline && firebaseConnected !== false,
+    reconnectToken,
+  };
 }
