@@ -280,11 +280,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Finish any local upload before calculating the remote delta. The
-        // queue remains overlaid locally if a batch fails and stays pending.
-        if (user) await runSync(false);
-        if (cancelled) return;
-
         const env = CURRENT_ENVIRONMENT;
         setStatus("Checking for updates...");
 
@@ -353,7 +348,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               const queuedForCache = await getQueuedEvents(CURRENT_ENVIRONMENT);
               if (cancelled) return;
               populateStateFromData(cachedData, queuedForCache);
-              useAppStore.setState({ lastSyncedAt: lastEventSync, isLoading: false });
+              useAppStore.setState({ lastSyncedAt: lastEventSync });
+              if (user) await runSync(false);
               return;
             }
 
@@ -515,6 +511,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           lastSyncedAt: cacheTimestamp,
           loadingStatus: "Ready",
         });
+
+        // Edits need their predecessor in birdEventsStore. Upload only after
+        // the cached/server snapshot and pending overlay have been hydrated.
+        if (user) await runSync(false);
 
         logger.info("DataLoad", "Load complete", { events: allEventCount });
       } catch (err) {

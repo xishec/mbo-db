@@ -25,6 +25,7 @@ import {
   getBandGroupMapKey,
   type BirdEvent,
   type ObserverClass,
+  type PendingEvent,
   type PendingBirdEvent,
   type Program,
   type Species,
@@ -81,6 +82,43 @@ async function getFirebaseNow(): Promise<number> {
   return Math.round(Date.now() + (Number.isFinite(offset) ? offset : 0));
 }
 
+async function loadMissingPredecessors(pendingEvents: PendingEvent[]): Promise<Map<string, BirdEvent>> {
+  const pendingIds = new Set(
+    pendingEvents
+      .filter((pending): pending is PendingBirdEvent => pending.type === "bird-event")
+      .map((pending) => pending.pendingEvent.id)
+  );
+  const missingIds = new Set<string>();
+
+  for (const pending of pendingEvents) {
+    if (pending.type !== "bird-event") continue;
+    const previousEventId = pending.pendingEvent.previousEventId;
+    if (previousEventId && !pendingIds.has(previousEventId) && !birdEventsStore.has(previousEventId)) {
+      missingIds.add(previousEventId);
+    }
+  }
+
+  const fetched = new Map<string, BirdEvent>();
+  await Promise.all(
+    [...missingIds].map(async (eventId) => {
+      try {
+        const snapshot = await get(ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap/${eventId}`));
+        if (!snapshot.exists()) return;
+        const event = snapshot.val() as BirdEvent;
+        fetched.set(eventId, {
+          ...event,
+          band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null),
+        });
+      } catch (err) {
+        // Leave only this edit chain pending. Other independent captures can
+        // still sync, and the predecessor lookup will retry on the next pass.
+        logger.warn("SyncQueue", `Could not load predecessor ${eventId}`, err);
+      }
+    })
+  );
+  return fetched;
+}
+
 export async function syncQueue(): Promise<boolean> {
   if (!useAppStore.getState().isOnline) return false;
 
@@ -92,12 +130,15 @@ export async function syncQueue(): Promise<boolean> {
 
       // syncedAt is a shared cursor, so correct the laptop clock with RTDB.
       const now = await getFirebaseNow();
+      const fetchedPredecessors = await loadMissingPredecessors(pendingEvents);
       let successCount = 0;
       const batches = buildSyncBatches(
         pendingEvents,
         now,
         (environment, eventId) =>
-          environment === CURRENT_ENVIRONMENT ? birdEventsStore.get(eventId) : undefined,
+          environment === CURRENT_ENVIRONMENT
+            ? birdEventsStore.get(eventId) ?? fetchedPredecessors.get(eventId)
+            : undefined,
       );
 
       for (const batch of batches) {
@@ -160,14 +201,29 @@ export async function syncQueue(): Promise<boolean> {
 }
 
 let syncInFlight: Promise<boolean> | null = null;
+let followUpSyncRequested = false;
 
-function getOrStartSync(): Promise<boolean> {
-  if (!syncInFlight) {
-    syncInFlight = syncQueue().finally(() => {
-      syncInFlight = null;
-    });
+async function getOrStartSync(): Promise<boolean> {
+  followUpSyncRequested = true;
+  while (true) {
+    if (!syncInFlight) {
+      syncInFlight = (async () => {
+        let completed = false;
+        do {
+          followUpSyncRequested = false;
+          completed = await syncQueue();
+        } while (followUpSyncRequested && useAppStore.getState().isOnline);
+        return completed;
+      })().finally(() => {
+        syncInFlight = null;
+      });
+    }
+
+    const completed = await syncInFlight;
+    // A request can arrive after the worker's final check but before its
+    // promise settles. In that narrow window, start one last pass.
+    if (!followUpSyncRequested) return completed;
   }
-  return syncInFlight;
 }
 
 // showUi=false: silent sync used by auto-effect. showUi=true: explicit sync UI.

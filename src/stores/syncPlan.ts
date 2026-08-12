@@ -81,9 +81,42 @@ export function buildSyncBatches(
   const finalDets = new Map<string, DET>();
   for (const [key, pending] of pendingDets) finalDets.set(key, stripUndefined(pending.det));
 
+  const blockedKeys = new Set<string>();
+  const findMissingAncestor = (startKey: string): string | null => {
+    const visited = new Set<string>();
+    let key = startKey;
+    while (!visited.has(key)) {
+      visited.add(key);
+      const pending = pendingBirdEvents.get(key);
+      const previousEventId = pending?.pendingEvent.previousEventId;
+      if (!pending || !previousEventId) return null;
+
+      const previousKey = eventKey(pending.environment, previousEventId);
+      if (missingPredecessors.has(previousKey)) return previousEventId;
+      if (!pendingBirdEvents.has(previousKey)) return null;
+      key = previousKey;
+    }
+    return null;
+  };
+
+  const blockedMissingIds = new Set<string>();
+  for (const key of pendingBirdEvents.keys()) {
+    const missingId = findMissingAncestor(key);
+    if (missingId) {
+      blockedKeys.add(key);
+      blockedMissingIds.add(missingId);
+    }
+  }
+  const syncable = ordered.filter(
+    (pending) => pending.type !== "bird-event" || !blockedKeys.has(eventKey(pending.environment, pending.pendingEvent.id))
+  );
+  const blocked = ordered.filter(
+    (pending) => pending.type === "bird-event" && blockedKeys.has(eventKey(pending.environment, pending.pendingEvent.id))
+  );
+
   const batches: SyncBatch[] = [];
-  for (let offset = 0; offset < ordered.length; offset += batchSize) {
-    const entries = ordered.slice(offset, offset + batchSize);
+  for (let offset = 0; offset < syncable.length; offset += batchSize) {
+    const entries = syncable.slice(offset, offset + batchSize);
     const updates: Record<string, unknown> = {};
     const batchBirdEvents = new Map<string, BirdEvent>();
     const batchDets = new Map<string, DET>();
@@ -136,6 +169,16 @@ export function buildSyncBatches(
       birdEvents: [...batchBirdEvents.values()],
       dets: [...batchDets.values()],
       missingPredecessorIds: [...batchMissingPredecessors],
+    });
+  }
+
+  if (blocked.length > 0) {
+    batches.push({
+      queueIds: blocked.map((pending) => pending.id),
+      updates: {},
+      birdEvents: [],
+      dets: [],
+      missingPredecessorIds: [...blockedMissingIds],
     });
   }
 
