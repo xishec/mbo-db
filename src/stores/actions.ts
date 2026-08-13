@@ -82,6 +82,51 @@ async function getFirebaseNow(): Promise<number> {
   return Math.round(Date.now() + (Number.isFinite(offset) ? offset : 0));
 }
 
+const INVALID_FIREBASE_KEY_CHARACTER = /[.#$[\]/]/;
+
+function parseCaptureNumber(value: string | undefined, label: string): number {
+  if (!value) return 0;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`${label} must be a valid number`);
+  return parsed;
+}
+
+function describeQueueEntries(queueIds: string[], pendingById: ReadonlyMap<string, PendingEvent>): unknown[] {
+  return queueIds.map((queueId) => {
+    const pending = pendingById.get(queueId);
+    if (!pending) return { queueId, type: "unknown" };
+    if (pending.type === "det") return { queueId, type: "det", date: pending.det.date };
+
+    const event = pending.pendingEvent;
+    return {
+      queueId,
+      type: "bird-event",
+      action: pending.action,
+      eventId: event.id,
+      bandId: event.band?.id,
+      date: event.date,
+      time: event.time,
+      species: event.species,
+      wing: Number.isFinite(event.wing) ? event.wing : String(event.wing),
+      fat: Number.isFinite(event.fat) ? event.fat : String(event.fat),
+      weight: Number.isFinite(event.weight) ? event.weight : String(event.weight),
+      previousEventId: event.previousEventId,
+    };
+  });
+}
+
+function describeSyncError(error: unknown): { name: string; code?: string; message: string } {
+  if (error && typeof error === "object") {
+    const candidate = error as { name?: unknown; code?: unknown; message?: unknown };
+    return {
+      name: typeof candidate.name === "string" ? candidate.name : "Error",
+      ...(typeof candidate.code === "string" ? { code: candidate.code } : {}),
+      message: typeof candidate.message === "string" ? candidate.message : String(error),
+    };
+  }
+  return { name: "Error", message: String(error) };
+}
+
 async function loadMissingPredecessors(pendingEvents: PendingEvent[]): Promise<Map<string, BirdEvent>> {
   const pendingIds = new Set(
     pendingEvents
@@ -112,7 +157,12 @@ async function loadMissingPredecessors(pendingEvents: PendingEvent[]): Promise<M
       } catch (err) {
         // Leave only this edit chain pending. Other independent captures can
         // still sync, and the predecessor lookup will retry on the next pass.
-        logger.warn("SyncQueue", `Could not load predecessor ${eventId}`, err);
+        const error = describeSyncError(err);
+        logger.warn(
+          "SyncQueue",
+          `Could not load predecessor ${eventId}${error.code ? ` (${error.code})` : ""}: ${error.message}`,
+          { previousEventId: eventId, error }
+        );
       }
     })
   );
@@ -127,6 +177,7 @@ export async function syncQueue(): Promise<boolean> {
       const pendingEvents = await getQueuedEvents(CURRENT_ENVIRONMENT);
       logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
       if (pendingEvents.length === 0) return true;
+      const pendingById = new Map(pendingEvents.map((pending) => [pending.id, pending]));
 
       // syncedAt is a shared cursor, so correct the laptop clock with RTDB.
       const now = await getFirebaseNow();
@@ -145,16 +196,27 @@ export async function syncQueue(): Promise<boolean> {
       );
 
       for (const batch of batches) {
+        const entries = describeQueueEntries(batch.queueIds, pendingById);
         if (batch.missingPredecessorIds.length > 0) {
           logger.error(
             "SyncQueue",
             `Batch kept pending because predecessor events are missing: ${batch.missingPredecessorIds.join(", ")}`,
+            { entries, missingPredecessorIds: batch.missingPredecessorIds }
           );
           continue;
         }
 
+        const invalidEventId = batch.birdEvents.find((event) => INVALID_FIREBASE_KEY_CHARACTER.test(event.id))?.id;
+        if (invalidEventId) {
+          const issue = `Bird event ID "${invalidEventId}" contains an invalid Firebase key character`;
+          logger.error("SyncQueue", `Queue entry kept pending: ${issue}`, { entries, issue });
+          continue;
+        }
+
+        let syncPhase = "write to Firebase";
         try {
           await update(ref(db), batch.updates);
+          syncPhase = "update local synced state";
 
           if (batch.birdEvents.length > 0) {
             birdEventsStore.setMany(batch.birdEvents);
@@ -176,10 +238,16 @@ export async function syncQueue(): Promise<boolean> {
           }
 
           // Remove queue rows only after Firebase accepts the atomic batch.
+          syncPhase = "remove the local pending entry";
           await removeManyFromQueue(batch.queueIds);
           successCount += batch.queueIds.length;
         } catch (err) {
-          logger.error("SyncQueue", `Failed to sync batch of ${batch.queueIds.length} event(s)`, err);
+          const error = describeSyncError(err);
+          logger.error(
+            "SyncQueue",
+            `Failed to ${syncPhase}${error.code ? ` (${error.code})` : ""}: ${error.message}`,
+            { entries, phase: syncPhase, error }
+          );
         }
       }
 
@@ -334,6 +402,9 @@ export const actions = {
       const normalizedSpeciesKey = resolveSpeciesKey(captureData.species, speciesAliasesMap);
       const normalizedBander = (captureData.bander ?? "").toUpperCase();
       const normalizedScribe = (captureData.scribe ?? "").toUpperCase();
+      const wing = parseCaptureNumber(captureData.wing, "Wing");
+      const fat = parseCaptureNumber(captureData.fat, "Fat");
+      const weight = parseCaptureNumber(captureData.weight, "Weight");
 
       // If modifying a still-queued event, swap the pending entry instead of
       // creating a modification chain — the target never reached RTDB.
@@ -355,6 +426,9 @@ export const actions = {
         captureData.weight,
         previousEventId !== undefined && !replacingPendingId
       );
+      if (INVALID_FIREBASE_KEY_CHARACTER.test(newEventId)) {
+        throw new Error("Band, net, wing, or weight contains a character Firebase cannot store");
+      }
       // A reset band can legitimately be entered with the exact values of
       // its hidden predecessor. Never overwrite that preserved event.
       if (!previousEventId && birdEventsStore.has(newEventId)) {
@@ -368,13 +442,13 @@ export const actions = {
         programId: captureData.programId,
         band,
         species: normalizedSpeciesKey,
-        wing: captureData.wing ? Number(captureData.wing) : 0,
+        wing,
         age: captureData.age,
         howAged: captureData.howAged,
         sex: captureData.sex,
         howSexed: captureData.howSexed,
-        fat: captureData.fat ? Number(captureData.fat) : 0,
-        weight: captureData.weight ? Number(captureData.weight) : 0,
+        fat,
+        weight,
         date: captureData.date,
         time: captureData.time,
         bander: normalizedBander,
