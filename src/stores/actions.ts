@@ -1,4 +1,4 @@
-import { get, ref, set, update } from "firebase/database";
+import { get, onValue, ref, set, update } from "firebase/database";
 import { signOut as firebaseSignOut } from "firebase/auth";
 import { auth, CURRENT_ENVIRONMENT, db } from "../firebase";
 import {
@@ -77,8 +77,19 @@ export async function refreshQueueState(): Promise<void> {
 }
 
 async function getFirebaseNow(): Promise<number> {
-  const offsetSnapshot = await get(ref(db, ".info/serverTimeOffset"));
-  const offset = Number(offsetSnapshot.val());
+  // Firebase's special .info paths are listener-only with the current RTDB
+  // backend: get() rejects them with "Invalid token in path".
+  const offset = await new Promise<number>((resolve, reject) => {
+    onValue(
+      ref(db, ".info/serverTimeOffset"),
+      (snapshot) => {
+        const value = Number(snapshot.val());
+        resolve(Number.isFinite(value) ? value : 0);
+      },
+      reject,
+      { onlyOnce: true }
+    );
+  });
   return Math.round(Date.now() + (Number.isFinite(offset) ? offset : 0));
 }
 
@@ -172,15 +183,19 @@ async function loadMissingPredecessors(pendingEvents: PendingEvent[]): Promise<M
 export async function syncQueue(): Promise<boolean> {
   if (!useAppStore.getState().isOnline) return false;
 
+  let queuePhase = "read the pending queue";
   try {
     while (useAppStore.getState().isOnline) {
+      queuePhase = "read the pending queue";
       const pendingEvents = await getQueuedEvents(CURRENT_ENVIRONMENT);
       logger.sync("SyncQueue", `Syncing ${pendingEvents.length} pending events...`);
       if (pendingEvents.length === 0) return true;
       const pendingById = new Map(pendingEvents.map((pending) => [pending.id, pending]));
 
       // syncedAt is a shared cursor, so correct the laptop clock with RTDB.
+      queuePhase = "read Firebase server time";
       const now = await getFirebaseNow();
+      queuePhase = "load predecessor events";
       const fetchedPredecessors = await loadMissingPredecessors(pendingEvents);
       let successCount = 0;
       const batches = buildSyncBatches(
@@ -251,6 +266,7 @@ export async function syncQueue(): Promise<boolean> {
         }
       }
 
+      queuePhase = "refresh the local pending count";
       await refreshQueueState();
       const remainingCount = (await getQueuedEvents(CURRENT_ENVIRONMENT)).length;
       logger.sync("SyncQueue", "Sync completed", {
@@ -266,7 +282,12 @@ export async function syncQueue(): Promise<boolean> {
     }
     return false;
   } catch (err) {
-    logger.error("SyncQueue", "Error syncing queue", err);
+    const error = describeSyncError(err);
+    logger.error(
+      "SyncQueue",
+      `Failed to ${queuePhase}${error.code ? ` (${error.code})` : ""}: ${error.message}`,
+      { phase: queuePhase, error }
+    );
     return false;
   }
 }
