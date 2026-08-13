@@ -139,6 +139,9 @@ export async function syncQueue(): Promise<boolean> {
           environment === CURRENT_ENVIRONMENT
             ? birdEventsStore.get(eventId) ?? fetchedPredecessors.get(eventId)
             : undefined,
+        // RTDB updates are atomic. Isolate queue rows so one malformed event
+        // cannot keep every independent capture in the pending state.
+        1,
       );
 
       for (const batch of batches) {
