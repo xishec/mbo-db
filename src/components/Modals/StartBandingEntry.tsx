@@ -115,6 +115,7 @@ const AUTO_ADVANCE_FIELDS = new Set<keyof CaptureFormData>([
 interface StartBandingEntryProps {
   entryId: string;
   isDoubleBanding?: boolean;
+  isOpen: boolean;
 }
 
 type EntryMessage = {
@@ -196,7 +197,7 @@ function getWingAutoAdvanceRange(speciesRange: SpeciesRange | undefined): Return
   };
 }
 
-export default function StartBandingEntry({ entryId, isDoubleBanding = false }: StartBandingEntryProps) {
+export default function StartBandingEntry({ entryId, isDoubleBanding = false, isOpen }: StartBandingEntryProps) {
   const selectedProgram = useAppStore((s) => s.selectedProgram);
   const isAppSaving = useAppStore((s) => s.isSaving);
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
@@ -217,6 +218,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
   const [validationMessageIndex, setValidationMessageIndex] = useState(0);
   const [isBirdStatusModalOpen, setIsBirdStatusModalOpen] = useState(false);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [isTimeAutoFilled, setIsTimeAutoFilled] = useState(true);
   const [reminderNotice, setReminderNotice] = useState<{
     bandId: string;
     notes: string[];
@@ -288,7 +290,29 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
     setSelectedPage(null);
     setIsEntryWarningOpen(false);
     shownEntryWarningKeyRef.current = "";
+    setIsTimeAutoFilled(true);
   }, [selectedProgram?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !isTimeAutoFilled) return;
+
+    const updateAutoFilledTime = () => {
+      const time = new Date().toTimeString().slice(0, 5);
+      setFormData((prev) => (prev.time === time ? prev : { ...prev, time }));
+    };
+
+    updateAutoFilledTime();
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    const timeoutId = setTimeout(() => {
+      updateAutoFilledTime();
+      intervalId = setInterval(updateAutoFilledTime, 60_000);
+    }, 60_000 - (Date.now() % 60_000));
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOpen, isTimeAutoFilled]);
 
   const bandId = useMemo(() => {
     if (formData.bandGroup.length === 7 && formData.bandLastTwoDigits.length === 2) {
@@ -690,12 +714,18 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
       time: {
         value: timeParts[0] ?? "",
         maxLen: 2,
-        onUpdate: (value) => setFormData((prev) => ({ ...prev, time: `${value}:${timeParts[1] ?? ""}` })),
+        onUpdate: (value) => {
+          setIsTimeAutoFilled(false);
+          setFormData((prev) => ({ ...prev, time: `${value}:${timeParts[1] ?? ""}` }));
+        },
       },
       "time-minute": {
         value: timeParts[1] ?? "",
         maxLen: 2,
-        onUpdate: (value) => setFormData((prev) => ({ ...prev, time: `${timeParts[0] ?? ""}:${value}` })),
+        onUpdate: (value) => {
+          setIsTimeAutoFilled(false);
+          setFormData((prev) => ({ ...prev, time: `${timeParts[0] ?? ""}:${value}` }));
+        },
       },
     };
 
@@ -998,6 +1028,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false }: 
       const nextDate = getLocalDateString(now);
       const nextTime = now.toTimeString().slice(0, 5);
 
+      setIsTimeAutoFilled(true);
       setFormData((prev) => ({
         ...prev,
         net: "",
