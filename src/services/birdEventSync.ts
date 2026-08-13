@@ -4,10 +4,11 @@ import { runSync } from "../stores/actions";
 import { rebuildBirdEventState } from "../stores/rebuildAppState";
 import { useAppStore } from "../stores/useAppStore";
 import { Band, type BirdEvent } from "../types";
+import { filterBirdEventDelta, getBirdEventDeltaStart } from "./birdEventDelta";
 import { birdEventsStore } from "./birdEventsStore";
 import { getLastUpdated, getQueuedEvents, putBirdEvents, saveLastUpdated } from "./indexedDB";
 
-/** Upload pending work, then apply only bird events newer than the local cursor. */
+/** Upload pending work, then apply bird events at or beyond the local cursor. */
 export async function refreshBirdEventDelta(isCancelled: () => boolean): Promise<number> {
   const queueFlushed = await runSync(false);
   if (!queueFlushed || isCancelled() || !useAppStore.getState().isOnline) return 0;
@@ -19,7 +20,9 @@ export async function refreshBirdEventDelta(isCancelled: () => boolean): Promise
     query(
       ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap`),
       orderByChild("syncedAt"),
-      startAt(lastEventSync + 1)
+      // A small overlap covers equal timestamps and mixed-version clock skew;
+      // already-held rows are filtered before rebuilding local state.
+      startAt(getBirdEventDeltaStart(lastEventSync))
     )
   );
   if (!snapshot.exists() || isCancelled()) return 0;
@@ -27,8 +30,13 @@ export async function refreshBirdEventDelta(isCancelled: () => boolean): Promise
   // Do not let a remote delta overwrite local work queued during the read.
   if ((await getQueuedEvents(CURRENT_ENVIRONMENT)).length > 0 || isCancelled()) return 0;
 
-  const delta = snapshot.val() as Record<string, BirdEvent>;
+  const delta = filterBirdEventDelta(
+    snapshot.val() as Record<string, BirdEvent>,
+    lastEventSync,
+    (eventId) => birdEventsStore.get(eventId)
+  );
   const rawEvents = Object.values(delta);
+  if (rawEvents.length === 0) return 0;
   const hydratedEvents = rawEvents.map((event) => ({
     ...event,
     band: new Band(event.band.bandPrefix, event.band.bandSuffix, event.band.bandSize ?? null),

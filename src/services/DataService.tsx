@@ -38,6 +38,7 @@ import {
 } from "./indexedDB";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { logger } from "./logger";
+import { filterBirdEventDelta, getBirdEventDeltaStart } from "./birdEventDelta";
 import { refreshBirdEventDelta } from "./birdEventSync";
 import { rebuildBirdEventState } from "../stores/rebuildAppState";
 
@@ -335,10 +336,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setStatus("Checking for new events...");
           try {
             const deltaSnap = await get(
-              query(ref(db, `${env}/birdEventsMap`), orderByChild("syncedAt"), startAt(lastEventSync + 1))
+              // Keep a small overlap for equal timestamps and mixed-version
+              // clock skew. Unchanged overlap rows are filtered below.
+              query(
+                ref(db, `${env}/birdEventsMap`),
+                orderByChild("syncedAt"),
+                startAt(getBirdEventDeltaStart(lastEventSync))
+              )
             );
             deltaEvents = deltaSnap.exists()
-              ? (deltaSnap.val() as Record<string, BirdEvent>)
+              ? filterBirdEventDelta(
+                  deltaSnap.val() as Record<string, BirdEvent>,
+                  lastEventSync,
+                  (eventId) => cachedData.birdEventsMap[eventId]
+                )
               : {};
             const deltaCount = Object.keys(deltaEvents).length;
 
@@ -463,9 +474,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         setStatus("Saving to cache...");
         // Delta cursor for next sync = max server-stamped syncedAt we've seen.
-        // Using wall-clock `Date.now()` is unsafe: if this client's clock is
-        // ahead of the client that wrote the next event, `startAt(cursor + 1)`
-        // would skip that event forever.
+        // The next query overlaps this boundary so equal/slightly older
+        // commits cannot be skipped; unchanged rows are filtered first.
         let maxSyncedAt = lastEventSync ?? 0;
         let allEventCount = isFullEventSnapshot ? 0 : cachedEventCount + addedDeltaEventCount;
         const cursorSource = isFullEventSnapshot ? allEvents : deltaEvents;

@@ -1,4 +1,4 @@
-import { get, onValue, ref, set, update } from "firebase/database";
+import { get, ref, serverTimestamp, set, update } from "firebase/database";
 import { signOut as firebaseSignOut } from "firebase/auth";
 import { auth, CURRENT_ENVIRONMENT, db } from "../firebase";
 import {
@@ -74,23 +74,6 @@ export async function refreshQueueState(): Promise<void> {
       queued.filter((p) => p.type === "bird-event").map((p) => (p as PendingBirdEvent).pendingEvent.id)
     ),
   });
-}
-
-async function getFirebaseNow(): Promise<number> {
-  // Firebase's special .info paths are listener-only with the current RTDB
-  // backend: get() rejects them with "Invalid token in path".
-  const offset = await new Promise<number>((resolve, reject) => {
-    onValue(
-      ref(db, ".info/serverTimeOffset"),
-      (snapshot) => {
-        const value = Number(snapshot.val());
-        resolve(Number.isFinite(value) ? value : 0);
-      },
-      reject,
-      { onlyOnce: true }
-    );
-  });
-  return Math.round(Date.now() + (Number.isFinite(offset) ? offset : 0));
 }
 
 const INVALID_FIREBASE_KEY_CHARACTER = /[.#$[\]/]/;
@@ -192,15 +175,11 @@ export async function syncQueue(): Promise<boolean> {
       if (pendingEvents.length === 0) return true;
       const pendingById = new Map(pendingEvents.map((pending) => [pending.id, pending]));
 
-      // syncedAt is a shared cursor, so correct the laptop clock with RTDB.
-      queuePhase = "read Firebase server time";
-      const now = await getFirebaseNow();
       queuePhase = "load predecessor events";
       const fetchedPredecessors = await loadMissingPredecessors(pendingEvents);
       let successCount = 0;
       const batches = buildSyncBatches(
         pendingEvents,
-        now,
         (environment, eventId) =>
           environment === CURRENT_ENVIRONMENT
             ? birdEventsStore.get(eventId) ?? fetchedPredecessors.get(eventId)
@@ -230,7 +209,20 @@ export async function syncQueue(): Promise<boolean> {
 
         let syncPhase = "write to Firebase";
         try {
-          await update(ref(db), batch.updates);
+          const serverUpdates = { ...batch.updates };
+          for (const event of batch.birdEvents) {
+            serverUpdates[`${CURRENT_ENVIRONMENT}/birdEventsMap/${event.id}`] = {
+              ...stripUndefined(event),
+              // Resolve at commit time so the delta cursor uses Firebase's
+              // clock rather than any laptop's clock.
+              syncedAt: serverTimestamp(),
+            };
+          }
+          if (batch.dets.length > 0) {
+            serverUpdates[`${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsMap`] = serverTimestamp();
+          }
+
+          await update(ref(db), serverUpdates);
           syncPhase = "update local synced state";
 
           if (batch.birdEvents.length > 0) {
@@ -241,6 +233,15 @@ export async function syncQueue(): Promise<boolean> {
           }
 
           if (batch.dets.length > 0) {
+            syncPhase = "read the committed DET timestamp";
+            const detTimestampSnapshot = await get(
+              ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsMap`)
+            );
+            const detTimestamp = Number(detTimestampSnapshot?.val());
+            if (!Number.isFinite(detTimestamp)) {
+              throw new Error("Firebase did not resolve the DET sync timestamp");
+            }
+            syncPhase = "update local synced state";
             useAppStore.setState((state) => {
               const DETsMap = { ...state.DETsMap };
               for (const det of batch.dets) DETsMap[det.date] = det;
@@ -248,7 +249,7 @@ export async function syncQueue(): Promise<boolean> {
             });
             Promise.all([
               ...batch.dets.map((det) => updateDETInCache(CURRENT_ENVIRONMENT, det)),
-              saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, now),
+              saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, detTimestamp),
             ]).catch((err) => logger.warn("SyncQueue", "Failed to cache synced DET state", err));
           }
 

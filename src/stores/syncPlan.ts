@@ -25,7 +25,6 @@ const detKey = (environment: string, date: string): string => `${environment}\u0
  */
 export function buildSyncBatches(
   pendingEvents: PendingEvent[],
-  now: number,
   getExistingEvent: (environment: string, eventId: string) => BirdEvent | undefined,
   batchSize = 50,
 ): SyncBatch[] {
@@ -49,7 +48,7 @@ export function buildSyncBatches(
 
   const finalEvents = new Map<string, BirdEvent>();
   for (const [key, pending] of pendingBirdEvents) {
-    finalEvents.set(key, { ...pending.pendingEvent, syncedAt: now });
+    finalEvents.set(key, pending.pendingEvent);
   }
 
   // A predecessor should have only one successor. If an old queue contains
@@ -74,7 +73,6 @@ export function buildSyncBatches(
     finalEvents.set(previousKey, {
       ...previous,
       modifiedEventId: successor.pendingEvent.id,
-      syncedAt: now,
     });
   }
 
@@ -157,7 +155,6 @@ export function buildSyncBatches(
         const det = finalDets.get(key);
         if (det) {
           updates[`${pending.environment}/DETsMap/${det.date}`] = det;
-          updates[`${pending.environment}/metadata/lastModified_DETsMap`] = now;
           batchDets.set(key, det);
         }
       }
