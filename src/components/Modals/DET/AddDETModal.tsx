@@ -1,6 +1,13 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, type ChangeEvent } from "react";
 import { Button, Input, Select, SelectItem, Textarea } from "@heroui/react";
-import type { DET, Net, ObserverHours, NetHours, Weather } from "../../../types/DET";
+import {
+  DET_SPECIES_CODES_SET,
+  type DET,
+  type Net,
+  type ObserverHours,
+  type NetHours,
+  type Weather,
+} from "../../../types/DET";
 import { BirdEventType } from "../../../types";
 import { useAppStore } from "../../../stores/useAppStore";
 import { loadDETCalendar, type DETCalendarEntry } from "../../../services/detCalendarService";
@@ -8,13 +15,14 @@ import { fetchWeatherForDateTimeRange } from "../../../services/weatherService";
 import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
 import { getLocalDateString } from "../../../utils/dateUtils";
+import { parseCsv } from "../../../utils/csv";
 import { showPersistentErrorToast } from "../../../utils/toast";
 import DETObserverHoursSection from "./DETObserverHoursSection";
 import DETNetHoursSection from "./DETNetHoursSection";
 import DETSpeciesDataSection from "./DETSpeciesDataSection";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
-import { resolveSpeciesKey } from "../../../types/species";
+import { resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
 import { isActiveBirdEvent } from "../../../stores/derive";
 
 interface AddDETModalProps {
@@ -46,6 +54,71 @@ function textFieldToString(value: unknown): string {
 
 function cloneCount(count?: Record<string, number>): Record<string, number> {
   return { ...(count || {}) };
+}
+
+function normalizeSpeciesName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+const CENSUS_SPECIES_NAME_ALIASES: Record<string, string> = {
+  "northern flicker": "yellow-shafted flicker",
+};
+
+interface UnmatchedCensusSpecies {
+  name: string;
+  count: number;
+  code: string;
+}
+
+function importCensusSpeciesCounts(csv: string): {
+  counts: Record<string, number>;
+  unmatchedSpecies: Array<Omit<UnmatchedCensusSpecies, "code">>;
+  invalidSpecies: string[];
+} {
+  const rows = parseCsv(csv);
+  const speciesByName = new Map<string, string>();
+
+  Object.entries(SPECIES_MAP).forEach(([code, species]) => {
+    [species.speciesDescriptionMBO, species.speciesDescriptionCMMN].forEach((name) => {
+      if (name) speciesByName.set(normalizeSpeciesName(name), code);
+    });
+  });
+
+  const counts: Record<string, number> = {};
+  const unmatchedByName = new Map<string, Omit<UnmatchedCensusSpecies, "code">>();
+  const invalidSpecies: string[] = [];
+  const dataRows =
+    normalizeSpeciesName(rows[0]?.[0] ?? "") === "species" && normalizeSpeciesName(rows[0]?.[1] ?? "") === "count"
+      ? rows.slice(1)
+      : rows;
+
+  dataRows.forEach((row) => {
+    const speciesName = row[0]?.trim();
+    const count = Number(row[1]);
+    if (!speciesName) return;
+    if (!Number.isFinite(count) || count <= 0) {
+      invalidSpecies.push(speciesName);
+      return;
+    }
+
+    const normalizedName = normalizeSpeciesName(speciesName);
+    const aliasedName = CENSUS_SPECIES_NAME_ALIASES[normalizedName];
+    const nameWithoutDirectionalPrefix = normalizedName.replace(/^(eastern|northern|southern|western)\s+/, "");
+    const speciesCode =
+      speciesByName.get(normalizedName) ??
+      (aliasedName ? speciesByName.get(aliasedName) : undefined) ??
+      speciesByName.get(nameWithoutDirectionalPrefix);
+
+    if (!speciesCode) {
+      const existing = unmatchedByName.get(normalizedName);
+      unmatchedByName.set(normalizedName, { name: speciesName, count: (existing?.count ?? 0) + count });
+      return;
+    }
+
+    counts[speciesCode] = (counts[speciesCode] ?? 0) + count;
+  });
+
+  return { counts, unmatchedSpecies: Array.from(unmatchedByName.values()), invalidSpecies };
 }
 
 interface EventSpeciesCounts {
@@ -103,7 +176,14 @@ function scheduledNetHours(open: string, closed: string): NetHours {
   };
 }
 
-export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET, defaultDate, mode }: AddDETModalProps) {
+export default function AddDETModal({
+  isOpen,
+  onOpenChange,
+  onSave,
+  existingDET,
+  defaultDate,
+  mode,
+}: AddDETModalProps) {
   const birdEventsVersion = useBirdEventsVersion();
   const volunteersMap = useAppStore((state) => state.volunteersMap);
   const DETsMap = useAppStore((state) => state.DETsMap);
@@ -140,32 +220,62 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const bandResetsMap = useAppStore((s) => s.bandResetsMap);
 
-  const getSpeciesCountsFromEvents = useCallback((eventDate: string): EventSpeciesCounts => {
-    const banded: Record<string, number> = {};
-    const repeat: Record<string, number> = {};
-    const return_: Record<string, number> = {};
-    for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.date !== eventDate || !isActiveBirdEvent(ev, bandResetsMap) || !ev.species) continue;
-      const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
-      if (ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None) {
-        banded[speciesKey] = (banded[speciesKey] ?? 0) + 1;
-      } else if (ev.birdEventType === BirdEventType.Repeat) {
-        repeat[speciesKey] = (repeat[speciesKey] ?? 0) + 1;
-      } else if (ev.birdEventType === BirdEventType.Return) {
-        return_[speciesKey] = (return_[speciesKey] ?? 0) + 1;
-      }
-    }
-    return { banded, repeat, return_ };
-  }, [speciesAliasesMap, bandResetsMap]);
+  const existingCustomSpeciesCodes = useMemo(() => {
+    const codes = new Set<string>();
+    [
+      observedSpeciesCount,
+      censusSpeciesCount,
+      bandedSpeciesCount,
+      repeatSpeciesCount,
+      returnSpeciesCount,
+      DETSpeciesCount,
+    ].forEach((counts) => {
+      Object.keys(counts).forEach((code) => {
+        if (!DET_SPECIES_CODES_SET.has(code)) codes.add(code);
+      });
+    });
+    return codes;
+  }, [
+    DETSpeciesCount,
+    bandedSpeciesCount,
+    censusSpeciesCount,
+    observedSpeciesCount,
+    repeatSpeciesCount,
+    returnSpeciesCount,
+  ]);
 
-  const getProgramIdsForDate = useCallback((eventDate: string): string[] => {
-    const programIds = new Set<string>();
-    for (const ev of birdEventsStore.getAll().values()) {
-      if (!ev || ev.date !== eventDate || !isActiveBirdEvent(ev, bandResetsMap) || !ev.programId) continue;
-      programIds.add(ev.programId);
-    }
-    return Array.from(programIds).sort((a, b) => a.localeCompare(b));
-  }, [bandResetsMap]);
+  const getSpeciesCountsFromEvents = useCallback(
+    (eventDate: string): EventSpeciesCounts => {
+      const banded: Record<string, number> = {};
+      const repeat: Record<string, number> = {};
+      const return_: Record<string, number> = {};
+      for (const ev of birdEventsStore.getAll().values()) {
+        if (!ev || ev.date !== eventDate || !isActiveBirdEvent(ev, bandResetsMap) || !ev.species) continue;
+        const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
+        if (ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None) {
+          banded[speciesKey] = (banded[speciesKey] ?? 0) + 1;
+        } else if (ev.birdEventType === BirdEventType.Repeat) {
+          repeat[speciesKey] = (repeat[speciesKey] ?? 0) + 1;
+        } else if (ev.birdEventType === BirdEventType.Return) {
+          return_[speciesKey] = (return_[speciesKey] ?? 0) + 1;
+        }
+      }
+      return { banded, repeat, return_ };
+    },
+    [speciesAliasesMap, bandResetsMap]
+  );
+
+  const getProgramIdsForDate = useCallback(
+    (eventDate: string): string[] => {
+      const programIds = new Set<string>();
+      for (const ev of birdEventsStore.getAll().values()) {
+        if (!ev || ev.date !== eventDate || !isActiveBirdEvent(ev, bandResetsMap) || !ev.programId) continue;
+        programIds.add(ev.programId);
+      }
+      return Array.from(programIds).sort((a, b) => a.localeCompare(b));
+    },
+    [bandResetsMap]
+  );
 
   const programIdsForDate = useMemo(() => {
     if (!date) return [];
@@ -233,6 +343,14 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
   // UI state
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const [censusCsvMessage, setCensusCsvMessage] = useState("");
+  const [censusCsvHasWarning, setCensusCsvHasWarning] = useState(false);
+  const [pendingCensusImport, setPendingCensusImport] = useState<{
+    counts: Record<string, number>;
+    unmatchedSpecies: UnmatchedCensusSpecies[];
+    invalidSpecies: string[];
+  } | null>(null);
+  const [censusCodeError, setCensusCodeError] = useState("");
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [detCalendar, setDetCalendar] = useState<Record<string, DETCalendarEntry>>({});
 
@@ -306,7 +424,93 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
       setWeather(undefined);
     }
     setError("");
+    setCensusCsvMessage("");
+    setCensusCsvHasWarning(false);
+    setPendingCensusImport(null);
+    setCensusCodeError("");
   }, [mode, existingDET, defaultDate, DETsMap, getProgramIdsForDate, getSpeciesCountsFromEvents, isOpen]);
+
+  const handleCensusCsvUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const { counts, unmatchedSpecies, invalidSpecies } = importCensusSpeciesCounts(await file.text());
+      const importedCount = Object.keys(counts).length;
+      if (importedCount === 0 && unmatchedSpecies.length === 0) {
+        setCensusCsvHasWarning(true);
+        setCensusCsvMessage("No valid species counts were found. The current census data was not changed.");
+        return;
+      }
+
+      if (unmatchedSpecies.length > 0) {
+        setPendingCensusImport({
+          counts,
+          unmatchedSpecies: unmatchedSpecies.map((species) => ({ ...species, code: "" })),
+          invalidSpecies,
+        });
+        setCensusCodeError("");
+        return;
+      }
+
+      setCensusSpeciesCount(counts);
+      setCensusCsvHasWarning(invalidSpecies.length > 0);
+      setCensusCsvMessage(
+        invalidSpecies.length > 0
+          ? `Imported ${importedCount} species and replaced the census data. Invalid counts: ${invalidSpecies.join(", ")}.`
+          : `Imported ${importedCount} species and replaced the census data.`
+      );
+    } catch (uploadError) {
+      console.error("Failed to import census CSV:", uploadError);
+      setCensusCsvHasWarning(true);
+      setCensusCsvMessage("The CSV could not be read. The current census data was not changed.");
+    }
+  };
+
+  const applyCensusSpeciesCodes = () => {
+    if (!pendingCensusImport) return;
+
+    const normalizedCodes = pendingCensusImport.unmatchedSpecies.map((species) => species.code.trim().toUpperCase());
+    if (normalizedCodes.some((code) => !code)) {
+      setCensusCodeError("Enter a code for every species.");
+      return;
+    }
+    if (new Set(normalizedCodes).size !== normalizedCodes.length) {
+      setCensusCodeError("Each species needs a different code.");
+      return;
+    }
+    if (normalizedCodes.some((code) => DET_SPECIES_CODES_SET.has(code))) {
+      setCensusCodeError("Use a custom code that is not already in the main species tables.");
+      return;
+    }
+    const unavailableCustomCodes = new Set([
+      ...existingCustomSpeciesCodes,
+      ...Object.keys(pendingCensusImport.counts).filter((code) => !DET_SPECIES_CODES_SET.has(code)),
+    ]);
+    const duplicatedExistingCode = normalizedCodes.find((code) => unavailableCustomCodes.has(code));
+    if (duplicatedExistingCode) {
+      setCensusCodeError(`Code ${duplicatedExistingCode} is already used by another bird.`);
+      return;
+    }
+
+    const counts = { ...pendingCensusImport.counts };
+    pendingCensusImport.unmatchedSpecies.forEach((species, index) => {
+      const code = normalizedCodes[index];
+      counts[code] = (counts[code] ?? 0) + species.count;
+    });
+
+    const importedCount = Object.keys(counts).length;
+    setCensusSpeciesCount(counts);
+    setCensusCsvHasWarning(pendingCensusImport.invalidSpecies.length > 0);
+    setCensusCsvMessage(
+      pendingCensusImport.invalidSpecies.length > 0
+        ? `Imported ${importedCount} species and replaced the census data. Invalid counts: ${pendingCensusImport.invalidSpecies.join(", ")}.`
+        : `Imported ${importedCount} species and replaced the census data.`
+    );
+    setPendingCensusImport(null);
+    setCensusCodeError("");
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -639,7 +843,30 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
                   placeholder="Released bird notes..."
                 />
 
+                <section>
+                  <p className="text-small pb-1">Import Census CSV</p>
+                  <div className="rounded-medium border border-default-200 px-3 py-3">
+                    <input
+                      aria-label="Upload census CSV"
+                      className="block w-full text-sm text-default-700 file:mr-3 file:rounded-medium file:border-0 file:bg-default-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-default-700 hover:file:bg-default-200"
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleCensusCsvUpload}
+                    />
+                    <p className="mt-2 text-xs text-default-500">
+                      Uses the Species and Count values from the first two columns. Importing replaces all census counts
+                      below.
+                    </p>
+                    {censusCsvMessage && (
+                      <p className={`mt-2 text-sm ${censusCsvHasWarning ? "text-warning-600" : "text-success-600"}`}>
+                        {censusCsvMessage}
+                      </p>
+                    )}
+                  </div>
+                </section>
+
                 <DETSpeciesDataSection
+                  key={`${mode}-${existingDET?.date ?? defaultDate ?? "new"}-${isOpen}`}
                   observedSpeciesCount={observedSpeciesCount}
                   censusSpeciesCount={censusSpeciesCount}
                   bandedSpeciesCount={bandedSpeciesCount}
@@ -658,6 +885,70 @@ export default function AddDETModal({ isOpen, onOpenChange, onSave, existingDET,
               </Button>
               <Button {...modalPrimaryButtonProps} onPress={handleSave} isLoading={isSaving}>
                 {mode === "create" ? "Create DET" : "Save Changes"}
+              </Button>
+            </ModalFooterShell>
+          </>
+        )}
+      </ModalShell>
+      <ModalShell
+        modalProps={{
+          isOpen: pendingCensusImport !== null,
+          onOpenChange: () => {
+            setPendingCensusImport(null);
+            setCensusCodeError("");
+          },
+          size: "lg",
+          isDismissable: false,
+          isKeyboardDismissDisabled: true,
+          scrollBehavior: "inside",
+        }}
+      >
+        {(onClose) => (
+          <>
+            <ModalHeaderShell>Assign Custom Bird Codes</ModalHeaderShell>
+            <ModalBodyShell>
+              <p className="text-sm text-default-600">
+                These CSV species were not found. Enter a custom code for each one; they will be added to OTHER.
+              </p>
+              {censusCodeError && (
+                <div className="rounded-lg bg-danger-50 p-3 text-sm text-danger-500">{censusCodeError}</div>
+              )}
+              <div className="space-y-4">
+                {pendingCensusImport?.unmatchedSpecies.map((species, index) => (
+                  <Input
+                    key={species.name}
+                    {...modalInputProps}
+                    label={`${species.name} (${species.count})`}
+                    placeholder="Custom bird code"
+                    value={species.code}
+                    onValueChange={(code) => {
+                      const normalizedCode = code.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+                      setPendingCensusImport((current) => {
+                        if (!current) return current;
+                        const nextSpecies = current.unmatchedSpecies.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, code: normalizedCode } : item
+                        );
+                        return { ...current, unmatchedSpecies: nextSpecies };
+                      });
+                      setCensusCodeError("");
+                    }}
+                  />
+                ))}
+              </div>
+            </ModalBodyShell>
+            <ModalFooterShell>
+              <Button
+                {...modalCancelButtonProps}
+                onPress={() => {
+                  setPendingCensusImport(null);
+                  setCensusCodeError("");
+                  onClose();
+                }}
+              >
+                Cancel Import
+              </Button>
+              <Button {...modalPrimaryButtonProps} onPress={applyCensusSpeciesCodes}>
+                Apply Codes
               </Button>
             </ModalFooterShell>
           </>
