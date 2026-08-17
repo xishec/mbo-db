@@ -42,8 +42,6 @@ import { filterBirdEventDelta, getBirdEventDeltaStart } from "./birdEventDelta";
 import { refreshBirdEventDelta } from "./birdEventSync";
 import { rebuildBirdEventState } from "../stores/rebuildAppState";
 
-const DETS_BY_DATE_CACHE_VERSION = "date-program-v2-authoritative";
-
 async function getQueuedEventsForLoad(): Promise<PendingEvent[]> {
   try {
     return await getQueuedEvents(CURRENT_ENVIRONMENT);
@@ -267,6 +265,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoggedIn) return;
     let cancelled = false;
+    let authoritativeDETsByDateMap: DETsByDateMap | null = null;
 
     const setStatus = (loadingStatus: string) => useAppStore.setState({ loadingStatus });
 
@@ -314,42 +313,40 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         type RtdbMetadata = Record<string, number> | null;
         let rtdbMetadata: RtdbMetadata = null;
-        let cachedDETCacheVersion: number | string | null = null;
         let cachedTimestamps: (number | null)[] = [];
-        try {
-          const snap = await get(ref(db, `${env}/metadata`));
-          rtdbMetadata = snap.exists() ? snap.val() : null;
-        } catch (err) {
-          if (cachedData) {
-            logger.warn("DataLoad", "Firebase metadata unavailable; using cached data", err);
-            setStatus("Using cached data (Firebase unreachable)");
-            const queued = await getQueuedEventsForLoad();
-            if (cancelled) return;
-            populateStateFromData(cachedData, queued);
-            useAppStore.setState({
-              lastSyncedAt: lastEventSync ?? Date.now(),
-              isLoading: false,
-            });
-            return;
-          }
+        const [metadataResult, detResult] = await Promise.allSettled([
+          get(ref(db, `${env}/metadata`)),
+          get(ref(db, `${env}/DETsByDateMap`)),
+        ]);
+
+        if (metadataResult.status === "fulfilled") {
+          rtdbMetadata = metadataResult.value.exists() ? metadataResult.value.val() : null;
+        } else {
+          // Metadata only controls incremental refreshes. Its failure must not
+          // hide authoritative DET data or otherwise force a stale cache.
+          logger.warn("DataLoad", "Firebase metadata unavailable; refreshing maps", metadataResult.reason);
+        }
+
+        if (detResult.status === "fulfilled" && detResult.value.exists()) {
+          authoritativeDETsByDateMap = detResult.value.val() as DETsByDateMap;
+        } else if (!cachedData?.DETsByDateMap || Object.keys(cachedData.DETsByDateMap).length === 0) {
+          throw detResult.status === "rejected"
+            ? detResult.reason
+            : new Error(`${env}/DETsByDateMap is missing from the database.`);
+        } else if (detResult.status === "rejected") {
+          logger.warn("DataLoad", "Authoritative DET map unavailable; using offline cache", detResult.reason);
         }
 
         try {
-          const [cachedVersion, cached] = await Promise.all([
-            getMetadata(`DETsByDateMapCacheVersion_${env}`),
-            Promise.all(
-              INDEPENDENT_MAP_NAMES.map(
-                (m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>
-              )
-            ),
-          ]);
-          cachedDETCacheVersion = cachedVersion;
-          cachedTimestamps = cached;
+          cachedTimestamps = await Promise.all(
+            INDEPENDENT_MAP_NAMES.map(
+              (m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>
+            )
+          );
         } catch (err) {
           // A broken local metadata entry must not block a valid server
           // refresh. Missing timestamps safely force the maps to re-download.
           logger.warn("DataLoad", "Cache metadata unreadable; refreshing maps", err);
-          cachedDETCacheVersion = null;
           cachedTimestamps = INDEPENDENT_MAP_NAMES.map(() => null);
         }
 
@@ -358,13 +355,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           INDEPENDENT_MAP_NAMES.forEach((m, i) => {
             const rtdbTs = rtdbMetadata?.[`lastModified_${m}`] as number | undefined;
             const cachedTs = cachedTimestamps[i];
-            // Force one complete DET-map refresh for every pre-migration
-            // browser, including caches that are stale but non-empty.
-            const needsDETCacheMigration =
-              m === "DETsByDateMap" &&
-              (cachedDETCacheVersion !== DETS_BY_DATE_CACHE_VERSION ||
-                Object.keys(cachedData.DETsByDateMap ?? {}).length === 0);
-            if (needsDETCacheMigration || !cachedTs || (rtdbTs != null && rtdbTs > cachedTs)) {
+            if (!cachedTs || (rtdbTs != null && rtdbTs > cachedTs)) {
               mapsToFetch.add(m);
             }
           });
@@ -409,7 +400,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               logger.info("DataLoad", "No new events, maps unchanged — using cache");
               const queuedForCache = await getQueuedEventsForLoad();
               if (cancelled) return;
-              populateStateFromData(cachedData, queuedForCache);
+              populateStateFromData(
+                authoritativeDETsByDateMap
+                  ? { ...cachedData, DETsByDateMap: authoritativeDETsByDateMap }
+                  : cachedData,
+                queuedForCache
+              );
               useAppStore.setState({ lastSyncedAt: lastEventSync });
               if (user) await runSync(false);
               return;
@@ -448,7 +444,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
-        let detsByDateMap = cachedData?.DETsByDateMap ?? {};
+        const detsByDateMap = authoritativeDETsByDateMap ?? cachedData?.DETsByDateMap ?? {};
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {}, species: {} };
         let volunteersMap = getVolunteerMetadata(cachedData);
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
@@ -465,9 +461,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             switch (fetching[i]) {
               case "dismissedConflictsMap":
                 dismissedMap = val ?? {};
-                break;
-              case "DETsByDateMap":
-                detsByDateMap = val ?? {};
                 break;
               case "magicTable":
                 magicTableData = val ?? { pyle: {}, species: {} };
@@ -555,12 +548,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             await Promise.all(metadataWrites);
 
             const detMapTimestamp = rtdbMetadata.lastModified_DETsByDateMap;
-            if (
-              mapsToFetch.has("DETsByDateMap") &&
-              Object.keys(detsByDateMap).length > 0 &&
-              typeof detMapTimestamp === "number"
-            ) {
-              await saveMetadata(`DETsByDateMapCacheVersion_${env}`, DETS_BY_DATE_CACHE_VERSION);
+            if (authoritativeDETsByDateMap && typeof detMapTimestamp === "number") {
+              await saveMetadata(`lastModified_DETsByDateMap_${env}`, detMapTimestamp);
             }
           }
         } catch (cacheError) {
@@ -600,9 +589,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) {
           try {
             const fallbackData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-            if (fallbackData) {
+            const hasCachedDETs = Object.keys(fallbackData?.DETsByDateMap ?? {}).length > 0;
+            if (fallbackData && (authoritativeDETsByDateMap || hasCachedDETs)) {
               const queued = await getQueuedEventsForLoad();
-              populateStateFromData(fallbackData, queued);
+              populateStateFromData(
+                authoritativeDETsByDateMap
+                  ? { ...fallbackData, DETsByDateMap: authoritativeDETsByDateMap }
+                  : fallbackData,
+                queued
+              );
               const fallbackLastSync = await getLastUpdated(CURRENT_ENVIRONMENT).catch(() => null);
               useAppStore.setState({ lastSyncedAt: fallbackLastSync });
               return;

@@ -1,6 +1,5 @@
 export const INDEPENDENT_MAP_NAMES = [
   "dismissedConflictsMap",
-  "DETsByDateMap",
   "magicTable",
   "volunteersMap",
   "bandGroupNotesMap",
