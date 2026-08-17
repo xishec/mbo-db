@@ -42,7 +42,7 @@ import { filterBirdEventDelta, getBirdEventDeltaStart } from "./birdEventDelta";
 import { refreshBirdEventDelta } from "./birdEventSync";
 import { rebuildBirdEventState } from "../stores/rebuildAppState";
 
-const DETS_BY_DATE_CACHE_VERSION = "date-program-v1";
+const DETS_BY_DATE_CACHE_VERSION = "date-program-v2-authoritative";
 
 async function getQueuedEventsForLoad(): Promise<PendingEvent[]> {
   try {
