@@ -43,6 +43,8 @@ import { refreshBirdEventDelta } from "./birdEventSync";
 import { rebuildBirdEventState } from "../stores/rebuildAppState";
 import { mergeDETsByDateMap } from "../utils/detIdentity";
 
+const DETS_BY_DATE_CACHE_VERSION = "date-program-v1";
+
 function normalizeObserverClass(value: unknown): Volunteer["observerClass"] {
   const parsed = Number(value);
   return parsed === 1 || parsed === 2 || parsed === 3 ? parsed : 3;
@@ -297,13 +299,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         type RtdbMetadata = Record<string, number> | null;
         let rtdbMetadata: RtdbMetadata = null;
+        let cachedDETCacheVersion: number | string | null = null;
         let cachedTimestamps: (number | null)[] = [];
         try {
-          const [snap, ...cached] = await Promise.all([
+          const [snap, cachedVersion, cached] = await Promise.all([
             get(ref(db, `${env}/metadata`)),
-            ...INDEPENDENT_MAP_NAMES.map((m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>),
+            getMetadata(`DETsByDateMapCacheVersion_${env}`),
+            Promise.all(
+              INDEPENDENT_MAP_NAMES.map(
+                (m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>
+              )
+            ),
           ]);
           rtdbMetadata = snap.exists() ? snap.val() : null;
+          cachedDETCacheVersion = cachedVersion;
           cachedTimestamps = cached;
         } catch {
           if (cachedData) {
@@ -324,12 +333,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           INDEPENDENT_MAP_NAMES.forEach((m, i) => {
             const rtdbTs = rtdbMetadata?.[`lastModified_${m}`] as number | undefined;
             const cachedTs = cachedTimestamps[i];
-            // Existing installs may have cached an empty DETsByDateMap before
-            // the migration was uploaded, along with a synthetic timestamp.
-            // Treat an absent/empty new map as a one-time migration fetch.
-            const isMissingNewDETMap =
-              m === "DETsByDateMap" && Object.keys(cachedData.DETsByDateMap ?? {}).length === 0;
-            if (isMissingNewDETMap || !cachedTs || (rtdbTs != null && rtdbTs > cachedTs)) {
+            // Force one complete DET-map refresh for every pre-migration
+            // browser, including caches that are stale but non-empty.
+            const needsDETCacheMigration =
+              m === "DETsByDateMap" &&
+              (cachedDETCacheVersion !== DETS_BY_DATE_CACHE_VERSION ||
+                Object.keys(cachedData.DETsByDateMap ?? {}).length === 0);
+            if (needsDETCacheMigration || !cachedTs || (rtdbTs != null && rtdbTs > cachedTs)) {
               mapsToFetch.add(m);
             }
           });
@@ -522,6 +532,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             return typeof timestamp === "number" ? [saveMetadata(`lastModified_${m}_${env}`, timestamp)] : [];
           });
           await Promise.all(metadataWrites);
+
+          const detMapTimestamp = rtdbMetadata.lastModified_DETsByDateMap;
+          if (
+            mapsToFetch.has("DETsByDateMap") &&
+            Object.keys(detsByDateMap).length > 0 &&
+            typeof detMapTimestamp === "number"
+          ) {
+            await saveMetadata(`DETsByDateMapCacheVersion_${env}`, DETS_BY_DATE_CACHE_VERSION);
+          }
         }
 
         birdEventsStore.replace(reconstructed);
