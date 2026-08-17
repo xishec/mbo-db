@@ -26,7 +26,9 @@ const LEGACY_EVENTS_STORE = "birdEvents";
 const LEGACY_EVENTS_ENV_KEY = "birdEventsEnvironment";
 
 function createCachedMetadata(data: Partial<DatabaseData>): DatabaseData {
-  const independentData = { ...data };
+  const independentData: Partial<DatabaseData> & { DETsMap?: unknown } = { ...data };
+  // Drop the obsolete date-only DET cache when any metadata is next saved.
+  delete independentData.DETsMap;
   delete independentData.birdEventsMap;
   delete independentData.yearsToProgramMap;
   delete independentData.programsMap;

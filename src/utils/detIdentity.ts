@@ -1,4 +1,4 @@
-import type { DET, DETsByDateMap, LegacyDETsMap } from "../types";
+import type { DET, DETsByDateMap } from "../types";
 
 const DET_KEY_SEPARATOR = "__";
 
@@ -43,32 +43,6 @@ export function getAllDETs(DETsByDateMap: DETsByDateMap): DET[] {
   return Object.values(DETsByDateMap)
     .flatMap((detsByProgram) => Object.values(detsByProgram ?? {}))
     .filter((det) => isValidDETProgramId(det.programId));
-}
-
-export function convertLegacyDETsMap(DETsMap: LegacyDETsMap | undefined): DETsByDateMap {
-  const converted: DETsByDateMap = {};
-  for (const [storageKey, det] of Object.entries(DETsMap ?? {})) {
-    if (!det || !isValidDETProgramId(det.programId)) continue;
-    const date = getDETDate(storageKey, det);
-    const programKey = getDETProgramKey(det.programId);
-    if (!date || !programKey) continue;
-    converted[date] = { ...(converted[date] ?? {}), [programKey]: det };
-  }
-  return converted;
-}
-
-export function mergeDETsByDateMap(
-  legacyDETsMap: LegacyDETsMap | undefined,
-  DETsByDateMap: DETsByDateMap | undefined
-): DETsByDateMap {
-  const merged = convertLegacyDETsMap(legacyDETsMap);
-  for (const [date, detsByProgram] of Object.entries(DETsByDateMap ?? {})) {
-    for (const [programKey, det] of Object.entries(detsByProgram ?? {})) {
-      if (!det || !isValidDETProgramId(det.programId)) continue;
-      merged[date] = { ...(merged[date] ?? {}), [programKey]: det };
-    }
-  }
-  return merged;
 }
 
 export function getDETDate(storageKey: string, det: Partial<DET> & { dt?: string }): string {

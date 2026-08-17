@@ -41,9 +41,17 @@ import { logger } from "./logger";
 import { filterBirdEventDelta, getBirdEventDeltaStart } from "./birdEventDelta";
 import { refreshBirdEventDelta } from "./birdEventSync";
 import { rebuildBirdEventState } from "../stores/rebuildAppState";
-import { mergeDETsByDateMap } from "../utils/detIdentity";
 
 const DETS_BY_DATE_CACHE_VERSION = "date-program-v1";
+
+async function getQueuedEventsForLoad(): Promise<PendingEvent[]> {
+  try {
+    return await getQueuedEvents(CURRENT_ENVIRONMENT);
+  } catch (err) {
+    logger.warn("DataLoad", "Pending-event cache unreadable; continuing without its overlay", err);
+    return [];
+  }
+}
 
 function normalizeObserverClass(value: unknown): Volunteer["observerClass"] {
   const parsed = Number(value);
@@ -151,10 +159,7 @@ function hydrateBirdEvents(events: Record<string, BirdEvent>): Map<string, BirdE
  */
 function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void {
   const volunteersMap = getVolunteerMetadata(data);
-  const detsByDateMap = normalizeDETObserverClasses(
-    mergeDETsByDateMap(data.DETsMap, data.DETsByDateMap),
-    volunteersMap
-  );
+  const detsByDateMap = normalizeDETObserverClasses(data.DETsByDateMap ?? {}, volunteersMap);
   setSpeciesMap(data.magicTable?.species ?? {});
   const speciesAliasesMap = normalizeSpeciesAliasesMap(data.speciesAliasesMap ?? {});
   const bandResetsMap = data.bandResetsMap ?? {};
@@ -269,14 +274,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       try {
         useAppStore.setState({ isLoading: true, error: null });
         logger.info("DataLoad", `Loading ${CURRENT_ENVIRONMENT}/ data...`);
-        const cachedData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
-        const lastEventSync = await getLastUpdated(CURRENT_ENVIRONMENT);
+        const [cachedDataResult, lastEventSyncResult] = await Promise.allSettled([
+          getDataFromIndexedDB(CURRENT_ENVIRONMENT),
+          getLastUpdated(CURRENT_ENVIRONMENT),
+        ]);
+        const cachedData = cachedDataResult.status === "fulfilled" ? cachedDataResult.value : null;
+        const lastEventSync = lastEventSyncResult.status === "fulfilled" ? lastEventSyncResult.value : null;
+        if (cachedDataResult.status === "rejected" || lastEventSyncResult.status === "rejected") {
+          logger.warn("DataLoad", "Local data cache unreadable; refreshing from Firebase", {
+            dataError: cachedDataResult.status === "rejected" ? cachedDataResult.reason : undefined,
+            timestampError: lastEventSyncResult.status === "rejected" ? lastEventSyncResult.reason : undefined,
+          });
+        }
         if (cancelled) return;
 
         if (!isOnline) {
           if (cachedData) {
             setStatus("Loading cached data...");
-            const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
+            const queued = await getQueuedEventsForLoad();
             if (cancelled) return;
             populateStateFromData(cachedData, queued);
             useAppStore.setState({
@@ -302,22 +317,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         let cachedDETCacheVersion: number | string | null = null;
         let cachedTimestamps: (number | null)[] = [];
         try {
-          const [snap, cachedVersion, cached] = await Promise.all([
-            get(ref(db, `${env}/metadata`)),
-            getMetadata(`DETsByDateMapCacheVersion_${env}`),
-            Promise.all(
-              INDEPENDENT_MAP_NAMES.map(
-                (m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>
-              )
-            ),
-          ]);
+          const snap = await get(ref(db, `${env}/metadata`));
           rtdbMetadata = snap.exists() ? snap.val() : null;
-          cachedDETCacheVersion = cachedVersion;
-          cachedTimestamps = cached;
-        } catch {
+        } catch (err) {
           if (cachedData) {
+            logger.warn("DataLoad", "Firebase metadata unavailable; using cached data", err);
             setStatus("Using cached data (Firebase unreachable)");
-            const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
+            const queued = await getQueuedEventsForLoad();
             if (cancelled) return;
             populateStateFromData(cachedData, queued);
             useAppStore.setState({
@@ -326,6 +332,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             });
             return;
           }
+        }
+
+        try {
+          const [cachedVersion, cached] = await Promise.all([
+            getMetadata(`DETsByDateMapCacheVersion_${env}`),
+            Promise.all(
+              INDEPENDENT_MAP_NAMES.map(
+                (m) => getMetadata(`lastModified_${m}_${env}`) as Promise<number | null>
+              )
+            ),
+          ]);
+          cachedDETCacheVersion = cachedVersion;
+          cachedTimestamps = cached;
+        } catch (err) {
+          // A broken local metadata entry must not block a valid server
+          // refresh. Missing timestamps safely force the maps to re-download.
+          logger.warn("DataLoad", "Cache metadata unreadable; refreshing maps", err);
+          cachedDETCacheVersion = null;
+          cachedTimestamps = INDEPENDENT_MAP_NAMES.map(() => null);
         }
 
         const mapsToFetch = new Set<IndependentMapName>();
@@ -382,7 +407,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             if (deltaCount === 0 && mapsToFetch.size === 0) {
               setStatus("Cache is up to date");
               logger.info("DataLoad", "No new events, maps unchanged — using cache");
-              const queuedForCache = await getQueuedEvents(CURRENT_ENVIRONMENT);
+              const queuedForCache = await getQueuedEventsForLoad();
               if (cancelled) return;
               populateStateFromData(cachedData, queuedForCache);
               useAppStore.setState({ lastSyncedAt: lastEventSync });
@@ -423,7 +448,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
-        let legacyDETsMap = cachedData?.DETsMap ?? {};
         let detsByDateMap = cachedData?.DETsByDateMap ?? {};
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {}, species: {} };
         let volunteersMap = getVolunteerMetadata(cachedData);
@@ -441,9 +465,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             switch (fetching[i]) {
               case "dismissedConflictsMap":
                 dismissedMap = val ?? {};
-                break;
-              case "DETsMap":
-                legacyDETsMap = val ?? {};
                 break;
               case "DETsByDateMap":
                 detsByDateMap = val ?? {};
@@ -474,7 +495,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Overlay pending (not-yet-synced) events so derived maps, prefill
         // suggestions, and capture lists include offline work.
-        const queued = await getQueuedEvents(CURRENT_ENVIRONMENT);
+        const queued = await getQueuedEventsForLoad();
         const mergedEvents = overlayQueuedEvents(allEvents, queued);
 
         setStatus("Rebuilding maps...");
@@ -494,7 +515,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           yearsToProgramMap: years,
           bandSizeToBandIdMap: {} as Record<BandSize, string>,
           dismissedConflictsMap: dismissedMap,
-          DETsMap: legacyDETsMap,
           DETsByDateMap: detsByDateMap,
           volunteersMap,
           magicTable: magicTableData,
@@ -520,27 +540,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
         }
         const cacheTimestamp = maxSyncedAt > 0 ? maxSyncedAt : Date.now();
-        if (isFullEventSnapshot) {
-          await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
-        } else {
-          await saveDataDeltaToIndexedDB(CURRENT_ENVIRONMENT, data, deltaEvents);
-        }
-        await saveLastUpdated(CURRENT_ENVIRONMENT, cacheTimestamp);
-        if (rtdbMetadata) {
-          const metadataWrites = [...mapsToFetch].flatMap((m) => {
-            const timestamp = rtdbMetadata?.[`lastModified_${m}`];
-            return typeof timestamp === "number" ? [saveMetadata(`lastModified_${m}_${env}`, timestamp)] : [];
-          });
-          await Promise.all(metadataWrites);
-
-          const detMapTimestamp = rtdbMetadata.lastModified_DETsByDateMap;
-          if (
-            mapsToFetch.has("DETsByDateMap") &&
-            Object.keys(detsByDateMap).length > 0 &&
-            typeof detMapTimestamp === "number"
-          ) {
-            await saveMetadata(`DETsByDateMapCacheVersion_${env}`, DETS_BY_DATE_CACHE_VERSION);
+        try {
+          if (isFullEventSnapshot) {
+            await saveDataToIndexedDB(CURRENT_ENVIRONMENT, data);
+          } else {
+            await saveDataDeltaToIndexedDB(CURRENT_ENVIRONMENT, data, deltaEvents);
           }
+          await saveLastUpdated(CURRENT_ENVIRONMENT, cacheTimestamp);
+          if (rtdbMetadata) {
+            const metadataWrites = [...mapsToFetch].flatMap((m) => {
+              const timestamp = rtdbMetadata?.[`lastModified_${m}`];
+              return typeof timestamp === "number" ? [saveMetadata(`lastModified_${m}_${env}`, timestamp)] : [];
+            });
+            await Promise.all(metadataWrites);
+
+            const detMapTimestamp = rtdbMetadata.lastModified_DETsByDateMap;
+            if (
+              mapsToFetch.has("DETsByDateMap") &&
+              Object.keys(detsByDateMap).length > 0 &&
+              typeof detMapTimestamp === "number"
+            ) {
+              await saveMetadata(`DETsByDateMapCacheVersion_${env}`, DETS_BY_DATE_CACHE_VERSION);
+            }
+          }
+        } catch (cacheError) {
+          // The server data is authoritative for this online session. Do not
+          // replace it with stale IndexedDB data just because persistence
+          // failed (for example, quota or a corrupt metadata record).
+          logger.warn("DataLoad", "Fresh data loaded but could not be fully cached", cacheError);
         }
 
         birdEventsStore.replace(reconstructed);
@@ -558,10 +585,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups, bandResetsMap),
           speciesInfoMap: computeSpeciesInfoMap(reconstructed, speciesAliasesMap, bandResetsMap),
           dismissedConflictsMap: dismissedMap,
-          DETsByDateMap: normalizeDETObserverClasses(
-            mergeDETsByDateMap(data.DETsMap, data.DETsByDateMap),
-            volunteersMap
-          ),
+          DETsByDateMap: normalizeDETObserverClasses(data.DETsByDateMap ?? {}, volunteersMap),
           lastSyncedAt: cacheTimestamp,
           loadingStatus: "Ready",
         });
@@ -577,7 +601,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           try {
             const fallbackData = await getDataFromIndexedDB(CURRENT_ENVIRONMENT);
             if (fallbackData) {
-              const queued = await getQueuedEvents(CURRENT_ENVIRONMENT).catch(() => [] as PendingEvent[]);
+              const queued = await getQueuedEventsForLoad();
               populateStateFromData(fallbackData, queued);
               const fallbackLastSync = await getLastUpdated(CURRENT_ENVIRONMENT).catch(() => null);
               useAppStore.setState({ lastSyncedAt: fallbackLastSync });

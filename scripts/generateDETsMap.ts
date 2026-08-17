@@ -351,11 +351,7 @@ async function generateDETs() {
   if (LOCAL_JSON_MODE) {
     let firebaseOnlyCount = 0;
     if (firebaseMergeEnvironment) {
-      const [legacySnapshot, currentSnapshot] = await Promise.all([
-        db.ref(`${firebaseMergeEnvironment}/DETsMap`).once("value"),
-        db.ref(`${firebaseMergeEnvironment}/DETsByDateMap`).once("value"),
-      ]);
-      const legacyDETs = Object.values(legacySnapshot.val() ?? {}).filter(isDET);
+      const currentSnapshot = await db.ref(`${firebaseMergeEnvironment}/DETsByDateMap`).once("value");
       const currentDETs = Object.values(currentSnapshot.val() ?? {})
         .flatMap((detsByProgram) =>
           detsByProgram && typeof detsByProgram === "object" ? Object.values(detsByProgram) : []
@@ -363,9 +359,9 @@ async function generateDETs() {
         .filter(isDET);
       const firebaseOnlyDETs = new Map<string, DET>();
 
-      // Current nested records override legacy records, but neither can
-      // overwrite a corrected CSV date/program identity.
-      for (const det of [...legacyDETs, ...currentDETs]) {
+      // Firebase-only app records cannot overwrite a corrected CSV
+      // date/program identity.
+      for (const det of currentDETs) {
         const identityKey = getDETIdentityKey(det.date, det.programId);
         if (!detsByIdentity.has(identityKey)) firebaseOnlyDETs.set(identityKey, det);
       }

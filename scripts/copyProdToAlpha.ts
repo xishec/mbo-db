@@ -6,7 +6,6 @@ const SMALL_KEYS = [
   "yearsToProgramMap",
   "bandSizeToBandIdMap",
   "dismissedConflictsMap",
-  "DETsMap",
   "DETsByDateMap",
   "magicTable",
   "volunteersMap",
