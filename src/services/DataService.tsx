@@ -220,12 +220,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     useAppStore.setState({ isOnline });
   }, [isOnline]);
 
-  // Reconnect with a lightweight delta when data is already loaded. A cold
-  // start that briefly took the offline path needs the full loader instead.
+  // A reconnect must rerun the main loader. It still delta-syncs cached bird
+  // events, but also refreshes authoritative maps such as DETsByDateMap.
+  // Using only the bird-event delta here can leave an empty DET cache in
+  // memory after Firebase briefly reports disconnected during startup.
   useEffect(() => {
     if (reconnectToken === 0) return;
-    if (birdEventsStore.size() === 0) setReloadToken((value) => value + 1);
-    else setRefreshToken((value) => value + 1);
+    setReloadToken((value) => value + 1);
   }, [reconnectToken]);
 
   // Auth state
