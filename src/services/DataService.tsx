@@ -330,6 +330,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         if (detResult.status === "fulfilled" && detResult.value.exists()) {
           authoritativeDETsByDateMap = detResult.value.val() as DETsByDateMap;
+          // Persist DETs independently from the much larger bird-event write.
+          // The loader has an early-return path when events/maps are otherwise
+          // current, and a full event transaction can also fail from quota;
+          // neither case should leave the authoritative DET map uncached.
+          try {
+            await saveDatabaseMetadataOnly(env, { DETsByDateMap: authoritativeDETsByDateMap });
+            const detMapTimestamp = rtdbMetadata?.lastModified_DETsByDateMap;
+            if (typeof detMapTimestamp === "number") {
+              await saveMetadata(`lastModified_DETsByDateMap_${env}`, detMapTimestamp);
+            }
+          } catch (cacheError) {
+            logger.warn("DataLoad", "Authoritative DET map loaded but could not be cached", cacheError);
+          }
         } else if (!cachedData?.DETsByDateMap || Object.keys(cachedData.DETsByDateMap).length === 0) {
           throw detResult.status === "rejected"
             ? detResult.reason
@@ -547,11 +560,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               return typeof timestamp === "number" ? [saveMetadata(`lastModified_${m}_${env}`, timestamp)] : [];
             });
             await Promise.all(metadataWrites);
-
-            const detMapTimestamp = rtdbMetadata.lastModified_DETsByDateMap;
-            if (authoritativeDETsByDateMap && typeof detMapTimestamp === "number") {
-              await saveMetadata(`lastModified_DETsByDateMap_${env}`, detMapTimestamp);
-            }
           }
         } catch (cacheError) {
           // The server data is authoritative for this online session. Do not
