@@ -1,4 +1,5 @@
 import type { BirdEvent, DET, PendingBirdEvent, PendingEvent } from "../types";
+import { getDETProgramKey } from "../utils/detIdentity";
 import { stripUndefined } from "../utils/firebaseValue";
 
 export interface SyncBatch {
@@ -13,7 +14,8 @@ const pendingOrder = (a: PendingEvent, b: PendingEvent): number =>
   a.timestamp - b.timestamp || a.id.localeCompare(b.id);
 
 const eventKey = (environment: string, eventId: string): string => `${environment}\u0000${eventId}`;
-const detKey = (environment: string, date: string): string => `${environment}\u0000${date}`;
+const detQueueKey = (environment: string, det: DET): string =>
+  `${environment}\u0000${det.date}\u0000${getDETProgramKey(det.programId)}`;
 
 /**
  * Build idempotent, order-independent Firebase batches from the full queue.
@@ -42,7 +44,7 @@ export function buildSyncBatches(
     if (pending.type === "bird-event") {
       pendingBirdEvents.set(eventKey(pending.environment, pending.pendingEvent.id), pending);
     } else {
-      pendingDets.set(detKey(pending.environment, pending.det.date), pending);
+      pendingDets.set(detQueueKey(pending.environment, pending.det), pending);
     }
   }
 
@@ -151,10 +153,10 @@ export function buildSyncBatches(
         const key = eventKey(pending.environment, pending.pendingEvent.id);
         addEventChain(pending.environment, key);
       } else {
-        const key = detKey(pending.environment, pending.det.date);
+        const key = detQueueKey(pending.environment, pending.det);
         const det = finalDets.get(key);
         if (det) {
-          updates[`${pending.environment}/DETsMap/${det.date}`] = det;
+          updates[`${pending.environment}/DETsByDateMap/${det.date}/${getDETProgramKey(det.programId)}`] = det;
           batchDets.set(key, det);
         }
       }

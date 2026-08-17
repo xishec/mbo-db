@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, type ChangeEvent } from "react";
-import { Button, Input, Select, SelectItem, Textarea } from "@heroui/react";
+import { Button, Input, Textarea } from "@heroui/react";
 import {
   DET_SPECIES_CODES_SET,
   type DET,
@@ -24,13 +24,15 @@ import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
 import { resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
 import { isActiveBirdEvent } from "../../../stores/derive";
+import { findDETEntry, normalizeDETProgramId } from "../../../utils/detIdentity";
 
 interface AddDETModalProps {
   isOpen: boolean;
-  onOpenChange: () => void;
+  onOpenChange: (isOpen: boolean) => void;
   onSave: (det: DET) => Promise<void>;
   existingDET?: DET | null;
   defaultDate?: string | null;
+  defaultProgramId?: string | null;
   mode: "create" | "edit";
 }
 
@@ -50,10 +52,6 @@ function textFieldToString(value: unknown): string {
     })
     .filter(Boolean)
     .join("\n");
-}
-
-function cloneCount(count?: Record<string, number>): Record<string, number> {
-  return { ...(count || {}) };
 }
 
 function normalizeSpeciesName(name: string): string {
@@ -182,12 +180,12 @@ export default function AddDETModal({
   onSave,
   existingDET,
   defaultDate,
+  defaultProgramId,
   mode,
 }: AddDETModalProps) {
   const birdEventsVersion = useBirdEventsVersion();
   const volunteersMap = useAppStore((state) => state.volunteersMap);
-  const DETsMap = useAppStore((state) => state.DETsMap);
-  const programsMap = useAppStore((state) => state.programsMap);
+  const DETsByDateMap = useAppStore((state) => state.DETsByDateMap);
 
   // Basic fields
   const [date, setDate] = useState("");
@@ -245,12 +243,20 @@ export default function AddDETModal({
   ]);
 
   const getSpeciesCountsFromEvents = useCallback(
-    (eventDate: string): EventSpeciesCounts => {
+    (eventDate: string, eventProgramId: string): EventSpeciesCounts => {
       const banded: Record<string, number> = {};
       const repeat: Record<string, number> = {};
       const return_: Record<string, number> = {};
+      const normalizedProgramId = normalizeDETProgramId(eventProgramId);
       for (const ev of birdEventsStore.getAll().values()) {
-        if (!ev || ev.date !== eventDate || !isActiveBirdEvent(ev, bandResetsMap) || !ev.species) continue;
+        if (
+          !ev ||
+          ev.date !== eventDate ||
+          normalizeDETProgramId(ev.programId) !== normalizedProgramId ||
+          !isActiveBirdEvent(ev, bandResetsMap) ||
+          !ev.species
+        )
+          continue;
         const speciesKey = resolveSpeciesKey(ev.species, speciesAliasesMap);
         if (ev.birdEventType === BirdEventType.Banded || ev.birdEventType === BirdEventType.None) {
           banded[speciesKey] = (banded[speciesKey] ?? 0) + 1;
@@ -265,45 +271,18 @@ export default function AddDETModal({
     [speciesAliasesMap, bandResetsMap]
   );
 
-  const getProgramIdsForDate = useCallback(
-    (eventDate: string): string[] => {
-      const programIds = new Set<string>();
-      for (const ev of birdEventsStore.getAll().values()) {
-        if (!ev || ev.date !== eventDate || !isActiveBirdEvent(ev, bandResetsMap) || !ev.programId) continue;
-        programIds.add(ev.programId);
-      }
-      return Array.from(programIds).sort((a, b) => a.localeCompare(b));
-    },
-    [bandResetsMap]
-  );
-
-  const programIdsForDate = useMemo(() => {
-    if (!date) return [];
-    return getProgramIdsForDate(date);
-  }, [date, birdEventsVersion, getProgramIdsForDate]);
-
-  useEffect(() => {
-    if (mode !== "create" || !date) return;
-    if (programIdsForDate.length === 0) {
-      setProgramId("");
-      return;
-    }
-    if (!programIdsForDate.includes(programId)) {
-      setProgramId(programIdsForDate[0]);
-    }
-  }, [date, mode, programId, programIdsForDate]);
-
   // Auto-compute banded/repeat species from bird events for the selected date
   const computedFromEvents = useMemo(() => {
-    if (!date)
+    void birdEventsVersion;
+    if (!date || !programId)
       return {
         banded: {} as Record<string, number>,
         repeat: {} as Record<string, number>,
         return_: {} as Record<string, number>,
       };
 
-    return getSpeciesCountsFromEvents(date);
-  }, [date, birdEventsVersion, getSpeciesCountsFromEvents]);
+    return getSpeciesCountsFromEvents(date, programId);
+  }, [date, programId, birdEventsVersion, getSpeciesCountsFromEvents]);
 
   useEffect(() => {
     setBandedSpeciesCount(computedFromEvents.banded);
@@ -357,7 +336,7 @@ export default function AddDETModal({
   // Prefill form when editing
   useEffect(() => {
     if (mode === "edit" && existingDET) {
-      const eventCounts = getSpeciesCountsFromEvents(existingDET.date);
+      const eventCounts = getSpeciesCountsFromEvents(existingDET.date, existingDET.programId);
       setDate(existingDET.date);
       setProgramId(existingDET.programId);
       setLocation(existingDET.location);
@@ -393,12 +372,11 @@ export default function AddDETModal({
       setWeather(existingDET.weather);
     } else if (mode === "create") {
       // Reset form for new DET
-      const sourceDET = defaultDate ? DETsMap[defaultDate] : null;
       const nextDate = defaultDate || getLocalDateString();
-      const eventCounts = getSpeciesCountsFromEvents(nextDate);
-      const dateProgramIds = getProgramIdsForDate(nextDate);
+      const nextProgramId = defaultProgramId || "";
+      const eventCounts = getSpeciesCountsFromEvents(nextDate, nextProgramId);
       setDate(nextDate);
-      setProgramId(dateProgramIds[0] || "");
+      setProgramId(nextProgramId);
       setLocation("MBO");
       setBanderInCharge("");
       setStart("");
@@ -412,15 +390,15 @@ export default function AddDETModal({
       setVisitors("");
       setInjuries("");
       setReleased("");
-      setObservedSpeciesCount(cloneCount(sourceDET?.observedSpeciesCount));
+      setObservedSpeciesCount({});
       setCensuser("");
       setCensusStart("");
       setCensusEnd("");
-      setCensusSpeciesCount(cloneCount(sourceDET?.censusSpeciesCount));
+      setCensusSpeciesCount({});
       setBandedSpeciesCount(eventCounts.banded);
       setRepeatSpeciesCount(eventCounts.repeat);
       setReturnSpeciesCount(eventCounts.return_);
-      setDETSpeciesCount(cloneCount(sourceDET?.DETSpeciesCount));
+      setDETSpeciesCount({});
       setWeather(undefined);
     }
     setError("");
@@ -428,7 +406,7 @@ export default function AddDETModal({
     setCensusCsvHasWarning(false);
     setPendingCensusImport(null);
     setCensusCodeError("");
-  }, [mode, existingDET, defaultDate, DETsMap, getProgramIdsForDate, getSpeciesCountsFromEvents, isOpen]);
+  }, [mode, existingDET, defaultDate, defaultProgramId, getSpeciesCountsFromEvents, isOpen]);
 
   const handleCensusCsvUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -596,8 +574,8 @@ export default function AddDETModal({
       setError("Wait for weather data to finish loading");
       return;
     }
-    if (mode === "create" && DETsMap[date]) {
-      setError(`A DET already exists for ${date}. Close this form and use Edit instead.`);
+    if (mode === "create" && findDETEntry(DETsByDateMap, date, programId)) {
+      setError(`A DET already exists for ${date} and program ${programId}. Close this form and use Edit instead.`);
       return;
     }
 
@@ -637,7 +615,7 @@ export default function AddDETModal({
       };
 
       await onSave(det);
-      onOpenChange(); // Close modal on success
+      onOpenChange(false); // Close modal on success
     } catch (err) {
       showPersistentErrorToast("DET save failed", err, "Please try again.");
     } finally {
@@ -677,24 +655,16 @@ export default function AddDETModal({
                       value={date}
                       onValueChange={setDate}
                       isRequired
-                      isDisabled={mode === "edit"}
+                      isDisabled
                       description={isLoadingWeather ? "Loading weather data..." : ""}
                     />
-                    <Select
+                    <Input
                       label="Program ID"
                       {...modalInputProps}
-                      selectedKeys={programId ? [programId] : []}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0];
-                        setProgramId(selected ? String(selected) : "");
-                      }}
+                      value={programId}
                       isRequired
-                      placeholder={programIdsForDate.length > 0 ? "Select program" : "No programs for selected date"}
-                    >
-                      {programIdsForDate.map((id) => (
-                        <SelectItem key={id}>{programsMap[id]?.displayName || id}</SelectItem>
-                      ))}
-                    </Select>
+                      isDisabled
+                    />
                     <Input
                       label="Location"
                       {...modalInputProps}

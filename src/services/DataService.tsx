@@ -17,7 +17,7 @@ import {
   type BandResetsMap,
   type BirdEvent,
   type DatabaseData,
-  type DETsMap,
+  type DETsByDateMap,
   type MagicTable,
   type PendingEvent,
   type Volunteer,
@@ -41,6 +41,7 @@ import { logger } from "./logger";
 import { filterBirdEventDelta, getBirdEventDeltaStart } from "./birdEventDelta";
 import { refreshBirdEventDelta } from "./birdEventSync";
 import { rebuildBirdEventState } from "../stores/rebuildAppState";
+import { mergeDETsByDateMap } from "../utils/detIdentity";
 
 function normalizeObserverClass(value: unknown): Volunteer["observerClass"] {
   const parsed = Number(value);
@@ -91,32 +92,39 @@ function calculateObserverTotal(hoursObserved: number, observerClass: number): n
   return 0;
 }
 
-function normalizeDETObserverClasses(detsMap: DETsMap | undefined, volunteersMap: VolunteersMap): DETsMap {
-  const normalized: DETsMap = {};
+function normalizeDETObserverClasses(
+  detsByDateMap: DETsByDateMap,
+  volunteersMap: VolunteersMap
+): DETsByDateMap {
+  const normalized: DETsByDateMap = {};
 
-  for (const [date, det] of Object.entries(detsMap ?? {})) {
-    const observers = det.observerHours?.observers?.map((observer) => {
-      const initials = observer.initials?.trim().toUpperCase() ?? "";
-      const volunteer = volunteersMap[initials];
-      const observerClass = volunteer?.observerClass ?? normalizeObserverClass(observer.class);
-      const hoursObserved = Number(observer.hoursObserved) || 0;
+  for (const [date, detsByProgram] of Object.entries(detsByDateMap)) {
+    const normalizedByProgram: Record<string, (typeof detsByProgram)[string]> = {};
+    for (const [programKey, det] of Object.entries(detsByProgram ?? {})) {
+      const observers = det.observerHours?.observers?.map((observer) => {
+        const initials = observer.initials?.trim().toUpperCase() ?? "";
+        const volunteer = volunteersMap[initials];
+        const observerClass = volunteer?.observerClass ?? normalizeObserverClass(observer.class);
+        const hoursObserved = Number(observer.hoursObserved) || 0;
 
-      return {
-        ...observer,
-        name: volunteer?.fullName ?? observer.name,
-        initials,
-        class: observerClass,
-        totalHours: calculateObserverTotal(hoursObserved, observerClass),
+        return {
+          ...observer,
+          name: volunteer?.fullName ?? observer.name,
+          initials,
+          class: observerClass,
+          totalHours: calculateObserverTotal(hoursObserved, observerClass),
+        };
+      });
+
+      const observerHours = {
+        ...(det.observerHours ?? { total: 0 }),
+        observers,
+        total: observers?.reduce((sum, observer) => sum + observer.totalHours, 0) ?? det.observerHours?.total ?? 0,
       };
-    });
 
-    const observerHours = {
-      ...(det.observerHours ?? { total: 0 }),
-      observers,
-      total: observers?.reduce((sum, observer) => sum + observer.totalHours, 0) ?? det.observerHours?.total ?? 0,
-    };
-
-    normalized[date] = { ...det, observerHours };
+      normalizedByProgram[programKey] = { ...det, observerHours };
+    }
+    normalized[date] = normalizedByProgram;
   }
 
   return normalized;
@@ -141,7 +149,10 @@ function hydrateBirdEvents(events: Record<string, BirdEvent>): Map<string, BirdE
  */
 function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void {
   const volunteersMap = getVolunteerMetadata(data);
-  const detsMap = normalizeDETObserverClasses(data.DETsMap, volunteersMap);
+  const detsByDateMap = normalizeDETObserverClasses(
+    mergeDETsByDateMap(data.DETsMap, data.DETsByDateMap),
+    volunteersMap
+  );
   setSpeciesMap(data.magicTable?.species ?? {});
   const speciesAliasesMap = normalizeSpeciesAliasesMap(data.speciesAliasesMap ?? {});
   const bandResetsMap = data.bandResetsMap ?? {};
@@ -166,7 +177,7 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
     volunteerStatsMap: volunteerStats,
     bandSizeToBandIdMap: computeBandSizeToBandIdMap(hydratedEvents, bandGroups, bandResetsMap),
     speciesInfoMap: computeSpeciesInfoMap(hydratedEvents, speciesAliasesMap, bandResetsMap),
-    DETsMap: detsMap,
+    DETsByDateMap: detsByDateMap,
     dismissedConflictsMap: data.dismissedConflictsMap ?? {},
     bandGroupNotesMap: data.bandGroupNotesMap ?? {},
   });
@@ -313,7 +324,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           INDEPENDENT_MAP_NAMES.forEach((m, i) => {
             const rtdbTs = rtdbMetadata?.[`lastModified_${m}`] as number | undefined;
             const cachedTs = cachedTimestamps[i];
-            if (!cachedTs || (rtdbTs != null && rtdbTs > cachedTs)) {
+            // Existing installs may have cached an empty DETsByDateMap before
+            // the migration was uploaded, along with a synthetic timestamp.
+            // Treat an absent/empty new map as a one-time migration fetch.
+            const isMissingNewDETMap =
+              m === "DETsByDateMap" && Object.keys(cachedData.DETsByDateMap ?? {}).length === 0;
+            if (isMissingNewDETMap || !cachedTs || (rtdbTs != null && rtdbTs > cachedTs)) {
               mapsToFetch.add(m);
             }
           });
@@ -397,7 +413,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
-        let detsMap = cachedData?.DETsMap ?? {};
+        let legacyDETsMap = cachedData?.DETsMap ?? {};
+        let detsByDateMap = cachedData?.DETsByDateMap ?? {};
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {}, species: {} };
         let volunteersMap = getVolunteerMetadata(cachedData);
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
@@ -416,7 +433,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 dismissedMap = val ?? {};
                 break;
               case "DETsMap":
-                detsMap = val ?? {};
+                legacyDETsMap = val ?? {};
+                break;
+              case "DETsByDateMap":
+                detsByDateMap = val ?? {};
                 break;
               case "magicTable":
                 magicTableData = val ?? { pyle: {}, species: {} };
@@ -464,7 +484,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           yearsToProgramMap: years,
           bandSizeToBandIdMap: {} as Record<BandSize, string>,
           dismissedConflictsMap: dismissedMap,
-          DETsMap: normalizeDETObserverClasses(detsMap, volunteersMap),
+          DETsMap: legacyDETsMap,
+          DETsByDateMap: detsByDateMap,
           volunteersMap,
           magicTable: magicTableData,
           bandGroupNotesMap: notesMap,
@@ -496,10 +517,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
         await saveLastUpdated(CURRENT_ENVIRONMENT, cacheTimestamp);
         if (rtdbMetadata) {
-          await Promise.all(
-            [...mapsToFetch]
-              .map((m) => saveMetadata(`lastModified_${m}_${env}`, rtdbMetadata![`lastModified_${m}`] ?? Date.now()))
-          );
+          const metadataWrites = [...mapsToFetch].flatMap((m) => {
+            const timestamp = rtdbMetadata?.[`lastModified_${m}`];
+            return typeof timestamp === "number" ? [saveMetadata(`lastModified_${m}_${env}`, timestamp)] : [];
+          });
+          await Promise.all(metadataWrites);
         }
 
         birdEventsStore.replace(reconstructed);
@@ -517,7 +539,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups, bandResetsMap),
           speciesInfoMap: computeSpeciesInfoMap(reconstructed, speciesAliasesMap, bandResetsMap),
           dismissedConflictsMap: dismissedMap,
-          DETsMap: data.DETsMap ?? {},
+          DETsByDateMap: normalizeDETObserverClasses(
+            mergeDETsByDateMap(data.DETsMap, data.DETsByDateMap),
+            volunteersMap
+          ),
           lastSyncedAt: cacheTimestamp,
           loadingStatus: "Ready",
         });

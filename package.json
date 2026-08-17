@@ -19,6 +19,8 @@
     "generate:DETs": "npm run generate:DETs:dev",
     "generate:DETs:dev": "cross-env NODE_ENV=development npx tsx scripts/generateDETsMap.ts",
     "generate:DETs:prod": "cross-env NODE_ENV=production npx tsx scripts/generateDETsMap.ts",
+    "generate:DETs:json": "npx tsx scripts/generateDETsMap.ts --local-json",
+    "generate:DETs:json:prod": "npx tsx scripts/generateDETsMap.ts --local-json --merge-firebase-env prod",
     "build": "tsc -b && vite build",
     "copy:prod-to-alpha": "npx tsx scripts/copyProdToAlpha.ts",
     "migrate:volunteers:alpha": "cross-env NODE_ENV=development VITE_ENVIRONMENT=alpha npx tsx scripts/migrateVolunteersMap.ts",

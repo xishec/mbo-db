@@ -14,7 +14,10 @@ export type BirdEventsMap = Map<string, BirdEvent>;
 export type BandIdToBirdEventIdsMap = Record<string, string[]>;
 export type BandSizeToBandIdMap = Record<BandSize, string>;
 export type DismissedConflictsMap = Record<string, boolean>;
-export type DETsMap = Record<string, DET>;
+// Legacy DET storage, keyed by date or a date/program composite key.
+export type LegacyDETsMap = Record<string, DET>;
+// Current DET storage: one date can contain one DET per program.
+export type DETsByDateMap = Record<string, Record<string, DET>>;
 export type VolunteersMap = Record<string, Volunteer>;
 export type VolunteerStatsMap = Record<string, VolunteerStats>;
 export type SpeciesAliasesMap = Record<string, string>;
@@ -207,7 +210,9 @@ export interface DatabaseData {
   bandGroupsMap: BandGroupsMap;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
-  DETsMap?: DETsMap;
+  // Retained while old caches and Firebase data are migrated.
+  DETsMap?: LegacyDETsMap;
+  DETsByDateMap?: DETsByDateMap;
   volunteersMap?: VolunteersMap;
   magicTable?: MagicTable;
   bandGroupNotesMap?: Record<string, string>;

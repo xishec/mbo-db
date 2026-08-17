@@ -30,3 +30,6 @@ mbodatabase-firebase-adminsdk-fbsvc-7647ed8475.json
 
 release
 accessdb/
+
+# Generated Firebase manual-import artifact
+DETsByDateMap.json

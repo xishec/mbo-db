@@ -33,6 +33,7 @@ import {
 import { type IndependentMapName } from "../types/mapNames";
 import { setSpeciesMap, SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
 import { stripUndefined } from "../utils/firebaseValue";
+import { findDETEntry, getDETProgramKey, isValidDETProgramId } from "../utils/detIdentity";
 import {
   advanceBandId,
   computeSpeciesInfoMap,
@@ -219,7 +220,7 @@ export async function syncQueue(): Promise<boolean> {
             };
           }
           if (batch.dets.length > 0) {
-            serverUpdates[`${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsMap`] = serverTimestamp();
+            serverUpdates[`${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsByDateMap`] = serverTimestamp();
           }
 
           await update(ref(db), serverUpdates);
@@ -235,7 +236,7 @@ export async function syncQueue(): Promise<boolean> {
           if (batch.dets.length > 0) {
             syncPhase = "read the committed DET timestamp";
             const detTimestampSnapshot = await get(
-              ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsMap`)
+              ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsByDateMap`)
             );
             const detTimestamp = Number(detTimestampSnapshot?.val());
             if (!Number.isFinite(detTimestamp)) {
@@ -243,13 +244,18 @@ export async function syncQueue(): Promise<boolean> {
             }
             syncPhase = "update local synced state";
             useAppStore.setState((state) => {
-              const DETsMap = { ...state.DETsMap };
-              for (const det of batch.dets) DETsMap[det.date] = det;
-              return { DETsMap };
+              const DETsByDateMap = { ...state.DETsByDateMap };
+              for (const det of batch.dets) {
+                DETsByDateMap[det.date] = {
+                  ...(DETsByDateMap[det.date] ?? {}),
+                  [getDETProgramKey(det.programId)]: det,
+                };
+              }
+              return { DETsByDateMap };
             });
             Promise.all([
               ...batch.dets.map((det) => updateDETInCache(CURRENT_ENVIRONMENT, det)),
-              saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, detTimestamp),
+              saveMetadata(`lastModified_DETsByDateMap_${CURRENT_ENVIRONMENT}`, detTimestamp),
             ]).catch((err) => logger.warn("SyncQueue", "Failed to cache synced DET state", err));
           }
 
@@ -870,32 +876,50 @@ export const actions = {
     }
   },
 
-  saveDET: async (det: DET, { overwrite = false }: { overwrite?: boolean } = {}): Promise<void> => {
-    const { user, isOnline, DETsMap } = useAppStore.getState();
+  saveDET: async (
+    det: DET,
+    { overwrite = false }: { overwrite?: boolean } = {}
+  ): Promise<void> => {
+    const { user, isOnline, DETsByDateMap } = useAppStore.getState();
     if (!user) throw new Error("Must be logged in to save DET");
     if (!isOnline) throw new Error("Cannot save DETs while offline");
-    if (!overwrite && DETsMap[det.date]) {
-      throw new Error(`A DET already exists for ${det.date}. Open it and use Edit instead.`);
+    if (!isValidDETProgramId(det.programId)) throw new Error("A valid program is required to save a DET");
+    const programKey = getDETProgramKey(det.programId);
+    const existingEntry = findDETEntry(DETsByDateMap, det.date, det.programId);
+    if (existingEntry && !overwrite) {
+      throw new Error(`A DET already exists for ${det.date} and program ${det.programId}. Open it and use Edit instead.`);
     }
 
     try {
-      const detPath = `${CURRENT_ENVIRONMENT}/DETsMap/${det.date}`;
-      if (!overwrite && (await get(ref(db, detPath))).exists()) {
-        throw new Error(`A DET already exists for ${det.date}. Open it and use Edit instead.`);
+      const detPath = `${CURRENT_ENVIRONMENT}/DETsByDateMap/${det.date}/${programKey}`;
+      if (!overwrite) {
+        if ((await get(ref(db, detPath))).exists()) {
+          throw new Error(
+            `A DET already exists for ${det.date} and program ${det.programId}. Open it and use Edit instead.`
+          );
+        }
       }
 
       const savedDET = stripUndefined(det);
       const lastModified = Date.now();
-      await update(ref(db), {
+      const updates: Record<string, unknown> = {
         [detPath]: savedDET,
-        [`${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsMap`]: lastModified,
-      });
-      logger.info("SaveDET", `DET for ${det.date} synced to RTDB`);
+        [`${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsByDateMap`]: lastModified,
+      };
+      await update(ref(db), updates);
+      logger.info("SaveDET", `DET for ${det.date} / ${det.programId} synced to RTDB`);
 
-      useAppStore.setState((state) => ({ DETsMap: { ...state.DETsMap, [savedDET.date]: savedDET } }));
+      useAppStore.setState((state) => {
+        const nextDETsByDateMap = { ...state.DETsByDateMap };
+        nextDETsByDateMap[det.date] = {
+          ...(nextDETsByDateMap[det.date] ?? {}),
+          [programKey]: savedDET,
+        };
+        return { DETsByDateMap: nextDETsByDateMap };
+      });
       try {
         await updateDETInCache(CURRENT_ENVIRONMENT, savedDET);
-        await saveMetadata(`lastModified_DETsMap_${CURRENT_ENVIRONMENT}`, lastModified);
+        await saveMetadata(`lastModified_DETsByDateMap_${CURRENT_ENVIRONMENT}`, lastModified);
         logger.info("SaveDET", `DET for ${det.date} saved to IndexedDB`);
       } catch (cacheError) {
         logger.warn("SaveDET", `DET for ${det.date} was saved remotely but could not be cached`, cacheError);

@@ -1,10 +1,38 @@
 import { useEffect, useState } from "react";
 import { Spinner, Card, CardBody, Divider } from "@heroui/react";
-import YearlyHeatmap from "./Secret/YearlyHeatmap";
-import type { DETsMap } from "../../types";
+import YearlyHeatmap, { type HeatmapDET, type HeatmapDETsByDateMap } from "./Secret/YearlyHeatmap";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isCompactDET(value: Record<string, unknown>): boolean {
+  return ["dt", "d", "b", "rp", "rt", "o", "nh", "oh"].some((key) => key in value);
+}
+
+function normalizeHeatmapData(data: unknown): HeatmapDETsByDateMap {
+  if (!isRecord(data)) return {};
+
+  const normalized: HeatmapDETsByDateMap = {};
+  for (const [storageKey, value] of Object.entries(data)) {
+    if (!isRecord(value)) continue;
+
+    // Compatibility for the currently deployed flat trends-data.json.
+    if (isCompactDET(value)) {
+      const det = value as HeatmapDET;
+      const date = det.dt || storageKey.split("__", 1)[0];
+      normalized[date] ??= {};
+      normalized[date][storageKey] = { ...det, dt: date };
+      continue;
+    }
+
+    normalized[storageKey] = value as Record<string, HeatmapDET>;
+  }
+  return normalized;
+}
 
 export default function Trends() {
-  const [DETsMap, setDETsMap] = useState<DETsMap | null>(null);
+  const [DETsByDateMap, setDETsByDateMap] = useState<HeatmapDETsByDateMap | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,8 +42,8 @@ export default function Trends() {
         if (!res.ok) throw new Error("Failed to load data");
         return res.json();
       })
-      .then((data) => {
-        setDETsMap(data);
+      .then((data: unknown) => {
+        setDETsByDateMap(normalizeHeatmapData(data));
         setIsLoading(false);
       })
       .catch((err) => {
@@ -44,7 +72,7 @@ export default function Trends() {
     );
   }
 
-  if (!DETsMap) {
+  if (!DETsByDateMap) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-default-600">No data available</p>
@@ -142,7 +170,7 @@ export default function Trends() {
           </CardBody>
         </Card>
 
-        <YearlyHeatmap DETsMap={DETsMap} />
+        <YearlyHeatmap DETsByDateMap={DETsByDateMap} />
       </div>
     </div>
   );

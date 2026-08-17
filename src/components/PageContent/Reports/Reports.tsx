@@ -23,6 +23,7 @@ import { BirdEventType, type Program } from "../../../types";
 import { SPECIES_GROUPS } from "../../../types/DET";
 import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
 import { isActiveBirdEvent } from "../../../stores/derive";
+import { getAllDETs } from "../../../utils/detIdentity";
 
 function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -643,7 +644,7 @@ type ReportData = {
 
 export default function Reports() {
   const programsMap = useAppStore((s) => s.programsMap);
-  const DETsMap = useAppStore((s) => s.DETsMap);
+  const DETsByDateMap = useAppStore((s) => s.DETsByDateMap);
   const yearsToProgramMap = useAppStore((s) => s.yearsToProgramMap);
   const isLoading = useAppStore((s) => s.isLoading);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
@@ -754,7 +755,7 @@ export default function Reports() {
   const selectedProgramDateBounds = useMemo(() => {
     if (!selectedProgramIds.length) return { min: "", max: "" };
     const dates: string[] = [];
-    for (const det of Object.values(DETsMap ?? {})) {
+    for (const det of getAllDETs(DETsByDateMap)) {
       if (det && selectedProgramIds.includes(det.programId) && det.date) dates.push(det.date);
     }
     for (const event of birdEventsStore.getAll().values()) {
@@ -770,7 +771,7 @@ export default function Reports() {
     if (!dates.length) return { min: "", max: "" };
     return { min: dates.reduce((a, b) => (a < b ? a : b)), max: dates.reduce((a, b) => (a > b ? a : b)) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProgramIds, DETsMap, birdEventsVersion, bandResetsMap]);
+  }, [selectedProgramIds, DETsByDateMap, birdEventsVersion, bandResetsMap]);
 
   useEffect(() => {
     if (selectedProgramIds.length) {
@@ -783,8 +784,8 @@ export default function Reports() {
   }, [selectedProgramIds, selectedProgramDateBounds]);
 
   const dets = useMemo(() => {
-    return Object.values(DETsMap ?? {}).filter((det) => det && det.date);
-  }, [DETsMap]);
+    return getAllDETs(DETsByDateMap).filter((det) => det && det.date);
+  }, [DETsByDateMap]);
 
   const effectiveDateRange = useMemo(
     () => ({

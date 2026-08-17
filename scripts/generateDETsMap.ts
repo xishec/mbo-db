@@ -4,9 +4,24 @@ import { fileURLToPath } from "url";
 import { DET, Net } from "../src/types/DET.js";
 import { db, ENVIRONMENT } from "./firebase-node.js";
 import { fetchWeatherForDateRange } from "../src/services/weatherService.js";
+import { getDETProgramKey, isValidDETProgramId } from "../src/utils/detIdentity.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+function getArgument(name: string): string | undefined {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+const LOCAL_JSON_MODE = process.argv.includes("--local-json");
+const sourceDirectory = path.resolve(getArgument("--source-dir") ?? path.join(__dirname, "../public/data"));
+const outputPath = path.resolve(getArgument("--output") ?? path.join(__dirname, "../DETsByDateMap.json"));
+const firebaseMergeEnvironment = getArgument("--merge-firebase-env");
+
+if (firebaseMergeEnvironment && !LOCAL_JSON_MODE) {
+  throw new Error("--merge-firebase-env can only be used with --local-json");
+}
 
 // Parse a single CSV line respecting quoted fields
 function parseCSVLine(line: string): string[] {
@@ -86,29 +101,55 @@ function normalizeDate(value: string): string {
 }
 
 // Read CSV files
-const dailyPath = path.join(__dirname, "../public/data/tblDETDaily.csv");
-const speciesPath = path.join(__dirname, "../public/data/tblDETSpecies.csv");
-const netHoursPath = path.join(__dirname, "../public/data/tblDETNetHours.csv");
+const dailyPath = path.join(sourceDirectory, "tblDETDaily.csv");
+const speciesPath = path.join(sourceDirectory, "tblDETSpecies.csv");
+const netHoursPath = path.join(sourceDirectory, "tblDETNetHours.csv");
+const speciesLookupPath = path.join(sourceDirectory, "tblSpecies.csv");
 
 const dailyContent = fs.readFileSync(dailyPath, "utf-8");
 const speciesContent = fs.readFileSync(speciesPath, "utf-8");
 const netHoursContent = fs.readFileSync(netHoursPath, "utf-8");
+const speciesLookupContent = fs.readFileSync(speciesLookupPath, "utf-8");
 
 const dailyRecords = parseCSV(dailyContent);
 const speciesRecords = parseCSV(speciesContent);
 const netHoursRecords = parseCSV(netHoursContent);
+const speciesLookupRecords = parseCSV(speciesLookupContent);
 
-// Build DETsMap
-const DETsMap = new Map<string, DET>();
+const knownSpecies = new Set(speciesLookupRecords.map((record) => record.Species).filter(Boolean));
+const unknownSpecies = Array.from(
+  new Set(speciesRecords.map((record) => record.Species).filter((species) => species && !knownSpecies.has(species)))
+).sort();
+if (unknownSpecies.length > 0) {
+  console.warn(`⚠️  ${unknownSpecies.length} species codes are absent from tblSpecies.csv: ${unknownSpecies.join(", ")}`);
+}
+
+const getDETIdentityKey = (date: string, programId: string) => `${date}\u0000${getDETProgramKey(programId)}`;
+
+// Build one DET for each date/program identity before nesting for Firebase.
+const detsByIdentity = new Map<string, DET>();
 
 // Process daily records
 dailyRecords.forEach((record) => {
   const date = normalizeDate(record.DateEx);
-  if (!date) return;
+  const programId = record.Program || "";
+  if (!date || !isValidDETProgramId(programId)) return;
+  const key = getDETIdentityKey(date, programId);
+  const existing = detsByIdentity.get(key);
 
-  DETsMap.set(date, {
+  if (existing) {
+    existing.observerHours.total += parseFloat(record.Observers) || 0;
+    existing.netHours.total = (
+      (parseFloat(existing.netHours.total) || 0) + (parseFloat(record.SongbirdNets) || 0)
+    ).toString();
+    existing.coverageCode = Math.max(existing.coverageCode, parseFloat(record.CoverageCode) || 0);
+    if (record.Location === "MBO") existing.location = "MBO";
+    return;
+  }
+
+  detsByIdentity.set(key, {
     date: date,
-    programId: record.Program || "",
+    programId,
     location: record.Location || "",
     banderInCharge: undefined,
     start: undefined,
@@ -122,7 +163,7 @@ dailyRecords.forEach((record) => {
       hummingbirdTrapTotal: "",
       total: record.SongbirdNets || "",
     },
-    coverageCode: parseInt(record.CoverageCode) || 0,
+    coverageCode: parseFloat(record.CoverageCode) || 0,
     narrative: "",
     deviations: "",
     visitors: [],
@@ -144,33 +185,34 @@ dailyRecords.forEach((record) => {
 // Process species records
 speciesRecords.forEach((record) => {
   const date = normalizeDate(record.DateEx);
-  if (!date || !DETsMap.has(date)) return;
+  const key = getDETIdentityKey(date, record.Program || "");
+  if (!date || !detsByIdentity.has(key)) return;
 
-  const detMap = DETsMap.get(date)!;
+  const detMap = detsByIdentity.get(key)!;
   const species = record.Species;
 
   if (record.Observed && parseInt(record.Observed) > 0) {
-    detMap.observedSpeciesCount[species] = parseInt(record.Observed);
+    detMap.observedSpeciesCount[species] = (detMap.observedSpeciesCount[species] || 0) + parseInt(record.Observed);
   }
 
   if (record.Census && parseInt(record.Census) > 0) {
-    detMap.censusSpeciesCount[species] = parseInt(record.Census);
+    detMap.censusSpeciesCount[species] = (detMap.censusSpeciesCount[species] || 0) + parseInt(record.Census);
   }
 
   if (record.Banded && parseInt(record.Banded) > 0) {
-    detMap.bandedSpeciesCount[species] = parseInt(record.Banded);
+    detMap.bandedSpeciesCount[species] = (detMap.bandedSpeciesCount[species] || 0) + parseInt(record.Banded);
   }
 
   if (record.Repeats && parseInt(record.Repeats) > 0) {
-    detMap.repeatSpeciesCount[species] = parseInt(record.Repeats);
+    detMap.repeatSpeciesCount[species] = (detMap.repeatSpeciesCount[species] || 0) + parseInt(record.Repeats);
   }
 
   if (record.Returns && parseInt(record.Returns) > 0) {
-    detMap.returnSpeciesCount[species] = parseInt(record.Returns);
+    detMap.returnSpeciesCount[species] = (detMap.returnSpeciesCount[species] || 0) + parseInt(record.Returns);
   }
 
   if (record.DET && parseInt(record.DET) > 0) {
-    detMap.DETSpeciesCount[species] = parseInt(record.DET);
+    detMap.DETSpeciesCount[species] = (detMap.DETSpeciesCount[species] || 0) + parseInt(record.DET);
   }
 });
 
@@ -178,13 +220,14 @@ speciesRecords.forEach((record) => {
 const netsByDate = new Map<string, Net[]>();
 netHoursRecords.forEach((record) => {
   const date = normalizeDate(record.DateEx);
-  if (!date) return;
+  const key = getDETIdentityKey(date, record.Program || "");
+  if (!date || !record.Program) return;
 
-  if (!netsByDate.has(date)) {
-    netsByDate.set(date, []);
+  if (!netsByDate.has(key)) {
+    netsByDate.set(key, []);
   }
 
-  netsByDate.get(date)!.push({
+  netsByDate.get(key)!.push({
     id: record.NetID || "",
     open: undefined,
     closed: undefined,
@@ -195,9 +238,9 @@ netHoursRecords.forEach((record) => {
 });
 
 // Add net hours to DETs
-netsByDate.forEach((nets, date) => {
-  if (DETsMap.has(date)) {
-    const detMap = DETsMap.get(date)!;
+netsByDate.forEach((nets, key) => {
+  if (detsByIdentity.has(key)) {
+    const detMap = detsByIdentity.get(key)!;
     detMap.netHours.nets = nets;
 
     // Calculate total net hours if there are nets, otherwise keep SongbirdNets value
@@ -230,17 +273,27 @@ function removeUndefined<T>(obj: T): T {
   return obj;
 }
 
-// Upload to RTDB
-async function uploadDETsToRTDB() {
-  console.log("Uploading DETs to RTDB...");
+function isDET(value: unknown): value is DET {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<DET>;
+  return (
+    typeof candidate.date === "string" &&
+    typeof candidate.programId === "string" &&
+    isValidDETProgramId(candidate.programId)
+  );
+}
+
+async function generateDETs() {
+  console.log(LOCAL_JSON_MODE ? "Generating local DETsByDateMap JSON..." : "Uploading DETs to RTDB...");
 
   // Fetch weather data for MBO locations only
   console.log("Fetching weather data for MBO locations...");
-  const dates = Array.from(DETsMap.keys());
   let weatherSuccessCount = 0;
   let weatherErrorCount = 0;
 
-  const mboDates = dates.filter((date) => DETsMap.get(date)?.location === "MBO").sort();
+  const mboDates = Array.from(
+    new Set(Array.from(detsByIdentity.values()).filter((det) => det.location === "MBO").map((det) => det.date))
+  ).sort();
   const datesByYear = new Map<number, string[]>();
   mboDates.forEach((date) => {
     const year = parseInt(date.slice(0, 4), 10);
@@ -260,11 +313,14 @@ async function uploadDETsToRTDB() {
     try {
       const weatherByDate = await fetchWeatherForDateRange(startDate, endDate);
       yearDates.forEach((date) => {
-        const det = DETsMap.get(date)!;
         const weather = weatherByDate.get(date);
         if (weather) {
-          det.weather = weather;
-          weatherSuccessCount++;
+          for (const det of detsByIdentity.values()) {
+            if (det.date === date && det.location === "MBO") {
+              det.weather = weather;
+              weatherSuccessCount++;
+            }
+          }
         } else {
           weatherErrorCount++;
         }
@@ -282,25 +338,72 @@ async function uploadDETsToRTDB() {
 
   console.log(`✅ Weather data: ${weatherSuccessCount} successful, ${weatherErrorCount} failed`);
 
-  // Convert Map to object and remove undefined values
-  const DETsObject: Record<string, DET> = {};
-  DETsMap.forEach((detMap, date) => {
-    DETsObject[date] = removeUndefined(detMap);
+  const DETsByDateObject: Record<string, Record<string, DET>> = {};
+  const DETUpdates: Record<string, DET> = {};
+  detsByIdentity.forEach((det) => {
+    const cleanedDET = removeUndefined(det);
+    const programKey = getDETProgramKey(det.programId);
+    DETsByDateObject[det.date] ??= {};
+    DETsByDateObject[det.date][programKey] = cleanedDET;
+    DETUpdates[`${det.date}/${programKey}`] = cleanedDET;
   });
 
-  // Write to Firebase
-  await db.ref(`${ENVIRONMENT}/DETsMap`).set(DETsObject);
+  if (LOCAL_JSON_MODE) {
+    let firebaseOnlyCount = 0;
+    if (firebaseMergeEnvironment) {
+      const [legacySnapshot, currentSnapshot] = await Promise.all([
+        db.ref(`${firebaseMergeEnvironment}/DETsMap`).once("value"),
+        db.ref(`${firebaseMergeEnvironment}/DETsByDateMap`).once("value"),
+      ]);
+      const legacyDETs = Object.values(legacySnapshot.val() ?? {}).filter(isDET);
+      const currentDETs = Object.values(currentSnapshot.val() ?? {})
+        .flatMap((detsByProgram) =>
+          detsByProgram && typeof detsByProgram === "object" ? Object.values(detsByProgram) : []
+        )
+        .filter(isDET);
+      const firebaseOnlyDETs = new Map<string, DET>();
 
-  console.log(`✅ Uploaded ${DETsMap.size} DET records to RTDB at ${ENVIRONMENT}/DETsMap`);
+      // Current nested records override legacy records, but neither can
+      // overwrite a corrected CSV date/program identity.
+      for (const det of [...legacyDETs, ...currentDETs]) {
+        const identityKey = getDETIdentityKey(det.date, det.programId);
+        if (!detsByIdentity.has(identityKey)) firebaseOnlyDETs.set(identityKey, det);
+      }
+
+      for (const det of firebaseOnlyDETs.values()) {
+        const programKey = getDETProgramKey(det.programId);
+        DETsByDateObject[det.date] ??= {};
+        DETsByDateObject[det.date][programKey] = removeUndefined(det);
+      }
+      firebaseOnlyCount = firebaseOnlyDETs.size;
+      console.log(`✅ Added ${firebaseOnlyCount} Firebase-only DETs from ${firebaseMergeEnvironment}`);
+    }
+
+    fs.writeFileSync(outputPath, JSON.stringify(DETsByDateObject));
+    const dateCount = Object.keys(DETsByDateObject).length;
+    const finalRecordCount = detsByIdentity.size + firebaseOnlyCount;
+    const multiProgramDateCount = Object.values(DETsByDateObject).filter(
+      (detsByProgram) => Object.keys(detsByProgram).length > 1
+    ).length;
+    console.log(`✅ Wrote ${finalRecordCount} DET records across ${dateCount} dates to ${outputPath}`);
+    console.log(`✅ ${multiProgramDateCount} dates contain more than one program`);
+    return;
+  }
+
+  // Update each date/program record independently so current DETs that are
+  // not present in the historical CSV import are never removed.
+  await db.ref(`${ENVIRONMENT}/DETsByDateMap`).update(DETUpdates);
+
+  console.log(`✅ Uploaded ${detsByIdentity.size} DET records to RTDB at ${ENVIRONMENT}/DETsByDateMap`);
 
   // Update metadata - triggers DataService to fetch fresh data
-  await db.ref(`${ENVIRONMENT}/metadata/lastModified`).set(Date.now());
+  await db.ref(`${ENVIRONMENT}/metadata/lastModified_DETsByDateMap`).set(Date.now());
 
   console.log("✅ All DETs uploaded successfully!");
   process.exit(0);
 }
 
-uploadDETsToRTDB().catch((error) => {
-  console.error("❌ Upload failed:", error);
+generateDETs().catch((error) => {
+  console.error(LOCAL_JSON_MODE ? "❌ JSON generation failed:" : "❌ Upload failed:", error);
   process.exit(1);
 });

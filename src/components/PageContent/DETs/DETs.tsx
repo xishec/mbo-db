@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore, useActions } from "../../../stores/useAppStore";
 import type { DET } from "../../../types/DET";
 import { Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
@@ -7,8 +7,12 @@ import WeatherDisplay from "../../Helper/WeatherDisplay";
 import PageHeader from "../PageHeader";
 import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/DET/AddDETModal";
-import { ChevronLeftIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../types/species";
+import { getDETEntriesForDate, isValidDETProgramId, normalizeDETProgramId } from "../../../utils/detIdentity";
+import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
+import { isActiveBirdEvent } from "../../../stores/derive";
+import DETProgramChooser, { type DETProgramOption } from "./DETProgramChooser";
 
 function textFieldToString(value: unknown): string {
   if (typeof value === "string") return value;
@@ -33,17 +37,20 @@ function toDateString(year: number, month: number, day: number): string {
 }
 
 export default function DETs() {
-  const DETsMap = useAppStore((s) => s.DETsMap);
+  const DETsByDateMap = useAppStore((s) => s.DETsByDateMap);
   const user = useAppStore((s) => s.user);
   const isOnline = useAppStore((s) => s.isOnline);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const programsMap = useAppStore((s) => s.programsMap);
+  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
+  const birdEventsVersion = useBirdEventsVersion();
   const { saveDET } = useActions();
   const [selectedDET, setSelectedDET] = useState<DET | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [editedDET, setEditedDET] = useState<DET | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [modalProgramId, setModalProgramId] = useState<string | null>(null);
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -52,32 +59,58 @@ export default function DETs() {
   const canSaveDET = !!user && isOnline;
 
   // Get available dates as a Set for quick lookup
-  const availableDatesSet = new Set(Object.keys(DETsMap));
+  const availableDatesSet = new Set(Object.keys(DETsByDateMap));
+  const selectedDateEntries = useMemo(
+    () => (selectedDate ? getDETEntriesForDate(DETsByDateMap, selectedDate) : []),
+    [DETsByDateMap, selectedDate]
+  );
+  const selectedDatePrograms = useMemo(() => {
+    void birdEventsVersion;
+    if (!selectedDate) return [];
 
-  const handleDateChange = async (dateStr: string) => {
-    // Cancel edit mode when changing dates
-    if (isEditing) {
-      setIsEditing(false);
-      setEditedDET(null);
-    }
-
-    setSelectedDate(dateStr);
-    const det = availableDatesSet.has(dateStr) ? DETsMap[dateStr] : null;
-
-    if (det && !det.weather) {
-      // Fetch weather data if not already present
-      setIsLoadingWeather(true);
-      const weather = await fetchWeatherForDate(dateStr);
-      if (weather) {
-        // Create a new DET object with weather data
-        setSelectedDET({ ...det, weather });
-      } else {
-        setSelectedDET(det);
+    const options = new Map<string, DETProgramOption>();
+    for (const event of birdEventsStore.getAll().values()) {
+      if (
+        !event ||
+        event.date !== selectedDate ||
+        !isValidDETProgramId(event.programId) ||
+        !isActiveBirdEvent(event, bandResetsMap)
+      ) {
+        continue;
       }
-      setIsLoadingWeather(false);
-    } else {
-      setSelectedDET(det);
+      const normalizedProgramId = normalizeDETProgramId(event.programId);
+      options.set(normalizedProgramId, {
+        programId: event.programId,
+        displayName: programsMap[event.programId]?.displayName || event.programId,
+      });
     }
+
+    selectedDateEntries.forEach(([storageKey, det]) => {
+      const normalizedProgramId = normalizeDETProgramId(det.programId);
+      options.set(normalizedProgramId, {
+        programId: det.programId,
+        displayName: programsMap[det.programId]?.displayName || det.programId,
+        detProgramKey: storageKey,
+      });
+    });
+
+    return Array.from(options.values()).sort((left, right) => left.programId.localeCompare(right.programId));
+  }, [bandResetsMap, birdEventsVersion, programsMap, selectedDate, selectedDateEntries]);
+
+  const selectDET = async (det: DET) => {
+    setSelectedDET(det);
+    if (!det.weather) {
+      setIsLoadingWeather(true);
+      const weather = await fetchWeatherForDate(det.date);
+      if (weather) setSelectedDET({ ...det, weather });
+      setIsLoadingWeather(false);
+    }
+  };
+
+  const handleDateChange = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    setSelectedDET(null);
+    setEditedDET(null);
   };
 
   const changeMonth = (offset: number) => {
@@ -106,26 +139,23 @@ export default function DETs() {
   const handleEdit = () => {
     if (selectedDET) {
       setEditedDET({ ...selectedDET });
+      setModalProgramId(selectedDET.programId);
       setModalMode("edit");
       setIsModalOpen(true);
     }
   };
 
-  const handleAddNew = () => {
-    if (selectedDate && DETsMap[selectedDate]) {
-      setEditedDET({ ...DETsMap[selectedDate] });
-      setModalMode("edit");
-      setIsModalOpen(true);
-      return;
-    }
-
+  const handleAddNew = (programId: string) => {
     setEditedDET(null);
+    setModalProgramId(programId);
     setModalMode("create");
     setIsModalOpen(true);
   };
 
   const handleModalSave = async (det: DET) => {
-    await saveDET(det, { overwrite: modalMode === "edit" });
+    await saveDET(det, {
+      overwrite: modalMode === "edit",
+    });
     setSelectedDate(det.date);
     setSelectedDET(det);
   };
@@ -367,14 +397,7 @@ export default function DETs() {
     <div className="h-full w-full max-w-7xl mx-auto flex flex-col pt-4 p-8 gap-4">
       <PageHeader
         title="Daily Effort Tables"
-        subtitle={`${availableDatesSet.size} DET entries available`}
-        actions={
-          canSaveDET ? (
-            <Button color="secondary" onPress={handleAddNew}>
-              {selectedDate && DETsMap[selectedDate] ? "Edit DET" : "Add DET"}
-            </Button>
-          ) : null
-        }
+        subtitle={`${Object.values(DETsByDateMap).reduce((total, byProgram) => total + Object.keys(byProgram).length, 0)} DET entries available`}
       />
 
       <div className="w-full mb-4 flex gap-4 items-start">
@@ -431,21 +454,46 @@ export default function DETs() {
           </CardBody>
         </Card>
 
-        {DETDisplay || (
-          <div className="flex-1 text-center text-gray-500">
-            <p className="text-lg">
-              {selectedDate ? `No DET information for ${selectedDate}` : "Please select a date to view DET information"}
-            </p>
-          </div>
-        )}
+        <div className="min-w-0 flex-1 space-y-3">
+          {selectedDET ? (
+            <>
+              <Button
+                variant="light"
+                startContent={<ArrowLeftIcon className="h-4 w-4" />}
+                onPress={() => {
+                  setSelectedDET(null);
+                }}
+              >
+                All programs for {selectedDate}
+              </Button>
+              {DETDisplay}
+            </>
+          ) : selectedDate ? (
+            <DETProgramChooser
+              date={selectedDate}
+              programs={selectedDatePrograms}
+              canAdd={canSaveDET}
+              onAdd={handleAddNew}
+              onView={(storageKey) => {
+                const det = selectedDate ? DETsByDateMap[selectedDate]?.[storageKey] : undefined;
+                if (det) void selectDET(det);
+              }}
+            />
+          ) : (
+            <div className="text-center text-gray-500">
+              <p className="text-lg">Please select a date to view DET information</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <AddDETModal
         isOpen={isModalOpen}
-        onOpenChange={() => setIsModalOpen(!isModalOpen)}
+        onOpenChange={setIsModalOpen}
         onSave={handleModalSave}
         existingDET={modalMode === "edit" ? editedDET : null}
         defaultDate={modalMode === "create" ? selectedDate : null}
+        defaultProgramId={modalProgramId}
         mode={modalMode}
       />
     </div>

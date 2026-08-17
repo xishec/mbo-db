@@ -5,7 +5,7 @@ import type {
   BandIdToBirdEventIdsMap,
   BandSizeToBandIdMap,
   BandResetsMap,
-  DETsMap,
+  DETsByDateMap,
   DismissedConflictsMap,
   MagicTable,
   ProgramsMap,
@@ -53,7 +53,7 @@ export interface AppState {
   magicTable: MagicTable;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
-  DETsMap: DETsMap;
+  DETsByDateMap: DETsByDateMap;
   volunteersMap: VolunteersMap;
   volunteerStatsMap: VolunteerStatsMap;
   bandGroupNotesMap: Record<string, string>;
@@ -97,7 +97,7 @@ export const initialAppState: AppState = {
   magicTable: { pyle: {}, species: {} },
   bandSizeToBandIdMap: {} as BandSizeToBandIdMap,
   dismissedConflictsMap: {},
-  DETsMap: {},
+  DETsByDateMap: {},
   volunteersMap: {},
   volunteerStatsMap: {},
   bandGroupNotesMap: {},

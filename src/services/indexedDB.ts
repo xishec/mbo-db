@@ -1,6 +1,7 @@
 import type { DatabaseData, PendingEvent, DET, BirdEvent } from "../types";
 import type { Environment } from "../firebase";
 import { INDEPENDENT_MAP_NAMES } from "../types/mapNames";
+import { getDETProgramKey } from "../utils/detIdentity";
 
 const DB_NAME = "mbo-db-20260503";
 const DB_VERSION = 20260504;
@@ -481,9 +482,15 @@ export async function updateDETInCache(environment: Environment, det: DET): Prom
     throw new Error(`No cached data found for environment: ${environment}`);
   }
 
+  const DETsByDateMap = { ...(data.DETsByDateMap || {}) };
+  DETsByDateMap[det.date] = {
+    ...(DETsByDateMap[det.date] ?? {}),
+    [getDETProgramKey(det.programId)]: det,
+  };
+
   const updatedData = {
     ...data,
-    DETsMap: { ...(data.DETsMap || {}), [det.date]: det },
+    DETsByDateMap,
   };
 
   return new Promise<void>((resolve, reject) => {

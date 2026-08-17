@@ -2,17 +2,19 @@ import { useEffect, useRef, useMemo } from "react";
 import * as d3 from "d3";
 import { useAppStore } from "../../../stores/useAppStore";
 import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
+import { getAllDETs, getDETDate } from "../../../utils/detIdentity";
+import type { DET } from "../../../types";
 
 type ViewMode = "captured" | "observed";
 
 interface HeatmapProps {
   speciesCode: string;
   viewMode: ViewMode;
-  DETsMap: any;
+  DETs: DET[];
   globalScale?: { min: number; max: number };
 }
 
-function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapProps) {
+function SingleHeatmap({ speciesCode, viewMode, DETs, globalScale }: HeatmapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
@@ -50,7 +52,8 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
       }
     >();
 
-    Object.entries(DETsMap).forEach(([dateStr, det]: [string, any]) => {
+    DETs.forEach((det) => {
+      const dateStr = getDETDate("", det);
       const netHours = parseFloat(det?.netHours?.total || "0");
       const observerHours = det?.observerHours?.total || 0;
 
@@ -98,7 +101,8 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 
     // Get all years from DET data
     const allDETYears = new Set<number>();
-    Object.keys(DETsMap).forEach((dateStr) => {
+    DETs.forEach((det) => {
+      const dateStr = getDETDate("", det);
       const year = new Date(dateStr).getFullYear();
       allDETYears.add(year);
     });
@@ -125,7 +129,7 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 
     const sizeScale = d3.scaleLinear().domain([minHours, medianHours]).range([minCellSize, maxCellSize]).clamp(true);
 
-    const getSize = (d: any) => {
+    const getSize = (d: (typeof weeklyData)[number]) => {
       const hours = viewMode === "captured" ? d.netHours || 0 : d.observerHours || 0;
       return hours > 0 ? sizeScale(hours) : minCellSize;
     };
@@ -309,7 +313,7 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
       .call((g) => g.select(".domain").remove())
       .selectAll("text")
       .style("font-size", "9px");
-  }, [speciesCode, viewMode, DETsMap, globalScale, speciesAliasesMap]);
+  }, [speciesCode, viewMode, DETs, globalScale, speciesAliasesMap]);
 
   return (
     <div ref={containerRef} className="w-full">
@@ -319,13 +323,14 @@ function SingleHeatmap({ speciesCode, viewMode, DETsMap, globalScale }: HeatmapP
 }
 
 export default function PDFReport() {
-  const DETsMap = useAppStore((s) => s.DETsMap);
+  const DETsByDateMap = useAppStore((s) => s.DETsByDateMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
+  const DETs = useMemo(() => getAllDETs(DETsByDateMap), [DETsByDateMap]);
 
   // Get top 50 species by total DET count
   const topSpecies = useMemo(() => {
     const speciesCounts = new Map<string, number>();
-    Object.values(DETsMap).forEach((det: any) => {
+    DETs.forEach((det) => {
       Object.entries(det.DETSpeciesCount || {}).forEach(([species, count]) => {
         const speciesKey = resolveSpeciesKey(species, speciesAliasesMap);
         speciesCounts.set(speciesKey, (speciesCounts.get(speciesKey) || 0) + (count as number));
@@ -335,7 +340,7 @@ export default function PDFReport() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 50)
       .map((s) => s.species);
-  }, [DETsMap, speciesAliasesMap]);
+  }, [DETs, speciesAliasesMap]);
 
   // Calculate global scales for consistent coloring across all species
   const globalScales = useMemo(() => {
@@ -352,7 +357,8 @@ export default function PDFReport() {
     topSpecies.forEach((species) => {
       const weeklyMap = new Map<string, { count: number; netHours: number; observerHours: number }>();
 
-      Object.entries(DETsMap).forEach(([dateStr, det]: [string, any]) => {
+      DETs.forEach((det) => {
+        const dateStr = getDETDate("", det);
         const netHours = parseFloat(det?.netHours?.total || "0");
         const observerHours = det?.observerHours?.total || 0;
         const date = new Date(dateStr);
@@ -406,7 +412,7 @@ export default function PDFReport() {
         max: d3.quantile(observedSorted, 0.95) || d3.max(observedValues) || 1,
       },
     };
-  }, [DETsMap, topSpecies, speciesAliasesMap]);
+  }, [DETs, topSpecies, speciesAliasesMap]);
 
   useEffect(() => {
     // Auto-print when page loads
@@ -468,7 +474,7 @@ export default function PDFReport() {
             <SingleHeatmap
               speciesCode={species}
               viewMode="captured"
-              DETsMap={DETsMap}
+              DETs={DETs}
               globalScale={globalScales.captured}
             />
           </div>
@@ -476,7 +482,7 @@ export default function PDFReport() {
             <SingleHeatmap
               speciesCode={species}
               viewMode="observed"
-              DETsMap={DETsMap}
+              DETs={DETs}
               globalScale={globalScales.observed}
             />
           </div>

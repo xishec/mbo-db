@@ -3,20 +3,38 @@ import * as d3 from "d3";
 import { Tabs, Tab, Select, SelectItem, Button, Card, CardBody } from "@heroui/react";
 import { useAppStore } from "../../../stores/useAppStore";
 import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
-import type { DETsMap } from "../../../types";
+import { getDETDate } from "../../../utils/detIdentity";
+import type { DET } from "../../../types";
 
 type ViewMode = "det" | "captured" | "observed";
 
+export type HeatmapDET = Partial<DET> & {
+  dt?: string;
+  d?: Record<string, number>;
+  b?: Record<string, number>;
+  rp?: Record<string, number>;
+  rt?: Record<string, number>;
+  o?: Record<string, number>;
+  nh?: string;
+  oh?: number;
+};
+
+export type HeatmapDETsByDateMap = Record<string, Record<string, HeatmapDET>>;
+
 interface YearlyHeatmapProps {
-  DETsMap?: DETsMap;
+  DETsByDateMap?: HeatmapDETsByDateMap;
 }
 
-export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapProps = {}) {
+export default function YearlyHeatmap({ DETsByDateMap: DETsByDateMapProp }: YearlyHeatmapProps = {}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const DETsMapFromStore = useAppStore((s) => s.DETsMap);
+  const DETsByDateMapFromStore = useAppStore((s) => s.DETsByDateMap);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
-  const DETsMap = DETsMapProp || DETsMapFromStore;
+  const DETsByDateMap: HeatmapDETsByDateMap = DETsByDateMapProp || DETsByDateMapFromStore;
+  const DETs = useMemo(
+    () => Object.values(DETsByDateMap).flatMap((detsByProgram) => Object.values(detsByProgram ?? {})),
+    [DETsByDateMap]
+  );
 
   const [viewMode, setViewMode] = useState<ViewMode>("det");
   const autocompleteRef = useRef<HTMLDivElement>(null);
@@ -25,16 +43,16 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
   // Get all species sorted by count
   const allSpecies = useMemo(() => {
     const speciesCounts = new Map<string, number>();
-    Object.values(DETsMap).forEach((det) => {
+    DETs.forEach((det) => {
       // Handle both full key (DETSpeciesCount) and short key (d)
-      const detSpeciesCount = (det as any).d || det.DETSpeciesCount || {};
+      const detSpeciesCount = det.d || det.DETSpeciesCount || {};
       Object.entries(detSpeciesCount).forEach(([species, count]) => {
         const speciesKey = resolveSpeciesKey(species, speciesAliasesMap);
         speciesCounts.set(speciesKey, (speciesCounts.get(speciesKey) || 0) + (count as number));
       });
     });
     return Array.from(speciesCounts, ([species, count]) => ({ species, count })).sort((a, b) => b.count - a.count);
-  }, [DETsMap, speciesAliasesMap]);
+  }, [DETs, speciesAliasesMap]);
 
   const [selectedSpecies, setSelectedSpecies] = useState<string>(() =>
     allSpecies.length > 0 ? allSpecies[0].species : ""
@@ -167,11 +185,11 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       }
     >();
 
-    Object.entries(DETsMap).forEach(([dateStr, det]) => {
-      const detAny = det as any;
+    DETs.forEach((det) => {
+      const dateStr = getDETDate("", det);
       // Handle both full keys and short keys
-      const netHours = parseFloat(detAny.nh || det?.netHours?.total || "0");
-      const observerHours = detAny.oh || det?.observerHours?.total || 0;
+      const netHours = parseFloat(det.nh || det.netHours?.total || "0");
+      const observerHours = det.oh || det.observerHours?.total || 0;
 
       // Skip dates with no hours based on view mode
       if (viewMode === "captured" && netHours === 0) return;
@@ -191,15 +209,15 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       // Get count based on view mode (handle both full and short keys)
       let count = 0;
       if (viewMode === "det") {
-        const detSpeciesCount = detAny.d || det.DETSpeciesCount || {};
+        const detSpeciesCount = det.d || det.DETSpeciesCount || {};
         count = getSpeciesCount(detSpeciesCount);
       } else if (viewMode === "captured") {
-        const bandedCount = detAny.b || det.bandedSpeciesCount || {};
-        const repeatCount = detAny.rp || det.repeatSpeciesCount || {};
-        const returnCount = detAny.rt || det.returnSpeciesCount || {};
+        const bandedCount = det.b || det.bandedSpeciesCount || {};
+        const repeatCount = det.rp || det.repeatSpeciesCount || {};
+        const returnCount = det.rt || det.returnSpeciesCount || {};
         count = getSpeciesCount(bandedCount) + getSpeciesCount(repeatCount) + getSpeciesCount(returnCount);
       } else if (viewMode === "observed") {
-        const observedCount = detAny.o || det.observedSpeciesCount || {};
+        const observedCount = det.o || det.observedSpeciesCount || {};
         count = getSpeciesCount(observedCount);
       }
 
@@ -221,7 +239,8 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
     // Get all years from DET data to ensure consistent axis across view modes
     const allDETYears = new Set<number>();
-    Object.keys(DETsMap).forEach((dateStr) => {
+    DETs.forEach((det) => {
+      const dateStr = getDETDate("", det);
       const year = new Date(dateStr).getFullYear();
       allDETYears.add(year);
     });
@@ -251,7 +270,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
 
     const sizeScale = d3.scaleLinear().domain([minHours, medianHours]).range([minCellSize, maxCellSize]).clamp(true);
 
-    const getSize = (d: any) => {
+    const getSize = (d: (typeof weeklyData)[number]) => {
       if (viewMode === "det") return maxCellSize;
       const hours = viewMode === "captured" ? d.netHours || 0 : d.observerHours || 0;
       return hours > 0 ? sizeScale(hours) : minCellSize;
@@ -358,7 +377,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
       .attr("fill", (d) => getColor(d.value))
       .style("cursor", "pointer")
       .on("click", function (event, d) {
-        let tooltip = d3.select("#heatmap-tooltip");
+        let tooltip = d3.select<HTMLDivElement, unknown>("#heatmap-tooltip");
         if (tooltip.empty()) {
           tooltip = d3
             .select("body")
@@ -373,7 +392,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
             .style("font-size", "13px")
             .style("pointer-events", "none")
             .style("z-index", "1000")
-            .style("opacity", "0") as any;
+            .style("opacity", "0");
         }
 
         const tooltipContent =
@@ -536,7 +555,7 @@ export default function YearlyHeatmap({ DETsMap: DETsMapProp }: YearlyHeatmapPro
           .text(ex.label);
       });
     }
-  }, [selectedSpecies, viewMode, DETsMap, speciesAliasesMap]);
+  }, [selectedSpecies, viewMode, DETs, speciesAliasesMap]);
 
   return (
     <div className="space-y-4 md:space-y-6">
