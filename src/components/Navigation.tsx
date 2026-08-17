@@ -167,12 +167,32 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               );
             })}
             <Dropdown>
-              <NavbarItem isActive={["search", "species", "volunteers", "bands", "reports", "funstats", "trends"].includes(activePage)}>
+              <NavbarItem
+                isActive={[
+                  "search",
+                  "det-search",
+                  "species",
+                  "volunteers",
+                  "bands",
+                  "reports",
+                  "funstats",
+                  "trends",
+                ].includes(activePage)}
+              >
                 <DropdownTrigger>
                   <Button
                     variant="light"
                     className={`text-md ${isLoading ? "pointer-events-none opacity-50" : ""} ${
-                      ["search", "species", "volunteers", "bands", "reports", "funstats", "trends"].includes(activePage)
+                      [
+                        "search",
+                        "det-search",
+                        "species",
+                        "volunteers",
+                        "bands",
+                        "reports",
+                        "funstats",
+                        "trends",
+                      ].includes(activePage)
                         ? "text-primary"
                         : "text-foreground"
                     }`}
@@ -192,6 +212,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 }}
               >
                 <DropdownItem key="search">Search</DropdownItem>
+                <DropdownItem key="det-search">DET Search</DropdownItem>
                 <DropdownItem key="species">Species</DropdownItem>
                 <DropdownItem key="volunteers">Volunteers</DropdownItem>
                 <DropdownItem key="bands">Bands</DropdownItem>
@@ -381,6 +402,20 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 }}
               >
                 Search
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "det-search" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("det-search");
+                  setIsMenuOpen(false);
+                }}
+              >
+                DET Search
               </Link>
             </NavbarMenuItem>
             <NavbarMenuItem>

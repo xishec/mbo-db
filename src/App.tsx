@@ -28,7 +28,19 @@ function BeforeUnloadGuard() {
   return null;
 }
 
-const VALID_PAGES = new Set(["home", "programs", "search", "DETs", "species", "volunteers", "bands", "funstats", "reports", "trends"]);
+const VALID_PAGES = new Set([
+  "home",
+  "programs",
+  "search",
+  "det-search",
+  "DETs",
+  "species",
+  "volunteers",
+  "bands",
+  "funstats",
+  "reports",
+  "trends",
+]);
 const PUBLIC_PAGES = new Set(["trends"]);
 
 function getPageFromHash(): string {
