@@ -30,6 +30,9 @@ export default defineConfig({
         background_color: "#ffffff",
         display: "standalone",
         start_url: "/",
+        launch_handler: {
+          client_mode: "focus-existing",
+        },
         icons: [
           {
             src: "/icon-256.png",
