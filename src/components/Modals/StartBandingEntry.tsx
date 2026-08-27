@@ -990,8 +990,12 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
   const displayedMessage =
     activeMessage ??
     ({
-      tone: "default",
-      text: canSave ? "Ready to save" : "Enter fields to save",
+      tone: isAppSaving ? "warning" : "default",
+      text: isAppSaving
+        ? "Syncing saved captures. Save will be available when sync completes."
+        : canSave
+          ? "Ready to save"
+          : "Enter fields to save",
     } satisfies EntryMessage);
   const messageClassName =
     displayedMessage.tone === "success"
