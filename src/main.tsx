@@ -8,7 +8,7 @@ import { registerSW } from 'virtual:pwa-register'
 // Render React app first so event handlers attach before any SW interaction
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HeroUIProvider>
+    <HeroUIProvider disableAnimation>
       <ToastProvider placement="top-right" />
       <App />
     </HeroUIProvider>
