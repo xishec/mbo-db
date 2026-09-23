@@ -8,6 +8,7 @@ export interface CsvEditorProps {
   className?: string;
   maxHeight?: number | string;
   readOnlyColumns?: Array<number | string>;
+  formatReadOnlyValue?: (value: string, columnName: string) => string;
 }
 
 function normalizeRows(rows: string[][]): string[][] {
@@ -24,6 +25,7 @@ export default function CsvEditor({
   className = "",
   maxHeight,
   readOnlyColumns = [],
+  formatReadOnlyValue,
 }: CsvEditorProps) {
   const [rows, setRows] = useState<string[][]>(() => normalizeRows(parseCsv(csvTemplate)));
 
@@ -168,9 +170,15 @@ export default function CsvEditor({
                   <td key={columnIndex} className="border-b border-r border-default-200 p-0 last:border-r-0">
                     <input
                       aria-label={`${headers[columnIndex]} row ${rowIndex + 1}`}
-                      className="block w-full min-w-32 bg-transparent px-3 py-2 text-right text-default-900 outline-none focus:bg-primary-50 focus:ring-2 focus:ring-inset focus:ring-primary"
+                      className={`block w-full bg-transparent px-3 py-2 text-default-900 outline-none focus:bg-primary-50 focus:ring-2 focus:ring-inset focus:ring-primary ${
+                        headers[columnIndex] === "Species" ? "min-w-56 text-left" : "min-w-32 text-right"
+                      }`}
                       readOnly={readOnlyColumnIndexes.has(columnIndex)}
-                      value={row[columnIndex] ?? ""}
+                      value={
+                        readOnlyColumnIndexes.has(columnIndex) && formatReadOnlyValue
+                          ? formatReadOnlyValue(row[columnIndex] ?? "", headers[columnIndex])
+                          : (row[columnIndex] ?? "")
+                      }
                       onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)}
                       onKeyDown={(event) => handleArrowNavigation(event, rowIndex, columnIndex)}
                       data-csv-row={rowIndex}

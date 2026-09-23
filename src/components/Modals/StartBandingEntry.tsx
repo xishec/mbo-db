@@ -1075,6 +1075,36 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
     suggestedBirdEventType,
   ]);
 
+  useEffect(() => {
+    if (
+      !isOpen ||
+      isDoubleBanding ||
+      isEntryWarningOpen ||
+      isBirdStatusModalOpen ||
+      isNotesModalOpen ||
+      reminderNotice !== null
+    ) {
+      return;
+    }
+
+    const handleSaveShortcut = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || (!event.metaKey && !event.ctrlKey) || event.repeat) return;
+      event.preventDefault();
+      void saveEntry();
+    };
+
+    window.addEventListener("keydown", handleSaveShortcut);
+    return () => window.removeEventListener("keydown", handleSaveShortcut);
+  }, [
+    isBirdStatusModalOpen,
+    isDoubleBanding,
+    isEntryWarningOpen,
+    isNotesModalOpen,
+    isOpen,
+    reminderNotice,
+    saveEntry,
+  ]);
+
   return (
     <>
       <Card shadow="none" className="w-full border border-default-200">

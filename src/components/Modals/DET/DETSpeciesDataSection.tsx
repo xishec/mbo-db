@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@heroui/react";
 import CsvEditor from "../../Helper/CsvEditor";
 import { DET_SPECIES_CODES_SET, SPECIES_GROUPS } from "../../../types/DET";
+import { SPECIES_MAP } from "../../../types/species";
 import { parseCsv, stringifyCsv } from "../../../utils/csv";
 
 interface DETSpeciesDataSectionProps {
@@ -25,6 +26,11 @@ interface SpeciesGroupTable {
 
 function countValue(counts: Record<string, number>, code: string): string {
   return counts[code] ? String(counts[code]) : "";
+}
+
+function formatSpeciesValue(value: string, columnName: string): string {
+  if (columnName !== "Species") return value;
+  return SPECIES_MAP[value]?.speciesDescriptionMBO || SPECIES_MAP[value]?.speciesDescriptionCMMN || value;
 }
 
 function rowsToCount(rows: string[][], columnIndex: number, allowedCodes: Set<string>): Record<string, number> {
@@ -231,6 +237,7 @@ export default function DETSpeciesDataSection({
               csvTemplate={groupCsvTemplates.get(group.name) ?? stringifyCsv([headers])}
               onChange={(csv) => handleCsvChange(group.codes, csv)}
               readOnlyColumns={["Species", "Band", "Repeat", "Ret"]}
+              formatReadOnlyValue={formatSpeciesValue}
             />
           </section>
         ))}

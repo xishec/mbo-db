@@ -6,6 +6,10 @@ export function normalizeDETProgramId(programId: string | null | undefined): str
   return (programId ?? "").trim().toUpperCase();
 }
 
+export function isOWLProgramId(programId: string | null | undefined): boolean {
+  return normalizeDETProgramId(programId).startsWith("OWL");
+}
+
 export function isValidDETProgramId(programId: string | null | undefined): boolean {
   const normalized = normalizeDETProgramId(programId);
   return normalized !== "" && normalized !== "NONE";

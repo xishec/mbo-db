@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, type ChangeEvent } from "rea
 import { Button, Input, Textarea } from "@heroui/react";
 import {
   DET_SPECIES_CODES_SET,
+  OWL_NET_IDS,
   type DET,
   type Net,
   type ObserverHours,
@@ -20,11 +21,12 @@ import { showPersistentErrorToast } from "../../../utils/toast";
 import DETObserverHoursSection from "./DETObserverHoursSection";
 import DETNetHoursSection from "./DETNetHoursSection";
 import DETSpeciesDataSection from "./DETSpeciesDataSection";
+import OWLDETSpeciesTable from "../../DET/OWLDETSpeciesTable";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "../ModalShell";
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../modalDefaults";
 import { resolveSpeciesKey, SPECIES_MAP } from "../../../types/species";
 import { isActiveBirdEvent } from "../../../stores/derive";
-import { findDETEntry, normalizeDETProgramId } from "../../../utils/detIdentity";
+import { findDETEntry, isOWLProgramId, normalizeDETProgramId } from "../../../utils/detIdentity";
 
 interface AddDETModalProps {
   isOpen: boolean;
@@ -174,6 +176,18 @@ function scheduledNetHours(open: string, closed: string): NetHours {
   };
 }
 
+function restrictNetHours(netHours: NetHours, allowedNetIds: readonly string[]): NetHours {
+  const allowedIds = new Set(allowedNetIds);
+  const nets = (netHours.nets ?? []).filter((net) => allowedIds.has(net.id));
+  const total = nets.reduce((sum, net) => sum + (Number(net.total) || 0), 0);
+
+  return {
+    nets,
+    hummingbirdTrapTotal: "0",
+    total: Number(total.toFixed(2)).toString(),
+  };
+}
+
 export default function AddDETModal({
   isOpen,
   onOpenChange,
@@ -205,6 +219,7 @@ export default function AddDETModal({
   const [visitors, setVisitors] = useState("");
   const [injuries, setInjuries] = useState("");
   const [released, setReleased] = useState("");
+  const [sponsorship, setSponsorship] = useState("");
   const [observedSpeciesCount, setObservedSpeciesCount] = useState<Record<string, number>>({});
   const [censuser, setCensuser] = useState("");
   const [censusStart, setCensusStart] = useState("");
@@ -217,6 +232,7 @@ export default function AddDETModal({
   const [weather, setWeather] = useState<Weather | undefined>(undefined);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const bandResetsMap = useAppStore((s) => s.bandResetsMap);
+  const isOWLDET = isOWLProgramId(programId);
 
   const existingCustomSpeciesCodes = useMemo(() => {
     const codes = new Set<string>();
@@ -348,18 +364,23 @@ export default function AddDETModal({
       setDeviations(existingDET.deviations);
       setStationManagement(existingDET.stationManagement);
       setObserverHours(existingDET.observerHours || { total: 0, observers: [] });
-      setNetHours(
+      const existingNetHours =
         existingDET.netHours
           ? {
               nets: existingDET.netHours.nets || [],
               hummingbirdTrapTotal: existingDET.netHours.hummingbirdTrapTotal || "0",
               total: existingDET.netHours.total || "0",
             }
-          : { nets: [], hummingbirdTrapTotal: "0", total: "0" }
+          : { nets: [], hummingbirdTrapTotal: "0", total: "0" };
+      setNetHours(
+        isOWLProgramId(existingDET.programId)
+          ? restrictNetHours(existingNetHours, OWL_NET_IDS)
+          : existingNetHours
       );
       setVisitors(textFieldToString(existingDET.visitors));
       setInjuries(textFieldToString(existingDET.injuries));
       setReleased(textFieldToString(existingDET.released));
+      setSponsorship(textFieldToString(existingDET.sponsorship));
       setObservedSpeciesCount(existingDET.observedSpeciesCount || {});
       setCensuser(existingDET.censuser || "");
       setCensusStart(existingDET.censusStart || "");
@@ -390,6 +411,7 @@ export default function AddDETModal({
       setVisitors("");
       setInjuries("");
       setReleased("");
+      setSponsorship("");
       setObservedSpeciesCount({});
       setCensuser("");
       setCensusStart("");
@@ -511,16 +533,16 @@ export default function AddDETModal({
     if (!isOpen || mode !== "create" || !date) return;
 
     const calendarEntry = detCalendar[date];
-    setStart(calendarEntry?.start ?? "");
-    setEnd(calendarEntry?.end ?? "");
-    setCensusStart(calendarEntry?.censusStart ?? "");
-    setCensusEnd(calendarEntry?.censusEnd ?? "");
+    setStart(isOWLDET ? "" : (calendarEntry?.start ?? ""));
+    setEnd(isOWLDET ? "" : (calendarEntry?.end ?? ""));
+    setCensusStart(isOWLDET ? "" : (calendarEntry?.censusStart ?? ""));
+    setCensusEnd(isOWLDET ? "" : (calendarEntry?.censusEnd ?? ""));
     setNetHours(
-      calendarEntry?.start && calendarEntry?.end
+      !isOWLDET && calendarEntry?.start && calendarEntry?.end
         ? scheduledNetHours(calendarEntry.start, calendarEntry.end)
         : { nets: [], hummingbirdTrapTotal: "0", total: "0" }
     );
-  }, [date, detCalendar, isOpen, mode]);
+  }, [date, detCalendar, isOpen, isOWLDET, mode]);
 
   // Auto-populate weather for the DET time window.
   useEffect(() => {
@@ -598,10 +620,11 @@ export default function AddDETModal({
         deviations,
         stationManagement,
         observerHours,
-        netHours,
+        netHours: isOWLDET ? restrictNetHours(netHours, OWL_NET_IDS) : netHours,
         visitors,
         injuries,
         released,
+        sponsorship: sponsorship || undefined,
         censuser: censuser || undefined,
         censusStart: censusStart || undefined,
         censusEnd: censusEnd || undefined,
@@ -694,39 +717,43 @@ export default function AddDETModal({
                         {...modalInputProps}
                         value={start}
                         onValueChange={setStart}
-                        placeholder="06:30"
+                        placeholder="06:00"
                       />
                       <Input
                         label="End Time"
                         {...modalInputProps}
                         value={end}
                         onValueChange={setEnd}
-                        placeholder="11:11"
+                        placeholder="12:00"
                       />
                     </div>
-                    <Input
-                      label="Censuser"
-                      {...modalInputProps}
-                      value={censuser}
-                      onValueChange={setCensuser}
-                      placeholder="Censuser name"
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input
-                        label="Census Start"
-                        {...modalInputProps}
-                        value={censusStart}
-                        onValueChange={setCensusStart}
-                        placeholder="06:30"
-                      />
-                      <Input
-                        label="Census End"
-                        {...modalInputProps}
-                        value={censusEnd}
-                        onValueChange={setCensusEnd}
-                        placeholder="11:11"
-                      />
-                    </div>
+                    {!isOWLDET && (
+                      <>
+                        <Input
+                          label="Censuser"
+                          {...modalInputProps}
+                          value={censuser}
+                          onValueChange={setCensuser}
+                          placeholder="Censuser name"
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input
+                            label="Census Start"
+                            {...modalInputProps}
+                            value={censusStart}
+                            onValueChange={setCensusStart}
+                            placeholder="06:30"
+                          />
+                          <Input
+                            label="Census End"
+                            {...modalInputProps}
+                            value={censusEnd}
+                            onValueChange={setCensusEnd}
+                            placeholder="11:11"
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -745,13 +772,20 @@ export default function AddDETModal({
                   </div>
                 </div>
 
-                <DETObserverHoursSection
-                  observerHours={observerHours}
-                  volunteersMap={volunteersMap}
-                  onChange={setObserverHours}
-                />
+                {!isOWLDET && (
+                  <DETObserverHoursSection
+                    observerHours={observerHours}
+                    volunteersMap={volunteersMap}
+                    onChange={setObserverHours}
+                  />
+                )}
 
-                <DETNetHoursSection netHours={netHours} onChange={setNetHours} />
+                <DETNetHoursSection
+                  netHours={netHours}
+                  onChange={setNetHours}
+                  netIds={isOWLDET ? OWL_NET_IDS : undefined}
+                  showHummingbirdTrap={!isOWLDET}
+                />
 
                 <Textarea
                   label="Narrative"
@@ -813,40 +847,65 @@ export default function AddDETModal({
                   placeholder="Released bird notes..."
                 />
 
-                <section>
-                  <p className="text-small pb-1">Import Census CSV</p>
-                  <div className="rounded-medium border border-default-200 px-3 py-3">
-                    <input
-                      aria-label="Upload census CSV"
-                      className="block w-full text-sm text-default-700 file:mr-3 file:rounded-medium file:border-0 file:bg-default-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-default-700 hover:file:bg-default-200"
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={handleCensusCsvUpload}
-                    />
-                    <p className="mt-2 text-xs text-default-500">
-                      Uses the Species and Count values from the first two columns. Importing replaces all census counts
-                      below.
-                    </p>
-                    {censusCsvMessage && (
-                      <p className={`mt-2 text-sm ${censusCsvHasWarning ? "text-warning-600" : "text-success-600"}`}>
-                        {censusCsvMessage}
-                      </p>
-                    )}
-                  </div>
-                </section>
-
-                <DETSpeciesDataSection
-                  key={`${mode}-${existingDET?.date ?? defaultDate ?? "new"}-${isOpen}`}
-                  observedSpeciesCount={observedSpeciesCount}
-                  censusSpeciesCount={censusSpeciesCount}
-                  bandedSpeciesCount={bandedSpeciesCount}
-                  repeatSpeciesCount={repeatSpeciesCount}
-                  returnSpeciesCount={returnSpeciesCount}
-                  DETSpeciesCount={DETSpeciesCount}
-                  onObservedChange={setObservedSpeciesCount}
-                  onCensusChange={setCensusSpeciesCount}
-                  onDETChange={setDETSpeciesCount}
+                <Textarea
+                  label="Sponsorship"
+                  labelPlacement="outside"
+                  value={sponsorship}
+                  onValueChange={setSponsorship}
+                  variant="bordered"
+                  minRows={3}
+                  placeholder="Sponsorship notes..."
                 />
+
+                {!isOWLDET && (
+                  <section>
+                    <p className="text-small pb-1">Import Census CSV</p>
+                    <div className="rounded-medium border border-default-200 px-3 py-3">
+                      <input
+                        aria-label="Upload census CSV"
+                        className="block w-full text-sm text-default-700 file:mr-3 file:rounded-medium file:border-0 file:bg-default-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-default-700 hover:file:bg-default-200"
+                        type="file"
+                        accept=".csv,text/csv"
+                        onChange={handleCensusCsvUpload}
+                      />
+                      <p className="mt-2 text-xs text-default-500">
+                        Uses the Species and Count values from the first two columns. Importing replaces all census counts
+                        below.
+                      </p>
+                      {censusCsvMessage && (
+                        <p
+                          className={`mt-2 text-sm ${censusCsvHasWarning ? "text-warning-600" : "text-success-600"}`}
+                        >
+                          {censusCsvMessage}
+                        </p>
+                      )}
+                    </div>
+                  </section>
+                )}
+
+                {isOWLDET ? (
+                  <section>
+                    <p className="text-small pb-1">Species Data</p>
+                    <OWLDETSpeciesTable
+                      bandedSpeciesCount={bandedSpeciesCount}
+                      repeatSpeciesCount={repeatSpeciesCount}
+                      returnSpeciesCount={returnSpeciesCount}
+                    />
+                  </section>
+                ) : (
+                  <DETSpeciesDataSection
+                    key={`${mode}-${existingDET?.date ?? defaultDate ?? "new"}-${isOpen}`}
+                    observedSpeciesCount={observedSpeciesCount}
+                    censusSpeciesCount={censusSpeciesCount}
+                    bandedSpeciesCount={bandedSpeciesCount}
+                    repeatSpeciesCount={repeatSpeciesCount}
+                    returnSpeciesCount={returnSpeciesCount}
+                    DETSpeciesCount={DETSpeciesCount}
+                    onObservedChange={setObservedSpeciesCount}
+                    onCensusChange={setCensusSpeciesCount}
+                    onDETChange={setDETSpeciesCount}
+                  />
+                )}
               </div>
             </ModalBodyShell>
             <ModalFooterShell>

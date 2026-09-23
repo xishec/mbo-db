@@ -16,6 +16,7 @@ export interface DET {
   stationManagement: string;
   injuries: string;
   released: string;
+  sponsorship?: string;
 
   censuser?: string;
   censusStart?: string;
@@ -81,6 +82,8 @@ export interface NetHours {
   hummingbirdTrapTotal: string;
   total: string;
 }
+
+export const OWL_NET_IDS = ["E1", "E2", "O1", "O2", "O3", "O4", "O6"] as const;
 
 export interface Observer {
   name: string;

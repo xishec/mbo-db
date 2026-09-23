@@ -6,6 +6,8 @@ import { parseCsv, stringifyCsv } from "../../../utils/csv";
 interface DETNetHoursSectionProps {
   netHours: NetHours;
   onChange: (netHours: NetHours) => void;
+  netIds?: readonly string[];
+  showHummingbirdTrap?: boolean;
 }
 
 const NET_HOURS_HEADERS = ["Nets", "Open 1", "Closed 1", "Open 2", "Closed 2", "Open 3", "Closed 3", "Net hours"];
@@ -69,12 +71,14 @@ function formatDecimal(value: number): string {
   return Number(value.toFixed(2)).toString();
 }
 
-function netHoursToCsv(netHours: NetHours): string {
+function netHoursToCsv(netHours: NetHours, netIds?: readonly string[], showHummingbirdTrap = true): string {
   const netsById = new Map((netHours.nets ?? []).map((net) => [net.id, net]));
-  const ids = [
-    ...DEFAULT_NET_IDS,
-    ...(netHours.nets ?? []).map((net) => net.id).filter((id) => !DEFAULT_NET_IDS.includes(id)),
-  ];
+  const ids = netIds
+    ? [...netIds]
+    : [
+        ...DEFAULT_NET_IDS,
+        ...(netHours.nets ?? []).map((net) => net.id).filter((id) => !DEFAULT_NET_IDS.includes(id)),
+      ];
   const rows = ids.map((id) => {
     const net = netsById.get(id);
     const hours = calculateNetHours(net ?? {});
@@ -90,13 +94,15 @@ function netHoursToCsv(netHours: NetHours): string {
     ];
   });
 
-  const trapHours = parseNumber(netHours.hummingbirdTrapTotal);
-  rows.push([HUMMINGBIRD_TRAP_ID, "", "", "", "", "", "", formatDecimal(trapHours)]);
+  if (showHummingbirdTrap) {
+    const trapHours = parseNumber(netHours.hummingbirdTrapTotal);
+    rows.push([HUMMINGBIRD_TRAP_ID, "", "", "", "", "", "", formatDecimal(trapHours)]);
+  }
 
   return stringifyCsv([NET_HOURS_HEADERS, ...rows]);
 }
 
-function csvToNetHours(csv: string): NetHours {
+function csvToNetHours(csv: string, showHummingbirdTrap = true): NetHours {
   let hummingbirdTrapTotal = "0";
   const nets: Net[] = parseCsv(csv)
     .slice(1)
@@ -109,7 +115,7 @@ function csvToNetHours(csv: string): NetHours {
       const open3 = (row[5] ?? "").trim();
       const closed3 = (row[6] ?? "").trim();
 
-      if (id === HUMMINGBIRD_TRAP_ID) {
+      if (showHummingbirdTrap && id === HUMMINGBIRD_TRAP_ID) {
         hummingbirdTrapTotal = formatDecimal(parseNumber(row[7]));
         return [];
       }
@@ -142,18 +148,29 @@ function csvToNetHours(csv: string): NetHours {
   };
 }
 
-export default function DETNetHoursSection({ netHours, onChange }: DETNetHoursSectionProps) {
-  const netHoursCsv = useMemo(() => netHoursToCsv(netHours), [netHours]);
+export default function DETNetHoursSection({
+  netHours,
+  onChange,
+  netIds,
+  showHummingbirdTrap = true,
+}: DETNetHoursSectionProps) {
+  const netHoursCsv = useMemo(
+    () => netHoursToCsv(netHours, netIds, showHummingbirdTrap),
+    [netHours, netIds, showHummingbirdTrap]
+  );
   const calculatedTotal = useMemo(
-    () => (netHours.nets ?? []).reduce((sum, net) => sum + calculateNetHours(net), 0),
-    [netHours.nets]
+    () =>
+      (netHours.nets ?? [])
+        .filter((net) => !netIds || netIds.includes(net.id))
+        .reduce((sum, net) => sum + calculateNetHours(net), 0),
+    [netHours.nets, netIds]
   );
 
   const handleNetHoursCsvChange = useCallback(
     (csv: string) => {
-      onChange(csvToNetHours(csv));
+      onChange(csvToNetHours(csv, showHummingbirdTrap));
     },
-    [onChange]
+    [onChange, showHummingbirdTrap]
   );
 
   return (
@@ -163,16 +180,18 @@ export default function DETNetHoursSection({ netHours, onChange }: DETNetHoursSe
         csvTemplate={netHoursCsv}
         onChange={handleNetHoursCsvChange}
         ariaLabel="Net hours table"
-        readOnlyColumns={["Net hours"]}
+        readOnlyColumns={netIds ? ["Nets", "Net hours"] : ["Net hours"]}
       />
       <div className="mt-2 flex justify-between gap-3 text-small pb-1 mr-3">
         <span>Total Net Hours</span>
         <span>{formatDecimal(calculatedTotal)}</span>
       </div>
-      <div className="flex justify-between gap-3 text-small pb-1 mr-3">
-        <span>Hummingbird Trap Hours</span>
-        <span>{formatDecimal(parseNumber(netHours.hummingbirdTrapTotal))}</span>
-      </div>
+      {showHummingbirdTrap && (
+        <div className="flex justify-between gap-3 text-small pb-1 mr-3">
+          <span>Hummingbird Trap Hours</span>
+          <span>{formatDecimal(parseNumber(netHours.hummingbirdTrapTotal))}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAppStore, useActions } from "../../../stores/useAppStore";
-import type { DET } from "../../../types/DET";
+import { OWL_NET_IDS, type DET } from "../../../types/DET";
 import { Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import SpeciesTooltip from "../../Helper/Info/SpeciesTooltip";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
@@ -9,10 +9,9 @@ import { fetchWeatherForDate } from "../../../services/weatherService";
 import AddDETModal from "../../Modals/DET/AddDETModal";
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../types/species";
-import { getDETEntriesForDate, isValidDETProgramId, normalizeDETProgramId } from "../../../utils/detIdentity";
-import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
-import { isActiveBirdEvent } from "../../../stores/derive";
+import { getDETEntriesForDate, isOWLProgramId, normalizeDETProgramId } from "../../../utils/detIdentity";
 import DETProgramChooser, { type DETProgramOption } from "./DETProgramChooser";
+import OWLDETSpeciesTable from "../../DET/OWLDETSpeciesTable";
 
 function textFieldToString(value: unknown): string {
   if (typeof value === "string") return value;
@@ -42,8 +41,7 @@ export default function DETs() {
   const isOnline = useAppStore((s) => s.isOnline);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const programsMap = useAppStore((s) => s.programsMap);
-  const bandResetsMap = useAppStore((s) => s.bandResetsMap);
-  const birdEventsVersion = useBirdEventsVersion();
+  const yearsToProgramMap = useAppStore((s) => s.yearsToProgramMap);
   const { saveDET } = useActions();
   const [selectedDET, setSelectedDET] = useState<DET | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
@@ -57,6 +55,13 @@ export default function DETs() {
   });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const canSaveDET = !!user && isOnline;
+  const isSelectedDETOWL = isOWLProgramId(selectedDET?.programId);
+  const selectedDETDisplayedNets = (selectedDET?.netHours?.nets ?? []).filter(
+    (net) => !isSelectedDETOWL || OWL_NET_IDS.some((id) => id === net.id)
+  );
+  const selectedDETNetHoursTotal = isSelectedDETOWL
+    ? Number(selectedDETDisplayedNets.reduce((total, net) => total + (Number(net.total) || 0), 0).toFixed(2)).toString()
+    : selectedDET?.netHours?.total || "0";
 
   // Get available dates as a Set for quick lookup
   const availableDatesSet = new Set(Object.keys(DETsByDateMap));
@@ -65,24 +70,18 @@ export default function DETs() {
     [DETsByDateMap, selectedDate]
   );
   const selectedDatePrograms = useMemo(() => {
-    void birdEventsVersion;
     if (!selectedDate) return [];
 
     const options = new Map<string, DETProgramOption>();
-    for (const event of birdEventsStore.getAll().values()) {
-      if (
-        !event ||
-        event.date !== selectedDate ||
-        !isValidDETProgramId(event.programId) ||
-        !isActiveBirdEvent(event, bandResetsMap)
-      ) {
-        continue;
+    const selectedYear = Number(selectedDate.slice(0, 4));
+    for (const year of [selectedYear, selectedYear - 1]) {
+      for (const programId of yearsToProgramMap[String(year)] ?? []) {
+        const normalizedProgramId = normalizeDETProgramId(programId);
+        options.set(normalizedProgramId, {
+          programId,
+          displayName: programsMap[programId]?.displayName || programId,
+        });
       }
-      const normalizedProgramId = normalizeDETProgramId(event.programId);
-      options.set(normalizedProgramId, {
-        programId: event.programId,
-        displayName: programsMap[event.programId]?.displayName || event.programId,
-      });
     }
 
     selectedDateEntries.forEach(([storageKey, det]) => {
@@ -95,7 +94,7 @@ export default function DETs() {
     });
 
     return Array.from(options.values()).sort((left, right) => left.programId.localeCompare(right.programId));
-  }, [bandResetsMap, birdEventsVersion, programsMap, selectedDate, selectedDateEntries]);
+  }, [programsMap, selectedDate, selectedDateEntries, yearsToProgramMap]);
 
   const selectDET = async (det: DET) => {
     setSelectedDET(det);
@@ -255,20 +254,26 @@ export default function DETs() {
                   <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
                 </div>
               </div>
-              <div>
-                <p className="text-small text-gray-600 mb-1">Censuser</p>
-                <p className="font-medium">{selectedDET.censuser || <span className="text-gray-400">—</span>}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-small text-gray-600 mb-1">Census Start</p>
-                  <p className="font-medium">{selectedDET.censusStart || <span className="text-gray-400">—</span>}</p>
-                </div>
-                <div>
-                  <p className="text-small text-gray-600 mb-1">Census End</p>
-                  <p className="font-medium">{selectedDET.censusEnd || <span className="text-gray-400">—</span>}</p>
-                </div>
-              </div>
+              {!isSelectedDETOWL && (
+                <>
+                  <div>
+                    <p className="text-small text-gray-600 mb-1">Censuser</p>
+                    <p className="font-medium">{selectedDET.censuser || <span className="text-gray-400">—</span>}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-small text-gray-600 mb-1">Census Start</p>
+                      <p className="font-medium">
+                        {selectedDET.censusStart || <span className="text-gray-400">—</span>}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-small text-gray-600 mb-1">Census End</p>
+                      <p className="font-medium">{selectedDET.censusEnd || <span className="text-gray-400">—</span>}</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -281,36 +286,39 @@ export default function DETs() {
           </div>
 
           {/* Observer Hours */}
-          <div>
-            <p className="text-small font-semibold mb-2">Observer Hours</p>
-            <div className="rounded-medium border border-default-100 py-2 px-3">
-              <p className="text-sm text-gray-600">
-                Total: {selectedDET.observerHours?.total || 0} hours | Observers:{" "}
-                {selectedDET.observerHours?.observers?.length || 0}
-              </p>
-              {selectedDET.observerHours?.observers && selectedDET.observerHours.observers.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedDET.observerHours.observers.map((observer, idx) => (
-                    <Chip key={idx} variant="flat" color="secondary" size="sm">
-                      {observer.name}: {observer.totalHours.toFixed(1)}h
-                    </Chip>
-                  ))}
-                </div>
-              )}
+          {!isSelectedDETOWL && (
+            <div>
+              <p className="text-small font-semibold mb-2">Observer Hours</p>
+              <div className="rounded-medium border border-default-100 py-2 px-3">
+                <p className="text-sm text-gray-600">
+                  Total: {selectedDET.observerHours?.total || 0} hours | Observers:{" "}
+                  {selectedDET.observerHours?.observers?.length || 0}
+                </p>
+                {selectedDET.observerHours?.observers && selectedDET.observerHours.observers.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedDET.observerHours.observers.map((observer, idx) => (
+                      <Chip key={idx} variant="flat" color="secondary" size="sm">
+                        {observer.name}: {observer.totalHours.toFixed(1)}h
+                      </Chip>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Net Hours */}
           <div>
             <p className="text-small font-semibold mb-2">Net Hours</p>
             <div className="rounded-medium border border-default-100 py-2 px-3">
               <p className="text-sm text-gray-600">
-                Total: {selectedDET.netHours?.total || "0"} | Hummingbird Trap:{" "}
-                {selectedDET.netHours?.hummingbirdTrapTotal || "0"} | Nets: {selectedDET.netHours?.nets?.length || 0}
+                Total: {selectedDETNetHoursTotal}
+                {!isSelectedDETOWL && <> | Hummingbird Trap: {selectedDET.netHours?.hummingbirdTrapTotal || "0"}</>} |
+                Nets: {selectedDETDisplayedNets.length}
               </p>
-              {selectedDET.netHours?.nets && selectedDET.netHours.nets.length > 0 && (
+              {selectedDETDisplayedNets.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedDET.netHours.nets.map((net, idx) => (
+                  {selectedDETDisplayedNets.map((net, idx) => (
                     <Chip key={idx} variant="bordered" color="primary" size="sm">
                       {net.id}: {net.total}
                     </Chip>
@@ -374,19 +382,52 @@ export default function DETs() {
             </div>
           </div>
 
+          {/* Sponsorship */}
+          <div>
+            <p className="text-small font-semibold mb-2">Sponsorship</p>
+            <div className="rounded-medium border border-default-100 py-2 px-3">
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                {textFieldToString(selectedDET.sponsorship) || "—"}
+              </p>
+            </div>
+          </div>
+
           {/* Species Data */}
           <div>
             <p className="text-small font-semibold mb-2">Species Data</p>
-            <div className="rounded-medium border border-default-100 py-2 px-3">
-              <div className="space-y-3">
-                {renderSpeciesCategory("Observed", selectedDET.observedSpeciesCount, "primary", "No observed species")}
-                {renderSpeciesCategory("Census", selectedDET.censusSpeciesCount || {}, "primary", "No census species")}
-                {renderSpeciesCategory("Banded", selectedDET.bandedSpeciesCount || {}, "primary", "No banded species")}
-                {renderSpeciesCategory("Repeats", selectedDET.repeatSpeciesCount, "primary", "No repeat species")}
-                {renderSpeciesCategory("Return", selectedDET.returnSpeciesCount, "primary", "No return species")}
-                {renderSpeciesCategory("DET", selectedDET.DETSpeciesCount, "primary", "No DET species")}
+            {isSelectedDETOWL ? (
+              <OWLDETSpeciesTable
+                bandedSpeciesCount={selectedDET.bandedSpeciesCount || {}}
+                repeatSpeciesCount={selectedDET.repeatSpeciesCount || {}}
+                returnSpeciesCount={selectedDET.returnSpeciesCount || {}}
+              />
+            ) : (
+              <div className="rounded-medium border border-default-100 py-2 px-3">
+                <div className="space-y-3">
+                  {renderSpeciesCategory(
+                    "Observed",
+                    selectedDET.observedSpeciesCount,
+                    "primary",
+                    "No observed species"
+                  )}
+                  {renderSpeciesCategory(
+                    "Census",
+                    selectedDET.censusSpeciesCount || {},
+                    "primary",
+                    "No census species"
+                  )}
+                  {renderSpeciesCategory(
+                    "Banded",
+                    selectedDET.bandedSpeciesCount || {},
+                    "primary",
+                    "No banded species"
+                  )}
+                  {renderSpeciesCategory("Repeats", selectedDET.repeatSpeciesCount, "primary", "No repeat species")}
+                  {renderSpeciesCategory("Return", selectedDET.returnSpeciesCount, "primary", "No return species")}
+                  {renderSpeciesCategory("DET", selectedDET.DETSpeciesCount, "primary", "No DET species")}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </CardBody>
       </Card>
@@ -441,7 +482,9 @@ export default function DETs() {
                     type="button"
                     className={[
                       "h-9 rounded-medium text-sm transition-colors",
-                      hasDET ? "font-medium text-default-900 hover:bg-default-100" : "text-default-400 hover:bg-default-50",
+                      hasDET
+                        ? "font-medium text-default-900 hover:bg-default-100"
+                        : "text-default-400 hover:bg-default-50",
                       isSelected ? "bg-secondary text-white hover:bg-secondary" : "",
                     ].join(" ")}
                     onClick={() => handleDateChange(dateStr)}

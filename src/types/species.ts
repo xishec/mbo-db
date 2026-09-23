@@ -18,6 +18,10 @@ export const SPECIES_MAP: SpeciesMap = {};
 export const SPECIES_CURRENT_CODE_BY_KEY: Record<string, string> = {};
 export const SPECIES_KEY_BY_CURRENT_CODE: Record<string, string> = {};
 
+const KNOWN_SPECIES_CODE_ALIASES: Record<string, string> = {
+  NSOW: "NSWO",
+};
+
 function replaceRecord<T>(target: Record<string, T>, source: Record<string, T>): void {
   for (const key of Object.keys(target)) delete target[key];
   Object.assign(target, source);
@@ -82,6 +86,9 @@ export function normalizeSpeciesAliasesMap(aliases: Record<string, string> = {})
 
 export function resolveSpeciesKey(speciesCode: string, aliases: Record<string, string> = {}): string {
   const normalizedCode = speciesCode.toUpperCase();
+  const knownSpeciesKey = KNOWN_SPECIES_CODE_ALIASES[normalizedCode];
+  if (knownSpeciesKey) return knownSpeciesKey;
+
   const currentSpeciesKey = SPECIES_KEY_BY_CURRENT_CODE[normalizedCode];
   if (currentSpeciesKey) return currentSpeciesKey;
 
