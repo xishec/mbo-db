@@ -42,6 +42,8 @@ export interface Program {
   displayName: string;
   bandGroupIds: string[];
   recaptureIds: string[];
+  startDate?: string;
+  endDate?: string;
   firstCaptureDate?: string;
   lastCaptureDate?: string;
 }

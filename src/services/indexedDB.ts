@@ -31,19 +31,34 @@ function createCachedMetadata(data: Partial<DatabaseData>): DatabaseData {
   delete independentData.DETsMap;
   delete independentData.birdEventsMap;
   delete independentData.yearsToProgramMap;
-  delete independentData.programsMap;
   delete independentData.bandIdToBirdEventIdsMap;
   delete independentData.bandGroupsMap;
   delete independentData.bandSizeToBandIdMap;
 
-  // These maps are rebuilt from the event rows on every load. Empty stubs
-  // preserve DatabaseData's serialized shape without caching large,
-  // immediately-discarded copies.
+  // Program identity and date ranges are authoritative metadata. Keep those
+  // fields, but omit capture-derived arrays because they are rebuilt from the
+  // event rows on every load.
+  const cachedProgramsMap = Object.fromEntries(
+    Object.entries(independentData.programsMap ?? {}).map(([programId, program]) => [
+      programId,
+      {
+        id: program.id || programId,
+        displayName: program.displayName || programId,
+        bandGroupIds: [],
+        recaptureIds: [],
+        ...(program.startDate ? { startDate: program.startDate } : {}),
+        ...(program.endDate ? { endDate: program.endDate } : {}),
+      },
+    ])
+  );
+
+  // Other derived maps are rebuilt from event rows. Empty stubs preserve
+  // DatabaseData's serialized shape without caching large copies.
   return {
     ...independentData,
     birdEventsMap: {},
     yearsToProgramMap: {},
-    programsMap: {},
+    programsMap: cachedProgramsMap,
     bandIdToBirdEventIdsMap: {},
     bandGroupsMap: {},
     bandSizeToBandIdMap: {} as DatabaseData["bandSizeToBandIdMap"],

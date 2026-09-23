@@ -10,10 +10,12 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
+import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import BirdEvents from "./Captures/BirdEvents";
 import { useMemo, useState } from "react";
 import { useAppStore, useActions, useIsLoggedIn } from "../../../stores/useAppStore";
 import AddProgramModal from "../../Modals/AddProgramModal";
+import EditProgramDatesModal from "../../Modals/EditProgramDatesModal";
 import StartBandingModal from "../../Modals/StartBandingModal";
 import type { Program } from "../../../types";
 import PageHeader from "../PageHeader";
@@ -23,9 +25,12 @@ export default function Programs() {
   const yearsToProgramMap = useAppStore((s) => s.yearsToProgramMap);
   const programsMap = useAppStore((s) => s.programsMap);
   const isLoading = useAppStore((s) => s.isLoading);
+  const isOnline = useAppStore((s) => s.isOnline);
+  const user = useAppStore((s) => s.user);
   const isLoggedIn = useIsLoggedIn();
   const { selectProgram } = useActions();
   const [isAddProgramModalOpen, setIsAddProgramModalOpen] = useState(false);
+  const [isEditProgramDatesModalOpen, setIsEditProgramDatesModalOpen] = useState(false);
   const [isStartBandingModalOpen, setIsStartBandingModalOpen] = useState(false);
 
   // Year rows for the table (sorted descending)
@@ -62,10 +67,6 @@ export default function Programs() {
     );
   }
 
-  if (Object.keys(yearsToProgramMap).length === 0) {
-    return <div className="p-4">No programs available.</div>;
-  }
-
   const headerSubtitle = selectedProgram
     ? "Review captures and program details."
     : "Select a year and program to view captures.";
@@ -81,7 +82,7 @@ export default function Programs() {
           title="Programs"
           subtitle={headerSubtitle}
           actions={
-            isLoggedIn ? (
+            user && isOnline ? (
               <Button color="secondary" onPress={() => setIsAddProgramModalOpen(true)}>
                 Add Program
               </Button>
@@ -105,6 +106,17 @@ export default function Programs() {
               <BreadcrumbItem isCurrent>{selectedProgram.id}</BreadcrumbItem>
             )}
           </Breadcrumbs>
+          {selectedProgram && user && isOnline && (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              aria-label={`Edit ${selectedProgram.id} dates`}
+              onPress={() => setIsEditProgramDatesModalOpen(true)}
+            >
+              <PencilSquareIcon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         {selectedProgram && isLoggedIn && (
           <Button color="secondary" onPress={() => setIsStartBandingModalOpen(true)}>
@@ -131,7 +143,7 @@ export default function Programs() {
             <TableHeader>
               <TableColumn>Year</TableColumn>
             </TableHeader>
-            <TableBody>
+            <TableBody emptyContent="No programs available">
               {yearRows.map((year) => (
                 <TableRow key={year}>
                   <TableCell>{year}</TableCell>
@@ -152,8 +164,8 @@ export default function Programs() {
           >
             <TableHeader>
               <TableColumn width={300}>Program Name</TableColumn>
-              <TableColumn>First Capture</TableColumn>
-              <TableColumn>Last Capture</TableColumn>
+              <TableColumn>Start Date</TableColumn>
+              <TableColumn>End Date</TableColumn>
             </TableHeader>
             <TableBody emptyContent={selectedYear ? "No programs found" : "Select a year"}>
               {[...programs]
@@ -163,8 +175,8 @@ export default function Programs() {
                   return (
                     <TableRow key={programId}>
                       <TableCell>{program?.id}</TableCell>
-                      <TableCell>{program?.firstCaptureDate ?? ""}</TableCell>
-                      <TableCell>{program?.lastCaptureDate ?? ""}</TableCell>
+                      <TableCell>{program?.startDate ?? ""}</TableCell>
+                      <TableCell>{program?.endDate ?? ""}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -176,6 +188,11 @@ export default function Programs() {
       {selectedProgram && <BirdEvents />}
 
       <AddProgramModal isOpen={isAddProgramModalOpen} onOpenChange={setIsAddProgramModalOpen} />
+      <EditProgramDatesModal
+        isOpen={isEditProgramDatesModalOpen}
+        onOpenChange={setIsEditProgramDatesModalOpen}
+        program={selectedProgram}
+      />
       <StartBandingModal isOpen={isStartBandingModalOpen} onOpenChange={setIsStartBandingModalOpen} />
     </div>
   );

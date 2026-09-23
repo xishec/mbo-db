@@ -10,6 +10,7 @@ import AddDETModal from "../../Modals/DET/AddDETModal";
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../types/species";
 import { getDETEntriesForDate, isOWLProgramId, normalizeDETProgramId } from "../../../utils/detIdentity";
+import { isDateInRange } from "../../../utils/dateUtils";
 import DETProgramChooser, { type DETProgramOption } from "./DETProgramChooser";
 import OWLDETSpeciesTable from "../../DET/OWLDETSpeciesTable";
 
@@ -73,9 +74,24 @@ export default function DETs() {
     if (!selectedDate) return [];
 
     const options = new Map<string, DETProgramOption>();
+
+    for (const program of Object.values(programsMap)) {
+      if (!program.startDate || !program.endDate || !isDateInRange(selectedDate, program.startDate, program.endDate)) {
+        continue;
+      }
+      const normalizedProgramId = normalizeDETProgramId(program.id);
+      options.set(normalizedProgramId, {
+        programId: program.id,
+        displayName: program.displayName || program.id,
+      });
+    }
+
+    // Legacy programs without a stored range keep the previous year-based behavior.
     const selectedYear = Number(selectedDate.slice(0, 4));
     for (const year of [selectedYear, selectedYear - 1]) {
       for (const programId of yearsToProgramMap[String(year)] ?? []) {
+        const program = programsMap[programId];
+        if (program?.startDate && program.endDate) continue;
         const normalizedProgramId = normalizeDETProgramId(programId);
         options.set(normalizedProgramId, {
           programId,

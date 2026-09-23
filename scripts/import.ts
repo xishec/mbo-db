@@ -316,7 +316,30 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
 
     // BandIdToBirdEventIdsMap
     (bandIdToBirdEventIdsMap[birdEvent.band.id] ??= []).push(birdEventId);
+  }
 
+  // Program date ranges are user-managed metadata. Preserve dated programs
+  // across a capture re-import, including programs that still have no captures.
+  const existingProgramsSnapshot = await db.ref(`${ENVIRONMENT}/programsMap`).once("value");
+  const existingPrograms = (existingProgramsSnapshot.val() ?? {}) as ProgramsMap;
+  for (const [programId, existingProgram] of Object.entries(existingPrograms)) {
+    if (!existingProgram.startDate || !existingProgram.endDate) continue;
+    const generatedProgram = programsMap[programId];
+    programsMap[programId] = generatedProgram
+      ? {
+          ...generatedProgram,
+          displayName: existingProgram.displayName || generatedProgram.displayName,
+          startDate: existingProgram.startDate,
+          endDate: existingProgram.endDate,
+        }
+      : {
+          id: existingProgram.id || programId,
+          displayName: existingProgram.displayName || programId,
+          bandGroupIds: [],
+          recaptureIds: [],
+          startDate: existingProgram.startDate,
+          endDate: existingProgram.endDate,
+        };
   }
 
   console.log("Uploading data to RTDB...");
@@ -327,9 +350,13 @@ async function generateDB(birdEvents: BirdEvent[], db: Database) {
   await writeObjectToDB(db, `${ENVIRONMENT}/birdEventsMap`, birdEventsMap);
   await writeObjectToDB(db, `${ENVIRONMENT}/bandGroupsMap`, bandGroupsMap);
 
-  // Set lastModified timestamp to signal clients that data has been updated
-  await db.ref(`${ENVIRONMENT}/metadata/lastModified`).set(Date.now());
-  await db.ref(`${ENVIRONMENT}/metadata/dbVersion`).set(Date.now());
+  // Set lastModified timestamps to signal clients that data has been updated.
+  const lastModified = Date.now();
+  await db.ref(`${ENVIRONMENT}/metadata`).update({
+    lastModified,
+    dbVersion: lastModified,
+    lastModified_programsMap: lastModified,
+  });
 
   console.log("✅ All data uploaded successfully!");
 }

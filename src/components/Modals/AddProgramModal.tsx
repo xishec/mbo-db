@@ -12,18 +12,25 @@ interface AddProgramModalProps {
 export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModalProps) {
   const { addProgram } = useActions();
   const [programId, setProgramId] = useState("");
-  const [year, setYear] = useState(() => new Date().getFullYear().toString());
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const hasInvalidDateRange = Boolean(startDate && endDate && endDate < startDate);
 
-  const handleSubmit = () => {
-    if (programId.trim() && year.trim()) {
+  const handleSubmit = async () => {
+    if (programId.trim() && startDate && endDate) {
+      setIsSaving(true);
       try {
-        addProgram(programId.trim(), year.trim());
+        await addProgram(programId.trim(), startDate, endDate);
         setProgramId("");
-        setYear(new Date().getFullYear().toString());
+        setStartDate("");
+        setEndDate("");
         onOpenChange(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to add program");
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -42,16 +49,6 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
       </ModalHeaderShell>
       <ModalBodyShell>
         <Input
-          label="Year"
-          placeholder="Enter year"
-          value={year}
-          {...modalInputProps}
-          onChange={(e) => setYear(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-          isRequired
-          type="number"
-        />
-        <Input
           label="Program Name"
           placeholder="e.g., SMMP2026"
           value={programId}
@@ -64,12 +61,38 @@ export default function AddProgramModal({ isOpen, onOpenChange }: AddProgramModa
           errorMessage={error}
           description="This name is permanent and cannot be changed."
         />
+        <Input
+          label="Start Date"
+          value={startDate}
+          {...modalInputProps}
+          onChange={(e) => { setStartDate(e.target.value); setError(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+          isRequired
+          type="date"
+        />
+        <Input
+          label="End Date"
+          value={endDate}
+          {...modalInputProps}
+          onChange={(e) => { setEndDate(e.target.value); setError(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+          isRequired
+          type="date"
+          min={startDate || undefined}
+          isInvalid={hasInvalidDateRange}
+          errorMessage={hasInvalidDateRange ? "End date must be on or after start date" : undefined}
+        />
       </ModalBodyShell>
       <ModalFooterShell>
-        <Button {...modalCancelButtonProps} onPress={() => onOpenChange(false)}>
+        <Button {...modalCancelButtonProps} onPress={() => onOpenChange(false)} isDisabled={isSaving}>
           Cancel
         </Button>
-        <Button {...modalPrimaryButtonProps} onPress={handleSubmit} isDisabled={!programId.trim() || !year.trim()}>
+        <Button
+          {...modalPrimaryButtonProps}
+          onPress={handleSubmit}
+          isDisabled={!programId.trim() || !startDate || !endDate || hasInvalidDateRange || isSaving}
+          isLoading={isSaving}
+        >
           Add Program
         </Button>
       </ModalFooterShell>

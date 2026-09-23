@@ -17,6 +17,7 @@ import {
   type YearToProgramMap,
 } from "../types";
 import { resolveSpeciesKey } from "../types/species";
+import { getYearsInDateRange } from "../utils/dateUtils";
 
 type FavoriteRateResult = { value: string; rate: number };
 type BandStats = {
@@ -40,6 +41,31 @@ export function isBirdEventInCurrentBandGeneration(
 
 export function isActiveBirdEvent(event: BirdEvent, bandResetsMap: BandResetsMap = {}): boolean {
   return !event.modifiedEventId && isBirdEventInCurrentBandGeneration(event, bandResetsMap);
+}
+
+/** Merge durable program definitions into indexes rebuilt from captures. */
+export function mergeStoredPrograms(
+  programs: ProgramsMap,
+  years: YearToProgramMap,
+  storedPrograms: ProgramsMap
+): void {
+  for (const [programId, storedProgram] of Object.entries(storedPrograms)) {
+    const derivedProgram = programs[programId];
+    programs[programId] = derivedProgram
+      ? { ...storedProgram, ...derivedProgram }
+      : {
+          ...storedProgram,
+          id: storedProgram.id || programId,
+          displayName: storedProgram.displayName || programId,
+          bandGroupIds: [],
+          recaptureIds: [],
+        };
+
+    for (const year of getYearsInDateRange(storedProgram.startDate ?? "", storedProgram.endDate ?? "")) {
+      years[year] ??= [];
+      if (!years[year].includes(programId)) years[year].push(programId);
+    }
+  }
 }
 
 export function computeBandReminder(events: BirdEvent[]): { enabled: boolean; notes: string[] } {

@@ -29,11 +29,13 @@ import {
   type PendingBirdEvent,
   type Program,
   type Species,
+  type YearToProgramMap,
 } from "../types";
 import { type IndependentMapName } from "../types/mapNames";
 import { setSpeciesMap, SPECIES_KEY_BY_CURRENT_CODE, SPECIES_MAP, resolveSpeciesKey } from "../types/species";
 import { stripUndefined } from "../utils/firebaseValue";
 import { findDETEntry, getDETProgramKey, isValidDETProgramId } from "../utils/detIdentity";
+import { getYearsInDateRange, isValidDateString } from "../utils/dateUtils";
 import {
   advanceBandId,
   computeSpeciesInfoMap,
@@ -350,28 +352,125 @@ export const actions = {
     useAppStore.setState({ selectedProgram: program });
   },
 
-  addProgram: (programId: string, year: string): void => {
+  addProgram: async (programId: string, startDate: string, endDate: string): Promise<void> => {
     const trimmedId = programId.trim();
     if (!trimmedId) throw new Error("Program ID cannot be empty");
-    const { programsMap, yearsToProgramMap } = useAppStore.getState();
+    if ([".", "#", "$", "[", "]", "/"].some((character) => trimmedId.includes(character))) {
+      throw new Error("Program ID cannot contain . # $ [ ] or /");
+    }
+    if (!isValidDateString(startDate)) throw new Error("A valid start date is required");
+    if (!isValidDateString(endDate)) throw new Error("A valid end date is required");
+    if (startDate > endDate) throw new Error("End date must be on or after start date");
+
+    const { user, isOnline, programsMap, yearsToProgramMap } = useAppStore.getState();
+    if (!user) throw new Error("Must be logged in to add a program");
+    if (!isOnline) throw new Error("Programs can only be added while online");
     if (programsMap[trimmedId]) throw new Error(`Program "${trimmedId}" already exists`);
+
+    const programRef = ref(db, `${CURRENT_ENVIRONMENT}/programsMap/${trimmedId}`);
+    if ((await get(programRef)).exists()) throw new Error(`Program "${trimmedId}" already exists`);
 
     const newProgram: Program = {
       id: trimmedId,
       displayName: trimmedId,
       bandGroupIds: [],
       recaptureIds: [],
+      startDate,
+      endDate,
     };
-    useAppStore.setState({
-      programsMap: { ...programsMap, [trimmedId]: newProgram },
-      yearsToProgramMap: {
-        ...yearsToProgramMap,
-        [year]: yearsToProgramMap[year]?.includes(trimmedId)
-          ? yearsToProgramMap[year]
-          : [...(yearsToProgramMap[year] || []), trimmedId],
-      },
+    const nextProgramsMap = { ...programsMap, [trimmedId]: newProgram };
+    const nextYearsToProgramMap = { ...yearsToProgramMap };
+    for (const year of getYearsInDateRange(startDate, endDate)) {
+      const programsInYear = nextYearsToProgramMap[year] ?? [];
+      nextYearsToProgramMap[year] = programsInYear.includes(trimmedId)
+        ? programsInYear
+        : [...programsInYear, trimmedId];
+    }
+
+    const lastModified = Date.now();
+    await update(ref(db), {
+      [`${CURRENT_ENVIRONMENT}/programsMap/${trimmedId}`]: newProgram,
+      [`${CURRENT_ENVIRONMENT}/metadata/lastModified_programsMap`]: lastModified,
     });
-    logger.info("AddProgram", "Program added (local)", { programId: trimmedId, year });
+
+    useAppStore.setState({
+      programsMap: nextProgramsMap,
+      yearsToProgramMap: nextYearsToProgramMap,
+    });
+    try {
+      // Cache the value before its version marker so a partial local write
+      // can only force a refetch, never make stale data look current.
+      await saveMapsToIndexedDB({ programsMap: nextProgramsMap });
+      await saveMetadata(`lastModified_programsMap_${CURRENT_ENVIRONMENT}`, lastModified);
+    } catch (err) {
+      logger.warn("AddProgram", "Program saved online but could not be cached locally", err);
+    }
+    logger.info("AddProgram", "Program added", { programId: trimmedId, startDate, endDate });
+  },
+
+  updateProgramDates: async (programId: string, startDate: string, endDate: string): Promise<void> => {
+    if (!isValidDateString(startDate)) throw new Error("A valid start date is required");
+    if (!isValidDateString(endDate)) throw new Error("A valid end date is required");
+    if (startDate > endDate) throw new Error("End date must be on or after start date");
+
+    const state = useAppStore.getState();
+    if (!state.user) throw new Error("Must be logged in to edit a program");
+    if (!state.isOnline) throw new Error("Program dates can only be edited while online");
+
+    const existingProgram = state.programsMap[programId];
+    if (!existingProgram) throw new Error(`Program "${programId}" not found`);
+
+    const updatedProgram: Program = { ...existingProgram, startDate, endDate };
+    const nextProgramsMap = { ...state.programsMap, [programId]: updatedProgram };
+
+    // Rebuild this program's year associations from its active captures and
+    // its new date range. This removes obsolete range-only years without
+    // hiding historical capture years.
+    const captureYears = new Set<string>();
+    const addCaptureYear = (eventId: string) => {
+      const event = birdEventsStore.get(eventId);
+      if (
+        event?.programId === programId &&
+        event.date &&
+        isActiveBirdEvent(event, state.bandResetsMap)
+      ) {
+        captureYears.add(event.date.slice(0, 4));
+      }
+    };
+    for (const bandGroupId of existingProgram.bandGroupIds) {
+      for (const eventId of state.bandGroupsMap[bandGroupId]?.newCaptureIds ?? []) addCaptureYear(eventId);
+    }
+    for (const eventId of existingProgram.recaptureIds) addCaptureYear(eventId);
+
+    const associatedYears = new Set([...captureYears, ...getYearsInDateRange(startDate, endDate)]);
+    const nextYearsToProgramMap: YearToProgramMap = {};
+    for (const [year, programIds] of Object.entries(state.yearsToProgramMap)) {
+      const filtered = programIds.filter((id) => id !== programId);
+      if (filtered.length > 0) nextYearsToProgramMap[year] = filtered;
+    }
+    for (const year of associatedYears) {
+      nextYearsToProgramMap[year] = [...(nextYearsToProgramMap[year] ?? []), programId];
+    }
+
+    const lastModified = Date.now();
+    await update(ref(db), {
+      [`${CURRENT_ENVIRONMENT}/programsMap/${programId}/startDate`]: startDate,
+      [`${CURRENT_ENVIRONMENT}/programsMap/${programId}/endDate`]: endDate,
+      [`${CURRENT_ENVIRONMENT}/metadata/lastModified_programsMap`]: lastModified,
+    });
+
+    useAppStore.setState({
+      programsMap: nextProgramsMap,
+      yearsToProgramMap: nextYearsToProgramMap,
+      selectedProgram: state.selectedProgram?.id === programId ? updatedProgram : state.selectedProgram,
+    });
+    try {
+      await saveMapsToIndexedDB({ programsMap: nextProgramsMap });
+      await saveMetadata(`lastModified_programsMap_${CURRENT_ENVIRONMENT}`, lastModified);
+    } catch (err) {
+      logger.warn("UpdateProgramDates", "Program dates saved online but could not be cached locally", err);
+    }
+    logger.info("UpdateProgramDates", "Program dates updated", { programId, startDate, endDate });
   },
 
   addBirdEvent: async (

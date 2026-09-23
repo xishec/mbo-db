@@ -35,7 +35,7 @@ export default function DETProgramChooser({ date, programs, canAdd, onAdd, onVie
     <Card shadow="sm">
       <CardHeader className="flex-col items-start gap-1 px-6 pt-6">
         <p className="text-xl font-semibold">Programs for {date}</p>
-        <p className="text-sm text-default-500">Choose a program from this year or the previous year.</p>
+        <p className="text-sm text-default-500">Choose a program active on this date.</p>
       </CardHeader>
       <CardBody className="gap-4 px-6 pb-6">
         {programs.length > 0 ? (
@@ -98,7 +98,7 @@ export default function DETProgramChooser({ date, programs, canAdd, onAdd, onVie
           </>
         ) : (
           <div className="rounded-medium border border-dashed border-default-200 p-6 text-center text-default-500">
-            No programs were found for this year or the previous year.
+            No programs are active on this date.
           </div>
         )}
       </CardBody>

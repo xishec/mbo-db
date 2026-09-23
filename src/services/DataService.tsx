@@ -8,6 +8,7 @@ import { refreshQueueState, runSync } from "../stores/actions";
 import {
   computeBandSizeToBandIdMap,
   computeSpeciesInfoMap,
+  mergeStoredPrograms,
   overlayQueuedEvents,
   rebuildMapsFromEvents,
 } from "../stores/derive";
@@ -20,6 +21,7 @@ import {
   type DETsByDateMap,
   type MagicTable,
   type PendingEvent,
+  type ProgramsMap,
   type Volunteer,
   type VolunteersMap,
 } from "../types";
@@ -167,6 +169,7 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
     volunteersMap,
     bandResetsMap
   );
+  mergeStoredPrograms(programs, years, data.programsMap ?? {});
   const hydratedEvents = hydrateBirdEvents(mergedEvents);
   birdEventsStore.replace(hydratedEvents);
 
@@ -459,6 +462,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         let dismissedMap = cachedData?.dismissedConflictsMap ?? {};
         const detsByDateMap = authoritativeDETsByDateMap ?? cachedData?.DETsByDateMap ?? {};
+        let storedProgramsMap: ProgramsMap = cachedData?.programsMap ?? {};
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {}, species: {} };
         let volunteersMap = getVolunteerMetadata(cachedData);
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
@@ -473,6 +477,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             const snap = snapshots[i];
             const val = snap.exists() ? snap.val() : null;
             switch (fetching[i]) {
+              case "programsMap":
+                storedProgramsMap = val ?? {};
+                break;
               case "dismissedConflictsMap":
                 dismissedMap = val ?? {};
                 break;
@@ -511,6 +518,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           volunteersMap,
           bandResetsMap
         );
+        mergeStoredPrograms(programs, years, storedProgramsMap);
 
         const reconstructed = hydrateBirdEvents(mergedEvents);
 

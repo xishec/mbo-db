@@ -3,6 +3,7 @@ import type { BandResetsMap, BirdEventsMap } from "../types";
 import {
   computeBandSizeToBandIdMap,
   computeSpeciesInfoMap,
+  mergeStoredPrograms,
   rebuildMapsFromEvents,
 } from "./derive";
 
@@ -30,17 +31,8 @@ export function rebuildBirdEventState(
     bandResetsMap
   );
 
-  // Preserve stored fields and empty programs that have no active events.
-  for (const [programId, existingProgram] of Object.entries(state.programsMap)) {
-    programs[programId] = programs[programId]
-      ? { ...existingProgram, ...programs[programId] }
-      : {
-          id: existingProgram.id,
-          displayName: existingProgram.displayName,
-          bandGroupIds: [],
-          recaptureIds: [],
-        };
-  }
+  // Preserve stored fields, date ranges, and empty programs that have no active events.
+  mergeStoredPrograms(programs, years, state.programsMap);
 
   return {
     bandIdToBirdEventIdsMap: bandIdMap,
