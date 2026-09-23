@@ -22,19 +22,35 @@ interface RecentModificationsModalProps {
   onClose: () => void;
 }
 
-type ModificationColumn = "band" | "datetime" | "species" | "modifiedBy" | "modifiedAt";
+type ModificationColumn = "band" | "datetime" | "species" | "previousEvent" | "modifiedBy" | "modifiedAt";
 
 const columns: Array<{ key: ModificationColumn; label: string; className: string }> = [
   { key: "band", label: "Band", className: "w-[120px]" },
   { key: "datetime", label: "Capture Date/Time", className: "w-[180px]" },
   { key: "species", label: "Species", className: "w-[100px]" },
+  { key: "previousEvent", label: "Previous Event", className: "w-[220px]" },
   { key: "modifiedBy", label: "Modified By", className: "w-[260px]" },
   { key: "modifiedAt", label: "Modified At", className: "w-[200px]" },
 ];
 
+const ROUTINE_EDITORS = new Set(["shawnasevigny@hotmail.com", "cindybouchard@outlook.com"]);
+
+function isNonRoutineEditor(email: string | undefined): boolean {
+  return !email || !ROUTINE_EDITORS.has(email.toLowerCase());
+}
+
 function formatTimestamp(timestamp: string): string {
   const value = Number(timestamp);
   return Number.isFinite(value) ? new Date(value).toLocaleString() : "";
+}
+
+function describePreviousEvent(event: BirdEvent): string {
+  const previousEvent = event.previousEventId ? birdEventsStore.get(event.previousEventId) : undefined;
+  const previousTimestamp = Number(previousEvent?.updatedAt);
+  if (!Number.isFinite(previousTimestamp)) return "Previous event not found";
+
+  const daysAgo = Math.max(0, Math.floor((Date.now() - previousTimestamp) / (24 * 60 * 60 * 1000)));
+  return daysAgo === 0 ? "Edited event from today" : `Edited event from ${daysAgo} day${daysAgo === 1 ? "" : "s"} ago`;
 }
 
 export function RecentModificationsModal({ isOpen, onClose }: RecentModificationsModalProps) {
@@ -65,6 +81,10 @@ export function RecentModificationsModal({ isOpen, onClose }: RecentModification
         band: [a.band.id, b.band.id],
         datetime: [`${a.date} ${a.time}`, `${b.date} ${b.time}`],
         species: [a.species, b.species],
+        previousEvent: [
+          birdEventsStore.get(a.previousEventId ?? "")?.updatedAt ?? "",
+          birdEventsStore.get(b.previousEventId ?? "")?.updatedAt ?? "",
+        ],
         modifiedBy: [a.modifiedBy ?? "", b.modifiedBy ?? ""],
         modifiedAt: [a.updatedAt, b.updatedAt],
       };
@@ -115,31 +135,40 @@ export function RecentModificationsModal({ isOpen, onClose }: RecentModification
                 )}
               </TableHeader>
               <TableBody items={sortedModifications} emptyContent="No modifications found">
-                {(event) => (
-                  <TableRow
-                    key={event.id}
-                    className="cursor-pointer group"
-                    onClick={() => {
-                      setSelectedBirdEvent(event);
-                      setIsCaptureHistoryOpen(true);
-                    }}
-                  >
-                    {(columnKey) => {
-                      switch (columnKey as ModificationColumn) {
-                        case "band":
-                          return <TableCell className="font-bold">{event.band.id}</TableCell>;
-                        case "datetime":
-                          return <TableCell>{event.date} {event.time}</TableCell>;
-                        case "species":
-                          return <TableCell className="font-bold"><SpeciesTooltip speciesCode={event.species} /></TableCell>;
-                        case "modifiedBy":
-                          return <TableCell>{event.modifiedBy ?? "Not recorded"}</TableCell>;
-                        case "modifiedAt":
-                          return <TableCell>{formatTimestamp(event.updatedAt)}</TableCell>;
-                      }
-                    }}
-                  </TableRow>
-                )}
+                {(event) => {
+                  const needsAttention = isNonRoutineEditor(event.modifiedBy);
+                  return (
+                    <TableRow
+                      key={event.id}
+                      className="cursor-pointer group"
+                      onClick={() => {
+                        setSelectedBirdEvent(event);
+                        setIsCaptureHistoryOpen(true);
+                      }}
+                    >
+                      {(columnKey) => {
+                        switch (columnKey as ModificationColumn) {
+                          case "band":
+                            return <TableCell className="font-bold">{event.band.id}</TableCell>;
+                          case "datetime":
+                            return <TableCell>{event.date} {event.time}</TableCell>;
+                          case "species":
+                            return <TableCell className="font-bold"><SpeciesTooltip speciesCode={event.species} /></TableCell>;
+                          case "previousEvent":
+                            return <TableCell>{describePreviousEvent(event)}</TableCell>;
+                          case "modifiedBy":
+                            return (
+                              <TableCell className={needsAttention ? "font-semibold text-warning-600" : undefined}>
+                                {event.modifiedBy ?? "Not recorded"}
+                              </TableCell>
+                            );
+                          case "modifiedAt":
+                            return <TableCell>{formatTimestamp(event.updatedAt)}</TableCell>;
+                        }
+                      }}
+                    </TableRow>
+                  );
+                }}
               </TableBody>
             </Table>
           </div>
