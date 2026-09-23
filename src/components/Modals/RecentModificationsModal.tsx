@@ -47,10 +47,13 @@ function formatTimestamp(timestamp: string): string {
 function describePreviousEvent(event: BirdEvent): string {
   const previousEvent = event.previousEventId ? birdEventsStore.get(event.previousEventId) : undefined;
   const previousTimestamp = Number(previousEvent?.updatedAt);
-  if (!Number.isFinite(previousTimestamp)) return "Previous event not found";
+  const currentTimestamp = Number(event.updatedAt);
+  if (!Number.isFinite(previousTimestamp) || !Number.isFinite(currentTimestamp)) return "Previous event not found";
 
-  const daysAgo = Math.max(0, Math.floor((Date.now() - previousTimestamp) / (24 * 60 * 60 * 1000)));
-  return daysAgo === 0 ? "Edited event from today" : `Edited event from ${daysAgo} day${daysAgo === 1 ? "" : "s"} ago`;
+  const daysBetweenEdits = Math.max(0, Math.floor((currentTimestamp - previousTimestamp) / (24 * 60 * 60 * 1000)));
+  return daysBetweenEdits === 0
+    ? "Event from the same day"
+    : `Event from ${daysBetweenEdits} day${daysBetweenEdits === 1 ? "" : "s"} earlier`;
 }
 
 export function RecentModificationsModal({ isOpen, onClose }: RecentModificationsModalProps) {
