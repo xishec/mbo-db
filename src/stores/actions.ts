@@ -394,6 +394,7 @@ export const actions = {
     } = state;
 
     if (!user && isOnline) throw new Error("Must be logged in to add bird events");
+    if (!user?.email) throw new Error("Must be logged in with an email address to add bird events");
     if (!captureData.bandGroup) throw new Error("Band group is required");
     if (!captureData.bandLastTwoDigits) throw new Error("Band digit is required");
     if (!captureData.species) throw new Error("Species is required");
@@ -485,6 +486,7 @@ export const actions = {
         birdStatus: captureData.birdStatus,
         notes: captureData.notes,
         reminder: captureData.reminder,
+        modifiedBy: user.email,
         bandGenerationId,
         previousEventId: replacingPendingId ? null : previousEventId || null,
         modifiedEventId: null,

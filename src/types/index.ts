@@ -109,6 +109,9 @@ export interface BirdEvent {
   birdStatus: string;
   notes: string;
   reminder?: boolean;
+  // Email address of the signed-in user who created this version of the event.
+  // A modification creates a new version, so this also identifies its editor.
+  modifiedBy?: string;
   // Present on events created after a band reset. Only events matching the
   // band's current generation remain active.
   bandGenerationId?: string;

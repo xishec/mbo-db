@@ -23,7 +23,7 @@ import {
   Tooltip,
 } from "@heroui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
-import { CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { ClockIcon, CodeBracketIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { lazy, Suspense, useState } from "react";
 import LoginModal from "./Modals/LoginModal";
 import { useAppStore, useActions, useIsLoggedIn, useUserEmail } from "../stores/useAppStore";
@@ -39,6 +39,9 @@ const ErrorsModal = lazy(() =>
 const ActivityModal = lazy(() =>
   import("./Modals/ActivityModal").then(({ ActivityModal }) => ({ default: ActivityModal }))
 );
+const RecentModificationsModal = lazy(() =>
+  import("./Modals/RecentModificationsModal").then(({ RecentModificationsModal }) => ({ default: RecentModificationsModal }))
+);
 
 interface NavigationProps {
   activePage: string;
@@ -51,9 +54,11 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { isOpen: isLogsOpen, onOpen: onLogsOpen, onClose: onLogsClose } = useDisclosure();
   const { isOpen: isErrorsOpen, onOpen: onErrorsOpen, onClose: onErrorsClose } = useDisclosure();
+  const { isOpen: isModificationsOpen, onOpen: onModificationsOpen, onClose: onModificationsClose } = useDisclosure();
   const { isOpen: isActivityOpen, onOpen: onActivityOpen, onClose: onActivityClose } = useDisclosure();
   const [hasLogsOpened, setHasLogsOpened] = useState(false);
   const [hasErrorsOpened, setHasErrorsOpened] = useState(false);
+  const [hasModificationsOpened, setHasModificationsOpened] = useState(false);
   const [hasActivityOpened, setHasActivityOpened] = useState(false);
   const pendingCount = useAppStore((s) => s.pendingCount);
   const lastSyncedAt = useAppStore((s) => s.lastSyncedAt);
@@ -79,6 +84,11 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
     if (isLoading) return;
     setHasActivityOpened(true);
     onActivityOpen();
+  };
+  const handleModificationsOpen = () => {
+    if (isLoading) return;
+    setHasModificationsOpened(true);
+    onModificationsOpen();
   };
   const handleLoginOpen = () => !isLoading && onOpen();
 
@@ -226,6 +236,19 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
         <NavbarContent className="hidden sm:flex" justify="end">
           {isAdmin && (
           <NavbarItem className="mr-2">
+            <Button
+              isIconOnly
+              variant="light"
+              onPress={handleModificationsOpen}
+              aria-label="View recent modifications"
+              isDisabled={isLoading}
+            >
+              <ClockIcon className="w-5 h-5" />
+            </Button>
+          </NavbarItem>
+          )}
+          {isAdmin && (
+          <NavbarItem className="mr-2">
             <Badge
               content={errorCount}
               color="secondary"
@@ -325,6 +348,22 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                     <div className="flex items-center gap-2">
                       <ExclamationTriangleIcon className="w-5 h-5" />
                       <span>Errors {errorCount > 0 && `(${errorCount})`}</span>
+                    </div>
+                  </Link>
+                </NavbarMenuItem>
+                <NavbarMenuItem>
+                  <Link
+                    className="w-full"
+                    color="foreground"
+                    size="lg"
+                    onPress={() => {
+                      handleModificationsOpen();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="w-5 h-5" />
+                      <span>Recent Modifications</span>
                     </div>
                   </Link>
                 </NavbarMenuItem>
@@ -539,6 +578,9 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
       <LoginModal isOpen={isOpen} onOpenChange={onOpenChange} />
       <Suspense fallback={null}>
         {hasErrorsOpened && <ErrorsModal isOpen={isErrorsOpen} onClose={onErrorsClose} />}
+        {hasModificationsOpened && (
+          <RecentModificationsModal isOpen={isModificationsOpen} onClose={onModificationsClose} />
+        )}
         {hasLogsOpened && <DeveloperModal isOpen={isLogsOpen} onClose={onLogsClose} />}
         {hasActivityOpened && <ActivityModal isOpen={isActivityOpen} onClose={onActivityClose} />}
       </Suspense>
