@@ -99,6 +99,12 @@ export default function AddBirdEventModal({
   isNewCapture,
   defaultNet,
 }: AddBirdEventModalProps) {
+  // A recapture can be corrected to a different existing band. New bandings
+  // stay locked on edit so a band allocation cannot accidentally be moved.
+  const isEditingRecapture =
+    !!birdEventToModify &&
+    birdEventToModify.birdEventType !== BirdEventType.Banded &&
+    birdEventToModify.birdEventType !== BirdEventType.None;
   const selectedProgram = useAppStore((s) => s.selectedProgram);
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const magicTable = useAppStore((s) => s.magicTable);
@@ -927,7 +933,11 @@ export default function AddBirdEventModal({
       // Determine readonly value
       const readonlyValue = (() => {
         if (column.key === "birdEventType" && !birdEventToModify) return formData[columnKey];
-        if (birdEventToModify && (column.key === "bandGroup" || column.key === "bandLastTwoDigits"))
+        if (
+          birdEventToModify &&
+          !isEditingRecapture &&
+          (column.key === "bandGroup" || column.key === "bandLastTwoDigits")
+        )
           return formData[columnKey];
         return null;
       })();
@@ -1027,6 +1037,7 @@ export default function AddBirdEventModal({
       bandSizeToBandIdMap,
       handleBandSizeChange,
       birdEventToModify,
+      isEditingRecapture,
       isSaving,
       getInputColor,
       getBorderClass,

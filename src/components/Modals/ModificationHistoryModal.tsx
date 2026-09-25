@@ -37,6 +37,10 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [birdEvent, birdEventsVersion]);
 
+  const originalBandId = birdEvents[0]?.band?.id;
+  const currentBandId = birdEvents.at(-1)?.band?.id;
+  const bandWasCorrected = Boolean(originalBandId && currentBandId && originalBandId !== currentBandId);
+
   return (
     <ModalShell
       modalProps={{
@@ -56,13 +60,21 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
             </ModalHeaderShell>
             <ModalBodyShell>
               {birdEvents.length > 0 ? (
-                <BirdEventsTable
-                  birdEvents={birdEvents}
-                  maxTableHeight={400}
-                  sortDescriptors={[]}
-                  showHistory
-                  hiddenColumns={["actions", "bandGroup", "bandLastTwoDigits"]}
-                />
+                <>
+                  {bandWasCorrected && (
+                    <p className="text-sm text-default-600 mb-3">
+                      Band corrected from <span className="font-medium">{originalBandId}</span> to{" "}
+                      <span className="font-medium">{currentBandId}</span>.
+                    </p>
+                  )}
+                  <BirdEventsTable
+                    birdEvents={birdEvents}
+                    maxTableHeight={400}
+                    sortDescriptors={[]}
+                    showHistory
+                    hiddenColumns={["actions"]}
+                  />
+                </>
               ) : (
                 <p>No history found for this band.</p>
               )}
