@@ -57,7 +57,12 @@ function textFieldToString(value: unknown): string {
 }
 
 function normalizeSpeciesName(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, " ");
+  return name
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[–—]/g, "-")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
 }
 
 const CENSUS_SPECIES_NAME_ALIASES: Record<string, string> = {
@@ -102,11 +107,11 @@ function importCensusSpeciesCounts(csv: string): {
     }
 
     const normalizedName = normalizeSpeciesName(speciesName);
-    const aliasedName = CENSUS_SPECIES_NAME_ALIASES[normalizedName];
+    const alias = CENSUS_SPECIES_NAME_ALIASES[normalizedName];
     const nameWithoutDirectionalPrefix = normalizedName.replace(/^(eastern|northern|southern|western)\s+/, "");
     const speciesCode =
       speciesByName.get(normalizedName) ??
-      (aliasedName ? speciesByName.get(aliasedName) : undefined) ??
+      (alias ? speciesByName.get(alias) ?? (SPECIES_MAP[alias] ? alias : undefined) : undefined) ??
       speciesByName.get(nameWithoutDirectionalPrefix);
 
     if (!speciesCode) {
