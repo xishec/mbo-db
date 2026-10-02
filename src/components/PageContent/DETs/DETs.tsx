@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAppStore, useActions } from "../../../stores/useAppStore";
-import { OWL_NET_IDS, type DET } from "../../../types/DET";
+import { OWL_NET_IDS, type DET, type Net } from "../../../types/DET";
 import { Card, CardBody, CardHeader, Chip, Button } from "@heroui/react";
 import SpeciesTooltip from "../../Helper/Info/SpeciesTooltip";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
@@ -36,6 +36,39 @@ function toDateString(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function netHoursFromTimes(net: Net): number | null {
+  const periods = [
+    [net.open, net.closed],
+    [net.open2, net.closed2],
+    [net.open3, net.closed3],
+  ];
+  let totalMinutes = 0;
+  let hasTimePeriod = false;
+
+  for (const [open, closed] of periods) {
+    if (!open || !closed) continue;
+    const [openHours, openMinutes] = open.split(":").map(Number);
+    const [closedHours, closedMinutes] = closed.split(":").map(Number);
+    if (
+      !Number.isInteger(openHours) ||
+      !Number.isInteger(openMinutes) ||
+      !Number.isInteger(closedHours) ||
+      !Number.isInteger(closedMinutes) ||
+      openHours < 0 || openHours > 23 || closedHours < 0 || closedHours > 23 ||
+      openMinutes < 0 || openMinutes > 59 || closedMinutes < 0 || closedMinutes > 59
+    ) {
+      continue;
+    }
+
+    hasTimePeriod = true;
+    const start = openHours * 60 + openMinutes;
+    const end = closedHours * 60 + closedMinutes;
+    totalMinutes += end <= start ? end + 24 * 60 - start : end - start;
+  }
+
+  return hasTimePeriod ? totalMinutes / 60 : null;
+}
+
 export default function DETs() {
   const DETsByDateMap = useAppStore((s) => s.DETsByDateMap);
   const user = useAppStore((s) => s.user);
@@ -60,8 +93,12 @@ export default function DETs() {
   const selectedDETDisplayedNets = (selectedDET?.netHours?.nets ?? []).filter(
     (net) => !isSelectedDETOWL || OWL_NET_IDS.some((id) => id === net.id)
   );
+  const selectedDETNetHours = selectedDETDisplayedNets.map((net) => ({
+    ...net,
+    displayedTotal: netHoursFromTimes(net) ?? (Number(net.total) || 0),
+  }));
   const selectedDETNetHoursTotal = isSelectedDETOWL
-    ? Number(selectedDETDisplayedNets.reduce((total, net) => total + (Number(net.total) || 0), 0).toFixed(2)).toString()
+    ? Number(selectedDETNetHours.reduce((total, net) => total + net.displayedTotal, 0).toFixed(2)).toString()
     : selectedDET?.netHours?.total || "0";
 
   // Get available dates as a Set for quick lookup
@@ -332,11 +369,11 @@ export default function DETs() {
                 {!isSelectedDETOWL && <> | Hummingbird Trap: {selectedDET.netHours?.hummingbirdTrapTotal || "0"}</>} |
                 Nets: {selectedDETDisplayedNets.length}
               </p>
-              {selectedDETDisplayedNets.length > 0 && (
+              {selectedDETNetHours.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedDETDisplayedNets.map((net, idx) => (
+                  {selectedDETNetHours.map((net, idx) => (
                     <Chip key={idx} variant="bordered" color="primary" size="sm">
-                      {net.id}: {net.total}
+                      {net.id}: {net.displayedTotal}
                     </Chip>
                   ))}
                 </div>
