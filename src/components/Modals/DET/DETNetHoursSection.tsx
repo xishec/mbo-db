@@ -54,8 +54,9 @@ function parseTimeToMinutes(time: string | undefined): number | null {
 function calculateHours(open: string | undefined, closed: string | undefined): number {
   const openMinutes = parseTimeToMinutes(open);
   const closedMinutes = parseTimeToMinutes(closed);
-  if (openMinutes === null || closedMinutes === null || closedMinutes <= openMinutes) return 0;
-  return (closedMinutes - openMinutes) / 60;
+  if (openMinutes === null || closedMinutes === null) return 0;
+  const durationMinutes = closedMinutes <= openMinutes ? closedMinutes + 24 * 60 - openMinutes : closedMinutes - openMinutes;
+  return durationMinutes / 60;
 }
 
 function calculateNetHours(net: Pick<Net, "open" | "closed" | "open2" | "closed2" | "open3" | "closed3">): number {
