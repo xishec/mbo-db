@@ -13,6 +13,7 @@ import { birdEventsStore } from "../../services/birdEventsStore";
 import { useAppStore } from "../../stores/useAppStore";
 import type { BirdEvent } from "../../types";
 import { isBirdEventInCurrentBandGeneration } from "../../stores/derive";
+import { formatModificationTimestamp, isNonRoutineEditor } from "../../utils/modificationDisplay";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -33,27 +34,24 @@ const columns: Array<{ key: ModificationColumn; label: string; className: string
   { key: "modifiedAt", label: "Modified At", className: "w-[200px]" },
 ];
 
-const ROUTINE_EDITORS = new Set(["shawnasevigny@hotmail.com", "cindybouchard@outlook.com"]);
-
-function isNonRoutineEditor(email: string | undefined): boolean {
-  return !email || !ROUTINE_EDITORS.has(email.toLowerCase());
-}
-
-function formatTimestamp(timestamp: string): string {
-  const value = Number(timestamp);
-  return Number.isFinite(value) ? new Date(value).toLocaleString() : "";
-}
-
-function describePreviousEvent(event: BirdEvent): string {
+function getPreviousEventDetails(event: BirdEvent): { text: string; isDifferentDay: boolean } {
   const previousEvent = event.previousEventId ? birdEventsStore.get(event.previousEventId) : undefined;
   const previousTimestamp = Number(previousEvent?.updatedAt);
   const currentTimestamp = Number(event.updatedAt);
-  if (!Number.isFinite(previousTimestamp) || !Number.isFinite(currentTimestamp)) return "Previous event not found";
+  if (!Number.isFinite(previousTimestamp) || !Number.isFinite(currentTimestamp)) {
+    return { text: "Previous event not found", isDifferentDay: false };
+  }
 
-  const daysBetweenEdits = Math.max(0, Math.floor((currentTimestamp - previousTimestamp) / (24 * 60 * 60 * 1000)));
-  return daysBetweenEdits === 0
-    ? "Event from the same day"
-    : `Event from ${daysBetweenEdits} day${daysBetweenEdits === 1 ? "" : "s"} earlier`;
+  const previousDate = new Date(previousTimestamp);
+  const currentDate = new Date(currentTimestamp);
+  const isDifferentDay = previousDate.toDateString() !== currentDate.toDateString();
+  if (!isDifferentDay) return { text: "Event from the same day", isDifferentDay: false };
+
+  const daysBetweenEdits = Math.max(1, Math.round((currentTimestamp - previousTimestamp) / (24 * 60 * 60 * 1000)));
+  return {
+    text: `Event from ${daysBetweenEdits} day${daysBetweenEdits === 1 ? "" : "s"} earlier`,
+    isDifferentDay: true,
+  };
 }
 
 export function RecentModificationsModal({ isOpen, onClose }: RecentModificationsModalProps) {
@@ -139,7 +137,7 @@ export function RecentModificationsModal({ isOpen, onClose }: RecentModification
               </TableHeader>
               <TableBody items={sortedModifications} emptyContent="No modifications found">
                 {(event) => {
-                  const needsAttention = isNonRoutineEditor(event.modifiedBy);
+                  const needsAttention = Boolean(event.modifiedBy) && isNonRoutineEditor(event.modifiedBy);
                   return (
                     <TableRow
                       key={event.id}
@@ -158,7 +156,12 @@ export function RecentModificationsModal({ isOpen, onClose }: RecentModification
                           case "species":
                             return <TableCell className="font-bold"><SpeciesTooltip speciesCode={event.species} /></TableCell>;
                           case "previousEvent":
-                            return <TableCell>{describePreviousEvent(event)}</TableCell>;
+                            const previousEventDetails = getPreviousEventDetails(event);
+                            return (
+                              <TableCell className={previousEventDetails.isDifferentDay ? "font-semibold text-warning-600" : undefined}>
+                                {previousEventDetails.text}
+                              </TableCell>
+                            );
                           case "modifiedBy":
                             return (
                               <TableCell className={needsAttention ? "font-semibold text-warning-600" : undefined}>
@@ -166,7 +169,7 @@ export function RecentModificationsModal({ isOpen, onClose }: RecentModification
                               </TableCell>
                             );
                           case "modifiedAt":
-                            return <TableCell>{formatTimestamp(event.updatedAt)}</TableCell>;
+                            return <TableCell>{formatModificationTimestamp(event.updatedAt)}</TableCell>;
                         }
                       }}
                     </TableRow>

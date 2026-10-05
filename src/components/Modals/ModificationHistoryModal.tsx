@@ -72,7 +72,8 @@ export default function ModificationHistoryModal({ isOpen, onOpenChange, birdEve
                     maxTableHeight={400}
                     sortDescriptors={[]}
                     showHistory
-                    hiddenColumns={["actions"]}
+                    showModificationDetails
+                    hiddenColumns={["actions", "updatedAt"]}
                   />
                 </>
               ) : (

@@ -3,6 +3,7 @@ import Home from "./Home";
 
 const Programs = lazy(() => import("./Programs/Programs"));
 const Search = lazy(() => import("./Search"));
+const Locations = lazy(() => import("./Locations"));
 const DETSearch = lazy(() => import("./DETSearch"));
 const DETs = lazy(() => import("./DETs/DETs"));
 const SpeciesGroups = lazy(() => import("./SpeciesGroups"));
@@ -24,6 +25,7 @@ export default function PageContent({ activePage }: PageContentProps) {
           {activePage === "home" && <Home />}
           {activePage === "programs" && <Programs />}
           {activePage === "search" && <Search />}
+          {activePage === "locations" && <Locations />}
           {activePage === "det-search" && <DETSearch />}
           {activePage === "DETs" && <DETs />}
           {activePage === "species" && <SpeciesGroups />}

@@ -180,6 +180,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
               <NavbarItem
                 isActive={[
                   "search",
+                  "locations",
                   "det-search",
                   "species",
                   "volunteers",
@@ -195,6 +196,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                     className={`text-md ${isLoading ? "pointer-events-none opacity-50" : ""} ${
                       [
                         "search",
+                        "locations",
                         "det-search",
                         "species",
                         "volunteers",
@@ -222,6 +224,7 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 }}
               >
                 <DropdownItem key="search">Search</DropdownItem>
+                <DropdownItem key="locations">Locations</DropdownItem>
                 <DropdownItem key="det-search">DET Search</DropdownItem>
                 <DropdownItem key="species">Species</DropdownItem>
                 <DropdownItem key="volunteers">Volunteers</DropdownItem>
@@ -397,6 +400,20 @@ export default function Navigation({ activePage, onPageChange, isLoading }: Navi
                 }}
               >
                 Home
+              </Link>
+            </NavbarMenuItem>
+            <NavbarMenuItem>
+              <Link
+                className="w-full"
+                color={activePage === "locations" ? "primary" : "foreground"}
+                size="lg"
+                onPress={() => {
+                  selectProgram(null);
+                  onPageChange("locations");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Locations
               </Link>
             </NavbarMenuItem>
             <NavbarMenuItem>

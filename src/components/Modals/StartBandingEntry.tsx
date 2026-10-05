@@ -1178,7 +1178,10 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
             </section>
 
             <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-              <h3 className="text-sm font-medium text-default-900">{existingDataTitle}</h3>
+              <div>
+                <h2 className="text-2xl font-semibold text-default-900">Band history</h2>
+                <p className="text-sm text-default-600">{existingDataTitle}</p>
+              </div>
               <div className={`min-h-0 flex-1 ${hasExistingData ? "" : "[&_th]:text-default-400"}`}>
                 <BirdEventsTable
                   birdEvents={pastBirdEvents}

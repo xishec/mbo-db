@@ -137,6 +137,7 @@ export default function Search() {
       case "bander":
       case "scribe":
       case "net":
+      case "location":
       case "notes":
         return event[propertyKey];
       case "wing":

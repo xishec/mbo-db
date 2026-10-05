@@ -32,6 +32,7 @@ const VALID_PAGES = new Set([
   "home",
   "programs",
   "search",
+  "locations",
   "det-search",
   "DETs",
   "species",

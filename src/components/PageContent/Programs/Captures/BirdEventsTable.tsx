@@ -14,6 +14,12 @@ import VolunteerTooltip from "../../../Helper/Info/VolunteerTooltip";
 import { useCascadingSort, cascadingSort } from "../../../../hooks/useCascadingSort";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../../types/species";
 import { isActiveBirdEvent, isBirdEventInCurrentBandGeneration } from "../../../../stores/derive";
+import { formatModificationTimestamp, isNonRoutineEditor } from "../../../../utils/modificationDisplay";
+
+const MODIFICATION_COLUMNS = [
+  { key: "modifiedBy", label: "Modified By", type: "", tableClassName: "w-[260px]" },
+  { key: "modifiedAt", label: "Modified At", type: "", tableClassName: "w-[200px]" },
+] as const;
 
 // Helper to convert BirdEvent to table row format
 function birdEventToRow(event: BirdEvent): TableRow {
@@ -43,6 +49,7 @@ function birdEventToRow(event: BirdEvent): TableRow {
     modifiedEventId: event.modifiedEventId,
     previousEventId: event.previousEventId,
     updatedAt: event.updatedAt,
+    modifiedBy: event.modifiedBy,
   };
 }
 
@@ -51,6 +58,7 @@ type TableRow = CaptureFormData & {
   modifiedEventId?: string | null;
   previousEventId?: string | null;
   updatedAt?: string;
+  modifiedBy?: string;
 };
 
 interface BirdEventsTableProps {
@@ -69,6 +77,7 @@ interface BirdEventsTableProps {
   maxRows?: number;
   scrollToEnd?: boolean;
   fillAvailableHeight?: boolean;
+  showModificationDetails?: boolean;
 }
 
 export default function BirdEventsTable({
@@ -87,6 +96,7 @@ export default function BirdEventsTable({
   maxRows,
   scrollToEnd = false,
   fillAvailableHeight = false,
+  showModificationDetails = false,
 }: BirdEventsTableProps) {
   const programsMap = useAppStore((s) => s.programsMap);
   const isOnline = useAppStore((s) => s.isOnline);
@@ -296,6 +306,15 @@ export default function BirdEventsTable({
         return formatUpdatedAt(item.updatedAt);
       }
 
+      if (columnKey === "modifiedBy") {
+        const needsAttention = Boolean(item.modifiedBy) && isNonRoutineEditor(item.modifiedBy);
+        return <span className={needsAttention ? "font-semibold text-warning-600" : undefined}>{item.modifiedBy ?? "Not recorded"}</span>;
+      }
+
+      if (columnKey === "modifiedAt") {
+        return formatModificationTimestamp(item.updatedAt);
+      }
+
       if (columnKey === "species") {
         return <SpeciesTooltip speciesCode={item.species} />;
       }
@@ -337,16 +356,17 @@ export default function BirdEventsTable({
       queuedEventIds,
       bandIdToBirdEventIdsMap,
       bandResetsMap,
+      showModificationDetails,
     ]
   );
 
   const primarySortDescriptor = sortDescriptors[0];
 
   // Filter columns based on hiddenColumns prop
-  const displayColumns = useMemo(
-    () => TABLE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key)),
-    [hiddenColumns]
-  );
+  const displayColumns = useMemo(() => {
+    const columns = TABLE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key));
+    return showModificationDetails ? [...columns, ...MODIFICATION_COLUMNS] : columns;
+  }, [hiddenColumns, showModificationDetails]);
 
   return (
     <>
