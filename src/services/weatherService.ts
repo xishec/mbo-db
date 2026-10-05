@@ -97,13 +97,16 @@ export async function fetchWeatherForDateTimeRange(
   try {
     const startMinutes = parseTimeToMinutes(startTime);
     const endMinutes = parseTimeToMinutes(endTime);
-    if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+    if (startMinutes === null || endMinutes === null || endMinutes === startMinutes) {
       return null;
     }
 
     const startHour = Math.floor(startMinutes / 60) * 60;
     const endHour = Math.floor(endMinutes / 60) * 60;
-    const hourlyUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${MBO_LAT}&longitude=${MBO_LON}&start_date=${date}&end_date=${date}&hourly=temperature_2m,relative_humidity_2m,precipitation,snowfall,snow_depth,cloudcover,windspeed_10m,winddirection_10m&timezone=America/Toronto`;
+    const endDate = endMinutes < startMinutes ? nextDate(date) : date;
+    const startDateTime = `${date}T${formatHour(startHour)}`;
+    const endDateTime = `${endDate}T${formatHour(endHour)}`;
+    const hourlyUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${MBO_LAT}&longitude=${MBO_LON}&start_date=${date}&end_date=${endDate}&hourly=temperature_2m,relative_humidity_2m,precipitation,snowfall,snow_depth,cloudcover,windspeed_10m,winddirection_10m&timezone=America/Toronto`;
 
     const response = await fetch(hourlyUrl);
     if (!response.ok) {
@@ -116,8 +119,8 @@ export async function fetchWeatherForDateTimeRange(
     if (!times?.length) return null;
 
     const indexes = times
-      .map((time, index) => ({ index, minutes: parseTimeToMinutes(time.slice(11, 16)) }))
-      .filter(({ minutes }) => minutes !== null && minutes >= startHour && minutes <= endHour)
+      .map((time, index) => ({ index, time }))
+      .filter(({ time }) => time >= startDateTime && time <= endDateTime)
       .map(({ index }) => index);
 
     if (indexes.length === 0) return null;
@@ -245,10 +248,21 @@ function degreesToCardinal(degrees: number): string {
 }
 
 function parseTimeToMinutes(time: string): number | null {
+  if (!/^\d{1,2}:\d{2}$/.test(time)) return null;
   const [hours, minutes] = time.split(":").map(Number);
   if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
   return hours * 60 + minutes;
+}
+
+function nextDate(date: string): string {
+  const result = new Date(`${date}T00:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + 1);
+  return result.toISOString().slice(0, 10);
+}
+
+function formatHour(minutes: number): string {
+  return `${Math.floor(minutes / 60).toString().padStart(2, "0")}:00`;
 }
 
 function valuesAt(values: Array<number | null> | undefined, indexes: number[]): number[] {

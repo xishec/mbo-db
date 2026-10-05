@@ -10,6 +10,7 @@ import AddDETModal from "../../Modals/DET/AddDETModal";
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../types/species";
 import { getDETEntriesForDate, isOWLProgramId, normalizeDETProgramId } from "../../../utils/detIdentity";
+import { formatTime } from "../../../utils/time";
 import { isDateInRange } from "../../../utils/dateUtils";
 import DETProgramChooser, { type DETProgramOption } from "./DETProgramChooser";
 import OWLDETSpeciesTable from "../../DET/OWLDETSpeciesTable";
@@ -300,11 +301,11 @@ export default function DETs() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-small text-gray-600 mb-1">Start Time</p>
-                  <p className="font-medium">{selectedDET.start || <span className="text-gray-400">—</span>}</p>
+                  <p className="font-medium">{formatTime(selectedDET.start) || <span className="text-gray-400">—</span>}</p>
                 </div>
                 <div>
                   <p className="text-small text-gray-600 mb-1">End Time</p>
-                  <p className="font-medium">{selectedDET.end || <span className="text-gray-400">—</span>}</p>
+                  <p className="font-medium">{formatTime(selectedDET.end) || <span className="text-gray-400">—</span>}</p>
                 </div>
               </div>
               {!isSelectedDETOWL && (

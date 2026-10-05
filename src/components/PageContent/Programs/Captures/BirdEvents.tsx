@@ -1,20 +1,21 @@
 import { Spinner, Tab, Tabs, Select, SelectItem } from "@heroui/react";
-import { memo, useState, useMemo, useCallback } from "react";
+import { memo, useState, useMemo, useCallback, useEffect } from "react";
 import { useAppStore } from "../../../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../../../services/birdEventsStore";
-import { Band, BandSize, type BirdEvent } from "../../../../types";
+import { BandSize, BirdEventType, getBandGroupMapKey, type BirdEvent } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
 import { isActiveBirdEvent } from "../../../../stores/derive";
 
-type OtherBandsItem = { key: string; label: string; count: number };
-const MemoOtherBandsSelect = memo(function MemoOtherBandsSelect(props: {
-  items: OtherBandsItem[];
+type BandGroupItem = { key: string; label: string; count: number };
+const MemoBandGroupSelect = memo(function MemoBandGroupSelect(props: {
+  items: BandGroupItem[];
   selectedKeys: string[];
   onChange: (selected: string) => void;
 }) {
   return (
     <Select
-      placeholder="Other band groups"
+      aria-label="Band group"
+      placeholder="Band groups"
       variant="bordered"
       items={props.items}
       selectedKeys={props.selectedKeys}
@@ -27,6 +28,7 @@ const MemoOtherBandsSelect = memo(function MemoOtherBandsSelect(props: {
       classNames={{
         trigger: "min-h-unit-10 h-unit-10",
         value: "text-sm",
+        listboxWrapper: "max-h-[600px]",
       }}
     >
       {(item) => (
@@ -41,7 +43,6 @@ const MemoOtherBandsSelect = memo(function MemoOtherBandsSelect(props: {
 export default function BirdEvents() {
   const selectedProgram = useAppStore((s) => s.selectedProgram);
   const isLoading = useAppStore((s) => s.isLoading);
-  const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
   const bandGroupSizesMap = useAppStore((s) => s.bandGroupSizesMap);
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const birdEventsVersion = useBirdEventsVersion();
@@ -59,18 +60,9 @@ export default function BirdEvents() {
     return bandGroupSizesMap;
   }, [bandGroupSizesMap]);
 
-  // Map band size to band group ID
-  const bandSizeToBandGroup = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const [bandGroupId, bandSize] of Object.entries(bandGroupToBandSize)) {
-      map[bandSize] = bandGroupId;
-    }
-    return map;
-  }, [bandGroupToBandSize]);
-
-  // Get sorted band group IDs for the selected program
+  // Group IDs for the selected program, ordered by band size.
   const bandGroupIds = useMemo(() => {
-    const ids = selectedProgram?.bandGroupIds ?? [];
+    const ids = [...(selectedProgram?.bandGroupIds ?? [])];
     const sizeOrder = Object.values(BandSize);
     return ids.sort((a, b) => {
       const sizeA = bandGroupToBandSize[a];
@@ -81,6 +73,51 @@ export default function BirdEvents() {
       return a.localeCompare(b);
     });
   }, [selectedProgram, bandGroupToBandSize]);
+
+  // A program becomes historical on the day after its end date.
+  const isPastProgramEnd = Boolean(
+    selectedProgram?.endDate && selectedProgram.endDate < new Date().toLocaleDateString("en-CA")
+  );
+
+  // Map each size to the most recently used band group. The next-band map is
+  // intentionally not used here: after a strip ends in -00, it points to the
+  // next (empty) strip rather than the group that was actually used.
+  const bandSizeToBandGroup = useMemo(() => {
+    const map: Record<string, string> = {};
+    const latestUsedAt: Record<string, number> = {};
+    for (const event of birdEventsStore.getAll().values()) {
+      if (
+        !event?.band ||
+        event.previousEventId ||
+        !isActiveBirdEvent(event, bandResetsMap) ||
+        (event.birdEventType !== BirdEventType.Banded && event.birdEventType !== BirdEventType.None)
+      )
+        continue;
+
+      const bandGroupId = getBandGroupMapKey(event.band);
+      const size = bandGroupToBandSize[bandGroupId];
+      if (!size || size === BandSize.Other) continue;
+      const usedAt = Number(event.updatedAt) || 0;
+      if (latestUsedAt[size] === undefined || usedAt > latestUsedAt[size]) {
+        latestUsedAt[size] = usedAt;
+        map[size] = bandGroupId;
+      }
+    }
+
+    return map;
+  // birdEventsStore is external to React state; this version triggers recomputation when it changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    bandGroupToBandSize,
+    bandResetsMap,
+    birdEventsVersion,
+  ]);
+
+  useEffect(() => {
+    setSelectedBandGroupId(undefined);
+    setSelectedBandSize(null);
+    setShowRecaptures(false);
+  }, [selectedProgram?.id]);
 
   // Pre-calculate counts and next available digits for all band groups (including those from settings)
   const bandGroupInfo = useMemo(() => {
@@ -118,35 +155,20 @@ export default function BirdEvents() {
       }
     }
 
-    // Add band groups from settings that aren't in current program
-    for (const [size, bandGroupId] of Object.entries(bandSizeToBandGroup)) {
-      if (!info[bandGroupId]) {
-        const bandId = bandSizeToBandIdMap[size as BandSize];
-        let nextDigits = "01";
-        if (bandId && bandId.length === 9) {
-          const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
-          nextDigits = band.last2digits;
-        }
-        info[bandGroupId] = { count: 0, nextDigits };
-      }
-    }
-
     return info;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bandGroupIds, bandGroupsMap, birdEventsVersion, bandSizeToBandGroup, bandSizeToBandIdMap, bandResetsMap]);
+  }, [bandGroupIds, bandGroupsMap, birdEventsVersion, bandResetsMap]);
 
-  // Get other band groups (have captures but no band size assigned in settings)
-  const otherBandGroups = useMemo(() => {
-    const other: string[] = [];
-    for (const id of bandGroupIds) {
-      const hasNoBandSize = !bandGroupToBandSize[id];
-      const hasCaptures = (bandGroupInfo[id]?.count ?? 0) > 0;
-      if (hasNoBandSize && hasCaptures) {
-        other.push(id);
-      }
-    }
-    return other;
-  }, [bandGroupIds, bandGroupToBandSize, bandGroupInfo]);
+  // Every group used by this program. Active programs exclude the group
+  // already represented by each size tab; past programs show all of them.
+  const dropdownBandGroups = useMemo(() => {
+    const currentGroups = new Set(Object.values(bandSizeToBandGroup));
+    return bandGroupIds.filter(
+      (id) =>
+        (bandGroupInfo[id]?.count ?? 0) > 0 &&
+        (isPastProgramEnd || !currentGroups.has(id))
+    );
+  }, [bandGroupIds, bandGroupInfo, bandSizeToBandGroup, isPastProgramEnd]);
 
   const pageSelectItems = useMemo(() => {
     const items: { key: string; label: string }[] = [];
@@ -157,7 +179,6 @@ export default function BirdEvents() {
         const bandGroupId = bandSizeToBandGroup[size]!;
         items.push({ key: bandGroupId, label: size });
       });
-    items.push({ key: "other", label: "Other Size" });
     items.push({ key: "recaptures", label: "Recaptures" });
     return items;
   }, [bandSizeToBandGroup]);
@@ -169,9 +190,9 @@ export default function BirdEvents() {
   //      band group. This survives strip rollovers: after finishing the -00
   //      band of a strip, bandSizeToBandGroup advances to the next group key
   //      but the selected size is unchanged, so the dropdown stays selected.
-  //   2. Explicit null selection → show empty table.
-  //   3. Explicit band group id → use it (covers "Other bands" selections).
-  //   4. Default → first non-Other size's band group, or first id in program.
+  //   2. Explicit band group id → use it (covers dropdown selections).
+  //   3. Default → first current size group, or the first used group in a
+  //      past program.
   const displayBandGroupId = useMemo(() => {
     if (selectedBandSize) {
       return bandSizeToBandGroup[selectedBandSize] ?? null;
@@ -185,16 +206,17 @@ export default function BirdEvents() {
         return bandGroupId;
       }
     }
-    return bandGroupIds[0] ?? null;
-  }, [selectedBandSize, selectedBandGroupId, bandGroupIds, bandSizeToBandGroup]);
+    return dropdownBandGroups[0] ?? null;
+  }, [selectedBandSize, selectedBandGroupId, bandSizeToBandGroup, dropdownBandGroups]);
 
   // Stable selectedKeys reference to prevent unnecessary React Aria re-computation
   const pageSelectedKeys = useMemo(() => {
     if (showRecaptures) return ["recaptures"];
-    if (displayBandGroupId) return [displayBandGroupId];
-    if (displayBandGroupId === null) return ["other"];
+    if (displayBandGroupId && Object.values(bandSizeToBandGroup).includes(displayBandGroupId)) {
+      return [displayBandGroupId];
+    }
     return [];
-  }, [showRecaptures, displayBandGroupId]);
+  }, [showRecaptures, displayBandGroupId, bandSizeToBandGroup]);
 
   // Get captures for the displayed band group
   const captures = useMemo(() => {
@@ -234,8 +256,7 @@ export default function BirdEvents() {
   const handleBandGroupSelect = useCallback(
     (bandGroupId: string | null) => {
       setSelectedBandGroupId(bandGroupId);
-      // Remember the size so the selection survives strip rollover. null here
-      // clears the size-based tracking (e.g. "Other Size" selected).
+      // Remember the size so the selection survives strip rollover.
       setSelectedBandSize(bandGroupId ? bandGroupToBandSize[bandGroupId] ?? null : null);
       setShowRecaptures(false);
     },
@@ -252,38 +273,37 @@ export default function BirdEvents() {
   const handlePageSelectChange = useCallback(
     (selected: string | undefined) => {
       if (selected === "recaptures") handleRecapturesSelect();
-      else if (selected === "other") handleBandGroupSelect(null);
       else if (selected) handleBandGroupSelect(selected);
     },
     [handleBandGroupSelect, handleRecapturesSelect]
   );
 
-  // Stable handler for the Other bands Select.
-  const handleOtherBandsSelectChange = useCallback(
+  // Stable handler for the band-group dropdown.
+  const handleBandGroupDropdownChange = useCallback(
     (selected: string) => {
       setSelectedBandGroupId(selected);
-      // "Other bands" groups aren't mapped to a size — clear the size
-      // tracking so the size-based lookup doesn't override.
+      // Dropdown groups can be older strips of an assigned size, so clear
+      // size tracking rather than jumping back to the current strip.
       setSelectedBandSize(null);
       setShowRecaptures(false);
     },
     []
   );
 
-  const otherBandsItems = useMemo(
+  const dropdownBandGroupItems = useMemo(
     () =>
-      otherBandGroups.map((bandGroupId) => ({
+      dropdownBandGroups.map((bandGroupId) => ({
         key: bandGroupId,
-        label: bandGroupId,
+        label: `${bandGroupToBandSize[bandGroupId] ?? "Other"} : ${bandGroupId}`,
         count: bandGroupInfo[bandGroupId]?.count ?? 0,
       })),
-    [otherBandGroups, bandGroupInfo]
+    [dropdownBandGroups, bandGroupInfo, bandGroupToBandSize]
   );
 
-  const otherBandsSelectedKeys = useMemo(
+  const dropdownBandGroupSelectedKeys = useMemo(
     () =>
-      displayBandGroupId && otherBandGroups.includes(displayBandGroupId) ? [displayBandGroupId] : [],
-    [otherBandGroups, displayBandGroupId]
+      displayBandGroupId && dropdownBandGroups.includes(displayBandGroupId) ? [displayBandGroupId] : [],
+    [dropdownBandGroups, displayBandGroupId]
   );
 
   if (!selectedProgram) {
@@ -302,7 +322,8 @@ export default function BirdEvents() {
     <div className="w-full flex flex-col items-center gap-8">
       <div className="w-full flex flex-col gap-4">
         <div className="flex w-full items-center justify-start gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+          {!isPastProgramEnd && (
+            <div className="flex min-w-0 items-center gap-3">
             <Tabs
               color="secondary"
               size="md"
@@ -318,13 +339,14 @@ export default function BirdEvents() {
                 <Tab key={item.key} title={item.label} />
               ))}
             </Tabs>
-          </div>
-          {otherBandGroups.length > 0 && (
+            </div>
+          )}
+          {dropdownBandGroups.length > 0 && (
             <div className="flex shrink-0 items-center gap-3">
-              <MemoOtherBandsSelect
-                items={otherBandsItems}
-                selectedKeys={otherBandsSelectedKeys}
-                onChange={handleOtherBandsSelectChange}
+              <MemoBandGroupSelect
+                items={dropdownBandGroupItems}
+                selectedKeys={dropdownBandGroupSelectedKeys}
+                onChange={handleBandGroupDropdownChange}
               />
             </div>
           )}

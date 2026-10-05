@@ -16,6 +16,7 @@ import { fetchWeatherForDateTimeRange } from "../../../services/weatherService";
 import { birdEventsStore, useBirdEventsVersion } from "../../../services/birdEventsStore";
 import WeatherDisplay from "../../Helper/WeatherDisplay";
 import { getLocalDateString } from "../../../utils/dateUtils";
+import { formatTime } from "../../../utils/time";
 import { parseCsv } from "../../../utils/csv";
 import { showPersistentErrorToast } from "../../../utils/toast";
 import DETObserverHoursSection from "./DETObserverHoursSection";
@@ -152,6 +153,7 @@ const DEFAULT_NET_IDS = [
 ];
 
 function timeToMinutes(time: string): number | null {
+  if (!/^\d{1,2}:\d{2}$/.test(time)) return null;
   const [hours, minutes] = time.split(":").map(Number);
   if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59)
     return null;
@@ -180,15 +182,13 @@ function isEventWithinDETWindow(
   const eventMinutes = timeToMinutes(eventTime ?? "");
   if (eventMinutes === null) return false;
 
-  if (endMinutes >= startMinutes) {
-    return eventDate === detDate && eventMinutes >= startMinutes && eventMinutes <= endMinutes;
-  }
+  const eventOffset =
+    eventDate === detDate ? eventMinutes : eventDate === followingDate(detDate) ? eventMinutes + 24 * 60 : null;
+  if (eventOffset === null) return false;
 
   // An end time earlier than the start time means the DET crosses midnight.
-  return (
-    (eventDate === detDate && eventMinutes >= startMinutes) ||
-    (eventDate === followingDate(detDate) && eventMinutes <= endMinutes)
-  );
+  const endOffset = (endMinutes < startMinutes ? endMinutes + 24 * 60 : endMinutes) + 3 * 60;
+  return eventOffset >= startMinutes && eventOffset <= endOffset;
 }
 
 function scheduledNetHours(open: string, closed: string): NetHours {
@@ -401,8 +401,8 @@ export default function AddDETModal({
       setProgramId(existingDET.programId);
       setLocation(existingDET.location);
       setBanderInCharge(existingDET.banderInCharge || "");
-      setStart(existingDET.start || "");
-      setEnd(existingDET.end || "");
+      setStart(formatTime(existingDET.start));
+      setEnd(formatTime(existingDET.end));
       setCoverageCode(String(existingDET.coverageCode));
       setNarrative(existingDET.narrative);
       setDeviations(existingDET.deviations);
@@ -427,8 +427,8 @@ export default function AddDETModal({
       setSponsorship(textFieldToString(existingDET.sponsorship));
       setObservedSpeciesCount(existingDET.observedSpeciesCount || {});
       setCensuser(existingDET.censuser || "");
-      setCensusStart(existingDET.censusStart || "");
-      setCensusEnd(existingDET.censusEnd || "");
+      setCensusStart(formatTime(existingDET.censusStart));
+      setCensusEnd(formatTime(existingDET.censusEnd));
       setCensusSpeciesCount(existingDET.censusSpeciesCount || {});
       setBandedSpeciesCount(eventCounts.banded);
       setRepeatSpeciesCount(eventCounts.repeat);
@@ -577,10 +577,10 @@ export default function AddDETModal({
     if (!isOpen || mode !== "create" || !date) return;
 
     const calendarEntry = detCalendar[date];
-    setStart(isOWLDET ? "" : (calendarEntry?.start ?? ""));
-    setEnd(isOWLDET ? "" : (calendarEntry?.end ?? ""));
-    setCensusStart(isOWLDET ? "" : (calendarEntry?.censusStart ?? ""));
-    setCensusEnd(isOWLDET ? "" : (calendarEntry?.censusEnd ?? ""));
+    setStart(isOWLDET ? "" : formatTime(calendarEntry?.start));
+    setEnd(isOWLDET ? "" : formatTime(calendarEntry?.end));
+    setCensusStart(isOWLDET ? "" : formatTime(calendarEntry?.censusStart));
+    setCensusEnd(isOWLDET ? "" : formatTime(calendarEntry?.censusEnd));
     setNetHours(
       !isOWLDET && calendarEntry?.start && calendarEntry?.end
         ? scheduledNetHours(calendarEntry.start, calendarEntry.end)
@@ -630,6 +630,10 @@ export default function AddDETModal({
     }
     if (!location) {
       setError("Location is required");
+      return;
+    }
+    if ((start && timeToMinutes(start) === null) || (end && timeToMinutes(end) === null)) {
+      setError("Enter times in HH:mm format");
       return;
     }
     if (start && end && timeToMinutes(start) === timeToMinutes(end)) {
@@ -759,16 +763,18 @@ export default function AddDETModal({
                       <Input
                         label="Start Time"
                         {...modalInputProps}
+                        type="time"
+                        step={60}
                         value={start}
-                        onValueChange={setStart}
-                        placeholder="06:00"
+                        onValueChange={(value) => setStart(formatTime(value))}
                       />
                       <Input
                         label="End Time"
                         {...modalInputProps}
+                        type="time"
+                        step={60}
                         value={end}
-                        onValueChange={setEnd}
-                        placeholder="12:00"
+                        onValueChange={(value) => setEnd(formatTime(value))}
                       />
                     </div>
                     {!isOWLDET && (
@@ -782,18 +788,20 @@ export default function AddDETModal({
                         />
                         <div className="grid grid-cols-2 gap-4">
                           <Input
-                            label="Census Start"
-                            {...modalInputProps}
-                            value={censusStart}
-                            onValueChange={setCensusStart}
-                            placeholder="06:30"
+                          label="Census Start"
+                          {...modalInputProps}
+                          type="time"
+                          step={60}
+                          value={censusStart}
+                          onValueChange={(value) => setCensusStart(formatTime(value))}
                           />
                           <Input
-                            label="Census End"
-                            {...modalInputProps}
-                            value={censusEnd}
-                            onValueChange={setCensusEnd}
-                            placeholder="11:11"
+                          label="Census End"
+                          {...modalInputProps}
+                          type="time"
+                          step={60}
+                          value={censusEnd}
+                          onValueChange={(value) => setCensusEnd(formatTime(value))}
                           />
                         </div>
                       </>
@@ -808,6 +816,10 @@ export default function AddDETModal({
                     {(start || end) && (
                       <span className="ml-2">
                         from {start || "—"} to {end || "—"}
+                        {timeToMinutes(start) !== null &&
+                          timeToMinutes(end) !== null &&
+                          timeToMinutes(end)! < timeToMinutes(start)! &&
+                          " (next day)"}
                       </span>
                     )}
                   </p>
