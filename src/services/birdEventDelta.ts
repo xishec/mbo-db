@@ -1,11 +1,7 @@
 import type { BirdEvent } from "../types";
 
-// Covers clock/order differences and slow queue drains while older app builds
-// are still in use. Unchanged rows are filtered before any rebuild or write.
-export const BIRD_EVENT_CURSOR_OVERLAP_MS = 60 * 60 * 1000;
-
 export function getBirdEventDeltaStart(cursor: number): number {
-  return Math.max(0, cursor - BIRD_EVENT_CURSOR_OVERLAP_MS);
+  return cursor + 1;
 }
 
 function equalData(left: unknown, right: unknown): boolean {

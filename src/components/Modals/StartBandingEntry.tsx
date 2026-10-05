@@ -797,10 +797,10 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
           selectedKeys={selectedPage ? [selectedPage] : []}
           placeholder=""
           itemHeight={52}
-          maxListboxHeight={420}
+          maxListboxHeight={900}
           popoverProps={{
             classNames: {
-              content: "min-w-[240px]",
+              content: "min-w-[240px] max-h-[calc(100vh-8rem)]",
             },
           }}
           classNames={{ trigger: "min-h-unit-10 h-unit-10", value: "text-sm" }}

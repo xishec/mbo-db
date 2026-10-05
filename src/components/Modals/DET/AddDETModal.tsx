@@ -153,8 +153,42 @@ const DEFAULT_NET_IDS = [
 
 function timeToMinutes(time: string): number | null {
   const [hours, minutes] = time.split(":").map(Number);
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59)
+    return null;
   return hours * 60 + minutes;
+}
+
+function followingDate(date: string): string {
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
+}
+
+function isEventWithinDETWindow(
+  eventDate: string,
+  eventTime: string | undefined,
+  detDate: string,
+  start: string,
+  end: string
+): boolean {
+  const startMinutes = timeToMinutes(start);
+  const endMinutes = timeToMinutes(end);
+
+  // Older DETs do not have a time window, so retain their existing date-based totals.
+  if (startMinutes === null || endMinutes === null) return eventDate === detDate;
+
+  const eventMinutes = timeToMinutes(eventTime ?? "");
+  if (eventMinutes === null) return false;
+
+  if (endMinutes >= startMinutes) {
+    return eventDate === detDate && eventMinutes >= startMinutes && eventMinutes <= endMinutes;
+  }
+
+  // An end time earlier than the start time means the DET crosses midnight.
+  return (
+    (eventDate === detDate && eventMinutes >= startMinutes) ||
+    (eventDate === followingDate(detDate) && eventMinutes <= endMinutes)
+  );
 }
 
 function scheduledNetHours(open: string, closed: string): NetHours {
@@ -264,7 +298,7 @@ export default function AddDETModal({
   ]);
 
   const getSpeciesCountsFromEvents = useCallback(
-    (eventDate: string, eventProgramId: string): EventSpeciesCounts => {
+    (eventDate: string, eventProgramId: string, detStart: string, detEnd: string): EventSpeciesCounts => {
       const banded: Record<string, number> = {};
       const repeat: Record<string, number> = {};
       const return_: Record<string, number> = {};
@@ -272,7 +306,7 @@ export default function AddDETModal({
       for (const ev of birdEventsStore.getAll().values()) {
         if (
           !ev ||
-          ev.date !== eventDate ||
+          !isEventWithinDETWindow(ev.date, ev.time, eventDate, detStart, detEnd) ||
           normalizeDETProgramId(ev.programId) !== normalizedProgramId ||
           !isActiveBirdEvent(ev, bandResetsMap) ||
           !ev.species
@@ -302,8 +336,8 @@ export default function AddDETModal({
         return_: {} as Record<string, number>,
       };
 
-    return getSpeciesCountsFromEvents(date, programId);
-  }, [date, programId, birdEventsVersion, getSpeciesCountsFromEvents]);
+    return getSpeciesCountsFromEvents(date, programId, start, end);
+  }, [date, programId, start, end, birdEventsVersion, getSpeciesCountsFromEvents]);
 
   useEffect(() => {
     setBandedSpeciesCount(computedFromEvents.banded);
@@ -357,7 +391,12 @@ export default function AddDETModal({
   // Prefill form when editing
   useEffect(() => {
     if (mode === "edit" && existingDET) {
-      const eventCounts = getSpeciesCountsFromEvents(existingDET.date, existingDET.programId);
+      const eventCounts = getSpeciesCountsFromEvents(
+        existingDET.date,
+        existingDET.programId,
+        existingDET.start || "",
+        existingDET.end || ""
+      );
       setDate(existingDET.date);
       setProgramId(existingDET.programId);
       setLocation(existingDET.location);
@@ -400,7 +439,7 @@ export default function AddDETModal({
       // Reset form for new DET
       const nextDate = defaultDate || getLocalDateString();
       const nextProgramId = defaultProgramId || "";
-      const eventCounts = getSpeciesCountsFromEvents(nextDate, nextProgramId);
+      const eventCounts = getSpeciesCountsFromEvents(nextDate, nextProgramId, "", "");
       setDate(nextDate);
       setProgramId(nextProgramId);
       setLocation("MBO");
@@ -593,8 +632,8 @@ export default function AddDETModal({
       setError("Location is required");
       return;
     }
-    if (start && end && end <= start) {
-      setError("End Time must be after Start Time");
+    if (start && end && timeToMinutes(start) === timeToMinutes(end)) {
+      setError("Start Time and End Time cannot be the same");
       return;
     }
     if (isLoadingWeather) {

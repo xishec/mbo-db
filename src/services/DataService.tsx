@@ -395,8 +395,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setStatus("Checking for new events...");
           try {
             const deltaSnap = await get(
-              // Keep a small overlap for equal timestamps and mixed-version
-              // clock skew. Unchanged overlap rows are filtered below.
+              // Start strictly after the cached cursor so already-processed
+              // captures are not downloaded again on every refresh.
               query(
                 ref(db, `${env}/birdEventsMap`),
                 orderByChild("syncedAt"),

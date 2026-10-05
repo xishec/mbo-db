@@ -20,8 +20,8 @@ export async function refreshBirdEventDelta(isCancelled: () => boolean): Promise
     query(
       ref(db, `${CURRENT_ENVIRONMENT}/birdEventsMap`),
       orderByChild("syncedAt"),
-      // A small overlap covers equal timestamps and mixed-version clock skew;
-      // already-held rows are filtered before rebuilding local state.
+      // Start strictly after the cached cursor to avoid fetching captures
+      // that have already been processed.
       startAt(getBirdEventDeltaStart(lastEventSync))
     )
   );
