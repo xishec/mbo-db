@@ -117,7 +117,7 @@ export default function AddBirdEventModal({
   const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const { addBirdEvent } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
-  const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
+  const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || "", selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation));
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const [lastBandId, setLastBandId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -169,7 +169,7 @@ export default function AddBirdEventModal({
       return;
     }
 
-    const defaultData = getDefaultFormData(selectedProgram?.id || "");
+    const defaultData = getDefaultFormData(selectedProgram?.id || "", selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation);
 
     // Restore bander and scribe from localStorage
     const savedBander = localStorage.getItem("lastBander");
@@ -198,6 +198,7 @@ export default function AddBirdEventModal({
       defaultData.bander = birdEventToModify.bander;
       defaultData.scribe = birdEventToModify.scribe;
       defaultData.net = birdEventToModify.net;
+      defaultData.location = (birdEventToModify.location ?? (selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation) ?? "MBO").toUpperCase();
       defaultData.birdStatus = birdEventToModify.birdStatus;
       defaultData.notes = birdEventToModify.notes;
       defaultData.reminder = birdEventToModify.reminder;
@@ -321,6 +322,7 @@ export default function AddBirdEventModal({
     "bander",
     "scribe",
     "birdStatus",
+    "location",
     "notes",
   ];
 
@@ -1217,7 +1219,7 @@ export default function AddBirdEventModal({
                   {...modalPrimaryButtonProps}
                   variant="bordered"
                   onPress={handleSaveAndNext}
-                  isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species}
+                  isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species || !formData.location}
                 >
                   Save and Next
                 </Button>
@@ -1225,7 +1227,7 @@ export default function AddBirdEventModal({
               <Button
                 {...modalPrimaryButtonProps}
                 onPress={handleSaveAndClose}
-                isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species}
+                isDisabled={!formData.bandGroup || !formData.bandLastTwoDigits || !formData.species || !formData.location}
               >
                 Save
               </Button>

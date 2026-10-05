@@ -17,10 +17,10 @@ export default function PyleAndFunFacts({
   currentBandId = null,
   disabled = false,
 }: PyleAndFunFactsProps) {
-  const panelClassName = "flex-1";
+  const panelClassName = "w-full";
 
   return (
-    <div className="grid grid-cols-2 gap-4 items-stretch">
+    <div className="flex flex-col gap-4">
       <PyleTable
         title="Pyle"
         speciesCode={speciesCode}

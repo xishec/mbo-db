@@ -111,7 +111,7 @@ export default function Programs() {
               isIconOnly
               size="sm"
               variant="light"
-              aria-label={`Edit ${selectedProgram.id} dates`}
+              aria-label={`Edit ${selectedProgram.id}`}
               onPress={() => setIsEditProgramDatesModalOpen(true)}
             >
               <PencilSquareIcon className="h-4 w-4" />

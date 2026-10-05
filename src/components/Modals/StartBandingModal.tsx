@@ -29,8 +29,12 @@ export default function StartBandingModal({ isOpen, onOpenChange }: StartBanding
     >
       {(onClose) => (
         <>
-          <ModalBody className="items-center justify-center gap-4 px-10 pb-10 pt-10">
-            <div className="flex w-full max-w-[2400px] flex-col gap-5">
+          <ModalBody className="items-center gap-4 px-10 pb-10 pt-10">
+            <div
+              className={`grid h-full min-h-0 w-full gap-5 ${
+                isDoubleBanding ? "max-w-[2400px] grid-cols-1 2xl:grid-cols-2" : "max-w-[1200px]"
+              }`}
+            >
               <StartBandingEntry entryId="primary" isDoubleBanding={isDoubleBanding} isOpen={isOpen} />
               {isDoubleBanding && (
                 <StartBandingEntry entryId="secondary" isDoubleBanding={isDoubleBanding} isOpen={isOpen} />

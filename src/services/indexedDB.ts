@@ -44,6 +44,8 @@ function createCachedMetadata(data: Partial<DatabaseData>): DatabaseData {
       {
         id: program.id || programId,
         displayName: program.displayName || programId,
+        ...(program.defaultLocation ? { defaultLocation: program.defaultLocation } : {}),
+        ...(program.isMultiLocation ? { isMultiLocation: true } : {}),
         bandGroupIds: [],
         recaptureIds: [],
         ...(program.startDate ? { startDate: program.startDate } : {}),

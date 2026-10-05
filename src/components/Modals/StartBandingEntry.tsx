@@ -6,7 +6,7 @@ import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEvents
 import { Band, BandSize, BirdEventType, type BirdEvent, type CaptureFormData, type SpeciesRange } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { findErrorsInEvents, getRangesForSex, validateBirdEventForm } from "../../types/birdEventErrors";
-import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../types/species";
+import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../types/species";
 import { getLocalDateString } from "../../utils/dateUtils";
 import { showPersistentErrorToast } from "../../utils/toast";
 import PyleTable from "../Helper/Info/PyleTable";
@@ -45,8 +45,34 @@ const FIELD_ORDER = [
   "time",
   "time-minute",
   "birdStatus",
+  "location",
   "notes",
 ] as const;
+
+// Keep the form compact enough to work as a side-by-side pair during double
+// banding, without turning the fields into a single very wide horizontal row.
+const FIELD_ROWS = [
+  [
+    "net",
+    "page",
+    "birdEventType",
+    "bandGroup",
+    "bandLastTwoDigits",
+    "species",
+    "bander",
+    "scribe",
+    "wing",
+    "age",
+    "howAged",
+    "sex",
+    "howSexed",
+    "fat",
+    "weight",
+  ],
+  ["date", "date-month", "date-day", "time", "time-minute", "birdStatus", "location", "notes"],
+] as const;
+
+const GROWING_FIELDS = new Set(["birdEventType", "weight", "notes"]);
 
 const FIELD_WIDTHS: Record<string, string> = {
   net: "50px",
@@ -70,12 +96,13 @@ const FIELD_WIDTHS: Record<string, string> = {
   bander: "75px",
   scribe: "75px",
   birdStatus: "75px",
+  location: "100px",
 };
 
 const FIELD_LABELS: Record<string, string> = {
   net: "Net",
   page: "Size / Recapture",
-  birdEventType: "",
+  birdEventType: "Type",
   bandGroup: "Band Group",
   bandLastTwoDigits: "Digit",
   species: "Species",
@@ -94,6 +121,7 @@ const FIELD_LABELS: Record<string, string> = {
   bander: "Bander",
   scribe: "Scribe",
   birdStatus: "Status",
+  location: "Location",
   notes: "Notes",
 };
 
@@ -209,7 +237,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
   const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const { addBirdEvent } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
-  const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || ""));
+  const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || "", selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation));
   const [selectedPage, setSelectedPage] = useState<SelectedPage>(null);
   const [lastBandId, setLastBandId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -279,7 +307,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
   );
 
   useEffect(() => {
-    const defaultData = getDefaultFormData(selectedProgram?.id || "");
+    const defaultData = getDefaultFormData(selectedProgram?.id || "", selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation);
     const savedBander = localStorage.getItem("lastBander");
     const savedScribe = localStorage.getItem("lastScribe");
     if (savedBander) defaultData.bander = savedBander;
@@ -291,7 +319,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
     setIsEntryWarningOpen(false);
     shownEntryWarningKeyRef.current = "";
     setIsTimeAutoFilled(true);
-  }, [selectedProgram?.id]);
+  }, [selectedProgram?.id, selectedProgram?.defaultLocation, selectedProgram?.isMultiLocation]);
 
   useEffect(() => {
     if (!isOpen || !isTimeAutoFilled) return;
@@ -303,10 +331,13 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
 
     updateAutoFilledTime();
     let intervalId: ReturnType<typeof setInterval> | undefined;
-    const timeoutId = setTimeout(() => {
-      updateAutoFilledTime();
-      intervalId = setInterval(updateAutoFilledTime, 60_000);
-    }, 60_000 - (Date.now() % 60_000));
+    const timeoutId = setTimeout(
+      () => {
+        updateAutoFilledTime();
+        intervalId = setInterval(updateAutoFilledTime, 60_000);
+      },
+      60_000 - (Date.now() % 60_000)
+    );
 
     return () => {
       clearTimeout(timeoutId);
@@ -810,7 +841,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
           value={formData.birdEventType}
           isDisabled
           classNames={{
-            input: "text-sm",
+            base: "!opacity-100",
+            input: "text-sm !text-foreground",
           }}
         />
       );
@@ -876,15 +908,15 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
   };
 
   const renderFieldGroup = (fieldKey: string) => {
-    const isNotes = fieldKey === "notes";
+    const shouldGrow = GROWING_FIELDS.has(fieldKey);
     const volunteerCode =
       (fieldKey === "bander" || fieldKey === "scribe") && formData[fieldKey] ? formData[fieldKey] : null;
 
     return (
       <div
         key={`${entryId}-${fieldKey}`}
-        className={`flex flex-col gap-1 ${isNotes ? "flex-1 min-w-0" : "shrink-0"}`}
-        style={isNotes ? undefined : { width: FIELD_WIDTHS[fieldKey] }}
+        className={`flex flex-col gap-1 ${shouldGrow ? "min-w-[75px] flex-1" : "shrink-0"}`}
+        style={shouldGrow ? undefined : { width: FIELD_WIDTHS[fieldKey] }}
       >
         {volunteerCode ? (
           <span className="min-h-5 text-sm text-default-900 font-medium px-1 truncate underline">
@@ -899,9 +931,27 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
   };
 
   const hasExistingData = pastBirdEvents.length > 0;
-  const existingDataTitle = `${hasExistingData ? "Existing data" : "No data"} for band ${bandId || ""}`.trim();
+  const existingDataTitle = useMemo(() => {
+    if (!hasExistingData) return `No data for band ${bandId}`.trim();
+
+    const getEarliestEntryOfType = (birdEventType: BirdEventType) =>
+      pastBirdEvents
+        .filter((event) => event.birdEventType === birdEventType)
+        .sort((first, second) => `${first.date}T${first.time}`.localeCompare(`${second.date}T${second.time}`))[0];
+    const entry =
+      getEarliestEntryOfType(BirdEventType.Banded) ?? getEarliestEntryOfType(BirdEventType.Alien);
+    const entryCount = `${pastBirdEvents.length} ${pastBirdEvents.length === 1 ? "entry" : "entries"}`;
+    if (!entry) return `${entryCount} for band ${bandId}`;
+
+    const speciesCode = resolveSpeciesKey(entry.species, speciesAliasesMap);
+    const speciesName = SPECIES_MAP[speciesCode]?.speciesDescriptionMBO ?? entry.species;
+
+    return entry.birdEventType === BirdEventType.Alien
+      ? `${entryCount} for this ${speciesName}, it's an alien!`
+      : `${entryCount} for this ${speciesName}, banded by ${entry.bander || "unknown"} on ${entry.date || "an unknown date"}`;
+  }, [bandId, hasExistingData, pastBirdEvents, speciesAliasesMap]);
   const canSave = Boolean(
-    selectedPage && formData.bandGroup && formData.bandLastTwoDigits && formData.species && selectedProgram
+    selectedPage && formData.bandGroup && formData.bandLastTwoDigits && formData.species && selectedProgram && formData.location
   );
   const entryWarnings = useMemo(() => {
     const warnings: string[] = [];
@@ -1075,6 +1125,19 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
     suggestedBirdEventType,
   ]);
 
+  const clearEntry = useCallback(() => {
+    setFormData((current) => ({
+      ...getDefaultFormData(selectedProgram?.id || "", selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation),
+      bander: current.bander,
+      scribe: current.scribe,
+    }));
+    setSelectedPage(null);
+    setLastBandId("");
+    setEntryMessage(null);
+    setIsTimeAutoFilled(true);
+    inputRefs.current.get("net")?.focus();
+  }, [selectedProgram?.id, selectedProgram?.defaultLocation, selectedProgram?.isMultiLocation]);
+
   useEffect(() => {
     if (
       !isOpen ||
@@ -1095,37 +1158,34 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
 
     window.addEventListener("keydown", handleSaveShortcut);
     return () => window.removeEventListener("keydown", handleSaveShortcut);
-  }, [
-    isBirdStatusModalOpen,
-    isDoubleBanding,
-    isEntryWarningOpen,
-    isNotesModalOpen,
-    isOpen,
-    reminderNotice,
-    saveEntry,
-  ]);
+  }, [isBirdStatusModalOpen, isDoubleBanding, isEntryWarningOpen, isNotesModalOpen, isOpen, reminderNotice, saveEntry]);
 
   return (
     <>
-      <Card shadow="none" className="w-full border border-default-200">
-        <CardBody className="flex flex-col gap-4 p-4">
-          <section className="flex flex-col gap-4">
-            <div className="flex gap-1">{FIELD_ORDER.map(renderFieldGroup)}</div>
+      <Card shadow="none" className="h-full w-full border border-default-200">
+        <CardBody className="flex h-full min-h-0 flex-col gap-4 p-4">
+          <section className="flex flex-col gap-2">
+            {FIELD_ROWS.map((fieldRow, index) => (
+              <div key={index} className="flex flex-wrap gap-1">
+                {fieldRow.map(renderFieldGroup)}
+              </div>
+            ))}
           </section>
 
-          <div className="grid min-h-[220px] grid-cols-[420px_minmax(0,1fr)] items-stretch gap-4">
-            <section className="flex min-w-0 flex-col gap-4">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+            <section className="min-w-0 shrink-0">
               <PyleTable title="Pyle" speciesCode={resolvedSpecies} speciesRange={pyleSpeciesRange} withCard />
             </section>
 
-            <section className="flex min-w-0 flex-col gap-2">
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
               <h3 className="text-sm font-medium text-default-900">{existingDataTitle}</h3>
-              <div className={hasExistingData ? "" : "[&_th]:text-default-400"}>
+              <div className={`min-h-0 flex-1 ${hasExistingData ? "" : "[&_th]:text-default-400"}`}>
                 <BirdEventsTable
                   birdEvents={pastBirdEvents}
-                  maxTableHeight={185}
+                  maxTableHeight={280}
                   showSummary={false}
                   removeWrapperShadow
+                  fillAvailableHeight
                   sortDescriptors={[{ column: "date", direction: "ascending" }]}
                   hiddenColumns={[
                     "actions",
@@ -1185,14 +1245,19 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
                 </div>
               )}
             </div>
-            <Button
-              color="secondary"
-              onPress={() => void saveEntry()}
-              isDisabled={!canSave || isAppSaving}
-              isLoading={isSaving}
-            >
-              Save
-            </Button>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="light" color="danger" onPress={clearEntry} isDisabled={isSaving || isAppSaving}>
+                Clear
+              </Button>
+              <Button
+                color="secondary"
+                onPress={() => void saveEntry()}
+                isDisabled={!canSave || isAppSaving}
+                isLoading={isSaving}
+              >
+                Save
+              </Button>
+            </div>
           </div>
         </CardBody>
       </Card>

@@ -40,6 +40,8 @@ export interface VolunteerStats extends Volunteer {
 export interface Program {
   id: string;
   displayName: string;
+  defaultLocation?: string;
+  isMultiLocation?: boolean;
   bandGroupIds: string[];
   recaptureIds: string[];
   startDate?: string;
@@ -108,6 +110,7 @@ export interface BirdEvent {
   bander: string;
   scribe: string;
   net: string;
+  location?: string;
   birdStatus: string;
   notes: string;
   reminder?: boolean;
@@ -243,6 +246,7 @@ export interface CaptureFormData {
   bander: string;
   scribe: string;
   net: string;
+  location: string;
   birdEventType: string;
   birdStatus: string;
   notes: string;

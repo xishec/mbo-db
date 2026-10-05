@@ -352,8 +352,8 @@ export const actions = {
     useAppStore.setState({ selectedProgram: program });
   },
 
-  addProgram: async (programId: string, startDate: string, endDate: string): Promise<void> => {
-    const trimmedId = programId.trim();
+  addProgram: async (programId: string, startDate: string, endDate: string, defaultLocation = "MBO", isMultiLocation = false): Promise<void> => {
+    const trimmedId = programId.trim().toUpperCase();
     if (!trimmedId) throw new Error("Program ID cannot be empty");
     if ([".", "#", "$", "[", "]", "/"].some((character) => trimmedId.includes(character))) {
       throw new Error("Program ID cannot contain . # $ [ ] or /");
@@ -361,6 +361,7 @@ export const actions = {
     if (!isValidDateString(startDate)) throw new Error("A valid start date is required");
     if (!isValidDateString(endDate)) throw new Error("A valid end date is required");
     if (startDate > endDate) throw new Error("End date must be on or after start date");
+    const trimmedLocation = isMultiLocation ? "" : defaultLocation.trim().toUpperCase() || "MBO";
 
     const { user, isOnline, programsMap, yearsToProgramMap } = useAppStore.getState();
     if (!user) throw new Error("Must be logged in to add a program");
@@ -373,6 +374,8 @@ export const actions = {
     const newProgram: Program = {
       id: trimmedId,
       displayName: trimmedId,
+      defaultLocation: trimmedLocation,
+      isMultiLocation,
       bandGroupIds: [],
       recaptureIds: [],
       startDate,
@@ -405,13 +408,14 @@ export const actions = {
     } catch (err) {
       logger.warn("AddProgram", "Program saved online but could not be cached locally", err);
     }
-    logger.info("AddProgram", "Program added", { programId: trimmedId, startDate, endDate });
+    logger.info("AddProgram", "Program added", { programId: trimmedId, startDate, endDate, defaultLocation: trimmedLocation, isMultiLocation });
   },
 
-  updateProgramDates: async (programId: string, startDate: string, endDate: string): Promise<void> => {
+  updateProgram: async (programId: string, startDate: string, endDate: string, defaultLocation: string, isMultiLocation: boolean): Promise<void> => {
     if (!isValidDateString(startDate)) throw new Error("A valid start date is required");
     if (!isValidDateString(endDate)) throw new Error("A valid end date is required");
     if (startDate > endDate) throw new Error("End date must be on or after start date");
+    const trimmedLocation = isMultiLocation ? "" : defaultLocation.trim().toUpperCase() || "MBO";
 
     const state = useAppStore.getState();
     if (!state.user) throw new Error("Must be logged in to edit a program");
@@ -420,7 +424,7 @@ export const actions = {
     const existingProgram = state.programsMap[programId];
     if (!existingProgram) throw new Error(`Program "${programId}" not found`);
 
-    const updatedProgram: Program = { ...existingProgram, startDate, endDate };
+    const updatedProgram: Program = { ...existingProgram, startDate, endDate, defaultLocation: trimmedLocation, isMultiLocation };
     const nextProgramsMap = { ...state.programsMap, [programId]: updatedProgram };
 
     // Rebuild this program's year associations from its active captures and
@@ -456,6 +460,8 @@ export const actions = {
     await update(ref(db), {
       [`${CURRENT_ENVIRONMENT}/programsMap/${programId}/startDate`]: startDate,
       [`${CURRENT_ENVIRONMENT}/programsMap/${programId}/endDate`]: endDate,
+      [`${CURRENT_ENVIRONMENT}/programsMap/${programId}/defaultLocation`]: trimmedLocation,
+      [`${CURRENT_ENVIRONMENT}/programsMap/${programId}/isMultiLocation`]: isMultiLocation,
       [`${CURRENT_ENVIRONMENT}/metadata/lastModified_programsMap`]: lastModified,
     });
 
@@ -468,9 +474,9 @@ export const actions = {
       await saveMapsToIndexedDB({ programsMap: nextProgramsMap });
       await saveMetadata(`lastModified_programsMap_${CURRENT_ENVIRONMENT}`, lastModified);
     } catch (err) {
-      logger.warn("UpdateProgramDates", "Program dates saved online but could not be cached locally", err);
+      logger.warn("UpdateProgram", "Program saved online but could not be cached locally", err);
     }
-    logger.info("UpdateProgramDates", "Program dates updated", { programId, startDate, endDate });
+    logger.info("UpdateProgram", "Program updated", { programId, startDate, endDate, defaultLocation: trimmedLocation, isMultiLocation });
   },
 
   addBirdEvent: async (
@@ -582,6 +588,7 @@ export const actions = {
         bander: normalizedBander,
         scribe: normalizedScribe,
         net: captureData.net,
+        location: captureData.location.trim().toUpperCase(),
         birdStatus: captureData.birdStatus,
         notes: captureData.notes,
         reminder: captureData.reminder,

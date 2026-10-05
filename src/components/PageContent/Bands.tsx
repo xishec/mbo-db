@@ -1,4 +1,15 @@
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Input, Button } from "@heroui/react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+  Input,
+  Button,
+  Select,
+  SelectItem,
+} from "@heroui/react";
 import { useMemo, useRef, useState } from "react";
 import { useAppStore, useActions, useIsLoggedIn } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
@@ -8,7 +19,7 @@ import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import PageHeader from "./PageHeader";
-import type { BirdEvent } from "../../types";
+import { BandSize, BirdEventType, type BirdEvent } from "../../types";
 import { isActiveBirdEvent } from "../../stores/derive";
 import { showPersistentErrorToast } from "../../utils/toast";
 
@@ -19,6 +30,18 @@ type Row = {
   lastUsedDate: string;
   available: string;
   note: string;
+};
+
+type BandSizeSummaryRow = {
+  bandSize: string;
+  total: number;
+  programCounts: Record<string, number>;
+};
+
+type ProgramBandUsageRow = {
+  id: string;
+  program: string;
+  counts: Record<string, number>;
 };
 
 function pad(n: number): string {
@@ -61,10 +84,14 @@ const COLUMNS = [
 ];
 
 const numericColumns = new Set<string>();
+function formatBandSize(size: BandSize): string {
+  return size === BandSize.Other ? "Other" : size.toUpperCase();
+}
 
 export default function Bands() {
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const bandGroupNotesMap = useAppStore((s) => s.bandGroupNotesMap);
+  const programsMap = useAppStore((s) => s.programsMap);
   const isOnline = useAppStore((s) => s.isOnline);
   const isLoggedIn = useIsLoggedIn();
   const { updateBandGroupNote } = useActions();
@@ -79,8 +106,90 @@ export default function Bands() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [selectedBandGroupId, setSelectedBandGroupId] = useState<string | null>(null);
+  const [selectedProgramIds, setSelectedProgramIds] = useState<Set<string>>(new Set());
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
+
+  const programOptions = useMemo(
+    () =>
+      Object.values(programsMap).sort(
+        (a, b) =>
+          b.endDate?.localeCompare(a.endDate ?? "") ||
+          b.startDate?.localeCompare(a.startDate ?? "") ||
+          a.id.localeCompare(b.id)
+      ),
+    [programsMap]
+  );
+
+  const selectedPrograms = useMemo(
+    () => programOptions.filter((program) => selectedProgramIds.has(program.id)),
+    [programOptions, selectedProgramIds]
+  );
+
+  const bandSizeSummaryRows = useMemo<BandSizeSummaryRow[]>(() => {
+    const counts = new Map<BandSize | "unrecorded", { total: number; programCounts: Record<string, number> }>();
+
+    for (const event of birdEventsStore.getAll().values()) {
+      if (!isActiveBirdEvent(event, bandResetsMap) || event.birdEventType !== BirdEventType.Banded) continue;
+      if (selectedProgramIds.size > 0 && !selectedProgramIds.has(event.programId)) continue;
+
+      const size = event.band.bandSize ?? "unrecorded";
+      const count = counts.get(size) ?? { total: 0, programCounts: {} };
+      count.total += 1;
+      if (selectedProgramIds.size > 0) {
+        count.programCounts[event.programId] = (count.programCounts[event.programId] ?? 0) + 1;
+      }
+      counts.set(size, count);
+    }
+
+    const rows = Object.values(BandSize).map((size) => ({
+      bandSize: formatBandSize(size),
+      total: counts.get(size)?.total ?? 0,
+      programCounts: counts.get(size)?.programCounts ?? {},
+    }));
+    const unrecorded = counts.get("unrecorded");
+    if (unrecorded) {
+      rows.push({ bandSize: "Not recorded", total: unrecorded.total, programCounts: unrecorded.programCounts });
+    }
+    return rows;
+    // birdEventsVersion is the store's change signal for this derived summary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [birdEventsVersion, bandResetsMap, selectedProgramIds]);
+
+  const bandSizeSummaryColumns = [
+    { key: "program", label: "Program" },
+    ...Object.values(BandSize).map((size) => ({ key: size, label: formatBandSize(size) })),
+    ...(bandSizeSummaryRows.some((row) => row.bandSize === "Not recorded")
+      ? [{ key: "unrecorded", label: "Not recorded" }]
+      : []),
+  ];
+
+  const programBandUsageRows = useMemo<ProgramBandUsageRow[]>(() => {
+    const totalCounts = Object.fromEntries(
+      bandSizeSummaryRows.map((row) => [
+        row.bandSize === "Not recorded" ? "unrecorded" : row.bandSize.toLowerCase(),
+        row.total,
+      ])
+    );
+
+    if (selectedPrograms.length === 0) {
+      return [{ id: "all", program: "All programs", counts: totalCounts }];
+    }
+
+    return [
+      { id: "total", program: "Total selected", counts: totalCounts },
+      ...selectedPrograms.map((program) => ({
+        id: program.id,
+        program: program.displayName || program.id,
+        counts: Object.fromEntries(
+          bandSizeSummaryRows.map((row) => [
+            row.bandSize === "Not recorded" ? "unrecorded" : row.bandSize.toLowerCase(),
+            row.programCounts[program.id] ?? 0,
+          ])
+        ),
+      })),
+    ];
+  }, [bandSizeSummaryRows, selectedPrograms]);
 
   const handleSaveNote = async () => {
     if (!editingId || isSavingNote) return;
@@ -134,9 +243,7 @@ export default function Bands() {
 
     if (search) {
       const q = search.toLowerCase();
-      return result.filter(
-        (r) => r.bandGroupId.includes(q) || r.note.toLowerCase().includes(q)
-      );
+      return result.filter((r) => r.bandGroupId.includes(q) || r.note.toLowerCase().includes(q));
     }
 
     return result;
@@ -162,6 +269,55 @@ export default function Bands() {
           ) : null
         }
       />
+
+      <div className="flex flex-col gap-4">
+        <Select
+          aria-label="Programs to include"
+          placeholder="All programs"
+          selectionMode="multiple"
+          variant="bordered"
+          selectedKeys={selectedProgramIds}
+          onSelectionChange={(keys) => {
+            setSelectedProgramIds(
+              keys === "all" ? new Set(programOptions.map((program) => program.id)) : new Set(Array.from(keys, String))
+            );
+          }}
+          size="md"
+          className="max-w-xs"
+          classNames={{ trigger: "min-h-unit-10 h-unit-10", value: "text-sm" }}
+        >
+          {programOptions.map((program) => (
+            <SelectItem key={program.id}>{program.displayName || program.id}</SelectItem>
+          ))}
+        </Select>
+
+        <div className="overflow-x-auto rounded-medium border border-default-200">
+          <Table
+            aria-label="Band usage by size"
+            classNames={{
+              wrapper: "shadow-none",
+              th: "bg-default-100 text-xs font-semibold uppercase tracking-wide text-default-600",
+              td: "text-sm select-text",
+            }}
+          >
+            <TableHeader columns={bandSizeSummaryColumns}>
+              {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
+            </TableHeader>
+            <TableBody items={programBandUsageRows}>
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(columnKey) => {
+                    if (columnKey === "program") {
+                      return <TableCell className="font-medium text-default-900">{item.program}</TableCell>;
+                    }
+                    return <TableCell>{item.counts[String(columnKey)] ?? 0}</TableCell>;
+                  }}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
 
       <Input
         placeholder="Search by band group or note..."
@@ -209,18 +365,10 @@ export default function Bands() {
                       );
                     }
                     if (columnKey === "used") {
-                      return (
-                        <TableCell className="font-mono">
-                          {item.bandsUsed === 100 ? "All" : item.used}
-                        </TableCell>
-                      );
+                      return <TableCell className="font-mono">{item.bandsUsed === 100 ? "All" : item.used}</TableCell>;
                     }
                     if (columnKey === "available") {
-                      return (
-                        <TableCell className="font-mono">
-                          {item.available || "-"}
-                        </TableCell>
-                      );
+                      return <TableCell className="font-mono">{item.available || "-"}</TableCell>;
                     }
                     if (columnKey === "note") {
                       return (
@@ -295,16 +443,10 @@ export default function Bands() {
       >
         <ModalHeaderShell>
           Band Group <span className="font-mono">{selectedBandGroupId}</span>
-          <span className="text-sm font-normal text-default-500 ml-2">
-            {selectedBandGroupEvents.length} banded
-          </span>
+          <span className="text-sm font-normal text-default-500 ml-2">{selectedBandGroupEvents.length} banded</span>
         </ModalHeaderShell>
         <ModalBodyShell>
-          <BirdEventsTable
-            birdEvents={selectedBandGroupEvents}
-            maxTableHeight={500}
-            allowInspectBandId
-          />
+          <BirdEventsTable birdEvents={selectedBandGroupEvents} maxTableHeight={500} allowInspectBandId />
         </ModalBodyShell>
         <ModalFooterShell>
           <Button {...modalPrimaryButtonProps} onPress={() => setSelectedBandGroupId(null)}>

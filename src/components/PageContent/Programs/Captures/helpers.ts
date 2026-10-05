@@ -141,6 +141,7 @@ export const TABLE_COLUMNS: CaptureColumn[] = [
     inputClassName: "w-[75px]",
   },
   { key: "updatedAt", type: "", label: "Updated", tableClassName: "w-[125px]" },
+  { key: "location", type: "text", label: "Location", tableClassName: "w-[100px]", inputClassName: "w-[100px]" },
   { key: "notes", type: "text", label: "Notes", tableClassName: "w-[1000px]", inputClassName: "w-[75px]" },
 ];
 
@@ -151,7 +152,7 @@ export function isInRange(value: number, lower: number, upper: number): boolean 
   return value >= lower && value <= upper;
 }
 
-export function getDefaultFormData(programId: string): CaptureFormData {
+export function getDefaultFormData(programId: string, defaultLocation?: string): CaptureFormData {
   const now = new Date();
   const date = getLocalDateString(now);
   const time = now.toTimeString().slice(0, 5);
@@ -173,6 +174,7 @@ export function getDefaultFormData(programId: string): CaptureFormData {
     bander: "",
     scribe: "",
     net: "",
+    location: defaultLocation === undefined ? "MBO" : defaultLocation.trim().toUpperCase(),
     birdEventType: BirdEventType.None,
     birdStatus: DEFAULT_BIRD_STATUS,
     notes: "",
@@ -227,6 +229,8 @@ export function formatFieldValue(field: keyof CaptureFormData, value: string): s
         .replace(/[^a-zA-Z0-9]/g, "")
         .toUpperCase()
         .slice(0, 2);
+    case "location":
+      return value.toUpperCase();
     case "time":
       return value.slice(0, 5);
     case "date":

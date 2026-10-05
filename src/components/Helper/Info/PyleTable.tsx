@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { memo } from "react";
 import type { SpeciesRange } from "../../../types";
+import { SPECIES_MAP } from "../../../types/species";
 import SpeciesTooltip from "./SpeciesTooltip";
 
 interface PyleTableProps {
@@ -21,7 +22,8 @@ function PyleTableInner({
   withCard = false,
 }: PyleTableProps) {
   const containerClassName = className ? `flex flex-col h-full ${className}` : "flex flex-col h-full";
-  const titleText = speciesCode.length === 4 ? `${speciesCode} info - ${title}` : `Species info - ${title}`;
+  const speciesName = SPECIES_MAP[speciesCode]?.speciesDescriptionMBO;
+  const titleText = speciesName ? `${speciesName} - ${title}` : `Species info - ${title}`;
 
   const formatRange = (lower: number, upper: number) => {
     // If values are valid, show them
@@ -50,6 +52,8 @@ function PyleTableInner({
         <TableColumn>Sex</TableColumn>
         <TableColumn>Weight</TableColumn>
         <TableColumn>Wing</TableColumn>
+        <TableColumn>Page</TableColumn>
+        <TableColumn>Skull</TableColumn>
       </TableHeader>
       <TableBody emptyContent="">
         {speciesRange
@@ -58,16 +62,22 @@ function PyleTableInner({
                 <TableCell>Male</TableCell>
                 <TableCell>{formatRange(speciesRange.mWeightLower, speciesRange.mWeightUpper)}</TableCell>
                 <TableCell>{formatRange(speciesRange.mWingLower, speciesRange.mWingUpper)}</TableCell>
+                <TableCell>{""}</TableCell>
+                <TableCell>{""}</TableCell>
               </TableRow>,
               <TableRow key="female">
                 <TableCell>Female</TableCell>
                 <TableCell>{formatRange(speciesRange.fWeightLower, speciesRange.fWeightUpper)}</TableCell>
                 <TableCell>{formatRange(speciesRange.fWingLower, speciesRange.fWingUpper)}</TableCell>
+                <TableCell>{""}</TableCell>
+                <TableCell>{""}</TableCell>
               </TableRow>,
               <TableRow key="unknown">
                 <TableCell>Unknown</TableCell>
                 <TableCell>{formatRange(speciesRange.unknownWeightLower, speciesRange.unknownWeightUpper)}</TableCell>
                 <TableCell>{formatRange(speciesRange.unknownWingLower, speciesRange.unknownWingUpper)}</TableCell>
+                <TableCell>{""}</TableCell>
+                <TableCell>{""}</TableCell>
               </TableRow>,
             ]
           : []}
@@ -80,7 +90,10 @@ function PyleTableInner({
       <h4 className="text-sm font-medium text-default-900 mb-2">
         {speciesCode.length === 4 ? (
           <>
-            <SpeciesTooltip speciesCode={speciesCode} disabled={disabled} /> info - {title}
+            <SpeciesTooltip speciesCode={speciesCode} disabled={disabled}>
+              {speciesName ?? speciesCode}
+            </SpeciesTooltip>{" "}
+            - {title}
           </>
         ) : (
           titleText

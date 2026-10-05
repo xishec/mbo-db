@@ -35,6 +35,7 @@ function birdEventToRow(event: BirdEvent): TableRow {
     bander: event.bander,
     scribe: event.scribe,
     net: event.net,
+    location: event.location ?? "",
     birdEventType: event.birdEventType,
     birdStatus: event.birdStatus,
     notes: event.notes,
@@ -67,6 +68,7 @@ interface BirdEventsTableProps {
   birdEventIdToHighlight?: string;
   maxRows?: number;
   scrollToEnd?: boolean;
+  fillAvailableHeight?: boolean;
 }
 
 export default function BirdEventsTable({
@@ -84,6 +86,7 @@ export default function BirdEventsTable({
   birdEventIdToHighlight,
   maxRows,
   scrollToEnd = false,
+  fillAvailableHeight = false,
 }: BirdEventsTableProps) {
   const programsMap = useAppStore((s) => s.programsMap);
   const isOnline = useAppStore((s) => s.isOnline);
@@ -318,6 +321,7 @@ export default function BirdEventsTable({
         );
       }
 
+
       const cellValue = item[columnKey as keyof TableRow];
       return cellValue;
     },
@@ -346,7 +350,7 @@ export default function BirdEventsTable({
 
   return (
     <>
-      <div className="w-full flex flex-col gap-4" ref={containerRef}>
+      <div className={`flex w-full min-h-0 flex-col gap-4 ${fillAvailableHeight ? "h-full" : ""}`} ref={containerRef}>
         {showSummary && (
           <div className="text-sm">
             showing {rows.length} of {birdEvents.length} {rows.length === 1 ? "entry" : "entries"}
@@ -357,12 +361,14 @@ export default function BirdEventsTable({
           aria-label="birdEvents table"
           sortDescriptor={primarySortDescriptor}
           onSortChange={handleSortChange}
-          isVirtualized
+          isVirtualized={!fillAvailableHeight}
           maxTableHeight={scrollToEnd ? 500 : maxTableHeight}
           classNames={{
-            base: "table-fixed",
+            base: `table-fixed ${fillAvailableHeight ? "h-full" : ""}`,
             table: "table-fixed",
-            wrapper: removeWrapperShadow ? "h-[185px] shadow-none border border-default-200" : undefined,
+            wrapper: removeWrapperShadow
+              ? `${fillAvailableHeight ? "h-full" : "h-[280px]"} shadow-none border border-default-200`
+              : undefined,
             td: "data-[selected=true]:!text-black",
           }}
           selectionMode="single"
