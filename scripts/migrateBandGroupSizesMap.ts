@@ -5,10 +5,11 @@ const args = new Set(process.argv.slice(2));
 const environmentArg = [...args].find((arg) => arg.startsWith("--env="));
 const environment = environmentArg?.slice("--env=".length);
 const apply = args.has("--apply");
+const applySuggestions = args.has("--apply-suggestions");
 const verbose = args.has("--verbose");
 
 if (environment !== "alpha" && environment !== "prod") {
-  throw new Error("Specify --env=alpha or --env=prod. Add --apply to write resolved entries.");
+  throw new Error("Specify --env=alpha or --env=prod. Add --apply to write direct evidence, or --apply-suggestions for heuristics.");
 }
 
 const VALID_SIZES = new Set(["0a", "0", "1", "1b", "1a", "1d", "2", "3", "3b", "3a"]);
@@ -119,7 +120,7 @@ async function main() {
     JSON.stringify(
       {
         environment,
-        mode: apply ? "apply" : "dry-run",
+        mode: applySuggestions ? "apply-suggestions" : apply ? "apply" : "dry-run",
         existingEntries: Object.keys(existing).length,
         candidates: candidates.size,
         entriesToCreate: Object.keys(resolved).length,
@@ -133,21 +134,25 @@ async function main() {
       2,
     ),
   );
-  if (!apply || Object.keys(resolved).length === 0) process.exit(0);
+  const entriesToWrite = applySuggestions
+    ? suggestions.map(({ groupId, size }) => [groupId, size] as const)
+    : Object.entries(resolved);
+  if ((!apply && !applySuggestions) || entriesToWrite.length === 0) process.exit(0);
 
-  const entries = Object.entries(resolved);
-  for (let index = 0; index < entries.length; index += 500) {
-    const updates: Record<string, unknown> = {};
-    for (const [groupId, size] of entries.slice(index, index + 500)) {
-      updates[`${environment}/bandGroupSizesMap/${groupId}`] = size;
-    }
-    updates[`${environment}/metadata/lastModified_bandGroupSizesMap`] = ServerValue.TIMESTAMP;
-    await db.ref().update(updates);
+  let created = 0;
+  for (let index = 0; index < entriesToWrite.length; index += 25) {
+    const results = await Promise.all(
+      entriesToWrite.slice(index, index + 25).map(async ([groupId, size]) => {
+        const result = await db.ref(`${environment}/bandGroupSizesMap/${groupId}`).transaction((current) => current ?? size);
+        return result.committed;
+      }),
+    );
+    created += results.filter(Boolean).length;
   }
-  console.log(`Created ${entries.length} missing band-group size entries.`);
-  if (suggestions.length > 0) {
-    console.log("Heuristic suggestions were not written; review and set them on the Bands page.");
+  if (created > 0) {
+    await db.ref(`${environment}/metadata/lastModified_bandGroupSizesMap`).set(ServerValue.TIMESTAMP);
   }
+  console.log(`Created ${created} missing band-group size entries.`);
   process.exit(0);
 }
 
