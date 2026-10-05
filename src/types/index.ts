@@ -7,6 +7,7 @@ export type { Species, SpeciesMap } from "./species";
 export type YearToProgramMap = Record<string, string[]>;
 export type ProgramsMap = Record<string, Program>;
 export type BandGroupsMap = Record<string, BandGroup>;
+export type BandGroupSizesMap = Record<string, BandSize>;
 // Bird events are stored outside React state in birdEventsStore (a singleton
 // Map). This type alias is the shape consumers see when they call
 // birdEventsStore.getAll(). We keep the name BirdEventsMap for continuity.
@@ -214,6 +215,7 @@ export interface DatabaseData {
   bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
   birdEventsMap: Record<string, BirdEvent>;
   bandGroupsMap: BandGroupsMap;
+  bandGroupSizesMap?: BandGroupSizesMap;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
   DETsByDateMap?: DETsByDateMap;
@@ -271,6 +273,9 @@ export interface PendingBirdEvent {
   timestamp: number;
   environment: string;
   action: "added" | "modified";
+  // Present only when this event established a previously unknown physical
+  // band group's size. Sync writes this one map leaf with the event.
+  bandGroupSizeSeed?: { groupId: string; size: BandSize };
 }
 
 export interface PendingDETEvent {

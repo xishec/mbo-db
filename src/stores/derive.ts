@@ -285,22 +285,23 @@ export function advanceBandId(bandId: string): string | null {
 }
 
 /**
- * For each band size, suggest the next available band id. Picks the
- * highest-numbered group holding a banding of that size, then advances
+ * For each band size, suggest the next available band id. Uses the durable
+ * group-size map to find the most recently used group for that size, then advances
  * past the highest last2 within that strip (01→99→00 order).
  */
 export function computeBandSizeToBandIdMap(
   events: BirdEventsMap,
   groups: BandGroupsMap,
+  bandGroupSizesMap: Record<string, BandSize>,
   bandResetsMap: BandResetsMap = {},
 ): Record<BandSize, string> {
-  // Per size, track which group holds the most recently banded event.
+  // Per size, track the most recently banded event in a group assigned to that size.
   // Recency wins over numeric-max: banders don't always issue strips in
   // strict numeric order, so a higher-numbered group that's been idle for
   // years shouldn't override the strip that's actually in active use.
   const latestPerSize = new Map<BandSize, { group: string; updatedAt: number }>();
   for (const ev of events.values()) {
-    if (!ev?.band?.bandSize || ev.band.bandSize === BandSize.Other) continue;
+    if (!ev?.band) continue;
     if (ev.previousEventId) continue;
     if (!isActiveBirdEvent(ev, bandResetsMap)) continue;
     // Recaptures can carry a bandSize on the Band (same band = same size),
@@ -312,16 +313,15 @@ export function computeBandSizeToBandIdMap(
     const suffix = ev.band.bandSuffix;
     const last2 = suffix.slice(-2);
     const bandGroupId = prefix + suffix.slice(0, 3);
-    const group =
-      last2 !== "00"
-        ? bandGroupId
-        : (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0");
+    const group = last2 !== "00" ? bandGroupId : (parseInt(bandGroupId, 10) - 1).toString().padStart(7, "0");
+    const size = bandGroupSizesMap[group];
+    if (!size || size === BandSize.Other) continue;
 
     const ts = parseInt(ev.updatedAt ?? "0", 10);
     if (Number.isNaN(ts)) continue;
-    const current = latestPerSize.get(ev.band.bandSize);
+    const current = latestPerSize.get(size);
     if (!current || ts > current.updatedAt) {
-      latestPerSize.set(ev.band.bandSize, { group, updatedAt: ts });
+      latestPerSize.set(size, { group, updatedAt: ts });
     }
   }
 

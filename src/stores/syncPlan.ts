@@ -1,4 +1,4 @@
-import type { BirdEvent, DET, PendingBirdEvent, PendingEvent } from "../types";
+import type { BandSize, BirdEvent, DET, PendingBirdEvent, PendingEvent } from "../types";
 import { getDETProgramKey } from "../utils/detIdentity";
 import { stripUndefined } from "../utils/firebaseValue";
 
@@ -7,6 +7,7 @@ export interface SyncBatch {
   updates: Record<string, unknown>;
   birdEvents: BirdEvent[];
   dets: DET[];
+  bandGroupSizeSeeds: Record<string, BandSize>;
   missingPredecessorIds: string[];
 }
 
@@ -120,6 +121,7 @@ export function buildSyncBatches(
     const updates: Record<string, unknown> = {};
     const batchBirdEvents = new Map<string, BirdEvent>();
     const batchDets = new Map<string, DET>();
+    const bandGroupSizeSeeds: Record<string, BandSize> = {};
     const batchMissingPredecessors = new Set<string>();
 
     const addEventChain = (environment: string, key: string): void => {
@@ -152,6 +154,9 @@ export function buildSyncBatches(
       if (pending.type === "bird-event") {
         const key = eventKey(pending.environment, pending.pendingEvent.id);
         addEventChain(pending.environment, key);
+        if (pending.bandGroupSizeSeed) {
+          bandGroupSizeSeeds[`${pending.environment}/${pending.bandGroupSizeSeed.groupId}`] = pending.bandGroupSizeSeed.size;
+        }
       } else {
         const key = detQueueKey(pending.environment, pending.det);
         const det = finalDets.get(key);
@@ -167,6 +172,7 @@ export function buildSyncBatches(
       updates,
       birdEvents: [...batchBirdEvents.values()],
       dets: [...batchDets.values()],
+      bandGroupSizeSeeds,
       missingPredecessorIds: [...batchMissingPredecessors],
     });
   }
@@ -177,6 +183,7 @@ export function buildSyncBatches(
       updates: {},
       birdEvents: [],
       dets: [],
+      bandGroupSizeSeeds: {},
       missingPredecessorIds: [...blockedMissingIds],
     });
   }

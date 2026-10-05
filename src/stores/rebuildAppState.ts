@@ -40,7 +40,7 @@ export function rebuildBirdEventState(
     programsMap: programs,
     yearsToProgramMap: years,
     volunteerStatsMap: volunteerStats,
-    bandSizeToBandIdMap: computeBandSizeToBandIdMap(events, bandGroups, bandResetsMap),
+    bandSizeToBandIdMap: computeBandSizeToBandIdMap(events, bandGroups, state.bandGroupSizesMap, bandResetsMap),
     speciesInfoMap: computeSpeciesInfoMap(events, state.speciesAliasesMap, bandResetsMap),
     selectedProgram: state.selectedProgram ? programs[state.selectedProgram.id] ?? null : null,
   };

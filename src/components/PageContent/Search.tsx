@@ -3,7 +3,7 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useAppStore } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
 import { useRemainingHeight } from "../../hooks/useRemainingHeight";
-import type { BirdEvent } from "../../types";
+import { getBandGroupMapKey, type BirdEvent } from "../../types";
 import { TABLE_COLUMNS } from "./Programs/Captures/helpers";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import { isActiveBirdEvent } from "../../stores/derive";
@@ -54,6 +54,7 @@ export default function Search() {
   const isLoading = useAppStore((s) => s.isLoading);
   const version = useBirdEventsVersion();
   const bandResetsMap = useAppStore((s) => s.bandResetsMap);
+  const bandGroupSizesMap = useAppStore((s) => s.bandGroupSizesMap);
   const tableRef = useRef<HTMLDivElement>(null);
   const tableHeight = useRemainingHeight(tableRef);
 
@@ -120,12 +121,12 @@ export default function Search() {
   }, []);
 
   // Helper function to get value from BirdEvent based on property key
-  const getEventValue = (event: BirdEvent, propertyKey: string): string | number | undefined => {
+  const getEventValue = useCallback((event: BirdEvent, propertyKey: string): string | number | undefined => {
     switch (propertyKey) {
       case "bandId":
         return event.band.id;
       case "bandSize":
-        return event.band.bandSize ?? undefined;
+        return bandGroupSizesMap[getBandGroupMapKey(event.band)];
       case "bandGroup":
         return event.band.bandGroupId;
       case "bandLastTwoDigits":
@@ -155,7 +156,7 @@ export default function Search() {
       default:
         return undefined;
     }
-  };
+  }, [bandGroupSizesMap]);
 
   // Evaluate a single filter against a bird event
   const matchesFilter = useCallback((birdEvent: BirdEvent, filter: Filter): boolean => {
@@ -196,7 +197,7 @@ export default function Search() {
         default: return true;
       }
     }
-  }, []);
+  }, [getEventValue]);
 
   // Apply filters: AND before OR
   // Split into AND-groups at OR boundaries, evaluate each group with every(), combine with some()

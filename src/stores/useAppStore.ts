@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { User } from "firebase/auth";
 import type {
   BandGroupsMap,
+  BandGroupSizesMap,
   BandIdToBirdEventIdsMap,
   BandSizeToBandIdMap,
   BandResetsMap,
@@ -50,6 +51,7 @@ export interface AppState {
   programsMap: ProgramsMap;
   bandIdToBirdEventIdsMap: BandIdToBirdEventIdsMap;
   bandGroupsMap: BandGroupsMap;
+  bandGroupSizesMap: BandGroupSizesMap;
   magicTable: MagicTable;
   bandSizeToBandIdMap: BandSizeToBandIdMap;
   dismissedConflictsMap: DismissedConflictsMap;
@@ -94,6 +96,7 @@ export const initialAppState: AppState = {
   programsMap: {},
   bandIdToBirdEventIdsMap: {},
   bandGroupsMap: {},
+  bandGroupSizesMap: {},
   magicTable: { pyle: {}, species: {} },
   bandSizeToBandIdMap: {} as BandSizeToBandIdMap,
   dismissedConflictsMap: {},

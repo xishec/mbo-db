@@ -110,6 +110,7 @@ export default function AddBirdEventModal({
   const magicTable = useAppStore((s) => s.magicTable);
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
   const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
+  const bandGroupSizesMap = useAppStore((s) => s.bandGroupSizesMap);
   const volunteersMap = useAppStore((s) => s.volunteersMap);
   const volunteerStatsMap = useAppStore((s) => s.volunteerStatsMap);
   const speciesInfoMap = useAppStore((s) => s.speciesInfoMap);
@@ -206,18 +207,7 @@ export default function AddBirdEventModal({
       setFormData(defaultData);
       setLastBandId("");
 
-      // Derive band size from band group
-      let derivedBandSize: BandSize = BandSize.Other;
-      for (const [size, bandId] of Object.entries(bandSizeToBandIdMap)) {
-        if (bandId && bandId.length === 9) {
-          const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
-          if (getBandGroupMapKey(band) === bandGroup) {
-            derivedBandSize = size as BandSize;
-            break;
-          }
-        }
-      }
-      setSelectedBandSize(derivedBandSize);
+      setSelectedBandSize(bandGroupSizesMap[getBandGroupMapKey(birdEventToModify.band)] ?? BandSize.Other);
       setWasOpen(true);
     } else if (!wasOpen) {
       // First time opening modal - reset to defaults.

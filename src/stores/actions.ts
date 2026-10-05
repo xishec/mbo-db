@@ -213,6 +213,22 @@ export async function syncQueue(): Promise<boolean> {
         let syncPhase = "write to Firebase";
         try {
           const serverUpdates = { ...batch.updates };
+          const existingBandGroupSizes: Record<string, BandSize> = {};
+          let createdBandGroupSize = false;
+          if (Object.keys(batch.bandGroupSizeSeeds).length > 0) {
+            syncPhase = "check band group sizes";
+            for (const [key, size] of Object.entries(batch.bandGroupSizeSeeds)) {
+              const [environment, groupId] = key.split("/");
+              const snapshot = await get(ref(db, `${environment}/bandGroupSizesMap/${groupId}`));
+              const existingSize = snapshot.val() as BandSize | null;
+              if (existingSize) {
+                existingBandGroupSizes[groupId] = existingSize;
+                continue;
+              }
+              serverUpdates[`${environment}/bandGroupSizesMap/${groupId}`] = size;
+              createdBandGroupSize = true;
+            }
+          }
           for (const event of batch.birdEvents) {
             serverUpdates[`${CURRENT_ENVIRONMENT}/birdEventsMap/${event.id}`] = {
               ...stripUndefined(event),
@@ -220,6 +236,9 @@ export async function syncQueue(): Promise<boolean> {
               // clock rather than any laptop's clock.
               syncedAt: serverTimestamp(),
             };
+          }
+          if (createdBandGroupSize) {
+            serverUpdates[`${CURRENT_ENVIRONMENT}/metadata/lastModified_bandGroupSizesMap`] = serverTimestamp();
           }
           if (batch.dets.length > 0) {
             serverUpdates[`${CURRENT_ENVIRONMENT}/metadata/lastModified_DETsByDateMap`] = serverTimestamp();
@@ -232,6 +251,14 @@ export async function syncQueue(): Promise<boolean> {
             birdEventsStore.setMany(batch.birdEvents);
             putBirdEvents(CURRENT_ENVIRONMENT, batch.birdEvents).catch((err) =>
               logger.error("SyncQueue", "Failed to persist synced state to IndexedDB", err)
+            );
+          }
+
+          if (Object.keys(existingBandGroupSizes).length > 0) {
+            const nextBandGroupSizesMap = { ...useAppStore.getState().bandGroupSizesMap, ...existingBandGroupSizes };
+            useAppStore.setState({ bandGroupSizesMap: nextBandGroupSizesMap });
+            saveMapsToIndexedDB({ bandGroupSizesMap: nextBandGroupSizesMap }).catch((err) =>
+              logger.warn("SyncQueue", "Failed to cache resolved band group sizes", err)
             );
           }
 
@@ -491,6 +518,7 @@ export const actions = {
       programsMap,
       bandIdToBirdEventIdsMap,
       bandGroupsMap,
+      bandGroupSizesMap,
       yearsToProgramMap,
       volunteersMap,
       volunteerStatsMap,
@@ -515,6 +543,14 @@ export const actions = {
       const bandSuffix = bandGroup.substring(4) + bandLastTwoDigits;
       const band = new Band(bandPrefix, bandSuffix, bandSize !== BandSize.Other ? bandSize : null);
       const isNewCapture = birdEventType === BirdEventType.Banded || birdEventType === BirdEventType.None;
+      const bandGroupSizeKey = getBandGroupMapKey(band);
+      const bandGroupSizeSeed =
+        isNewCapture && band.bandSize && !bandGroupSizesMap[bandGroupSizeKey]
+          ? { groupId: bandGroupSizeKey, size: band.bandSize }
+          : undefined;
+      const newBandGroupSizesMap = bandGroupSizeSeed
+        ? { ...bandGroupSizesMap, [bandGroupSizeSeed.groupId]: bandGroupSizeSeed.size }
+        : bandGroupSizesMap;
       const previousEvent = previousEventId ? birdEventsStore.get(previousEventId) : undefined;
       if (previousEvent && !isBirdEventInCurrentBandGeneration(previousEvent, bandResetsMap)) {
         throw new Error("This event belongs to history that was hidden by a band reset and can no longer be edited");
@@ -610,6 +646,7 @@ export const actions = {
         timestamp: Date.now(),
         environment: CURRENT_ENVIRONMENT,
         action: replacingPendingId ? "added" : previousEventId ? "modified" : "added",
+        ...(bandGroupSizeSeed ? { bandGroupSizeSeed } : {}),
       };
       const queuePromise = replacingPendingId
         ? replaceInQueue(replacingPendingId, newQueueEntry)
@@ -806,7 +843,8 @@ export const actions = {
       // -01..03 of N+1), naive would be already banded — resolve via actual
       // max in the NEXT strip.
       const newBandSizeToBandIdMap = { ...state.bandSizeToBandIdMap };
-      if (isNewCapture && band.bandSize && band.bandSize !== BandSize.Other && !previousEventId) {
+      const assignedBandSize = newBandGroupSizesMap[bgKey];
+      if (isNewCapture && assignedBandSize && !previousEventId) {
         const naiveNext = advanceBandId(band.id);
         let resolvedNext: string | null = naiveNext;
         if (naiveNext && naiveNext.length === 9) {
@@ -833,7 +871,7 @@ export const actions = {
             }
           }
         }
-        if (resolvedNext) newBandSizeToBandIdMap[band.bandSize] = resolvedNext;
+        if (resolvedNext) newBandSizeToBandIdMap[assignedBandSize] = resolvedNext;
       }
 
       // Keep queuedEventIds in sync with the queue mutation we just issued,
@@ -852,6 +890,7 @@ export const actions = {
       useAppStore.setState({
         bandIdToBirdEventIdsMap: newBandIdToBirdEventIdsMap,
         bandGroupsMap: newBandGroupsMap,
+        bandGroupSizesMap: newBandGroupSizesMap,
         programsMap: newProgramsMap,
         yearsToProgramMap: newYearsToProgramMap,
         volunteerStatsMap: newVolunteerStatsMap,
@@ -877,6 +916,7 @@ export const actions = {
         .then(() =>
           Promise.all([
             putBirdEvents(CURRENT_ENVIRONMENT, eventWrites),
+            bandGroupSizeSeed ? saveMapsToIndexedDB({ bandGroupSizesMap: newBandGroupSizesMap }) : Promise.resolve(),
             droppedEventId ? deleteBirdEvent(CURRENT_ENVIRONMENT, droppedEventId) : Promise.resolve(),
             refreshQueueState(),
           ])
@@ -1088,6 +1128,28 @@ export const actions = {
       await saveMapsToIndexedDB({ bandGroupNotesMap: newNotesMap });
     } catch (err) {
       logger.error("UpdateBandGroupNote", `Error updating note for ${bandGroupId}`, err);
+      throw err;
+    }
+  },
+
+  updateBandGroupSize: async (bandGroupId: string, size: BandSize): Promise<void> => {
+    const { user, isOnline, bandGroupSizesMap } = useAppStore.getState();
+    if (!user) throw new Error("Must be logged in to update a band group size");
+    if (!isOnline) throw new Error("Cannot update a band group size while offline");
+    if (!/^\d{7}$/.test(bandGroupId)) throw new Error("Band group must contain exactly 7 digits");
+    if (size === BandSize.Other) throw new Error("A band group must have a specific band size");
+
+    const next = { ...bandGroupSizesMap, [bandGroupId]: size };
+    try {
+      useAppStore.setState({ bandGroupSizesMap: next });
+      await update(ref(db), {
+        [`${CURRENT_ENVIRONMENT}/bandGroupSizesMap/${bandGroupId}`]: size,
+        [`${CURRENT_ENVIRONMENT}/metadata/lastModified_bandGroupSizesMap`]: serverTimestamp(),
+      });
+      await saveMapsToIndexedDB({ bandGroupSizesMap: next });
+      await saveMetadata(`lastModified_bandGroupSizesMap_${CURRENT_ENVIRONMENT}`, Date.now());
+    } catch (err) {
+      logger.error("UpdateBandGroupSize", `Error updating size for ${bandGroupId}`, err);
       throw err;
     }
   },

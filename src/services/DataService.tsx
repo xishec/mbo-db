@@ -180,10 +180,11 @@ function populateStateFromData(data: DatabaseData, queued: PendingEvent[]): void
     bandResetsMap,
     bandIdToBirdEventIdsMap: bandIdMap,
     bandGroupsMap: bandGroups,
+    bandGroupSizesMap: data.bandGroupSizesMap ?? {},
     programsMap: programs,
     yearsToProgramMap: years,
     volunteerStatsMap: volunteerStats,
-    bandSizeToBandIdMap: computeBandSizeToBandIdMap(hydratedEvents, bandGroups, bandResetsMap),
+    bandSizeToBandIdMap: computeBandSizeToBandIdMap(hydratedEvents, bandGroups, data.bandGroupSizesMap ?? {}, bandResetsMap),
     speciesInfoMap: computeSpeciesInfoMap(hydratedEvents, speciesAliasesMap, bandResetsMap),
     DETsByDateMap: detsByDateMap,
     dismissedConflictsMap: data.dismissedConflictsMap ?? {},
@@ -466,6 +467,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         let magicTableData: MagicTable = cachedData?.magicTable ?? { pyle: {}, species: {} };
         let volunteersMap = getVolunteerMetadata(cachedData);
         let notesMap: Record<string, string> = cachedData?.bandGroupNotesMap ?? {};
+        let bandGroupSizesMap = cachedData?.bandGroupSizesMap ?? {};
         let speciesAliasesData: Record<string, string> = cachedData?.speciesAliasesMap ?? {};
         let bandResetsMap: BandResetsMap = cachedData?.bandResetsMap ?? {};
         if (mapsToFetch.size > 0) {
@@ -491,6 +493,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 break;
               case "bandGroupNotesMap":
                 notesMap = val ?? {};
+                break;
+              case "bandGroupSizesMap":
+                bandGroupSizesMap = val ?? {};
                 break;
               case "speciesAliasesMap":
                 speciesAliasesData = val ?? {};
@@ -526,6 +531,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           birdEventsMap: mergedEvents,
           programsMap: programs,
           bandGroupsMap: bandGroups,
+          bandGroupSizesMap,
           bandIdToBirdEventIdsMap: bandIdMap,
           yearsToProgramMap: years,
           bandSizeToBandIdMap: {} as Record<BandSize, string>,
@@ -588,7 +594,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           programsMap: programs,
           yearsToProgramMap: years,
           volunteerStatsMap: volunteerStats,
-          bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups, bandResetsMap),
+          bandSizeToBandIdMap: computeBandSizeToBandIdMap(reconstructed, bandGroups, bandGroupSizesMap, bandResetsMap),
           speciesInfoMap: computeSpeciesInfoMap(reconstructed, speciesAliasesMap, bandResetsMap),
           dismissedConflictsMap: dismissedMap,
           DETsByDateMap: normalizeDETObserverClasses(data.DETsByDateMap ?? {}, volunteersMap),

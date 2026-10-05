@@ -2,7 +2,7 @@ import { Spinner, Tab, Tabs, Select, SelectItem } from "@heroui/react";
 import { memo, useState, useMemo, useCallback } from "react";
 import { useAppStore } from "../../../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../../../services/birdEventsStore";
-import { Band, BandSize, getBandGroupMapKey, type BirdEvent } from "../../../../types";
+import { Band, BandSize, type BirdEvent } from "../../../../types";
 import BirdEventsTable from "./BirdEventsTable";
 import { isActiveBirdEvent } from "../../../../stores/derive";
 
@@ -42,6 +42,7 @@ export default function BirdEvents() {
   const selectedProgram = useAppStore((s) => s.selectedProgram);
   const isLoading = useAppStore((s) => s.isLoading);
   const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
+  const bandGroupSizesMap = useAppStore((s) => s.bandGroupSizesMap);
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const birdEventsVersion = useBirdEventsVersion();
   const bandResetsMap = useAppStore((s) => s.bandResetsMap);
@@ -55,14 +56,8 @@ export default function BirdEvents() {
 
   // Map band group ID to its band size label
   const bandGroupToBandSize = useMemo(() => {
-    const map: Record<string, BandSize> = {};
-    for (const [size, bandId] of Object.entries(bandSizeToBandIdMap)) {
-      if (!bandId || bandId.length < 7) continue;
-      const band = new Band(bandId.slice(0, 4), bandId.slice(4, 9));
-      map[getBandGroupMapKey(band)] = size as BandSize;
-    }
-    return map;
-  }, [bandSizeToBandIdMap]);
+    return bandGroupSizesMap;
+  }, [bandGroupSizesMap]);
 
   // Map band size to band group ID
   const bandSizeToBandGroup = useMemo(() => {

@@ -4,6 +4,7 @@ export const INDEPENDENT_MAP_NAMES = [
   "magicTable",
   "volunteersMap",
   "bandGroupNotesMap",
+  "bandGroupSizesMap",
   "speciesAliasesMap",
   "bandResetsMap",
 ] as const;

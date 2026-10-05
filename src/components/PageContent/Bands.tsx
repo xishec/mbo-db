@@ -19,7 +19,7 @@ import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "
 import { modalInputProps, modalCancelButtonProps, modalPrimaryButtonProps } from "../Modals/modalDefaults";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import PageHeader from "./PageHeader";
-import { BandSize, BirdEventType, type BirdEvent } from "../../types";
+import { BandSize, BirdEventType, getBandGroupMapKey, type BirdEvent } from "../../types";
 import { isActiveBirdEvent } from "../../stores/derive";
 import { showPersistentErrorToast } from "../../utils/toast";
 
@@ -30,6 +30,7 @@ type Row = {
   lastUsedDate: string;
   available: string;
   note: string;
+  bandSize: BandSize | null;
 };
 
 type BandSizeSummaryRow = {
@@ -77,6 +78,7 @@ function formatUsedAndAvailable(usedDigits: Set<string>) {
 
 const COLUMNS = [
   { key: "bandGroupId" as const, label: "Band Group", type: "string" as const, width: 200 },
+  { key: "bandSize" as const, label: "Size", type: "string" as const, width: 100 },
   { key: "lastUsedDate" as const, label: "Last Used", type: "string" as const, width: 200 },
   { key: "used" as const, label: "Used", type: "string" as const, width: 200 },
   { key: "available" as const, label: "Available", type: "string" as const, width: 200 },
@@ -91,10 +93,11 @@ function formatBandSize(size: BandSize): string {
 export default function Bands() {
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const bandGroupNotesMap = useAppStore((s) => s.bandGroupNotesMap);
+  const bandGroupSizesMap = useAppStore((s) => s.bandGroupSizesMap);
   const programsMap = useAppStore((s) => s.programsMap);
   const isOnline = useAppStore((s) => s.isOnline);
   const isLoggedIn = useIsLoggedIn();
-  const { updateBandGroupNote } = useActions();
+  const { updateBandGroupNote, updateBandGroupSize } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
   const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const { sortDescriptors, handleSortChange, resetSort } = useCascadingSort([
@@ -133,7 +136,7 @@ export default function Bands() {
       if (!isActiveBirdEvent(event, bandResetsMap) || event.birdEventType !== BirdEventType.Banded) continue;
       if (selectedProgramIds.size > 0 && !selectedProgramIds.has(event.programId)) continue;
 
-      const size = event.band.bandSize ?? "unrecorded";
+      const size = bandGroupSizesMap[getBandGroupMapKey(event.band)] ?? "unrecorded";
       const count = counts.get(size) ?? { total: 0, programCounts: {} };
       count.total += 1;
       if (selectedProgramIds.size > 0) {
@@ -154,7 +157,7 @@ export default function Bands() {
     return rows;
     // birdEventsVersion is the store's change signal for this derived summary.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [birdEventsVersion, bandResetsMap, selectedProgramIds]);
+  }, [birdEventsVersion, bandResetsMap, selectedProgramIds, bandGroupSizesMap]);
 
   const bandSizeSummaryColumns = [
     { key: "program", label: "Program" },
@@ -238,6 +241,7 @@ export default function Bands() {
         lastUsedDate: lastDate,
         available,
         note: bandGroupNotesMap[bgKey] ?? "",
+        bandSize: bandGroupSizesMap[bgKey] ?? null,
       });
     }
 
@@ -248,7 +252,7 @@ export default function Bands() {
 
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bandGroupsMap, birdEventsVersion, bandGroupNotesMap, search, bandResetsMap]);
+  }, [bandGroupsMap, birdEventsVersion, bandGroupNotesMap, bandGroupSizesMap, search, bandResetsMap]);
 
   const sortedRows = useMemo(() => cascadingSort(rows, sortDescriptors, numericColumns), [rows, sortDescriptors]);
 
@@ -366,6 +370,30 @@ export default function Bands() {
                     }
                     if (columnKey === "used") {
                       return <TableCell className="font-mono">{item.bandsUsed === 100 ? "All" : item.used}</TableCell>;
+                    }
+                    if (columnKey === "bandSize") {
+                      return (
+                        <TableCell>
+                          <Select
+                            aria-label={`Band size for ${item.bandGroupId}`}
+                            size="sm"
+                            variant="flat"
+                            selectedKeys={item.bandSize ? [item.bandSize] : []}
+                            placeholder="Not recorded"
+                            isDisabled={!isLoggedIn || !isOnline}
+                            onSelectionChange={(keys) => {
+                              const size = Array.from(keys)[0] as BandSize | undefined;
+                              if (size) void updateBandGroupSize(item.bandGroupId, size);
+                            }}
+                          >
+                            {Object.values(BandSize)
+                              .filter((size) => size !== BandSize.Other)
+                              .map((size) => (
+                                <SelectItem key={size}>{formatBandSize(size)}</SelectItem>
+                              ))}
+                          </Select>
+                        </TableCell>
+                      );
                     }
                     if (columnKey === "available") {
                       return <TableCell className="font-mono">{item.available || "-"}</TableCell>;
