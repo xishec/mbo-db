@@ -6,6 +6,7 @@ import { isActiveBirdEvent } from "../../stores/derive";
 import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../types/species";
 import BirdEventsTable from "./Programs/Captures/BirdEventsTable";
 import PageHeader from "./PageHeader";
+import { modalInputProps } from "../Modals/modalDefaults";
 
 interface SpeciesResult {
   key: string;
@@ -82,32 +83,31 @@ export default function Locations() {
     <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-4 p-8 pt-4">
       <PageHeader title="Locations" subtitle="Compare the most frequently captured species across locations." />
 
-      <Card shadow="sm">
-        <CardBody className="gap-3 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-default-900">Filters</h2>
-            <Button size="sm" variant="light" color="primary" onPress={clearFilters} isDisabled={!hasActiveFilters}>
-              Clear filters
-            </Button>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Select
-              className="sm:col-span-2"
-              label="Locations"
-              placeholder="All locations"
-              selectionMode="multiple"
-              selectedKeys={selectedLocations}
-              onSelectionChange={(keys) => setSelectedLocations(new Set(Array.from(keys, String)))}
-            >
-              {locations.map((location) => (
-                <SelectItem key={location}>{location}</SelectItem>
-              ))}
-            </Select>
-            <Input label="Start date" type="date" value={startDate} onValueChange={setStartDate} />
-            <Input label="End date" type="date" value={endDate} onValueChange={setEndDate} />
-          </div>
-        </CardBody>
-      </Card>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-default-900">Filters</h2>
+          <Button size="sm" variant="light" color="primary" onPress={clearFilters} isDisabled={!hasActiveFilters}>
+            Clear filters
+          </Button>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Select
+            {...modalInputProps}
+            className="sm:col-span-2"
+            label="Locations"
+            placeholder="All locations"
+            selectionMode="multiple"
+            selectedKeys={selectedLocations}
+            onSelectionChange={(keys) => setSelectedLocations(new Set(Array.from(keys, String)))}
+          >
+            {locations.map((location) => (
+              <SelectItem key={location}>{location}</SelectItem>
+            ))}
+          </Select>
+          <Input {...modalInputProps} label="Start date" type="date" value={startDate} onValueChange={setStartDate} />
+          <Input {...modalInputProps} label="End date" type="date" value={endDate} onValueChange={setEndDate} />
+        </div>
+      </div>
 
       <Card shadow="sm">
         <CardBody className="gap-3 p-4">
