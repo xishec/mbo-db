@@ -254,6 +254,18 @@ export async function syncQueue(): Promise<boolean> {
             );
           }
 
+          if (createdBandGroupSize) {
+            const timestampSnapshot = await get(
+              ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified_bandGroupSizesMap`)
+            );
+            const timestamp = Number(timestampSnapshot.val());
+            if (Number.isFinite(timestamp)) {
+              saveMetadata(`lastModified_bandGroupSizesMap_${CURRENT_ENVIRONMENT}`, timestamp).catch((err) =>
+                logger.warn("SyncQueue", "Failed to cache band group size timestamp", err)
+              );
+            }
+          }
+
           if (Object.keys(existingBandGroupSizes).length > 0) {
             const nextBandGroupSizesMap = { ...useAppStore.getState().bandGroupSizesMap, ...existingBandGroupSizes };
             useAppStore.setState({ bandGroupSizesMap: nextBandGroupSizesMap });
@@ -1147,7 +1159,13 @@ export const actions = {
         [`${CURRENT_ENVIRONMENT}/metadata/lastModified_bandGroupSizesMap`]: serverTimestamp(),
       });
       await saveMapsToIndexedDB({ bandGroupSizesMap: next });
-      await saveMetadata(`lastModified_bandGroupSizesMap_${CURRENT_ENVIRONMENT}`, Date.now());
+      const timestampSnapshot = await get(
+        ref(db, `${CURRENT_ENVIRONMENT}/metadata/lastModified_bandGroupSizesMap`)
+      );
+      const timestamp = Number(timestampSnapshot.val());
+      if (Number.isFinite(timestamp)) {
+        await saveMetadata(`lastModified_bandGroupSizesMap_${CURRENT_ENVIRONMENT}`, timestamp);
+      }
     } catch (err) {
       logger.error("UpdateBandGroupSize", `Error updating size for ${bandGroupId}`, err);
       throw err;

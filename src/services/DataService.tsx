@@ -587,6 +587,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           magicTable: magicTableData,
           volunteersMap,
           bandGroupNotesMap: notesMap,
+          bandGroupSizesMap,
           speciesAliasesMap,
           bandResetsMap,
           bandIdToBirdEventIdsMap: bandIdMap,
