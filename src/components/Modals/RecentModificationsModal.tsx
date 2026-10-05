@@ -23,16 +23,54 @@ interface RecentModificationsModalProps {
   onClose: () => void;
 }
 
-type ModificationColumn = "band" | "datetime" | "species" | "previousEvent" | "modifiedBy" | "modifiedAt";
+type ModificationColumn = "band" | "changedFields" | "datetime" | "species" | "previousEvent" | "modifiedBy" | "modifiedAt";
 
 const columns: Array<{ key: ModificationColumn; label: string; className: string }> = [
   { key: "band", label: "Band", className: "w-[120px]" },
+  { key: "changedFields", label: "Changed Fields", className: "w-[220px]" },
   { key: "datetime", label: "Capture Date/Time", className: "w-[180px]" },
   { key: "species", label: "Species", className: "w-[100px]" },
   { key: "previousEvent", label: "Previous Event", className: "w-[220px]" },
   { key: "modifiedBy", label: "Modified By", className: "w-[260px]" },
   { key: "modifiedAt", label: "Modified At", className: "w-[200px]" },
 ];
+
+const CHANGED_FIELD_LABELS: Array<[keyof BirdEvent, string]> = [
+  ["programId", "Program"],
+  ["species", "Species"],
+  ["wing", "Wing"],
+  ["age", "Age"],
+  ["howAged", "How Aged"],
+  ["sex", "Sex"],
+  ["howSexed", "How Sexed"],
+  ["fat", "Fat"],
+  ["weight", "Weight"],
+  ["date", "Date"],
+  ["time", "Time"],
+  ["bander", "Bander"],
+  ["scribe", "Scribe"],
+  ["net", "Net"],
+  ["location", "Location"],
+  ["birdEventType", "Event Type"],
+  ["birdStatus", "Bird Status"],
+  ["notes", "Notes"],
+  ["reminder", "Reminder"],
+];
+
+function getChangedFields(event: BirdEvent): string[] {
+  const previousEvent = event.previousEventId ? birdEventsStore.get(event.previousEventId) : undefined;
+  if (!previousEvent) return ["Previous event not found"];
+
+  const changedFields = CHANGED_FIELD_LABELS
+    .filter(([field]) => (event[field] ?? "") !== (previousEvent[field] ?? ""))
+    .map(([, label]) => label);
+  const bandChanged =
+    event.band.bandPrefix !== previousEvent.band.bandPrefix ||
+    event.band.bandSuffix !== previousEvent.band.bandSuffix ||
+    (event.band.bandSize ?? null) !== (previousEvent.band.bandSize ?? null);
+
+  return bandChanged ? ["Band", ...changedFields] : changedFields;
+}
 
 function getPreviousEventDetails(event: BirdEvent): { text: string; isDifferentDay: boolean } {
   const previousEvent = event.previousEventId ? birdEventsStore.get(event.previousEventId) : undefined;
@@ -80,6 +118,7 @@ export function RecentModificationsModal({ isOpen, onClose }: RecentModification
     return [...modifications].sort((a, b) => {
       const values: Record<ModificationColumn, [string, string]> = {
         band: [a.band.id, b.band.id],
+        changedFields: [getChangedFields(a).join(", "), getChangedFields(b).join(", ")],
         datetime: [`${a.date} ${a.time}`, `${b.date} ${b.time}`],
         species: [a.species, b.species],
         previousEvent: [
@@ -151,6 +190,15 @@ export function RecentModificationsModal({ isOpen, onClose }: RecentModification
                         switch (columnKey as ModificationColumn) {
                           case "band":
                             return <TableCell className="font-bold">{event.band.id}</TableCell>;
+                          case "changedFields": {
+                            const changedFields = getChangedFields(event);
+                            const text = changedFields.length > 0 ? changedFields.join(", ") : "No field changes";
+                            return (
+                              <TableCell className="truncate" title={text}>
+                                {text}
+                              </TableCell>
+                            );
+                          }
                           case "datetime":
                             return <TableCell>{event.date} {event.time}</TableCell>;
                           case "species":

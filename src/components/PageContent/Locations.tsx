@@ -109,32 +109,36 @@ export default function Locations() {
         </CardBody>
       </Card>
 
-      <div>
-        <h2 className="text-lg font-semibold text-default-900">Top 10 species</h2>
-        <p className="text-sm text-default-600">
-          {selectedLocations.size > 0 ? `${selectedLocations.size} location${selectedLocations.size === 1 ? "" : "s"} selected` : "All locations"}
-          {startDate || endDate ? ` · ${startDate || "Any date"} to ${endDate || "Any date"}` : ""}
-        </p>
-      </div>
+      <Card shadow="sm">
+        <CardBody className="gap-3 p-4">
+          <div>
+            <h2 className="text-lg font-semibold text-default-900">Top 10 species</h2>
+            <p className="text-sm text-default-600">
+              {selectedLocations.size > 0 ? `${selectedLocations.size} location${selectedLocations.size === 1 ? "" : "s"} selected` : "All locations"}
+              {startDate || endDate ? ` · ${startDate || "Any date"} to ${endDate || "Any date"}` : ""}
+            </p>
+          </div>
 
-      <Table aria-label="Top species by location" removeWrapper>
-        <TableHeader>
-          <TableColumn>RANK</TableColumn>
-          <TableColumn>SPECIES</TableColumn>
-          <TableColumn>CODE</TableColumn>
-          <TableColumn align="end">CAPTURE EVENTS</TableColumn>
-        </TableHeader>
-        <TableBody items={results} emptyContent="No capture events match the selected filters.">
-          {(result) => (
-            <TableRow key={result.key}>
-              <TableCell>{results.indexOf(result) + 1}</TableCell>
-              <TableCell>{result.name}</TableCell>
-              <TableCell className="font-mono">{result.code}</TableCell>
-              <TableCell className="text-right tabular-nums">{result.eventCount}</TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          <Table aria-label="Top species by location" removeWrapper>
+            <TableHeader>
+              <TableColumn>RANK</TableColumn>
+              <TableColumn>SPECIES</TableColumn>
+              <TableColumn>CODE</TableColumn>
+              <TableColumn align="end">CAPTURE EVENTS</TableColumn>
+            </TableHeader>
+            <TableBody items={results} emptyContent="No capture events match the selected filters.">
+              {(result) => (
+                <TableRow key={result.key}>
+                  <TableCell>{results.indexOf(result) + 1}</TableCell>
+                  <TableCell>{result.name}</TableCell>
+                  <TableCell className="font-mono">{result.code}</TableCell>
+                  <TableCell className="text-right tabular-nums">{result.eventCount}</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
 
       <div className="mt-4">
         <h2 className="text-lg font-semibold text-default-900">Captures without a location</h2>
