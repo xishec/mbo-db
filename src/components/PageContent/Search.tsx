@@ -34,17 +34,19 @@ const NUMBER_OPERATORS = [
 ];
 
 type LogicOperator = "AND" | "OR";
+type SearchProperty = (typeof TABLE_COLUMNS)[number]["key"] | "bandId" | "bandSize";
 
 interface Filter {
   id: string;
-  property: (typeof TABLE_COLUMNS)[number]["key"];
+  property: SearchProperty;
   operator: string;
   value: string;
   logic: LogicOperator;
 }
 
-const SEARCH_COLUMNS = [
+const SEARCH_COLUMNS: { key: SearchProperty; type: string; label: string }[] = [
   { key: "bandId", type: "text", label: "Band ID" },
+  { key: "bandSize", type: "text", label: "Band Size" },
   ...TABLE_COLUMNS.filter((col) => col.key !== "actions" && col.key !== "bandGroup" && col.key !== "bandLastTwoDigits"),
 ];
 
@@ -67,7 +69,7 @@ export default function Search() {
 
   // Filter state
   const [filters, setFilters] = useState<Filter[]>([]);
-  const [currentProperty, setCurrentProperty] = useState<(typeof TABLE_COLUMNS)[number]["key"] | "">("");
+  const [currentProperty, setCurrentProperty] = useState<SearchProperty | "">("");
   const [currentOperator, setCurrentOperator] = useState<string>("");
   const [currentValue, setCurrentValue] = useState<string>("");
   const [currentLogic, setCurrentLogic] = useState<LogicOperator>("AND");
@@ -85,7 +87,7 @@ export default function Search() {
 
   // Handle property selection change
   const handlePropertyChange = useCallback((keys: Iterable<React.Key>) => {
-    const selected = Array.from(keys)[0] as (typeof TABLE_COLUMNS)[number]["key"] | undefined;
+    const selected = Array.from(keys)[0] as SearchProperty | undefined;
     setCurrentProperty(selected ?? "");
     setCurrentOperator(""); // Reset operator when property changes
   }, []);
@@ -122,6 +124,8 @@ export default function Search() {
     switch (propertyKey) {
       case "bandId":
         return event.band.id;
+      case "bandSize":
+        return event.band.bandSize ?? undefined;
       case "bandGroup":
         return event.band.bandGroupId;
       case "bandLastTwoDigits":
