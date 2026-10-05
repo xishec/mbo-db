@@ -13,7 +13,7 @@ import { birdEventsStore } from "../../services/birdEventsStore";
 import { useAppStore } from "../../stores/useAppStore";
 import type { BirdEvent } from "../../types";
 import { isBirdEventInCurrentBandGeneration } from "../../stores/derive";
-import { formatModificationTimestamp, isNonRoutineEditor } from "../../utils/modificationDisplay";
+import { formatModificationTimestamp, getChangedBirdEventFields, isNonRoutineEditor } from "../../utils/modificationDisplay";
 import SpeciesTooltip from "../Helper/Info/SpeciesTooltip";
 import CaptureHistoryModal from "./CaptureHistoryModal";
 import ModalShell, { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -35,41 +35,9 @@ const columns: Array<{ key: ModificationColumn; label: string; className: string
   { key: "modifiedAt", label: "Modified At", className: "w-[200px]" },
 ];
 
-const CHANGED_FIELD_LABELS: Array<[keyof BirdEvent, string]> = [
-  ["programId", "Program"],
-  ["species", "Species"],
-  ["wing", "Wing"],
-  ["age", "Age"],
-  ["howAged", "How Aged"],
-  ["sex", "Sex"],
-  ["howSexed", "How Sexed"],
-  ["fat", "Fat"],
-  ["weight", "Weight"],
-  ["date", "Date"],
-  ["time", "Time"],
-  ["bander", "Bander"],
-  ["scribe", "Scribe"],
-  ["net", "Net"],
-  ["location", "Location"],
-  ["birdEventType", "Event Type"],
-  ["birdStatus", "Bird Status"],
-  ["notes", "Notes"],
-  ["reminder", "Reminder"],
-];
-
 function getChangedFields(event: BirdEvent): string[] {
   const previousEvent = event.previousEventId ? birdEventsStore.get(event.previousEventId) : undefined;
-  if (!previousEvent) return ["Previous event not found"];
-
-  const changedFields = CHANGED_FIELD_LABELS
-    .filter(([field]) => (event[field] ?? "") !== (previousEvent[field] ?? ""))
-    .map(([, label]) => label);
-  const bandChanged =
-    event.band.bandPrefix !== previousEvent.band.bandPrefix ||
-    event.band.bandSuffix !== previousEvent.band.bandSuffix ||
-    (event.band.bandSize ?? null) !== (previousEvent.band.bandSize ?? null);
-
-  return bandChanged ? ["Band", ...changedFields] : changedFields;
+  return getChangedBirdEventFields(event, previousEvent);
 }
 
 function getPreviousEventDetails(event: BirdEvent): { text: string; isDifferentDay: boolean } {

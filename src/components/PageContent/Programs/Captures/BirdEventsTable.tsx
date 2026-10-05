@@ -14,11 +14,12 @@ import VolunteerTooltip from "../../../Helper/Info/VolunteerTooltip";
 import { useCascadingSort, cascadingSort } from "../../../../hooks/useCascadingSort";
 import { getSpeciesDisplayCode, resolveSpeciesKey } from "../../../../types/species";
 import { isActiveBirdEvent, isBirdEventInCurrentBandGeneration } from "../../../../stores/derive";
-import { formatModificationTimestamp, isNonRoutineEditor } from "../../../../utils/modificationDisplay";
+import { formatModificationTimestamp, getChangedBirdEventFields, isNonRoutineEditor } from "../../../../utils/modificationDisplay";
 
 const MODIFICATION_COLUMNS = [
   { key: "modifiedBy", label: "Modified By", type: "", tableClassName: "w-[260px]" },
   { key: "modifiedAt", label: "Modified At", type: "", tableClassName: "w-[200px]" },
+  { key: "changedFields", label: "Changed Fields", type: "", tableClassName: "w-[220px]" },
 ] as const;
 
 // Helper to convert BirdEvent to table row format
@@ -315,6 +316,13 @@ export default function BirdEventsTable({
         return formatModificationTimestamp(item.updatedAt);
       }
 
+      if (columnKey === "changedFields") {
+        const event = birdEventsMap.get(item.id);
+        const previousEvent = event?.previousEventId ? birdEventsMap.get(event.previousEventId) : undefined;
+        const text = event ? getChangedBirdEventFields(event, previousEvent).join(", ") : "Event not found";
+        return <span className="block truncate" title={text}>{text || "No field changes"}</span>;
+      }
+
       if (columnKey === "species") {
         return <SpeciesTooltip speciesCode={item.species} />;
       }
@@ -356,6 +364,7 @@ export default function BirdEventsTable({
       queuedEventIds,
       bandIdToBirdEventIdsMap,
       bandResetsMap,
+      birdEventsMap,
       showModificationDetails,
     ]
   );
