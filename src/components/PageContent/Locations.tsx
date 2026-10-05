@@ -27,7 +27,9 @@ export default function Locations() {
   const [endDate, setEndDate] = useState("");
 
   const events = useMemo(() => {
-    return Array.from(birdEventsStore.getAll().values()).filter((event) => isActiveBirdEvent(event, bandResetsMap));
+    return Array.from(birdEventsStore.getAll().values()).filter(
+      (event) => isActiveBirdEvent(event, bandResetsMap) && event.programId.trim().toUpperCase() !== "NONE"
+    );
   }, [version, bandResetsMap]);
 
   const locations = useMemo(() => {
@@ -134,7 +136,7 @@ export default function Locations() {
         </TableBody>
       </Table>
 
-      <div>
+      <div className="mt-4">
         <h2 className="text-lg font-semibold text-default-900">Captures without a location</h2>
         <p className="text-sm text-default-600">
           {eventsWithoutLocation.length} capture{eventsWithoutLocation.length === 1 ? "" : "s"} need a location.

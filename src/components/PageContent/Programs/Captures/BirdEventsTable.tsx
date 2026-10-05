@@ -365,7 +365,7 @@ export default function BirdEventsTable({
   // Filter columns based on hiddenColumns prop
   const displayColumns = useMemo(() => {
     const columns = TABLE_COLUMNS.filter((column) => !hiddenColumns.includes(column.key));
-    return showModificationDetails ? [...columns, ...MODIFICATION_COLUMNS] : columns;
+    return showModificationDetails ? [...MODIFICATION_COLUMNS, ...columns] : columns;
   }, [hiddenColumns, showModificationDetails]);
 
   return (
