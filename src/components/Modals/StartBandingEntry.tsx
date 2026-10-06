@@ -13,7 +13,7 @@ import PyleTable from "../Helper/Info/PyleTable";
 import VolunteerTooltip from "../Helper/Info/VolunteerTooltip";
 import { TABLE_COLUMNS, formatFieldValue, getDefaultFormData } from "../PageContent/Programs/Captures/helpers";
 import BirdEventsTable from "../PageContent/Programs/Captures/BirdEventsTable";
-import { computeBandReminder, isActiveBirdEvent } from "../../stores/derive";
+import { advanceBandId, computeBandReminder, isActiveBirdEvent } from "../../stores/derive";
 import BirdStatusModal from "./BirdStatusModal";
 import BirdReminderModal from "./BirdReminderModal";
 import { ModalBodyShell, ModalFooterShell, ModalHeaderShell } from "./ModalShell";
@@ -237,7 +237,12 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
   const bandResetsMap = useAppStore((s) => s.bandResetsMap);
   const { addBirdEvent } = useActions();
   const birdEventsVersion = useBirdEventsVersion();
-  const [formData, setFormData] = useState<CaptureFormData>(() => getDefaultFormData(selectedProgram?.id || "", selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation));
+  const [formData, setFormData] = useState<CaptureFormData>(() =>
+    getDefaultFormData(
+      selectedProgram?.id || "",
+      selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation
+    )
+  );
   const [selectedPage, setSelectedPage] = useState<SelectedPage>(null);
   const [lastBandId, setLastBandId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -307,7 +312,10 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
   );
 
   useEffect(() => {
-    const defaultData = getDefaultFormData(selectedProgram?.id || "", selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation);
+    const defaultData = getDefaultFormData(
+      selectedProgram?.id || "",
+      selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation
+    );
     const savedBander = localStorage.getItem("lastBander");
     const savedScribe = localStorage.getItem("lastScribe");
     if (savedBander) defaultData.bander = savedBander;
@@ -938,8 +946,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
       pastBirdEvents
         .filter((event) => event.birdEventType === birdEventType)
         .sort((first, second) => `${first.date}T${first.time}`.localeCompare(`${second.date}T${second.time}`))[0];
-    const entry =
-      getEarliestEntryOfType(BirdEventType.Banded) ?? getEarliestEntryOfType(BirdEventType.Alien);
+    const entry = getEarliestEntryOfType(BirdEventType.Banded) ?? getEarliestEntryOfType(BirdEventType.Alien);
     const entryCount = `${pastBirdEvents.length} ${pastBirdEvents.length === 1 ? "entry" : "entries"}`;
     if (!entry) return `${entryCount} for band ${bandId}`;
 
@@ -951,7 +958,12 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
       : `${entryCount} for this ${speciesName}, banded by ${entry.bander || "unknown"} on ${entry.date || "an unknown date"}`;
   }, [bandId, hasExistingData, pastBirdEvents, speciesAliasesMap]);
   const canSave = Boolean(
-    selectedPage && formData.bandGroup && formData.bandLastTwoDigits && formData.species && selectedProgram && formData.location
+    selectedPage &&
+    formData.bandGroup &&
+    formData.bandLastTwoDigits &&
+    formData.species &&
+    selectedProgram &&
+    formData.location
   );
   const entryWarnings = useMemo(() => {
     const warnings: string[] = [];
@@ -1067,6 +1079,8 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
       const bandSizeToSend = getBandSizeForSave(selectedPage, formDataToSave);
       const trackedBandSize =
         isNewCaptureType(birdEventTypeToSave) && bandSizeToSend !== BandSize.Other ? bandSizeToSend : null;
+      const nextOtherBandId =
+        isNewCaptureType(birdEventTypeToSave) && selectedPage === BandSize.Other ? advanceBandId(bandId) : null;
       pendingSavedBandSizeRef.current = trackedBandSize;
 
       if (formDataToSave.reminder) {
@@ -1086,7 +1100,11 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
       setFormData((prev) => ({
         ...prev,
         net: "",
-        ...(trackedBandSize ? {} : { bandGroup: "", bandLastTwoDigits: "" }),
+        ...(trackedBandSize
+          ? {}
+          : nextOtherBandId
+            ? { bandGroup: nextOtherBandId.slice(0, 7), bandLastTwoDigits: nextOtherBandId.slice(7, 9) }
+            : { bandGroup: "", bandLastTwoDigits: "" }),
         species: "",
         wing: "",
         age: "",
@@ -1127,7 +1145,10 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
 
   const clearEntry = useCallback(() => {
     setFormData((current) => ({
-      ...getDefaultFormData(selectedProgram?.id || "", selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation),
+      ...getDefaultFormData(
+        selectedProgram?.id || "",
+        selectedProgram?.isMultiLocation ? "" : selectedProgram?.defaultLocation
+      ),
       bander: current.bander,
       scribe: current.scribe,
     }));

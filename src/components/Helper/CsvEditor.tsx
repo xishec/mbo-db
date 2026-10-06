@@ -9,6 +9,9 @@ export interface CsvEditorProps {
   maxHeight?: number | string;
   readOnlyColumns?: Array<number | string>;
   formatReadOnlyValue?: (value: string, columnName: string) => string;
+  inputPlaceholder?: (row: string[], columnName: string, columnIndex: number) => string | undefined;
+  inputSuffix?: (row: string[], columnName: string, columnIndex: number) => string | undefined;
+  inputClassName?: (row: string[], columnName: string, isReadOnly: boolean) => string;
 }
 
 function normalizeRows(rows: string[][]): string[][] {
@@ -26,6 +29,9 @@ export default function CsvEditor({
   maxHeight,
   readOnlyColumns = [],
   formatReadOnlyValue,
+  inputPlaceholder,
+  inputSuffix,
+  inputClassName,
 }: CsvEditorProps) {
   const [rows, setRows] = useState<string[][]>(() => normalizeRows(parseCsv(csvTemplate)));
 
@@ -52,7 +58,8 @@ export default function CsvEditor({
         if (!nextRows[bodyRowIndex]) return currentRows;
 
         nextRows[bodyRowIndex][columnIndex] = value;
-        onChange(stringifyCsv(nextRows));
+        const nextCsv = stringifyCsv(nextRows);
+        onChange(nextCsv);
         return nextRows;
       });
     },
@@ -70,9 +77,7 @@ export default function CsvEditor({
         return;
       }
 
-      const editableColumns = headers
-        .map((_, index) => index)
-        .filter((index) => !readOnlyColumnIndexes.has(index));
+      const editableColumns = headers.map((_, index) => index).filter((index) => !readOnlyColumnIndexes.has(index));
       const currentEditableIndex = editableColumns.indexOf(columnIndex);
       if (currentEditableIndex < 0) return;
 
@@ -105,8 +110,7 @@ export default function CsvEditor({
           ? Array.from(nextTable.querySelectorAll<HTMLInputElement>("input:not([readonly])"))
           : [];
         const rowIndexes = candidates.map((input) => Number(input.dataset.csvRow));
-        const targetRowIndex =
-          event.key === "ArrowUp" ? Math.max(...rowIndexes) : Math.min(...rowIndexes);
+        const targetRowIndex = event.key === "ArrowUp" ? Math.max(...rowIndexes) : Math.min(...rowIndexes);
         const targetRowInputs = candidates
           .filter((input) => Number(input.dataset.csvRow) === targetRowIndex)
           .sort(
@@ -138,11 +142,7 @@ export default function CsvEditor({
       className={`w-full overflow-auto rounded-medium border border-default-200 bg-content1 ${className}`}
       style={maxHeight === undefined ? undefined : { maxHeight }}
     >
-      <table
-        className="min-w-full border-separate border-spacing-0 text-sm"
-        aria-label={ariaLabel}
-        data-csv-editor
-      >
+      <table className="min-w-full border-separate border-spacing-0 text-sm" aria-label={ariaLabel} data-csv-editor>
         <thead className="sticky top-0 z-10 bg-default-100">
           <tr>
             {headers.map((header, columnIndex) => (
@@ -166,26 +166,38 @@ export default function CsvEditor({
           ) : (
             dataRows.map((row, rowIndex) => (
               <tr key={rowIndex} className="even:bg-default-50">
-                {headers.map((_, columnIndex) => (
-                  <td key={columnIndex} className="border-b border-r border-default-200 p-0 last:border-r-0">
-                    <input
-                      aria-label={`${headers[columnIndex]} row ${rowIndex + 1}`}
-                      className={`block w-full bg-transparent px-3 py-2 text-default-900 outline-none focus:bg-primary-50 focus:ring-2 focus:ring-inset focus:ring-primary ${
-                        headers[columnIndex] === "Species" ? "min-w-56 text-left" : "min-w-32 text-right"
-                      }`}
-                      readOnly={readOnlyColumnIndexes.has(columnIndex)}
-                      value={
-                        readOnlyColumnIndexes.has(columnIndex) && formatReadOnlyValue
-                          ? formatReadOnlyValue(row[columnIndex] ?? "", headers[columnIndex])
-                          : (row[columnIndex] ?? "")
-                      }
-                      onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)}
-                      onKeyDown={(event) => handleArrowNavigation(event, rowIndex, columnIndex)}
-                      data-csv-row={rowIndex}
-                      data-csv-column={columnIndex}
-                    />
-                  </td>
-                ))}
+                {headers.map((_, columnIndex) => {
+                  const isReadOnly = readOnlyColumnIndexes.has(columnIndex);
+                  const suffix = inputSuffix?.(row, headers[columnIndex], columnIndex);
+                  return (
+                    <td key={columnIndex} className="border-b border-r border-default-200 p-0 last:border-r-0">
+                      <div className="relative">
+                        <input
+                          aria-label={`${headers[columnIndex]} row ${rowIndex + 1}`}
+                          className={`block w-full bg-transparent px-3 py-2 text-default-900 outline-none focus:bg-primary-50 focus:ring-2 focus:ring-inset focus:ring-primary ${suffix ? "pr-16" : ""} ${inputClassName?.(row, headers[columnIndex], isReadOnly) ?? ""} ${
+                            headers[columnIndex] === "Species" ? "min-w-56 text-left" : "min-w-32 text-right"
+                          }`}
+                          readOnly={isReadOnly}
+                          placeholder={inputPlaceholder?.(row, headers[columnIndex], columnIndex)}
+                          value={
+                            isReadOnly && formatReadOnlyValue
+                              ? formatReadOnlyValue(row[columnIndex] ?? "", headers[columnIndex])
+                              : (row[columnIndex] ?? "")
+                          }
+                          onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)}
+                          onKeyDown={(event) => handleArrowNavigation(event, rowIndex, columnIndex)}
+                          data-csv-row={rowIndex}
+                          data-csv-column={columnIndex}
+                        />
+                        {suffix && (
+                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-default-500">
+                            {suffix}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
               </tr>
             ))
           )}

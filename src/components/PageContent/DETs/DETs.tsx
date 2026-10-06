@@ -70,6 +70,10 @@ function netHoursFromTimes(net: Net): number | null {
   return hasTimePeriod ? totalMinutes / 60 : null;
 }
 
+function formatHours(hours: number): string {
+  return Number(hours.toFixed(2)).toString();
+}
+
 export default function DETs() {
   const DETsByDateMap = useAppStore((s) => s.DETsByDateMap);
   const user = useAppStore((s) => s.user);
@@ -99,8 +103,8 @@ export default function DETs() {
     displayedTotal: netHoursFromTimes(net) ?? (Number(net.total) || 0),
   }));
   const selectedDETNetHoursTotal = isSelectedDETOWL
-    ? Number(selectedDETNetHours.reduce((total, net) => total + net.displayedTotal, 0).toFixed(2)).toString()
-    : selectedDET?.netHours?.total || "0";
+    ? formatHours(selectedDETNetHours.reduce((total, net) => total + net.displayedTotal, 0))
+    : formatHours(Number(selectedDET?.netHours?.total) || 0);
 
   // Get available dates as a Set for quick lookup
   const availableDatesSet = new Set(Object.keys(DETsByDateMap));
@@ -345,7 +349,7 @@ export default function DETs() {
               <p className="text-small font-semibold mb-2">Observer Hours</p>
               <div className="rounded-medium border border-default-100 py-2 px-3">
                 <p className="text-sm text-gray-600">
-                  Total: {selectedDET.observerHours?.total || 0} hours | Observers:{" "}
+                  Total: {formatHours(selectedDET.observerHours?.total || 0)} hours | Observers:{" "}
                   {selectedDET.observerHours?.observers?.length || 0}
                 </p>
                 {selectedDET.observerHours?.observers && selectedDET.observerHours.observers.length > 0 && (
@@ -374,7 +378,7 @@ export default function DETs() {
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selectedDETNetHours.map((net, idx) => (
                     <Chip key={idx} variant="bordered" color="primary" size="sm">
-                      {net.id}: {net.displayedTotal}
+                      {net.id}: {formatHours(net.displayedTotal)}
                     </Chip>
                   ))}
                 </div>

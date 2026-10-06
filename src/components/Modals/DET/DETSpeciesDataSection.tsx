@@ -65,6 +65,15 @@ function mergeGroupCount(
   return { ...nextCount, ...nextGroupCount };
 }
 
+function rowTotal(row: string[]): number {
+  return row.slice(1, 6).reduce((total, value) => total + (Number(value) || 0), 0);
+}
+
+function detTotalPlaceholder(row: string[]): string | undefined {
+  const total = rowTotal(row);
+  return total > 0 ? `(${total})` : undefined;
+}
+
 export default function DETSpeciesDataSection({
   observedSpeciesCount,
   censusSpeciesCount,
@@ -238,6 +247,14 @@ export default function DETSpeciesDataSection({
               onChange={(csv) => handleCsvChange(group.codes, csv)}
               readOnlyColumns={["Species", "Band", "Repeat", "Ret"]}
               formatReadOnlyValue={formatSpeciesValue}
+              inputSuffix={(row, columnName) => (columnName === "DET" ? detTotalPlaceholder(row) : undefined)}
+              inputClassName={(row, columnName) =>
+                columnName === "DET" && (Number(row[6]) || 0) > rowTotal(row)
+                  ? "font-semibold !bg-danger-50 !text-danger-600"
+                  : columnName !== "Species"
+                    ? "font-semibold"
+                    : ""
+              }
             />
           </section>
         ))}
@@ -258,6 +275,14 @@ export default function DETSpeciesDataSection({
               csvTemplate={otherCsvTemplate}
               onChange={handleOtherCsvChange}
               readOnlyColumns={["Band", "Repeat", "Ret"]}
+              inputSuffix={(row, columnName) => (columnName === "DET" ? detTotalPlaceholder(row) : undefined)}
+              inputClassName={(row, columnName) =>
+                columnName === "DET" && (Number(row[6]) || 0) > rowTotal(row)
+                  ? "font-semibold !bg-danger-50 !text-danger-600"
+                  : columnName !== "Species"
+                    ? "font-semibold"
+                    : ""
+              }
             />
           ) : (
             <div className="rounded-medium border border-default-200 px-3 py-4 text-sm text-default-500">

@@ -648,7 +648,6 @@ export default function AddDETModal({
       setError(`A DET already exists for ${date} and program ${programId}. Close this form and use Edit instead.`);
       return;
     }
-
     try {
       setIsSaving(true);
 
