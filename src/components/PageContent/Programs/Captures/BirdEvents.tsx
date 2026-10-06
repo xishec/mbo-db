@@ -53,7 +53,7 @@ export default function BirdEvents() {
   // (when finishing a strip advances bandSizeToBandGroup to a new band group id,
   // the user still wants to be viewing the same size).
   const [selectedBandSize, setSelectedBandSize] = useState<BandSize | null>(null);
-  const [showRecaptures, setShowRecaptures] = useState(false);
+  const [showRecaptures, setShowRecaptures] = useState(true);
 
   // Map band group ID to its band size label
   const bandGroupToBandSize = useMemo(() => {
@@ -116,7 +116,7 @@ export default function BirdEvents() {
   useEffect(() => {
     setSelectedBandGroupId(undefined);
     setSelectedBandSize(null);
-    setShowRecaptures(false);
+    setShowRecaptures(true);
   }, [selectedProgram?.id]);
 
   // Pre-calculate counts and next available digits for all band groups (including those from settings)
@@ -182,6 +182,11 @@ export default function BirdEvents() {
     items.push({ key: "recaptures", label: "Recaptures" });
     return items;
   }, [bandSizeToBandGroup]);
+
+  const visiblePageSelectItems = useMemo(
+    () => (isPastProgramEnd ? pageSelectItems.filter((item) => item.key === "recaptures") : pageSelectItems),
+    [isPastProgramEnd, pageSelectItems]
+  );
 
   // Determine which band group to display.
   //
@@ -322,8 +327,7 @@ export default function BirdEvents() {
     <div className="w-full flex flex-col items-center gap-8">
       <div className="w-full flex flex-col gap-4">
         <div className="flex w-full items-center justify-start gap-3">
-          {!isPastProgramEnd && (
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Tabs
               color="secondary"
               size="md"
@@ -335,12 +339,11 @@ export default function BirdEvents() {
                 tabContent: "!text-foreground group-data-[selected=true]:!text-secondary-foreground",
               }}
             >
-              {pageSelectItems.map((item) => (
+              {visiblePageSelectItems.map((item) => (
                 <Tab key={item.key} title={item.label} />
               ))}
             </Tabs>
-            </div>
-          )}
+          </div>
           {dropdownBandGroups.length > 0 && (
             <div className="flex shrink-0 items-center gap-3">
               <MemoBandGroupSelect
