@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { BellAlertIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useActions, useAppStore } from "../../stores/useAppStore";
 import { birdEventsStore, useBirdEventsVersion } from "../../services/birdEventsStore";
-import { Band, BandSize, BirdEventType, type BirdEvent, type CaptureFormData, type SpeciesRange } from "../../types";
+import { Band, BandSize, BirdEventType, getBandGroupMapKey, type BirdEvent, type CaptureFormData, type SpeciesRange } from "../../types";
 import { DEFAULT_BIRD_STATUS } from "../../types/birdStatus";
 import { findErrorsInEvents, getRangesForSex, validateBirdEventForm } from "../../types/birdEventErrors";
 import { getSpeciesDisplayCode, resolveSpeciesKey, SPECIES_MAP } from "../../types/species";
@@ -230,6 +230,7 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
   const isAppSaving = useAppStore((s) => s.isSaving);
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
   const bandSizeToBandIdMap = useAppStore((s) => s.bandSizeToBandIdMap);
+  const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const magicTable = useAppStore((s) => s.magicTable);
   const speciesAliasesMap = useAppStore((s) => s.speciesAliasesMap);
   const volunteersMap = useAppStore((s) => s.volunteersMap);
@@ -988,13 +989,46 @@ export default function StartBandingEntry({ entryId, isDoubleBanding = false, is
         warnings.push(
           currentBand
             ? `Page ${getPageLabel(selectedPage)} currently uses band group ${currentBand.bandGroupId}. Saving will change it to ${formData.bandGroup}.`
-            : `Page ${getPageLabel(selectedPage)} has no band group yet. Saving will set it to ${formData.bandGroup}.`
+          : `Page ${getPageLabel(selectedPage)} has no band group yet. Saving will set it to ${formData.bandGroup}.`
         );
+      }
+
+      // When a size page prefills the next band, compare it with the band
+      // that supplied that next value. This catches a program switch before
+      // the user starts entering the capture details.
+      if (currentBand?.id === bandId && selectedProgram) {
+        const bandGroup = bandGroupsMap[getBandGroupMapKey(currentBand)];
+        const previousBandEvent = bandGroup?.newCaptureIds
+          .map((id) => birdEventsStore.get(id))
+          .filter((event): event is BirdEvent => !!event && isActiveBirdEvent(event, bandResetsMap))
+          .reduce<BirdEvent | null>((previous, event) => {
+            const number = Number(event.band.last2digits);
+            const previousNumber = previous ? Number(previous.band.last2digits) : -1;
+            const order = number === 0 ? 100 : number;
+            const previousOrder = previousNumber === 0 ? 100 : previousNumber;
+            return order > previousOrder ? event : previous;
+          }, null);
+
+        if (previousBandEvent && previousBandEvent.programId !== selectedProgram.id) {
+          warnings.push(
+            `The previous band in this group (${previousBandEvent.band.id}) used program ${previousBandEvent.programId}. This band uses ${selectedProgram.id}.`
+          );
+        }
       }
     }
 
     return warnings;
-  }, [bandId, bandSizeToBandIdMap, formData.bandGroup, pastBirdEvents.length, selectedPage, suggestedBirdEventType]);
+  }, [
+    bandGroupsMap,
+    bandId,
+    bandResetsMap,
+    bandSizeToBandIdMap,
+    formData.bandGroup,
+    pastBirdEvents.length,
+    selectedPage,
+    selectedProgram,
+    suggestedBirdEventType,
+  ]);
   const entryWarningKey = useMemo(
     () => (entryWarnings.length > 0 ? JSON.stringify([selectedPage, bandId, entryWarnings]) : ""),
     [bandId, entryWarnings, selectedPage]
