@@ -351,6 +351,15 @@ export default function AddBirdEventModal({
     if (resolvedFormSpecies.length !== 4 || !magicTable || !magicTable.pyle) return null;
     return magicTable.pyle[resolvedFormSpecies] || null;
   }, [resolvedFormSpecies, magicTable]);
+  const programsByRecentCapture = useMemo(
+    () =>
+      Object.values(programsMap).sort(
+        (a, b) =>
+          (b.lastCaptureDate ?? "").localeCompare(a.lastCaptureDate ?? "") ||
+          a.displayName.localeCompare(b.displayName)
+      ),
+    [programsMap]
+  );
 
   const sexCode = formData.sex.charAt(0);
   const wingAutoAdvanceRange = useMemo(
@@ -1014,7 +1023,7 @@ export default function AddBirdEventModal({
               value: "text-sm",
             }}
           >
-            {Object.values(programsMap).map((program) => (
+            {programsByRecentCapture.map((program) => (
               <SelectItem key={program.id}>{program.displayName}</SelectItem>
             ))}
           </Select>
@@ -1055,7 +1064,7 @@ export default function AddBirdEventModal({
       bandSizeToBandIdMap,
       handleBandSizeChange,
       birdEventToModify,
-      programsMap,
+      programsByRecentCapture,
       isEditingRecapture,
       isSaving,
       getInputColor,
