@@ -356,7 +356,7 @@ export default function DETs() {
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selectedDET.observerHours.observers.map((observer, idx) => (
                       <Chip key={idx} variant="flat" color="secondary" size="sm">
-                        {observer.name}: {observer.totalHours.toFixed(1)}h
+                        {observer.name?.trim() || observer.initials}: {observer.totalHours.toFixed(1)}h
                       </Chip>
                     ))}
                   </div>
