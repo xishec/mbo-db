@@ -106,6 +106,7 @@ export default function AddBirdEventModal({
     birdEventToModify.birdEventType !== BirdEventType.Banded &&
     birdEventToModify.birdEventType !== BirdEventType.None;
   const selectedProgram = useAppStore((s) => s.selectedProgram);
+  const programsMap = useAppStore((s) => s.programsMap);
   const bandGroupsMap = useAppStore((s) => s.bandGroupsMap);
   const magicTable = useAppStore((s) => s.magicTable);
   const bandIdToBirdEventIdsMap = useAppStore((s) => s.bandIdToBirdEventIdsMap);
@@ -317,7 +318,7 @@ export default function AddBirdEventModal({
   ];
 
   // Row 2: Less frequently edited fields
-  const ROW2_KEYS = ["net", "bandSize", "birdEventType"];
+  const ROW2_KEYS = ["programId", "net", "bandSize", "birdEventType"];
   const DATE_TIME_KEYS = ["date", "date-month", "date-day", "time", "time-minute"];
 
   const focusOrder = useMemo(() => {
@@ -995,6 +996,31 @@ export default function AddBirdEventModal({
         );
       }
 
+      if (column.key === "programId") {
+        if (!birdEventToModify) return null;
+
+        return (
+          <Select
+            variant="bordered"
+            aria-label={column.label}
+            selectedKeys={[formData.programId]}
+            onSelectionChange={(keys) => {
+              const value = Array.from(keys)[0] as string;
+              setFormData((prev) => ({ ...prev, programId: value }));
+            }}
+            isDisabled={isSaving}
+            classNames={{
+              trigger: "min-h-unit-10 h-unit-10",
+              value: "text-sm",
+            }}
+          >
+            {Object.values(programsMap).map((program) => (
+              <SelectItem key={program.id}>{program.displayName}</SelectItem>
+            ))}
+          </Select>
+        );
+      }
+
       return (
         <Input
           ref={(el: HTMLInputElement | null) => {
@@ -1029,6 +1055,7 @@ export default function AddBirdEventModal({
       bandSizeToBandIdMap,
       handleBandSizeChange,
       birdEventToModify,
+      programsMap,
       isEditingRecapture,
       isSaving,
       getInputColor,
@@ -1149,6 +1176,8 @@ export default function AddBirdEventModal({
                     {/* Row 2: Less frequently edited - Net, Band Size, Event Type, Date, Time, Status, Notes */}
                     <div className="flex gap-1">
                       {ROW2_KEYS.map((fieldKey) => {
+                        if (fieldKey === "programId" && !birdEventToModify) return null;
+
                         const metadata = getFieldMetadata(fieldKey);
                         if (!metadata) return null;
 

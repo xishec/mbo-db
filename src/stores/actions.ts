@@ -673,6 +673,7 @@ export const actions = {
       // dedup/decrement logic can see its pre-modification state regardless
       // of whether we're doing a queued-swap or a modification chain.
       const oldEvent = previousEventId ? (birdEventsStore.get(previousEventId) ?? null) : null;
+      const programChanged = !!oldEvent && oldEvent.programId !== captureData.programId;
 
       // Mutate birdEventsStore in place (O(1) — no 700K-entry spread).
       if (replacingPendingId && previousEventId && previousEventId !== newBirdEvent.id) {
@@ -684,6 +685,19 @@ export const actions = {
         }
       }
       birdEventsStore.set(newBirdEvent);
+
+      // A program move affects both programs' derived capture lists, date
+      // bounds, and year associations. This is an infrequent edit, so rebuild
+      // them exactly instead of leaving stale entries on the old program.
+      const rebuiltState = programChanged
+        ? {
+            ...rebuildBirdEventState(birdEventsStore.getAll(), state),
+            // Moving a capture between programs cannot change a band strip.
+            // Keep the existing next-band suggestions instead of recomputing
+            // them from the modified-event chain.
+            bandSizeToBandIdMap: state.bandSizeToBandIdMap,
+          }
+        : null;
 
       // Update derived maps. The predecessor needs to disappear from every
       // "live" aggregate (new-capture lists, recapture lists, volunteer
@@ -912,6 +926,7 @@ export const actions = {
         selectedProgram: nextSelectedProgram,
         isSaving: true,
         ...(milestoneSet ? { milestone: milestoneSet } : {}),
+        ...(rebuiltState ?? {}),
       });
 
       // Persist only the changed event rows. The derived index maps are
