@@ -686,18 +686,10 @@ export const actions = {
       }
       birdEventsStore.set(newBirdEvent);
 
-      // A program move affects both programs' derived capture lists, date
-      // bounds, and year associations. This is an infrequent edit, so rebuild
-      // them exactly instead of leaving stale entries on the old program.
-      const rebuiltState = programChanged
-        ? {
-            ...rebuildBirdEventState(birdEventsStore.getAll(), state),
-            // Moving a capture between programs cannot change a band strip.
-            // Keep the existing next-band suggestions instead of recomputing
-            // them from the modified-event chain.
-            bandSizeToBandIdMap: state.bandSizeToBandIdMap,
-          }
-        : null;
+      // A program move affects both programs' capture lists, date bounds, and
+      // year associations. Rebuild only those program-derived values; the
+      // capture's band data is unchanged.
+      const rebuiltPrograms = programChanged ? rebuildBirdEventState(birdEventsStore.getAll(), state) : null;
 
       // Update derived maps. The predecessor needs to disappear from every
       // "live" aggregate (new-capture lists, recapture lists, volunteer
@@ -926,7 +918,13 @@ export const actions = {
         selectedProgram: nextSelectedProgram,
         isSaving: true,
         ...(milestoneSet ? { milestone: milestoneSet } : {}),
-        ...(rebuiltState ?? {}),
+        ...(rebuiltPrograms
+          ? {
+              programsMap: rebuiltPrograms.programsMap,
+              yearsToProgramMap: rebuiltPrograms.yearsToProgramMap,
+              selectedProgram: rebuiltPrograms.selectedProgram,
+            }
+          : {}),
       });
 
       // Persist only the changed event rows. The derived index maps are
