@@ -104,6 +104,15 @@ export default function BirdEvents() {
       }
     }
 
+    // A newly assigned strip has no capture yet, but it should still have a
+    // tab so it can be selected immediately (for example, a new 4s strip).
+    for (const bandGroupId of selectedProgram?.bandGroupIds ?? []) {
+      const size = bandGroupToBandSize[bandGroupId];
+      if (size && size !== BandSize.Other && !map[size]) {
+        map[size] = bandGroupId;
+      }
+    }
+
     return map;
   // birdEventsStore is external to React state; this version triggers recomputation when it changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,6 +120,7 @@ export default function BirdEvents() {
     bandGroupToBandSize,
     bandResetsMap,
     birdEventsVersion,
+    selectedProgram?.bandGroupIds,
   ]);
 
   useEffect(() => {
@@ -171,13 +181,12 @@ export default function BirdEvents() {
   }, [bandGroupIds, bandGroupInfo, bandSizeToBandGroup, isPastProgramEnd]);
 
   const pageSelectItems = useMemo(() => {
-    const items: { key: string; label: string }[] = [];
+    const items: { key: string; label: string; isDisabled?: boolean }[] = [];
     Object.values(BandSize)
       .filter((size) => size !== BandSize.Other)
-      .filter((size) => bandSizeToBandGroup[size])
       .forEach((size) => {
-        const bandGroupId = bandSizeToBandGroup[size]!;
-        items.push({ key: bandGroupId, label: size });
+        const bandGroupId = bandSizeToBandGroup[size];
+        items.push({ key: bandGroupId ?? `size:${size}`, label: size, isDisabled: !bandGroupId });
       });
     items.push({ key: "recaptures", label: "Recaptures" });
     return items;
@@ -340,7 +349,7 @@ export default function BirdEvents() {
               }}
             >
               {visiblePageSelectItems.map((item) => (
-                <Tab key={item.key} title={item.label} />
+                <Tab key={item.key} title={item.label} isDisabled={item.isDisabled} />
               ))}
             </Tabs>
           </div>

@@ -161,6 +161,7 @@ export enum BandSize {
   Size3 = "3",
   Size3b = "3b",
   Size3a = "3a",
+  Size4s = "4s",
   Other = "other",
 }
 

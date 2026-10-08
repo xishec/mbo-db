@@ -12,7 +12,7 @@ if (environment !== "alpha" && environment !== "prod") {
   throw new Error("Specify --env=alpha or --env=prod. Add --apply to write direct evidence, or --apply-suggestions for heuristics.");
 }
 
-const VALID_SIZES = new Set(["0a", "0", "1", "1b", "1a", "1d", "2", "3", "3b", "3a"]);
+const VALID_SIZES = new Set(["0a", "0", "1", "1b", "1a", "1d", "2", "3", "3b", "3a", "4s"]);
 type StoredEvent = {
   birdEventType?: string;
   modifiedEventId?: string | null;
