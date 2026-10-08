@@ -34,7 +34,8 @@ export function formatModificationTimestamp(timestamp: string | undefined): stri
 }
 
 export function getChangedBirdEventFields(event: BirdEvent, previousEvent: BirdEvent | undefined): string[] {
-  if (!previousEvent) return ["Previous event not found"];
+  if (!event.previousEventId) return [];
+  if (!previousEvent) return [];
 
   const changedFields = CHANGED_FIELD_LABELS
     .filter(([field]) => (event[field] ?? "") !== (previousEvent[field] ?? ""))

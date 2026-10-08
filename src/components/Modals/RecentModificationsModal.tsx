@@ -41,11 +41,13 @@ function getChangedFields(event: BirdEvent): string[] {
 }
 
 function getPreviousEventDetails(event: BirdEvent): { text: string; isDifferentDay: boolean } {
+  if (!event.previousEventId) return { text: "First event", isDifferentDay: false };
+
   const previousEvent = event.previousEventId ? birdEventsStore.get(event.previousEventId) : undefined;
   const previousTimestamp = Number(previousEvent?.updatedAt);
   const currentTimestamp = Number(event.updatedAt);
   if (!Number.isFinite(previousTimestamp) || !Number.isFinite(currentTimestamp)) {
-    return { text: "Previous event not found", isDifferentDay: false };
+    return { text: "First event", isDifferentDay: false };
   }
 
   const previousDate = new Date(previousTimestamp);
